@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { fetchMe, signedInHint } from "@/lib/account/follows";
 import { followedHere } from "@/lib/push";
 import type { MyGame, MyTeam } from "@/lib/my-teams";
 import { Crest } from "../programs/crest";
@@ -38,8 +39,8 @@ function Line({ label, game }: { label: string; game: MyGame }) {
 }
 
 /**
- * "My teams": each program this browser follows, with its record, last result and next game. The follow list lives in
- * the browser (lib/push.ts), so this asks, after load, for the small per-program files built with the site
+ * "My teams": each program this browser follows, with its record, last result and next game. The follow list is the account's when signed in
+ * (/api/me), else this browser's (lib/push.ts), so this asks, after load, for the small per-program files built with the site
  * (app/my-teams/[slug]). It shows nothing at all when the visitor follows no one or the files cannot be reached.
  */
 export function MyTeams() {
@@ -48,15 +49,26 @@ export function MyTeams() {
 
   useEffect(() => {
     const abort = new AbortController();
-    const followed = followedHere();
-    setSlugs(followed);
-    // One request per program, each on its own: a program the site no longer knows, or a slow answer, holds back no other.
-    for (const slug of followed) {
-      fetch(`/my-teams/${encodeURIComponent(slug)}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(10_000)]) })
-        .then((res) => (res.ok ? (res.json() as Promise<MyTeam>) : undefined))
-        .then((team) => team && setFound((was) => ({ ...was, [slug]: team })))
-        .catch(() => undefined); // offline or stale: that program is simply not shown
-    }
+    const load = (followed: string[]) => {
+      setSlugs(followed);
+      // One request per program, each on its own: a program the site no longer knows, or a slow answer, holds back no other.
+      for (const slug of followed) {
+        fetch(`/my-teams/${encodeURIComponent(slug)}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(10_000)]) })
+          .then((res) => (res.ok ? (res.json() as Promise<MyTeam>) : undefined))
+          .then((team) => team && setFound((was) => ({ ...was, [slug]: team })))
+          .catch(() => undefined); // offline or stale: that program is simply not shown
+      }
+    };
+    // Signed in, the account's follows win; otherwise this browser's. A browser that last saw a signed-in fan waits for the
+    // answer rather than flash its own list first; everyone else sees their list at once and is switched only if signed in.
+    const waits = signedInHint();
+    if (!waits) load(followedHere());
+    void fetchMe().then((answer) => {
+      const me = answer?.me;
+      if (abort.signal.aborted) return;
+      if (me && me.displayName !== null) load(me.follows);
+      else if (waits) load(followedHere());
+    });
     return () => abort.abort();
   }, []);
 

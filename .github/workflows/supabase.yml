@@ -1,5 +1,7 @@
 # Loads the hosted database (Supabase) from main: new migrations, then every alignment and game file, then the live
-# security checks (row-level security everywhere, no table rights for the API roles). Called by main.yml after a push to
+# security checks (row-level security everywhere; the API roles hold no table, column or sequence right and no policy exists,
+# and may run only the push sign-up pair and the signed-in functions, among them record_admin_audit(), migration 0010:
+# load.mjs checkLive tests the rights each role effectively holds, PUBLIC included, and fails on anything wider). Called by main.yml after a push to
 # main and by Results watch after it commits new scores; also runs by hand. Safe to re-run.
 # Also weekly: a free Supabase project pauses after 7 days without activity, and the off-season (Feb to Jul) can pass
 # weeks without a push or a results run. The weekly load keeps it awake and re-runs the live security checks.
@@ -38,8 +40,11 @@ jobs:
         id: gate
         env:
           LIVE: ${{ vars.LIVE }} # repo variable, set at cut-over; until then nothing is written
+          # A run of this workflow by hand (not one called by another) loads before LIVE too: the proof. The load is
+          # idempotent (unchanged games are skipped), so it is safe while the old repo still loads the same files.
+          BY_HAND: ${{ github.event_name == 'workflow_dispatch' && github.workflow == 'Supabase' }}
         run: |
-          if [ "$LIVE" != true ]; then
+          if [ "$LIVE" != true ] && [ "$BY_HAND" != true ]; then
             echo "Supabase not loaded: the repo variable LIVE is not true yet." >> "$GITHUB_STEP_SUMMARY"
             echo "run=false" >> "$GITHUB_OUTPUT"
           elif [ -z "$PGPASSWORD" ]; then

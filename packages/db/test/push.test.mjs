@@ -51,7 +51,48 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname = 'public' and p.prorettype <> 'trigger'::regtype order by 1`,
   );
-  assert.deepEqual(routines.rows, [{ proname: "push_follow", anon: true }, { proname: "push_unfollow", anon: true }]);
+  assert.deepEqual(routines.rows, [
+    { proname: "add_comment", anon: false }, // migration 0013: posts, signed-in fans only
+    { proname: "admin_guard", anon: false },
+    { proname: "admin_moderation_overview", anon: false },
+    { proname: "admin_set_ban", anon: false },
+    { proname: "admin_unhide_post", anon: false },
+    { proname: "admin_unmute", anon: false },
+    { proname: "create_profile", anon: false }, // migration 0011: signed-in fans only
+    { proname: "create_thread", anon: false }, // migration 0015: signed-in fans only
+    { proname: "delete_my_account", anon: false },
+    { proname: "edit_post", anon: false },
+    { proname: "fan_actor", anon: false },
+    { proname: "fan_post_counts", anon: false },
+    { proname: "fan_rate_check", anon: false },
+    { proname: "fan_score_status", anon: false }, // migration 0014: a public read, granted to anon only where auth.uid() exists (Supabase)
+    { proname: "flag_post", anon: false },
+    { proname: "follow_program", anon: false }, // migration 0012: signed-in fans' own follows
+    { proname: "forum_boards", anon: false }, // migration 0015: public reads, granted to anon only where auth.uid() exists (Supabase)
+    { proname: "forum_posts", anon: false },
+    { proname: "forum_thread_info", anon: false },
+    { proname: "forum_thread_visible", anon: false },
+    { proname: "forum_threads", anon: false },
+    { proname: "is_admin", anon: false }, // migration 0010: not for anon, ever
+    { proname: "list_comments", anon: false }, // migration 0013: a public read, granted to anon only where auth.uid() exists (Supabase)
+    { proname: "moderation_blocked", anon: false },
+    { proname: "moderation_name_blocked", anon: false },
+    { proname: "moderation_normalize", anon: false },
+    { proname: "moderation_reserved_name", anon: false },
+    { proname: "moderation_strip", anon: false },
+    { proname: "my_follows", anon: false },
+    { proname: "my_profile", anon: false },
+    { proname: "post_evaluate", anon: false },
+    { proname: "post_link_count", anon: false },
+    { proname: "post_text_check", anon: false },
+    { proname: "push_follow", anon: true },
+    { proname: "push_unfollow", anon: true },
+    { proname: "record_admin_audit", anon: false },
+    { proname: "reply_to_thread", anon: false },
+    { proname: "resolve_game_key", anon: false },
+    { proname: "submit_score_report", anon: false }, // migration 0014: signed-in fans only
+    { proname: "unfollow_program", anon: false },
+  ]);
   await d.exec("set role anon");
   await assert.rejects(d.query("select * from push_subscription"), /permission denied/);
   await d.query("select push_follow($1, $2, $3, $4)", [ENDPOINT, P256DH, AUTH, ["jayton"]]);
@@ -63,4 +104,9 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
   assert.deepEqual(await checkLive(d), []);
   await d.exec("create function leak() returns int language sql as 'select 1'");
   assert.deepEqual(await checkLive(d), ["anon can run public.leak()", "authenticated can run public.leak()"]);
+  // An overload of an allowed name is not allowed with it; a security-definer function must pin its search_path.
+  await d.exec("drop function leak(); create function is_admin(p int) returns boolean language sql as 'select false'");
+  assert.deepEqual(await checkLive(d), ["anon can run public.is_admin(integer)", "authenticated can run public.is_admin(integer)"]);
+  await d.exec("drop function is_admin(int); create function unpinned() returns int language sql security definer as 'select 1'");
+  assert.deepEqual(await checkLive(d), ["anon can run public.unpinned()", "authenticated can run public.unpinned()", "public.unpinned() is security definer with no search_path"]);
 });

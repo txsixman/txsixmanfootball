@@ -45,7 +45,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   `DATA_PRIVATE_TOKEN` reaches it only from push-to-main, schedule and dispatch runs (`main.yml`, `results-watch.yml`,
   `supabase.yml`); CI's data job fails if a pull-request workflow names it (`.github/scripts/token-guard.sh`)
 - The repo variable `LIVE` (true from cut-over): until then no schedule writes, and alerts, the hosted database and the
-  ratings-table commit do nothing. A Results watch dispatch with `write` pushes both repos as a proof
+  ratings-table commit do nothing. Proofs by hand: Results watch with `write` pushes both repos, an After merge
+  run rates and commits the table, and a Supabase run (dispatched itself, not called) loads the hosted database
 - `data/seed/uil-champions/`: written by `tools/history/uil-champions.mjs` from UIL's own final archive, never by
   hand: `six-man.csv` (every six-man state final since 1972) and `six-man-no-final.csv` (1941 to 1971, no state final).
   UIL's town-plus-school spellings map to current names in `tools/history/uil-aliases.json`. Rerun after each December final: `UIL_CACHE=$TMPDIR/uil NODE_USE_ENV_PROXY=1 node tools/history/uil-champions.mjs`
@@ -136,7 +137,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   MaxPreps, Hudl, fan sites, SixManFootball.com or CalPreps.
 - **Partnership hard lines** (plan section 15): never poach the site's moderators or members publicly, never
   disparage it, never use its name or content without permission.
-- **Minors**: no birth dates, contact details, player rankings or precise location for minors. No direct messages.
+- **Minors**: no birth dates (fan accounts keep the birth year only, never shown; ADR 0018), no public real names,
+  contact details, player rankings or precise location for minors; no minor's data to any third party. No direct messages.
 - **Betting**: the words are rating, projected margin and win probability. Never spreads, lines or odds.
 - **Row-level security on every table.** A new table without it fails the schema test.
 - **`score_submission` is never deleted; `audit_log` is append-only.** Enforced by triggers.

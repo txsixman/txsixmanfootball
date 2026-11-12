@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { heading, loadAlignments, placeLabel, programFor, slugify, uniquePrograms } from "@/lib/alignments";
 import { finalScore, loadFinals } from "@/lib/champions";
+import { loadCorrections } from "@/lib/correction-files";
 import { loadAliases, loadLineage, otherNames } from "@/lib/lineage";
 import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
@@ -110,7 +111,7 @@ export default async function ProgramPage({ params }: Props) {
   // This program's own finals, and those of the schools that merged into it (ADR 0003), marked "as <old name>".
   const lineage = await loadLineage();
   const names = new Set([slug, ...lineage.filter((l) => slugify(l.successor) === slug).map((l) => slugify(l.predecessor))]);
-  const aka = otherNames(slug, lineage, await loadAliases());
+  const aka = otherNames(slug, lineage, await loadAliases(), (await loadCorrections()).merges);
   const finals = (await loadFinals())
     .filter((f) => names.has(slugify(f.champion)) || names.has(slugify(f.runnerUp)))
     .sort((a, b) => b.season - a.season);

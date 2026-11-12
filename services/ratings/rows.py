@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+from corrections import Corrections, apply_to_game, load_corrections
 from model import Games
 
 DATA = Path(__file__).resolve().parents[2] / "data"
@@ -72,36 +73,44 @@ class Game:
         return self.end_reason in MERCY or (self.end_reason == "unknown" and abs(self.margin) >= 45)
 
 
-def read_files(paths, neutral: frozenset = frozenset()):
+def read_files(paths, neutral: frozenset = frozenset(), corrections: Corrections | None = None):
     """Each played game once, in file order: a game already read (same date and teams) from an earlier file is skipped,
     so the first file wins. `neutral` keys are robot-read playoff games (they get PLAYOFF_EDGE of a home edge), unless a
-    hand capture, which says for itself."""
+    hand capture, which says for itself. `corrections` (default: data/corrections, corrections.py) merge program names,
+    fix scores and drop games listed in error, before any of the rules above look at a row."""
+    if corrections is None:
+        corrections = load_corrections()
     seen: set[tuple[str, frozenset[str]]] = set()
     for path in paths:
         with open(path, newline="") as f:
             for r in csv.DictReader(f):
                 if not r["home_score"]:
                     continue  # not played yet
-                key = (r["game_date"], frozenset((r["home"], r["away"])))
-                if key in seen:
-                    continue
-                seen.add(key)
-                if r["neutral"] == "true":
-                    edge = 0.0
-                elif key in neutral and "maxpreps-" in str(path):
-                    edge = PLAYOFF_EDGE
-                else:
-                    edge = 1.0
-                yield Game(
+                # `neutral` keys are the files' own spellings; everything after the correction uses the merged names.
+                raw_key = (r["game_date"], frozenset((r["home"], r["away"])))
+                fixed = apply_to_game(
+                    corrections,
                     r["game_date"],
                     r["home"],
                     r["away"],
                     int(r["home_score"]),
                     int(r["away_score"]),
                     r["end_reason"],
-                    edge,
-                    "rated",
                 )
+                if fixed is None:
+                    continue  # voided: listed in error
+                home, away, home_score, away_score, end_reason = fixed
+                key = (r["game_date"], frozenset((home, away)))
+                if key in seen:
+                    continue
+                seen.add(key)
+                if r["neutral"] == "true":
+                    edge = 0.0
+                elif raw_key in neutral and "maxpreps-" in str(path):
+                    edge = PLAYOFF_EDGE
+                else:
+                    edge = 1.0
+                yield Game(r["game_date"], home, away, home_score, away_score, end_reason, edge, "rated")
 
 
 def read_outside(path) -> list[Game]:
@@ -187,12 +196,16 @@ class Season:
 
 
 def prepare(
-    paths, outside: str | Path | None = None, neutral: frozenset = frozenset(), before: str | None = None
+    paths,
+    outside: str | Path | None = None,
+    neutral: frozenset = frozenset(),
+    before: str | None = None,
+    corrections: Corrections | None = None,
 ) -> Season | None:
     """Rows for the fit from game files (first file wins a duplicate), plus the season's outside.csv, if any. With `before`
     (an ISO date), only games played before that day; whether a game is a duplicate is judged on the whole season first.
-    None when no game is left to rate."""
-    listed = list(read_files(paths, neutral))
+    None when no game is left to rate. `corrections`: see read_files."""
+    listed = list(read_files(paths, neutral, corrections))
     hidden_all = read_outside(outside)
     games = classify(listed + hidden_all)
     listed_n = len(listed)

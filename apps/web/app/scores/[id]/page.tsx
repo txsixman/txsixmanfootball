@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
+import { fanSignIn } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
 import { findGame, gameDetail, longDate, resultAsGame, resultPageIds } from "@/lib/game-pages";
@@ -12,6 +13,8 @@ import { CURRENT_SEASON } from "@/lib/season";
 import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
 import { ShareButton } from "../../share-button";
 import { SITE_NAME } from "@/lib/site";
+import { Comments } from "../comments";
+import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
 import { BigLine, Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
@@ -111,6 +114,8 @@ export default async function GamePage({ params }: Props) {
     const known = alignments.find((a) => a.school === team.name);
     return known && { slug: known.slug, identity: identities.get(known.slug) ?? EMPTY };
   };
+  // Fan comments and score reports exist only while FAN_SIGNIN is "on" (read when the page is built; flip it and redeploy).
+  const fan = fanSignIn();
   const live = g.state === "live";
   const winner = winnerOf(g);
   // A past season's playoff game has no site on record: neither team is called home or away.
@@ -194,6 +199,14 @@ export default async function GamePage({ params }: Props) {
         </div>
       )}
       {!detail && <div className="pb-6" />}
+
+      {fan && !sample && g.state === "scheduled" && <ScoreReport gameKey={id} away={g.away.name} home={g.home.name} date={g.date} />}
+
+      {fan && !sample && (
+        <div className="pb-6">
+          <Comments gameKey={id} />
+        </div>
+      )}
     </article>
   );
 }
