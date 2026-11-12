@@ -3,7 +3,8 @@ import path from "node:path";
 import { ImageResponse } from "next/og";
 import { loadAlignments } from "@/lib/alignments";
 import type { Team } from "@/lib/demo-games";
-import { gameIds, mediumDate, resolveGame } from "@/lib/game-pages";
+import { findGame, gameIds, mediumDate, resolveGame } from "@/lib/game-pages";
+import { CURRENT_SEASON } from "@/lib/season";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { memo } from "@/lib/memo";
 import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
@@ -14,11 +15,23 @@ import { brandFont } from "../../mark";
 // shown as published beside the name; the school's colors and initials when there is none), the date, and the score.
 // The score says "Final" only for a confirmed final; a robot-read score says "Unconfirmed" and names no winner (ADR 0004).
 // An unplayed game shows no score. Drawn at build time from the same game the page shows (lib/game-pages.ts).
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
-export const alt = "Game card";
+const size = { width: 1200, height: 630 };
 export const dynamicParams = false;
-export const generateStaticParams = async () => (await gameIds()).map((id) => ({ id }));
+
+/** This season's games (bracket and sample games, and robot-read games of the current season) get a card; a past season's
+ * game page shares the site's card. One card per game of every season would be ~6,800 images drawn on every build. */
+const hasCard = async (id: string) => ((await findGame(id))?.season ?? CURRENT_SEASON) === CURRENT_SEASON;
+const cardIds = memo<void, string[]>(async () => {
+  const ids = await gameIds();
+  const keep = await Promise.all(ids.map(hasCard));
+  return ids.filter((_, i) => keep[i]);
+});
+
+// Next builds this route's static params from the game page's ids and this list (one "card" image, or none).
+export async function generateImageMetadata({ params }: { params: { id: string } | Promise<{ id: string }> }) {
+  const { id } = await params;
+  return (await cardIds()).includes(id) ? [{ id: "card", size, alt: "Game card", contentType: "image/png" }] : [];
+}
 
 const TILE = 150;
 /** The widest logo the site's crests draw (programs/crest.tsx); a wider wordmark gets the badge. */

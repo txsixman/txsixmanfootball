@@ -152,6 +152,12 @@ test("a game's share image is a PNG", async ({ page, request }) => {
   expect(response.headers()["content-type"]).toContain("image/png");
   expect((await response.body()).subarray(1, 4).toString()).toBe("PNG");
   // The invented sample game has one too.
-  const sample = await request.get("/scores/g2/opengraph-image");
+  const sample = await request.get("/scores/g2/opengraph-image/card");
   expect(sample.headers()["content-type"]).toContain("image/png");
+});
+
+test("a past season's game page draws no card of its own", async ({ page }) => {
+  const past = await inWeb(async () => (await (await import("../lib/games")).loadSeasonResults(2025)).find((r) => r.href === `/scores/${r.id}`)!);
+  await page.goto(past.href);
+  expect(await page.locator('meta[property="og:image"]').evaluateAll((els) => els.map((el) => el.getAttribute("content")))).not.toContainEqual(expect.stringContaining("/scores/"));
 });
