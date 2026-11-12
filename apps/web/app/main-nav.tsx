@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AccountLink } from "./account-link";
 
 export type NavSection = { href: string; label: string };
 
@@ -27,6 +28,7 @@ export function MainNav({ sections }: { sections: NavSection[] }) {
           </Link>
         );
       })}
+      <AccountLink />
     </nav>
   );
 }

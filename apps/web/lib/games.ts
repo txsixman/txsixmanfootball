@@ -9,6 +9,9 @@ import { loadRatings } from "./ratings";
 import { roundLabel } from "./brackets";
 import { CURRENT_SEASON } from "./season";
 import { forfeitScore } from "./forfeit";
+import { applyToGame } from "./corrections";
+import { buildSeasonResults, type SeasonResult } from "./season-results";
+import { loadCorrections } from "./correction-files";
 
 // Hand-captured games (data/seed/*/playoffs-*.csv), read at build time. Same columns as packages/db/games.mjs, checked
 // row by row in lib/data-schemas.ts: a bad row fails the build.
@@ -36,7 +39,8 @@ const readOptional = (file: string) =>
     throw e;
   });
 
-type Row = { r: Record<string, string>; league: string; season: number; file: string; line: number; robot: boolean };
+/** `corrected`: a person fixed this game's score (data/corrections, lib/corrections.ts): never "confirmed" (ADR 0011). */
+type Row = { r: Record<string, string>; league: string; season: number; file: string; line: number; robot: boolean; corrected: boolean };
 
 /** Rows left out on purpose, reported once per file in the build log (never silently). */
 const reported = new Set<string>();
@@ -48,11 +52,13 @@ function reportSkipped(file: string, count: number, why: string) {
 
 /** Hand captures, then robot-read playoff games (ADR 0008); a robot row for a game already captured by hand is dropped. */
 async function playoffRows(seasons = [CURRENT_SEASON]): Promise<Row[]> {
+  const fixes = await loadCorrections();
   const rows: Row[] = [];
   for (const c of CAPTURES.filter((c) => seasons.includes(c.season))) {
     const text = await readFile(path.join(process.cwd(), "../../data/seed", c.file), "utf8");
     for (const { row, line } of parseCsv(`data/seed/${c.file}`, text, GAME_COLUMNS, PlayoffRow)) {
-      rows.push({ r: row, league: c.league, season: c.season, file: c.file, line, robot: false });
+      const fixed = applyToGame(fixes, row);
+      if (fixed) rows.push({ r: fixed.row, league: c.league, season: c.season, file: c.file, line, robot: false, corrected: fixed.corrected });
     }
   }
   const seen = new Set(rows.map(({ r }) => [r.game_date, ...[r.home, r.away].sort()].join("|")));
@@ -61,14 +67,22 @@ async function playoffRows(seasons = [CURRENT_SEASON]): Promise<Row[]> {
     const text = await readOptional(file);
     if (!text) continue;
     let skipped = 0;
+    let voided = 0;
     for (const { row, line } of parseCsv(`data/seed/${file}`, text, ["league", ...RESULT_COLUMNS], RobotPlayoffRow)) {
-      if (seen.has([row.game_date, ...[row.home, row.away].sort()].join("|"))) {
+      const fixed = applyToGame(fixes, row);
+      if (!fixed) {
+        voided += 1; // listed in error (data/corrections)
+        continue;
+      }
+      const r = fixed.row;
+      if (seen.has([r.game_date, ...[r.home, r.away].sort()].join("|"))) {
         skipped += 1;
         continue;
       }
-      rows.push({ r: row, league: row.league, season, file, line, robot: true });
+      rows.push({ r, league: r.league, season, file, line, robot: true, corrected: fixed.corrected });
     }
     reportSkipped(`data/seed/${file}`, skipped, "already captured by hand");
+    reportSkipped(`data/seed/${file}#voided`, voided, "voided by a correction");
   }
   return rows;
 }
@@ -84,7 +98,7 @@ export async function playoffLeagueSet(season: number): Promise<Set<string>> {
 
 export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
   const [rows, ratings] = await Promise.all([playoffRows(), loadRatings()]);
-  return rows.map(({ r, league, season, file, line: i, robot }) => {
+  return rows.map(({ r, league, season, file, line: i, robot, corrected }) => {
     const team = (name: string): Team => {
       const known = programFor(alignments, name, league);
       if (!known) throw new Error(`${file} row ${i}: unknown team ${name}`);
@@ -109,8 +123,9 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
       endReason: played
         ? endReason(robot && forfeitScore(Number(r.home_score), Number(r.away_score)) ? "forfeit" : r.end_reason, r.end_period)
         : undefined,
-      // A robot-read score is the site's, not ours: unconfirmed, so no winner is named (ADR 0004, ADR 0008).
-      verification: played ? (robot ? "unconfirmed" : "confirmed") : "none",
+      // A robot-read score is the site's, not ours: unconfirmed, so no winner is named (ADR 0004, ADR 0008). A score a person
+      // fixed stays unconfirmed too: confirmation comes from agreeing sources, not from us (ADR 0011).
+      verification: played ? (robot || corrected ? "unconfirmed" : "confirmed") : "none",
       projected: projection && projectionText(projection),
       projectedMargin: projection?.margin,
       venue: r.neutral === "true" ? "Neutral site" : r.neutral === "false" ? `${home.name} (home)` : "Site not listed",
@@ -182,14 +197,7 @@ export async function playoffGameKeys(season: number): Promise<Set<string>> {
   return new Set((await playoffRows([season])).map(({ r }) => gameKey(r.game_date, r.home, r.away)));
 }
 
-/** A result read from MaxPreps (ADR 0008): unconfirmed, so pages show the score but never crown a winner. */
-/** `forfeit`: recorded 1-0 or 2-0, the way the source writes a forfeit; pages show the word, never the score (ADR 0004). */
-/** `id`: the game's own key (`<date>-<away>-at-<home>`, unique across seasons: the date carries the year), used to match it
- * to its projection. `href`: its page. A current-season playoff game is also a bracket game with its own page
- * (`<season>-<round>-<away>-at-<home>`, loadGames), so it links there and has no second page; every other game is its own page. */
-export type SeasonResult = {
-  id: string; href: string; date: string; status: string; home: string; away: string; homeScore: number; awayScore: number; forfeit: boolean;
-};
+export type { SeasonResult };
 
 /** Robot-read results for a season, with team names already matched to our alignments by the reader. Shared across
  * pages: never mutate it. */
@@ -201,18 +209,7 @@ export const loadSeasonResults = memo(async (season: number): Promise<SeasonResu
   });
   if (!text) return [];
   const playoffPages = new Map(season === CURRENT_SEASON ? (await playoffRows([season])).map(({ r }) => [gameKey(r.game_date, r.home, r.away), playoffGameId(season, r)]) : []);
-  return parseCsv(`data/seed/maxpreps-${season}/games.csv`, text, RESULT_COLUMNS, PlayedGameRow).map(({ row: r }) => {
-    const id = `${r.game_date}-${slugify(r.away)}-at-${slugify(r.home)}`;
-    return {
-      id,
-      href: `/scores/${playoffPages.get(gameKey(r.game_date, r.home, r.away)) ?? id}`,
-      date: r.game_date,
-      status: shortDate(r.game_date),
-      home: r.home,
-      away: r.away,
-      homeScore: Number(r.home_score),
-      awayScore: Number(r.away_score),
-      forfeit: forfeitScore(Number(r.home_score), Number(r.away_score)),
-    };
-  });
+  const { results, voided } = buildSeasonResults(season, text, await loadCorrections(), playoffPages, gameKey);
+  reportSkipped(`data/seed/maxpreps-${season}/games.csv#voided`, voided, "voided by a correction");
+  return results;
 });

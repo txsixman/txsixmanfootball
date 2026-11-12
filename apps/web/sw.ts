@@ -6,7 +6,9 @@
 //   page you have visited comes from the cache, for 30 minutes at most, so a stale score is never shown for long. Only
 //   pages that show no current scores (state championships, how the rankings work, search) are kept a week. A page
 //   not cached, or too old, gets /~offline instead.
+// - /admin, /auth, /sign-in and /account pages are never cached (lib/never-cached.ts).
 // - School logos are cached on first view (30 days); the search index is network first.
+import { isNeverCached } from "./lib/never-cached";
 import { CacheFirst, ExpirationPlugin, NetworkFirst, NetworkOnly, Serwist, type PrecacheEntry, type RuntimeCaching, type SerwistGlobalConfig } from "serwist";
 
 declare global {
@@ -33,6 +35,9 @@ const page = (cacheName: string, maxAgeSeconds: number) =>
 const isPage = (request: Request) => request.mode === "navigate" || request.headers.get("RSC") === "1";
 
 const runtimeCaching: RuntimeCaching[] = [
+  // Sign-in, the admin console and (later) account pages show one person's view, and an auth address can carry a one-time
+  // code: always the network, never the cache (lib/never-cached.ts lists them). First, so nothing below can claim them.
+  { matcher: ({ sameOrigin, url }) => sameOrigin && isNeverCached(url.pathname), handler: new NetworkOnly() },
   // Other sites, the API and Vercel's analytics scripts are never cached.
   { matcher: ({ sameOrigin, url }) => !sameOrigin || /^\/(api|_vercel)\//.test(url.pathname), handler: new NetworkOnly() },
   { matcher: ({ request, url }) => isPage(request) && SETTLED_PAGES.test(url.pathname), handler: page("settled-pages", WEEK) },
