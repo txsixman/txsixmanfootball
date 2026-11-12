@@ -13,7 +13,7 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ week: string }> }): Promise<Metadata> {
-  return { title: `UIL rankings after week ${(await params).week} | Project 80x40` };
+  return { title: `UIL rankings after week ${(await params).week}` };
 }
 
 /** UIL's rankings as they stood at the end of a week of the season under way. */

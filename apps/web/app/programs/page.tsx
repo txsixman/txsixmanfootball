@@ -6,7 +6,7 @@ import { PageHeader } from "../ui";
 import { Finder } from "./finder";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Programs | Project 80x40" };
+export const metadata: Metadata = { title: "Programs" };
 
 export default async function Programs() {
   const [alignments, identities] = await Promise.all([loadAlignments(), loadIdentities()]);

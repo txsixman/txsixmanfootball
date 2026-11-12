@@ -19,7 +19,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { season, league } = await params;
-  return { title: `${season} ${league.toUpperCase()} playoffs | Project 80x40` };
+  return { title: `${season} ${league.toUpperCase()} playoffs` };
 }
 
 export default async function SeasonLeaguePlayoffsPage({ params }: Props) {

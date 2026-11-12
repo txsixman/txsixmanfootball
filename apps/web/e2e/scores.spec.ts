@@ -606,13 +606,43 @@ test("search: a labelled box that passes axe, and (on a production build) finds 
   await expect(page.getByRole("status")).toHaveText(/pages? match/);
 });
 
-test("headers: every page and the service worker are noindex; logos keep their lockdown", async ({ request }) => {
+test("search engines: only the public address is indexed, from robots.txt and a sitemap; logos keep their lockdown", async ({ page, request }) => {
+  const PUBLIC = { host: "txsixmanfootball.com" };
   // public/sw.js is written by the production build (scripts/build-sw.mjs); the dev server has none.
-  for (const url of ["/", "/~offline", ...(process.env.CI ? ["/sw.js"] : [])]) {
-    const res = await request.get(url);
-    expect(res.status(), url).toBe(200);
-    expect(res.headers()["x-robots-tag"], url).toBe("noindex, nofollow");
+  for (const url of ["/", "/programs/jayton", ...(process.env.CI ? ["/sw.js"] : [])]) {
+    // Any other address (vercel.app, previews, this test server) says noindex, so pages never show up twice.
+    const here = await request.get(url);
+    expect(here.status(), url).toBe(200);
+    expect(here.headers()["x-robots-tag"], url).toBe("noindex, nofollow");
+    expect((await request.get(url, { headers: PUBLIC })).headers()["x-robots-tag"], url).toBeUndefined();
   }
+  // Visitors see the site's name, never the codename (the owner, Nov 11, 2026).
+  await page.goto("/programs/jayton");
+  await expect(page).toHaveTitle(/^Jayton \| TX Six-Man Football$/);
+  expect((await (await request.get("/manifest.webmanifest")).json()).name).toBe("TX Six-Man Football");
+  await page.goto("/");
+  await expect(page).toHaveTitle("TX Six-Man Football");
+  await expect(page.locator("header").getByRole("link", { name: "TX Six-Man Football" })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("80x40");
+  await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+  for (const url of ["/rankings/sample", "/scores/sample", "/search", "/~offline"]) {
+    await page.goto(url);
+    await expect(page.locator('meta[name="robots"]'), url).toHaveAttribute("content", /noindex/);
+  }
+
+  const robots = await (await request.get("/robots.txt")).text();
+  expect(robots).toContain("Allow: /");
+  expect(robots).not.toContain("Disallow");
+  expect(robots).toContain("Sitemap: https://txsixmanfootball.com/sitemap.xml");
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  expect(urls.every((u) => u.startsWith("https://txsixmanfootball.com"))).toBe(true);
+  for (const path of ["", "/programs/jayton", "/rankings/how", "/rankings/division-1", "/rankings/week/4", "/results/2025", "/standings/tapps", "/championships"]) {
+    expect(urls, path).toContain(`https://txsixmanfootball.com${path}`);
+  }
+  expect(urls.some((u) => /\/results\/2026\/\d+$/.test(u)), "a results week").toBe(true);
+  expect(urls.some((u) => /sample|search|offline/.test(u)), "noindex pages stay out").toBe(false);
+  expect(new Set(urls).size, "no address twice").toBe(urls.length);
   if (process.env.CI) expect((await request.get("/sw.js")).headers()["cache-control"]).toContain("no-cache");
   const logo = await request.get("/logos/abbott.png");
   expect(logo.headers()["content-security-policy"]).toBe("default-src 'none'; style-src 'unsafe-inline'; sandbox");

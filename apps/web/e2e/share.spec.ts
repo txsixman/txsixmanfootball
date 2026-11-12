@@ -36,7 +36,7 @@ for (const url of pages) {
     const shared = await page.evaluate(() => (window as unknown as { shared: { title: string; url: string }[] }).shared);
     expect(shared).toHaveLength(1);
     expect(shared[0].url).toBe(page.url());
-    expect(shared[0].title).toContain("Project 80x40");
+    expect(shared[0].title).toContain("TX Six-Man Football");
     await expect(page.getByText("Link copied")).toHaveCount(0);
   });
 

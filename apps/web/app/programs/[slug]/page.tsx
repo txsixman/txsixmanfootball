@@ -21,6 +21,7 @@ import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest } from "../crest";
 import { Follow } from "../follow";
 import { ShareButton } from "../../share-button";
+import { SITE_NAME } from "@/lib/site";
 import { RatingChart, ratingPoints } from "../rating-chart";
 import { RankTrend, rankTrend } from "../trend";
 import { CrestSlot, EdgeToEdge } from "../../ui";
@@ -33,7 +34,7 @@ export const generateStaticParams = async () => uniquePrograms(await loadAlignme
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const school = (await loadAlignments()).find((a) => a.slug === slug);
-  return { title: `${school?.school ?? "Program"} | Project 80x40` };
+  return { title: `${school?.school ?? "Program"}` };
 }
 
 const NAVY = "#0a2a5e";
@@ -314,7 +315,7 @@ export default async function ProgramPage({ params }: Props) {
         )}
 
         <Follow slug={slug} school={school.school} />
-        <ShareButton title={`${school.school} | Project 80x40`} className="mt-4 px-3" />
+        <ShareButton title={`${school.school} | ${SITE_NAME}`} className="mt-4 px-3" />
 
         {/* This season's games lead, right after the next and latest game: a fan mid-season wants the schedule before six seasons of history. */}
         <Section id="games" title={`${CURRENT_SEASON} games`} accent={accent} className="mt-4">
