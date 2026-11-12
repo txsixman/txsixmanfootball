@@ -38,8 +38,11 @@ jobs:
         id: gate
         env:
           LIVE: ${{ vars.LIVE }} # repo variable, set at cut-over; until then nothing is written
+          # A run of this workflow by hand (not one called by another) loads before LIVE too: the proof. The load is
+          # idempotent (unchanged games are skipped), so it is safe while the old repo still loads the same files.
+          BY_HAND: ${{ github.event_name == 'workflow_dispatch' && github.workflow == 'Supabase' }}
         run: |
-          if [ "$LIVE" != true ]; then
+          if [ "$LIVE" != true ] && [ "$BY_HAND" != true ]; then
             echo "Supabase not loaded: the repo variable LIVE is not true yet." >> "$GITHUB_STEP_SUMMARY"
             echo "run=false" >> "$GITHUB_OUTPUT"
           elif [ -z "$PGPASSWORD" ]; then

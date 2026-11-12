@@ -1,12 +1,15 @@
 # After a merge to main: the ratings table and the hosted database follow main. These are the only jobs a push runs
 # that need the private data repo (txsixman/data-private: the robot-read captures with their source pages), so they live
 # here, apart from CI, which pull requests also run. CI's data job fails if a pull-request workflow ever names the
-# token. Both write only once the repo is live: the repo variable LIVE (cut-over).
+# token. Both write only once the repo is live: the repo variable LIVE (cut-over). A run by hand before then is the
+# proof: it rates and commits the table to this repo (not yet the site Vercel deploys); its database load still waits
+# for LIVE (supabase.yml has its own proof run).
 name: After merge
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,7 +22,7 @@ jobs:
   # The checks a write waits on: the database rules on a throwaway database, the Zod checks on every data file, the
   # ratings model. (CI runs these too, alongside; this job keeps the writes from waiting on the site's page tests.)
   checks:
-    if: vars.LIVE == 'true'
+    if: vars.LIVE == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
