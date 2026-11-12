@@ -1,7 +1,7 @@
 import { heading, loadAlignments, placeLabel, programFor, programsFor, slugify } from "./alignments";
 import { roundLabel } from "./brackets";
-import type { Game, Team } from "./demo-games";
-import { initials, loadPlayoffGames, loadSeasonResults, gameKey, type SeasonResult } from "./games";
+import { demoGames, type Game, type Team } from "./demo-games";
+import { initials, loadGames, loadPlayoffGames, loadSeasonResults, gameKey, type SeasonResult } from "./games";
 import { pairKey } from "./meetings";
 import { memo } from "./memo";
 import { pregame } from "./pregame";
@@ -134,7 +134,7 @@ export const mediumDate = (iso: string) =>
  * A robot-read game as the scoreboard's Game, so it shares the playoff game page's look. Unconfirmed, so no winner is
  * named (ADR 0004); a forfeit carries the word and no score, so its 1-0 or 2-0 never reaches the page.
  */
-export function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game {
+function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game {
   const team = (name: string, g: Going): Team => ({ name, mascot: "", initials: initials(name), color: "#0a2a5e", record: g.record ? `${g.record} going in` : "" });
   const kind = d.playoff ? `${season} playoffs · ${d.playoff}` : d.districtGame ? `${season} season · District game` : `${season} season`;
   return {
@@ -151,4 +151,39 @@ export function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game 
     verification: "unconfirmed",
     venue: d.playoff ? "Neutral site or not listed" : `${r.home} (home)`,
   };
+}
+
+/** The bracket games of the season (hand captures and robot-read), then the invented sample games. Read once per worker:
+ * every robot-read game of every season has a page too, and would otherwise read these files again. */
+export const bracketGames = memo<void, Game[]>(async () => [...(await loadGames(await loadAlignments())), ...demoGames]);
+
+/** One address per game: bracket and sample games, then every robot-read game that is not also a bracket game. The game
+ * page and its share image (app/scores/[id]) are built for exactly these ids. */
+export const gameIds = async () => [...new Set([...(await bracketGames()).map((g) => g.id), ...(await resultPageIds())])];
+
+/**
+ * Everything a game page and its share image start from: the game as the scoreboard's Game, whether it is an invented
+ * sample, its detail, and `neutral` (a past season's playoff game has no site on record, so neither team is called home
+ * or away). `found`: the robot-read game behind the address, if any. Undefined for an address with no game.
+ */
+export async function resolveGame(id: string) {
+  // A robot-read game, which is also a bracket game's result when it is a current-season playoff game.
+  const found = await findGame(id);
+  const own = found?.result.id === id ? found : undefined;
+  const bracket = own ? undefined : (await bracketGames()).find((x) => x.id === id);
+  if (!own && !bracket) return undefined;
+  const sample = bracket !== undefined && demoGames.includes(bracket);
+  const date = own?.result.date ?? bracket?.date;
+  const detail =
+    !sample && date
+      ? await gameDetail({
+          season: found?.season ?? CURRENT_SEASON,
+          date,
+          home: own?.result.home ?? bracket!.home.name,
+          away: own?.result.away ?? bracket!.away.name,
+          id: found?.result.id,
+        })
+      : undefined;
+  const g: Game = own ? resultAsGame(own, detail!) : bracket!;
+  return { g, found, own, sample, detail, neutral: own !== undefined && detail?.playoff !== undefined };
 }

@@ -15,7 +15,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { group } = await params;
   const found = groups.find((g) => g.slug === group);
-  return { title: `${found ? (found.label === "Division II" ? "UIL Division II" : found.label) : ""} standings` };
+  return { title: `${found ? (found.label === "Division II" ? "UIL Division II" : found.label) : ""} standings`, alternates: { canonical: `/standings/${group}` } };
 }
 
 export default async function GroupStandingsPage({ params }: Props) {

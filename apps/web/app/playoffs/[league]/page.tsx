@@ -13,7 +13,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ league: string }> }): Promise<Metadata> {
   const { league } = await params;
-  return { title: `${league.toUpperCase()} playoffs` };
+  return { title: `${league.toUpperCase()} playoffs`, alternates: { canonical: `/playoffs/${league}` } };
 }
 
 export default async function LeaguePlayoffsPage({ params }: { params: Promise<{ league: string }> }) {

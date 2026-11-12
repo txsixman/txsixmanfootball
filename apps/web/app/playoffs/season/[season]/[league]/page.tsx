@@ -19,7 +19,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { season, league } = await params;
-  return { title: `${season} ${league.toUpperCase()} playoffs` };
+  return { title: `${season} ${league.toUpperCase()} playoffs`, alternates: { canonical: `/playoffs/season/${season}/${league}` } };
 }
 
 export default async function SeasonLeaguePlayoffsPage({ params }: Props) {

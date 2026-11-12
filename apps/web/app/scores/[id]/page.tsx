@@ -1,18 +1,17 @@
-import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
 import { fanSignIn } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
-import { findGame, gameDetail, longDate, resultAsGame, resultPageIds } from "@/lib/game-pages";
-import { loadGames } from "@/lib/games";
-import { memo } from "@/lib/memo";
+import { bracketGames, findGame, gameIds, longDate, resolveGame } from "@/lib/game-pages";
+import { gameJsonLd } from "@/lib/json-ld";
 import { CURRENT_SEASON } from "@/lib/season";
 import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
+import { Breadcrumbs } from "../../breadcrumbs";
+import { JsonLd } from "../../json-ld";
 import { ShareButton } from "../../share-button";
-import { SITE_NAME } from "@/lib/site";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
@@ -23,19 +22,15 @@ type Props = { params: Promise<{ id: string }> };
 
 export const dynamicParams = false;
 
-/** The bracket games of the season (hand captures and robot-read), then the invented sample games. Read once per worker:
- * every robot-read game of every season has a page too, and would otherwise read these files again. */
-const bracketGames = memo<void, Game[]>(async () => [...(await loadGames(await loadAlignments())), ...demoGames]);
-
-/** One address per game: bracket and sample games, then every robot-read game that is not also a bracket game (lib/game-pages.ts). */
-export const generateStaticParams = async () => [...new Set([...(await bracketGames()).map((g) => g.id), ...(await resultPageIds())])].map((id) => ({ id }));
+export const generateStaticParams = async () => (await gameIds()).map((id) => ({ id }));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const found = await findGame(id);
   const g = found ? undefined : (await bracketGames()).find((x) => x.id === id);
   const teams = found ? found.result : g && { away: g.away.name, home: g.home.name };
-  return { title: teams ? `${teams.away} at ${teams.home}` : "Game" };
+  // An invented sample game stays out of search (its schools are not real).
+  return { title: teams ? `${teams.away} at ${teams.home}` : "Game", alternates: { canonical: `/scores/${id}` }, ...(g && demoGames.includes(g) && { robots: { index: false } }) };
 }
 
 function Linescore({ g }: { g: Game }) {
@@ -91,24 +86,9 @@ function Linescore({ g }: { g: Game }) {
 
 export default async function GamePage({ params }: Props) {
   const { id } = await params;
-  // A robot-read game, which is also a bracket game's result when it is a current-season playoff game.
-  const found = await findGame(id);
-  const own = found?.result.id === id ? found : undefined;
-  const bracket = own ? undefined : (await bracketGames()).find((x) => x.id === id);
-  if (!own && !bracket) notFound();
-  const sample = bracket !== undefined && demoGames.includes(bracket);
-  const date = own?.result.date ?? bracket?.date;
-  const detail =
-    !sample && date
-      ? await gameDetail({
-          season: found?.season ?? CURRENT_SEASON,
-          date,
-          home: own?.result.home ?? bracket!.home.name,
-          away: own?.result.away ?? bracket!.away.name,
-          id: found?.result.id,
-        })
-      : undefined;
-  const g: Game = own ? resultAsGame(own, detail!) : bracket!;
+  const resolved = await resolveGame(id);
+  if (!resolved) notFound();
+  const { g, found, own, sample, detail, neutral } = resolved;
   const [alignments, identities] = await Promise.all([loadAlignments(), loadIdentities()]);
   const programOf = (team: Team): Program | undefined => {
     const known = alignments.find((a) => a.school === team.name);
@@ -118,9 +98,7 @@ export default async function GamePage({ params }: Props) {
   const fan = fanSignIn();
   const live = g.state === "live";
   const winner = winnerOf(g);
-  // A past season's playoff game has no site on record: neither team is called home or away.
-  const neutral = own !== undefined && detail?.playoff !== undefined;
-  const back = sample ? { href: "/scores/sample", label: "Scoreboard" } : own ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, label: "Results" } : { href: "/scores", label: "Scoreboard" };
+  const back = sample ? { href: "/scores/sample", name: "Scoreboard" } : own ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, name: own.season === CURRENT_SEASON ? "Results" : `${own.season} results` } : { href: "/scores", name: "Scoreboard" };
   const places = [
     [g.away.name, detail?.places.away],
     [g.home.name, detail?.places.home],
@@ -128,12 +106,8 @@ export default async function GamePage({ params }: Props) {
 
   return (
     <article aria-labelledby="game-title">
-      <nav aria-label="Back" className="border-b border-line">
-        <Link href={back.href} className="flex min-h-11 items-center gap-1.5 px-3 text-[14px] font-semibold text-navy focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-navy">
-          <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={2.5} />
-          {back.label}
-        </Link>
-      </nav>
+      <Breadcrumbs trail={[{ name: "Home", href: "/" }, back, { name: `${g.away.name} at ${g.home.name}`, href: `/scores/${id}` }]} />
+      {!sample && <JsonLd data={gameJsonLd(g, { url: `${SITE_URL}/scores/${id}`, home: programOf(g.home), away: programOf(g.away) })} />}
 
       <header>
         <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-red" : "bg-navy"}`}>

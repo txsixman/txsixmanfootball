@@ -3,10 +3,13 @@ import { activeOrgs } from "@/lib/active-orgs";
 import { loadAlignments } from "@/lib/alignments";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
+import { rankedList } from "@/lib/json-ld";
+import { rankedOrder } from "@/lib/rank-range";
 import { placeTeams } from "@/lib/rankings";
 import { loadRatings, ratingSeasons } from "@/lib/ratings";
 import { schedulesFor } from "@/lib/schedule-strength";
 import { rankingWeeks } from "@/lib/week-rankings";
+import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { EmptyState } from "../ui";
 import { HowToRead, RankingsHeader, RatingsTable, type Row } from "./table";
@@ -60,8 +63,11 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
         : `${rows.length} ${org.label} ${rows.length === 1 ? "team" : "teams"} from ${games} games.`) + outsideNote;
   const orgBase = past ? `/rankings/season/${table.season}` : "/rankings";
 
+  const ranked = rankedOrder([...rows]); // the table's order, teams with too few games left out
+
   return (
     <section aria-labelledby="rankings">
+      {ranked.length > 0 && <JsonLd data={rankedList(`${table.season} ${view.eyebrow} six-man rankings`, ranked.map((r) => ({ name: r.name, href: r.href! })))} />}
       <RankingsHeader eyebrow={`${table.season} season · ${view.eyebrow}`} note={table.games ? note : undefined} />
       {seasons.length > 1 && (
         <TabNav label="Season" tabs={seasons.map((y) => ({ href: seasonHref(y, seasons[0], org), label: String(y) }))} current={seasonHref(table.season, seasons[0], org)} />

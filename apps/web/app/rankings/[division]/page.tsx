@@ -18,7 +18,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { division } = await params;
   const view = views.find((v) => v.slug === division);
-  return { title: `${view?.eyebrow ?? "Rankings"} rankings` };
+  return { title: `${view?.eyebrow ?? "Rankings"} rankings`, alternates: { canonical: `/rankings/${division}` } };
 }
 
 export default async function DivisionRankingsPage({ params }: Props) {

@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, Trophy } from "lucide-react";
+import { ChevronRight, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -21,6 +21,9 @@ import { fromResult, seasonRows, type Row } from "@/lib/program-games";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest } from "../crest";
 import { Follow } from "../follow";
+import { Breadcrumbs } from "../../breadcrumbs";
+import { JsonLd } from "../../json-ld";
+import { programJsonLd } from "@/lib/json-ld";
 import { ShareButton } from "../../share-button";
 import { SITE_NAME } from "@/lib/site";
 import { RatingChart, ratingPoints } from "../rating-chart";
@@ -35,10 +38,12 @@ export const generateStaticParams = async () => uniquePrograms(await loadAlignme
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const school = (await loadAlignments()).find((a) => a.slug === slug);
-  return { title: `${school?.school ?? "Program"}` };
+  return { title: `${school?.school ?? "Program"}`, alternates: { canonical: `/programs/${slug}` } };
 }
 
 const NAVY = "#0a2a5e";
+/** The widest logo the header crest draws; a wider one gets the badge, and the markup names a logo only when the page shows one. */
+const CREST_MAX_ASPECT = 4.8;
 
 /** A section: the site's navy heading band, with a stripe in one of the school's own colors down its left edge. */
 function Section({ id, title, accent, children, className = "mt-7" }: { id: string; title: string; accent: string; children: ReactNode; className?: string }) {
@@ -206,15 +211,11 @@ export default async function ProgramPage({ params }: Props) {
     <EdgeToEdge>
       {/* data-pagefind-body: this page is in the site search (app/search). */}
       <article data-pagefind-body aria-labelledby="school" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
-        <nav aria-label="Back" className="border-b border-line">
-          <Link href="/programs" className="flex min-h-11 items-center gap-1.5 px-3 text-[14px] font-semibold text-navy">
-            <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={2.5} />
-            Programs
-          </Link>
-        </nav>
+        <Breadcrumbs trail={[{ name: "Home", href: "/" }, { name: "Programs", href: "/programs" }, { name: school.school, href: `/programs/${slug}` }]} />
+        <JsonLd data={programJsonLd({ name: school.school, slug, league: school.league === "Independent" ? undefined : school.league, logo: identity.logo && identity.logo.aspect <= CREST_MAX_ASPECT ? identity.logo.src : undefined })} />
         <header className="px-3 pb-3 pt-5" style={{ background: theme.bg, color: theme.fg, borderBottom: `6px solid ${theme.stripe ?? theme.bg}` }}>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <Crest school={school.school} identity={identity} size={crestSize} maxAspect={4.8} />
+            <Crest school={school.school} identity={identity} size={crestSize} maxAspect={CREST_MAX_ASPECT} />
             <div className="min-w-0">
               <p className="text-[12px] font-bold uppercase tracking-widest">
                 {[...new Set([heading(school), placeLabel(school)])].join(" · ")}

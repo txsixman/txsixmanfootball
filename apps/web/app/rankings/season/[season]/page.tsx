@@ -18,7 +18,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { season } = await params;
-  return { title: `${season} rankings` };
+  return { title: `${season} rankings`, alternates: { canonical: `/rankings/season/${season}` } };
 }
 
 export default async function SeasonRankingsPage({ params }: Props) {
