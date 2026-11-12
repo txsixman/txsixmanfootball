@@ -1,0 +1,81 @@
+# After a merge to main: the ratings table and the hosted database follow main. These are the only jobs a push runs
+# that need the private data repo (txsixman/data-private: the robot-read captures with their source pages), so they live
+# here, apart from CI, which pull requests also run. CI's data job fails if a pull-request workflow ever names the
+# token. Both write only once the repo is live: the repo variable LIVE (cut-over).
+name: After merge
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: after-merge
+  cancel-in-progress: false
+
+jobs:
+  # The checks a write waits on: the database rules on a throwaway database, the Zod checks on every data file, the
+  # ratings model. (CI runs these too, alongside; this job keeps the writes from waiting on the site's page tests.)
+  checks:
+    if: vars.LIVE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci --prefix packages/db && npm --prefix packages/db test
+      - run: npm ci --prefix apps/web && node apps/web/scripts/check-data.mjs
+      - uses: astral-sh/setup-uv@v7
+      - run: uv run --directory services/ratings pytest -q
+
+  # The ratings table the site shows (/ratings). Rated here, not by hand, so entering a game in a capture file is the
+  # only step: this job commits the new table, and that commit is what Vercel deploys.
+  ratings-table:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: The private data (outside games, playoff sites)
+        uses: actions/checkout@v7
+        with:
+          repository: txsixman/data-private
+          token: ${{ secrets.DATA_PRIVATE_TOKEN }}
+          path: private
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+      - name: Rate the season under way (August to January belongs to the year it started)
+        env:
+          PRIVATE_DATA: ${{ github.workspace }}/private
+        run: |
+          season=$(( $(date -u +%-m) >= 7 ? $(date -u +%Y) : $(date -u +%Y) - 1 ))
+          uv run --directory services/ratings python run.py --season "$season"
+      - name: Commit the table if it changed
+        run: |
+          if git diff --quiet -- data/ratings; then
+            echo "Ratings table unchanged." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git fetch --depth=1 origin main
+          if [ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]; then
+            echo "main moved on; the run for the newer commit writes the table." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ratings
+          git commit -m "Ratings table from the capture file"
+          git push origin HEAD:main
+          git diff --stat HEAD~1 >> "$GITHUB_STEP_SUMMARY"
+
+  # The hosted database follows main (backlog item 1): migrations, seed files, live security checks.
+  supabase:
+    needs: checks
+    uses: ./.github/workflows/supabase.yml
+    secrets: inherit

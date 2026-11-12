@@ -1,0 +1,11 @@
+[project]
+name = "ratings"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = ["numpy>=2,<3", "scipy>=1.13,<2"]
+
+[dependency-groups]
+dev = ["pytest>=8,<10"]
+
+[tool.uv]
+package = false

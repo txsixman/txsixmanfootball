@@ -1,0 +1,9 @@
+# Ruff (MIT): lint and format check for every Python file (services/ratings today; tools/ as it gains any).
+# CI: `uvx ruff@0.17.4 check` and `uvx ruff@0.17.4 format --check` from the repo root.
+target-version = "py312"
+line-length = 120
+extend-exclude = ["**/.venv"]
+
+[lint]
+# Pyflakes and pycodestyle errors (ruff's default), plus import order, bugbear, pyupgrade and numpy's own rules.
+extend-select = ["I", "B", "UP", "NPY"]

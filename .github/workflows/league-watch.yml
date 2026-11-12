@@ -1,0 +1,102 @@
+# Reads league alignments from their own public pages each week and opens a pull request when one changed
+# (ADR 0005). A read that fails its checks fails the job, and GitHub emails the repo owner.
+name: League watch
+
+on:
+  schedule:
+    - cron: "17 13 * * 1" # Mondays, 8:17 AM Central
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency: league-watch
+
+jobs:
+  tapps:
+    # The weekly run waits for cut-over (repo variable LIVE); a run by hand reads and checks but opens no pull request.
+    if: github.event_name != 'schedule' || vars.LIVE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci --prefix tools/league-watch
+      - name: Install Chromium (three tries of 4 minutes; the runner's package mirror sometimes fails or hangs)
+        run: for i in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && exit 0; sleep 20; done; exit 1
+      - run: npm --prefix tools/league-watch test
+      - name: Read TAPPS six-man
+        run: node tools/league-watch/tapps.mjs
+      - name: Zod checks on every data file the site reads (apps/web/lib/data-schemas.ts)
+        run: npm ci --prefix apps/web && node apps/web/scripts/check-data.mjs
+      - name: Import every seed into a throwaway database
+        run: npm ci --prefix packages/db && npm --prefix packages/db test
+      - name: Open or update a pull request if the alignment changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- data/seed; then
+            echo "TAPPS alignment unchanged." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --stat -- data/seed >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ vars.LIVE }}" != true ]; then
+            echo "Not live yet (repo variable LIVE): no pull request." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          branch=league-watch/tapps
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add data/seed/tapps-2026-28
+          git commit -m "TAPPS six-man alignment changed on tapps.biz"
+          git push --force origin "$branch"
+          gh pr view "$branch" >/dev/null 2>&1 || gh pr create --base main --head "$branch" \
+            --title "TAPPS six-man alignment changed" \
+            --body "The weekly read of https://tapps.biz/home/tapps-26-28-alignment/ found a change. Check the diff against the page before merging (ADR 0005)."
+
+  taiao:
+    if: github.event_name != 'schedule' || vars.LIVE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci --prefix tools/league-watch
+      - name: Install Chromium (three tries of 4 minutes; the runner's package mirror sometimes fails or hangs)
+        run: for i in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && exit 0; sleep 20; done; exit 1
+      - run: npm --prefix tools/league-watch test
+      - name: Read TAIAO six-man divisions
+        run: node tools/league-watch/taiao.mjs
+      - name: Zod checks on every data file the site reads (apps/web/lib/data-schemas.ts)
+        run: npm ci --prefix apps/web && node apps/web/scripts/check-data.mjs
+      - name: Import every seed into a throwaway database
+        run: npm ci --prefix packages/db && npm --prefix packages/db test
+      - name: Open or update a pull request if the divisions changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- data/seed; then
+            echo "TAIAO divisions unchanged." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --stat -- data/seed >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ vars.LIVE }}" != true ]; then
+            echo "Not live yet (repo variable LIVE): no pull request." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          branch=league-watch/taiao
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add data/seed/private-2026/alignments.csv
+          git commit -m "TAIAO six-man divisions changed on taiao.org"
+          git push --force origin "$branch"
+          gh pr view "$branch" >/dev/null 2>&1 || gh pr create --base main --head "$branch" \
+            --title "TAIAO six-man divisions changed" \
+            --body "The weekly read of https://taiao.org/football/playoffs found a change. Check the diff against the page before merging (ADR 0005)."

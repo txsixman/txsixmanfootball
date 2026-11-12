@@ -1,0 +1,9 @@
+{
+  "name": "history",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "uil-champions": "node uil-champions.mjs",
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "_note": "Robot-style final scores (home, away, is a forfeit), tested against lib/forfeit.ts (scripts/forfeit-rule.test.mjs) and services/ratings/rows.py (test_model.py).",
+  "cases": [
+    [1, 0, true],
+    [0, 1, true],
+    [2, 0, true],
+    [0, 2, true],
+    [0, 0, false],
+    [1, 1, false],
+    [2, 2, false],
+    [2, 1, false],
+    [3, 0, false],
+    [45, 0, false],
+    [52, 6, false]
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "school-identity",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fetch-logos": "node fetch-logos.mjs",
+    "test": "node --test"
+  }
+}

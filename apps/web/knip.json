@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "sw.ts",
+    "scripts/*.mjs",
+    "e2e/lighthouse-summary.mjs",
+    "lighthouserc.cjs",
+    ".ladle/next-link.tsx"
+  ]
+}

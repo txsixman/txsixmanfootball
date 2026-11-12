@@ -1,0 +1,21 @@
+# Dependabot (GitHub): a weekly pull request per package folder when a dependency has a new version, so CI tests the
+# update before anyone merges it. Monday mornings, Central time. Minor and patch updates come grouped, one PR a folder;
+# major versions come one PR each. Nothing merges by itself.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories: ["/apps/web", "/packages/db", "/tools/league-watch", "/tools/school-identity", "/tools/history", "/tools/push"]
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Chicago }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+  - package-ecosystem: uv
+    directory: /services/ratings
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Chicago }
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Chicago }
+    groups:
+      actions: { patterns: ["*"] }

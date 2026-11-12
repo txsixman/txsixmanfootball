@@ -1,0 +1,41 @@
+# Makes the screenshot baselines (apps/web/e2e/screenshots.spec.ts) in the same Playwright container as CI, so fonts
+# and rendering match what CI compares against, and commits them to the branch it ran on. This is how a look change is
+# approved: push the commit to a branch named screenshots/<anything> (then land it), or run this workflow on main.
+name: Update screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["screenshots/**"]
+
+permissions:
+  contents: write
+
+concurrency: screenshots-${{ github.ref }}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: mcr.microsoft.com/playwright:v1.65.0-noble # the same tag as ci.yml's web job
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci --prefix apps/web
+      - name: New baselines
+        run: npx --prefix apps/web playwright test -c apps/web/playwright.config.ts screenshots --update-snapshots
+      - name: Commit them if any changed
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/e2e/screenshots.spec.ts-snapshots
+          if git diff --cached --quiet; then
+            echo "Screenshots unchanged." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --cached --stat | tee -a "$GITHUB_STEP_SUMMARY"
+          git commit -q -m "Screenshots: new baselines from CI's container"
+          git push -q origin "HEAD:${GITHUB_REF_NAME}"

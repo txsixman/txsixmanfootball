@@ -1,0 +1,6 @@
+{
+  "_note": "UIL's archive writes some finalists as town plus school, and misspells Mozelle as Mozella. Each key is UIL's spelling, each value the school's name in the current UIL alignment. Same school, a different label: not lineage (a merger or a closed school goes in program_lineage, ADR 0003).",
+  "Gail Borden County": "Borden County",
+  "Grandfalls Grandfalls-Royalty": "Grandfalls-Royalty",
+  "Mozella": "Mozelle"
+}

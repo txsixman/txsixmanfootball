@@ -1,0 +1,16 @@
+division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes
+I,bi-district,2026-11-13,Red Bluff Creek,Sandy Ford,true,58,6,mercy_half,2,,invented schools for /ratings/sample
+I,bi-district,2026-11-13,Cedar Gap,Mesquite Flat,true,62,48,regulation,4,,
+I,bi-district,2026-11-13,Stillwater Draw,North Fence,true,54,8,mercy_2h,3,,
+I,bi-district,2026-11-13,Pecan Valley,Hackberry,true,46,30,regulation,4,,
+I,bi-district,2026-11-13,Caprock,Salt Fork,true,1,0,forfeit,,,
+I,bi-district,2026-11-13,Windmill Christian,Lone Post,true,52,50,regulation,4,,
+I,bi-district,2026-11-13,Dry Wash,Bluestem,true,40,34,regulation,4,,
+I,bi-district,2026-11-13,Oak Chapel Academy,Live Oak Springs,true,36,44,regulation,4,,
+I,area,2026-11-20,Red Bluff Creek,Live Oak Springs,true,66,20,mercy_2h,3,,
+I,area,2026-11-20,Cedar Gap,Dry Wash,true,50,28,regulation,4,,
+I,area,2026-11-20,Stillwater Draw,Windmill Christian,true,44,38,regulation,4,,
+I,area,2026-11-20,Pecan Valley,Caprock,true,30,42,regulation,4,,
+I,regional,2026-11-27,Red Bluff Creek,Cedar Gap,true,56,40,regulation,4,,
+I,regional,2026-11-27,Stillwater Draw,Caprock,true,48,46,regulation,4,,
+I,semifinal,2026-12-05,Red Bluff Creek,Stillwater Draw,true,60,44,regulation,4,,

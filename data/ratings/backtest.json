@@ -1,0 +1,1103 @@
+{
+ "settings": {
+  "few_games": 4,
+  "tau": 30.0,
+  "rho": 0.6,
+  "sigma_prior": 17.0,
+  "sigma_prior_sd": 0.25,
+  "group_sd": 15.0,
+  "weeks": "Monday to Sunday; each week predicted from games before its Monday",
+  "margin_error_clip": 45.0,
+  "baselines": {
+   "elo": "margin-capped Elo (model.elo)",
+   "last_season": "last season's final rating plus its home edge; 2021 has none"
+  },
+  "model_no_prior": "the same model (league means, no hidden-team change) with no last-season ratings",
+  "grid_seasons": [
+   2022,
+   2023,
+   2024
+  ],
+  "check_seasons": [
+   2025,
+   2026
+  ],
+  "rho_grid": [
+   0.6
+  ],
+  "tau_grid": [
+   20.0,
+   25.0,
+   30.0,
+   35.0
+  ]
+ },
+ "grid": [
+  {
+   "rho": 0.6,
+   "tau": 20.0,
+   "sigma_center": 17.0,
+   "group_sd": 15.0,
+   "fit_log_loss": 0.3198,
+   "check_log_loss": 0.2951
+  },
+  {
+   "rho": 0.6,
+   "tau": 25.0,
+   "sigma_center": 17.0,
+   "group_sd": 15.0,
+   "fit_log_loss": 0.3172,
+   "check_log_loss": 0.2934
+  },
+  {
+   "rho": 0.6,
+   "tau": 30.0,
+   "sigma_center": 17.0,
+   "group_sd": 15.0,
+   "fit_log_loss": 0.3169,
+   "check_log_loss": 0.2944
+  },
+  {
+   "rho": 0.6,
+   "tau": 35.0,
+   "sigma_center": 17.0,
+   "group_sd": 15.0,
+   "fit_log_loss": 0.3173,
+   "check_log_loss": 0.2961
+  }
+ ],
+ "sensitivity": [
+  {
+   "rho": 0.6,
+   "tau": 30.0,
+   "sigma_center": 12.0,
+   "group_sd": 15.0,
+   "fit_log_loss": 0.3169,
+   "check_log_loss": 0.2945
+  },
+  {
+   "rho": 0.6,
+   "tau": 30.0,
+   "sigma_center": 22.0,
+   "group_sd": 15.0,
+   "fit_log_loss": 0.3169,
+   "check_log_loss": 0.2944
+  },
+  {
+   "rho": 0.6,
+   "tau": 30.0,
+   "sigma_center": 17.0,
+   "group_sd": 7.0,
+   "fit_log_loss": 0.317,
+   "check_log_loss": 0.2943
+  },
+  {
+   "rho": 0.6,
+   "tau": 30.0,
+   "sigma_center": 17.0,
+   "group_sd": 30.0,
+   "fit_log_loss": 0.3169,
+   "check_log_loss": 0.2945
+  }
+ ],
+ "calibration": {
+  "family": "logistic",
+  "scale": 15.57,
+  "fit_seasons": [
+   2022,
+   2023,
+   2024,
+   2025,
+   2026
+  ],
+  "scale_by_left_out_season": {
+   "2021": 15.57,
+   "2022": 15.3,
+   "2023": 15.72,
+   "2024": 15.45,
+   "2025": 15.62,
+   "2026": 15.79
+  },
+  "candidates_loso_log_loss": {
+   "normal_scaled_by_week_sigma": 0.3146,
+   "logistic_scaled_by_week_sigma": 0.3122,
+   "normal_constant": 0.3083,
+   "logistic_constant": 0.3075
+  },
+  "bands_calibrated": [
+   {
+    "from": 0.5,
+    "to": 0.6,
+    "games": 270,
+    "said": 0.5482,
+    "happened": 0.6
+   },
+   {
+    "from": 0.6,
+    "to": 0.7,
+    "games": 273,
+    "said": 0.6495,
+    "happened": 0.6667
+   },
+   {
+    "from": 0.7,
+    "to": 0.8,
+    "games": 283,
+    "said": 0.7495,
+    "happened": 0.7562
+   },
+   {
+    "from": 0.8,
+    "to": 0.9,
+    "games": 460,
+    "said": 0.8545,
+    "happened": 0.8413
+   },
+   {
+    "from": 0.9,
+    "to": 0.95,
+    "games": 374,
+    "said": 0.927,
+    "happened": 0.9439
+   },
+   {
+    "from": 0.95,
+    "to": 0.98,
+    "games": 384,
+    "said": 0.9658,
+    "happened": 0.9505
+   },
+   {
+    "from": 0.98,
+    "to": 0.99,
+    "games": 218,
+    "said": 0.9856,
+    "happened": 0.9954
+   },
+   {
+    "from": 0.99,
+    "to": 1.0,
+    "games": 644,
+    "said": 0.9967,
+    "happened": 0.9969
+   }
+  ],
+  "bands_fit_normal": [
+   {
+    "from": 0.5,
+    "to": 0.6,
+    "games": 208,
+    "said": 0.5504,
+    "happened": 0.5913
+   },
+   {
+    "from": 0.6,
+    "to": 0.7,
+    "games": 191,
+    "said": 0.6521,
+    "happened": 0.644
+   },
+   {
+    "from": 0.7,
+    "to": 0.8,
+    "games": 212,
+    "said": 0.7506,
+    "happened": 0.7264
+   },
+   {
+    "from": 0.8,
+    "to": 0.9,
+    "games": 276,
+    "said": 0.8529,
+    "happened": 0.7609
+   },
+   {
+    "from": 0.9,
+    "to": 0.95,
+    "games": 219,
+    "said": 0.9282,
+    "happened": 0.8402
+   },
+   {
+    "from": 0.95,
+    "to": 0.98,
+    "games": 260,
+    "said": 0.9661,
+    "happened": 0.8846
+   },
+   {
+    "from": 0.98,
+    "to": 0.99,
+    "games": 170,
+    "said": 0.9853,
+    "happened": 0.9353
+   },
+   {
+    "from": 0.99,
+    "to": 1.0,
+    "games": 1370,
+    "said": 0.9988,
+    "happened": 0.9774
+   }
+  ]
+ },
+ "scorecard": {
+  "bands": [
+   0.5,
+   0.6,
+   0.7,
+   0.8,
+   0.9,
+   0.99,
+   1.0
+  ],
+  "season": [
+   {
+    "label": "2022",
+    "games": 522,
+    "said": 0.8621,
+    "happened": 0.8544,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 54,
+      "said": 0.5477,
+      "happened": 0.5185
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 54,
+      "said": 0.6568,
+      "happened": 0.6296
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 42,
+      "said": 0.7503,
+      "happened": 0.8095
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 67,
+      "said": 0.8565,
+      "happened": 0.8209
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 190,
+      "said": 0.9548,
+      "happened": 0.9579
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 115,
+      "said": 0.9969,
+      "happened": 0.9826
+     }
+    ]
+   },
+   {
+    "label": "2023",
+    "games": 546,
+    "said": 0.8665,
+    "happened": 0.8681,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 45,
+      "said": 0.544,
+      "happened": 0.4889
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 46,
+      "said": 0.649,
+      "happened": 0.6957
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 52,
+      "said": 0.7406,
+      "happened": 0.7115
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 92,
+      "said": 0.8549,
+      "happened": 0.8696
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 194,
+      "said": 0.9538,
+      "happened": 0.9588
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 117,
+      "said": 0.9963,
+      "happened": 1.0
+     }
+    ]
+   },
+   {
+    "label": "2024",
+    "games": 597,
+    "said": 0.8546,
+    "happened": 0.861,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 59,
+      "said": 0.547,
+      "happened": 0.678
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 55,
+      "said": 0.6432,
+      "happened": 0.6
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 63,
+      "said": 0.7533,
+      "happened": 0.8254
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 106,
+      "said": 0.8513,
+      "happened": 0.8019
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 200,
+      "said": 0.9559,
+      "happened": 0.95
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 114,
+      "said": 0.997,
+      "happened": 1.0
+     }
+    ]
+   },
+   {
+    "label": "2025",
+    "games": 642,
+    "said": 0.8646,
+    "happened": 0.8832,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 58,
+      "said": 0.5513,
+      "happened": 0.7069
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 61,
+      "said": 0.6466,
+      "happened": 0.7213
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 57,
+      "said": 0.7501,
+      "happened": 0.7368
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 107,
+      "said": 0.8555,
+      "happened": 0.8505
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 198,
+      "said": 0.954,
+      "happened": 0.9495
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 161,
+      "said": 0.9969,
+      "happened": 1.0
+     }
+    ]
+   },
+   {
+    "label": "2026",
+    "games": 599,
+    "said": 0.8621,
+    "happened": 0.8698,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 54,
+      "said": 0.5502,
+      "happened": 0.5741
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 57,
+      "said": 0.6523,
+      "happened": 0.6842
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 69,
+      "said": 0.7517,
+      "happened": 0.7101
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 88,
+      "said": 0.8551,
+      "happened": 0.8636
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 194,
+      "said": 0.9582,
+      "happened": 0.9742
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 137,
+      "said": 0.9965,
+      "happened": 1.0
+     }
+    ]
+   }
+  ],
+  "phase": [
+   {
+    "label": "Regular season",
+    "games": 2415,
+    "said": 0.8672,
+    "happened": 0.8733,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 212,
+      "said": 0.5474,
+      "happened": 0.5991
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 218,
+      "said": 0.6496,
+      "happened": 0.6606
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 226,
+      "said": 0.7508,
+      "happened": 0.7522
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 369,
+      "said": 0.8533,
+      "happened": 0.8401
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 812,
+      "said": 0.9556,
+      "happened": 0.9631
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 578,
+      "said": 0.9967,
+      "happened": 0.9965
+     }
+    ]
+   },
+   {
+    "label": "Playoffs",
+    "games": 491,
+    "said": 0.836,
+    "happened": 0.8411,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 58,
+      "said": 0.5512,
+      "happened": 0.6034
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 55,
+      "said": 0.649,
+      "happened": 0.6909
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 57,
+      "said": 0.7443,
+      "happened": 0.7719
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 91,
+      "said": 0.8591,
+      "happened": 0.8462
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 164,
+      "said": 0.954,
+      "happened": 0.9329
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 66,
+      "said": 0.9964,
+      "happened": 1.0
+     }
+    ]
+   }
+  ],
+  "league": [
+   {
+    "label": "TAIAO",
+    "games": 383,
+    "said": 0.8433,
+    "happened": 0.8538,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 38,
+      "said": 0.5474,
+      "happened": 0.6842
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 41,
+      "said": 0.6483,
+      "happened": 0.561
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 52,
+      "said": 0.7476,
+      "happened": 0.8269
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 63,
+      "said": 0.8541,
+      "happened": 0.8095
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 125,
+      "said": 0.9532,
+      "happened": 0.96
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 64,
+      "said": 0.9966,
+      "happened": 1.0
+     }
+    ]
+   },
+   {
+    "label": "TAPPS",
+    "games": 609,
+    "said": 0.8497,
+    "happened": 0.8571,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 55,
+      "said": 0.5483,
+      "happened": 0.6
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 64,
+      "said": 0.6504,
+      "happened": 0.7656
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 77,
+      "said": 0.7502,
+      "happened": 0.7532
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 107,
+      "said": 0.8561,
+      "happened": 0.7944
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 212,
+      "said": 0.9562,
+      "happened": 0.9575
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 94,
+      "said": 0.9959,
+      "happened": 1.0
+     }
+    ]
+   },
+   {
+    "label": "TCAF",
+    "games": 88,
+    "said": 0.8659,
+    "happened": 0.8409,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 5,
+      "said": 0.5361,
+      "happened": 0.4
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 6,
+      "said": 0.635,
+      "happened": 0.3333
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 14,
+      "said": 0.7478,
+      "happened": 0.7143
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 16,
+      "said": 0.8598,
+      "happened": 0.875
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 31,
+      "said": 0.953,
+      "happened": 0.9677
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 16,
+      "said": 0.9962,
+      "happened": 1.0
+     }
+    ]
+   },
+   {
+    "label": "UIL",
+    "games": 2070,
+    "said": 0.8678,
+    "happened": 0.872,
+    "bands": [
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "games": 192,
+      "said": 0.5475,
+      "happened": 0.5885
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "games": 184,
+      "said": 0.6502,
+      "happened": 0.6522
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "games": 178,
+      "said": 0.7495,
+      "happened": 0.7416
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "games": 311,
+      "said": 0.8532,
+      "happened": 0.8553
+     },
+     {
+      "from": 0.9,
+      "to": 0.99,
+      "games": 688,
+      "said": 0.9557,
+      "happened": 0.9578
+     },
+     {
+      "from": 0.99,
+      "to": 1.0,
+      "games": 517,
+      "said": 0.9968,
+      "happened": 0.9961
+     }
+    ]
+   }
+  ]
+ },
+ "seasons": [
+  {
+   "season": 2021,
+   "games": 455,
+   "model": {
+    "accuracy": 0.844,
+    "mae": 11.9304,
+    "log_loss": 0.2921,
+    "brier": 0.0947
+   },
+   "elo": {
+    "accuracy": 0.7912,
+    "mae": 19.4107,
+    "log_loss": 0.4456,
+    "brier": 0.1468
+   },
+   "last_season": null,
+   "model_no_prior": {
+    "accuracy": 0.844,
+    "mae": 11.9304,
+    "log_loss": 0.2908,
+    "brier": 0.0947
+   },
+   "model_raw_normal_log_loss": 0.3235,
+   "blowout": {
+    "home_predicted": 0.2427,
+    "home_observed": 0.3341,
+    "away_predicted": 0.1756,
+    "away_observed": 0.2681
+   }
+  },
+  {
+   "season": 2022,
+   "games": 522,
+   "model": {
+    "accuracy": 0.8544,
+    "mae": 13.1108,
+    "log_loss": 0.3264,
+    "brier": 0.1009
+   },
+   "elo": {
+    "accuracy": 0.7797,
+    "mae": 20.8206,
+    "log_loss": 0.4545,
+    "brier": 0.1497
+   },
+   "last_season": {
+    "accuracy": 0.751,
+    "mae": 23.1932,
+    "log_loss": 0.5351,
+    "brier": 0.1787
+   },
+   "model_no_prior": {
+    "accuracy": 0.8467,
+    "mae": 13.8769,
+    "log_loss": 0.3379,
+    "brier": 0.1056
+   },
+   "model_raw_normal_log_loss": 0.3947,
+   "blowout": {
+    "home_predicted": 0.2617,
+    "home_observed": 0.3448,
+    "away_predicted": 0.2045,
+    "away_observed": 0.2625
+   }
+  },
+  {
+   "season": 2023,
+   "games": 546,
+   "model": {
+    "accuracy": 0.8681,
+    "mae": 11.8519,
+    "log_loss": 0.2921,
+    "brier": 0.0908
+   },
+   "elo": {
+    "accuracy": 0.7637,
+    "mae": 22.3402,
+    "log_loss": 0.4764,
+    "brier": 0.1575
+   },
+   "last_season": {
+    "accuracy": 0.7527,
+    "mae": 21.3613,
+    "log_loss": 0.4845,
+    "brier": 0.1605
+   },
+   "model_no_prior": {
+    "accuracy": 0.87,
+    "mae": 12.6076,
+    "log_loss": 0.3025,
+    "brier": 0.0946
+   },
+   "model_raw_normal_log_loss": 0.3414,
+   "blowout": {
+    "home_predicted": 0.2527,
+    "home_observed": 0.3407,
+    "away_predicted": 0.2076,
+    "away_observed": 0.2711
+   }
+  },
+  {
+   "season": 2024,
+   "games": 597,
+   "model": {
+    "accuracy": 0.861,
+    "mae": 13.5676,
+    "log_loss": 0.3319,
+    "brier": 0.1058
+   },
+   "elo": {
+    "accuracy": 0.7437,
+    "mae": 22.0847,
+    "log_loss": 0.5081,
+    "brier": 0.1707
+   },
+   "last_season": {
+    "accuracy": 0.737,
+    "mae": 22.4642,
+    "log_loss": 0.5324,
+    "brier": 0.1773
+   },
+   "model_no_prior": {
+    "accuracy": 0.8325,
+    "mae": 14.4889,
+    "log_loss": 0.3568,
+    "brier": 0.1148
+   },
+   "model_raw_normal_log_loss": 0.3669,
+   "blowout": {
+    "home_predicted": 0.2542,
+    "home_observed": 0.3032,
+    "away_predicted": 0.1766,
+    "away_observed": 0.2496
+   }
+  },
+  {
+   "season": 2025,
+   "games": 642,
+   "model": {
+    "accuracy": 0.8832,
+    "mae": 12.2273,
+    "log_loss": 0.2982,
+    "brier": 0.0935
+   },
+   "elo": {
+    "accuracy": 0.7897,
+    "mae": 19.5883,
+    "log_loss": 0.4392,
+    "brier": 0.1433
+   },
+   "last_season": {
+    "accuracy": 0.7445,
+    "mae": 20.9162,
+    "log_loss": 0.4982,
+    "brier": 0.1658
+   },
+   "model_no_prior": {
+    "accuracy": 0.8676,
+    "mae": 13.3128,
+    "log_loss": 0.3223,
+    "brier": 0.1014
+   },
+   "model_raw_normal_log_loss": 0.3426,
+   "blowout": {
+    "home_predicted": 0.2752,
+    "home_observed": 0.3567,
+    "away_predicted": 0.1959,
+    "away_observed": 0.2368
+   }
+  },
+  {
+   "season": 2026,
+   "games": 599,
+   "model": {
+    "accuracy": 0.8698,
+    "mae": 11.8334,
+    "log_loss": 0.2908,
+    "brier": 0.0929
+   },
+   "elo": {
+    "accuracy": 0.773,
+    "mae": 21.1814,
+    "log_loss": 0.4606,
+    "brier": 0.1512
+   },
+   "last_season": {
+    "accuracy": 0.7229,
+    "mae": 22.3651,
+    "log_loss": 0.5249,
+    "brier": 0.178
+   },
+   "model_no_prior": {
+    "accuracy": 0.8648,
+    "mae": 13.0547,
+    "log_loss": 0.3112,
+    "brier": 0.0997
+   },
+   "model_raw_normal_log_loss": 0.3281,
+   "blowout": {
+    "home_predicted": 0.2785,
+    "home_observed": 0.3472,
+    "away_predicted": 0.1901,
+    "away_observed": 0.2538
+   }
+  }
+ ],
+ "overall": {
+  "games": 3361,
+  "model": {
+   "accuracy": 0.8646,
+   "mae": 12.4312,
+   "log_loss": 0.3054,
+   "brier": 0.0964
+  },
+  "elo": {
+   "accuracy": 0.773,
+   "mae": 20.9301,
+   "log_loss": 0.4645,
+   "brier": 0.1533
+  },
+  "last_season": null,
+  "model_no_prior": {
+   "accuracy": 0.8548,
+   "mae": 13.2616,
+   "log_loss": 0.3214,
+   "brier": 0.1021
+  }
+ },
+ "overall_from_2022": {
+  "games": 2906,
+  "model": {
+   "accuracy": 0.8679,
+   "mae": 12.5096,
+   "log_loss": 0.3075,
+   "brier": 0.0967
+  },
+  "elo": {
+   "accuracy": 0.7701,
+   "mae": 21.168,
+   "log_loss": 0.4675,
+   "brier": 0.1544
+  },
+  "last_season": {
+   "accuracy": 0.7412,
+   "mae": 22.0255,
+   "log_loss": 0.5148,
+   "brier": 0.172
+  },
+  "model_no_prior": {
+   "accuracy": 0.8565,
+   "mae": 13.4701,
+   "log_loss": 0.3262,
+   "brier": 0.1033
+  }
+ },
+ "g3": {
+  "metrics": [
+   "mae",
+   "brier"
+  ],
+  "beats_both_baselines": {
+   "2022": {
+    "mae": true,
+    "brier": true
+   },
+   "2023": {
+    "mae": true,
+    "brier": true
+   },
+   "2024": {
+    "mae": true,
+    "brier": true
+   },
+   "2025": {
+    "mae": true,
+    "brier": true
+   },
+   "2026": {
+    "mae": true,
+    "brier": true
+   }
+  },
+  "winner_pick_beats_both_baselines": {
+   "2022": true,
+   "2023": true,
+   "2024": true,
+   "2025": true,
+   "2026": true
+  },
+  "passes": true
+ }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@project-80x40/db",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  }
+}

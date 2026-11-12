@@ -1,0 +1,13 @@
+{
+  "name": "league-watch",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tapps": "node tapps.mjs",
+    "taiao": "node taiao.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "playwright": "1.65.0"
+  }
+}

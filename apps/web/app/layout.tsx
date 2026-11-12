@@ -1,0 +1,94 @@
+import "@fontsource-variable/inter";
+import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
+import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import type { ReactNode } from "react";
+import "./globals.css";
+import { MainNav } from "./main-nav";
+import { Offline } from "./offline-notice";
+
+export const metadata: Metadata = {
+  title: "Project 80x40",
+  description: "Private build.",
+  robots: { index: false, follow: false },
+};
+
+export const viewport: Viewport = { themeColor: "#0a2a5e" };
+
+// The headings' font (Barlow Condensed, OFL), the same files @fontsource ships, loaded by Next so each page preloads
+// them from its <head> and sizes the fallback to match. Through @fontsource's CSS the browser found them only after
+// the stylesheet, and a program page's name heading, its largest paint, waited on that (Lighthouse LCP up to 3.2 s).
+const barlow = localFont({
+  src: [
+    { path: "../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2", weight: "600" },
+    { path: "../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2", weight: "700" },
+  ],
+  variable: "--font-barlow",
+  display: "swap",
+});
+
+const SECTIONS = [
+  { href: "/scores", label: "Scores" },
+  { href: "/playoffs", label: "Playoffs" },
+  { href: "/results", label: "Results" },
+  { href: "/rankings", label: "Rankings" },
+  { href: "/standings", label: "Standings" },
+  { href: "/programs", label: "Programs" },
+  { href: "/championships", label: "Championships" },
+  { href: "/records", label: "Records" },
+  { href: "/search", label: "Search" },
+];
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en" className={barlow.variable}>
+      <body className="flex min-h-screen flex-col font-sans antialiased">
+        <Offline>
+          {/* First stop for a keyboard or screen reader: past the header's links to the page itself. Out of sight until focused. */}
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:bg-white focus:px-4 focus:font-bold focus:text-navy focus:outline-2 focus:outline-navy"
+          >
+            Skip to content
+          </a>
+          <header className="border-b-4 border-red bg-navy text-white">
+            <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between px-4">
+              <Link href="/" className="inline-flex min-h-11 items-center font-num text-[26px] font-bold tracking-wide sm:min-h-12">
+                80x40
+              </Link>
+              {/* On a phone the sections scroll sideways; the right edge fades out to show there is more, and the footer lists them all. */}
+              <MainNav sections={SECTIONS} />
+            </div>
+          </header>
+          <main id="main" tabIndex={-1} className="mx-auto outline-none w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">{children}</main>
+          <footer className="mt-10 border-t-4 border-red bg-navy text-white">
+            <div className="mx-auto max-w-5xl px-4 py-6">
+              <p className="font-num text-[22px] font-bold tracking-wide">80x40 · Texas six-man football</p>
+              <nav aria-label="Site sections" className="mt-2 grid grid-cols-2 gap-x-4 sm:grid-cols-5">
+                {[...SECTIONS, { href: "/matchup", label: "Matchup" }].map((s) => (
+                  <Link key={s.href} href={s.href} className="inline-flex min-h-11 items-center text-[15px] text-white/85 hover:text-white hover:underline">
+                    {s.label}
+                  </Link>
+                ))}
+              </nav>
+              <p className="mt-3 max-w-prose text-[13px] text-white/75">
+                Ratings, projected margins and win probabilities are estimates. A score marked unconfirmed may change.
+              </p>
+            </div>
+          </footer>
+        </Offline>
+        {/* Vercel Web Analytics and Speed Insights: cookieless page views and real visitors' load times, no personal
+            data. Built in only on Vercel (VERCEL=1), which serves their same-origin /_vercel/ scripts; elsewhere
+            (CI's next start) the scripts would 404. */}
+        {process.env.VERCEL && (
+          <>
+            <Analytics />
+            <SpeedInsights />
+          </>
+        )}
+      </body>
+    </html>
+  );
+}

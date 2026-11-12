@@ -1,0 +1,266 @@
+# Every push and pull request: database rules, ratings, league readers, and the site's page tests. Pull requests never
+# see the private data or its token: the writes after a merge (ratings table, hosted database) are in main.yml.
+# Vercel builds the site itself; this checks it.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: No pull-request workflow can reach the private data token (.github/scripts/token-guard.sh)
+        run: bash .github/scripts/token-guard.sh
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Migrations and every seed on a throwaway database
+        run: npm ci --prefix packages/db && npm --prefix packages/db test
+      - name: League reader checks
+        run: npm ci --prefix tools/league-watch && npm --prefix tools/league-watch test
+      - name: Push alert sender (new finals, who gets which alert)
+        run: npm ci --prefix tools/push && npm --prefix tools/push test
+      - name: School logos, colors and mascots (sources, colors, files)
+        run: npm --prefix tools/school-identity test
+      - name: History readers (UIL state finals)
+        run: npm --prefix tools/history test
+      - uses: astral-sh/setup-uv@v7
+      - name: Ruff lint and format check (Python in services/ and tools/; ruff.toml)
+        run: uvx ruff@0.17.4 check && uvx ruff@0.17.4 format --check
+      - name: Ratings model
+        run: uv run --directory services/ratings pytest -q
+
+  # The site's checks run as parallel jobs (one job took ~18 min, Nov 12): web-checks (types, data, knip, stories),
+  # web-build (one production build, shared as an artifact), web-pages (the page tests in shards on that build) and
+  # lighthouse (on that build, reported on its own). The `web` job at the end is the one check that says the site
+  # passed: it fails unless web-checks, web-build and every shard passed. Keep its name: merging waits on the checks
+  # named `data` and `web`. A change to docs only (docs/**, *.md) builds nothing and runs no page tests; `web` passes.
+  web-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci --prefix apps/web
+      - run: npm --prefix apps/web run typecheck
+      - name: Zod checks on every seed and robot-read file, and their tests
+        run: node --test apps/web/scripts/*.test.mjs
+      - name: Knip (unused files, exports and dependencies in apps/web; knip.json)
+        working-directory: apps/web
+        run: npx --yes knip@6.45.1 --no-progress
+      - name: Ladle stories build (invented schools only; a broken story fails; never deployed)
+        working-directory: apps/web
+        run: npm run stories:build
+
+  # One production build (next build, the search index, the service worker), the one Vercel would make, shared with the
+  # page tests and Lighthouse so neither builds again. Chromium is not needed here, so no container. The docs-only
+  # check is its first step, not a job of its own, so the build does not wait for another job to start.
+  web-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read # paths-filter lists a pull request's files through the API
+    outputs:
+      site: ${{ steps.filter.outputs.site }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          # `site` is true when any changed file is outside docs/ and is not Markdown.
+          predicate-quantifier: every
+          filters: |
+            site:
+              - '!docs/**'
+              - '!**/*.md'
+      - if: steps.filter.outputs.site == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - if: steps.filter.outputs.site == 'true'
+        run: npm ci --prefix apps/web
+      - if: steps.filter.outputs.site == 'true'
+        run: npm --prefix apps/web run build
+      - name: Pack the build (.next without its cache, the search index, the service worker)
+        if: steps.filter.outputs.site == 'true'
+        working-directory: apps/web
+        run: |
+          tar -cf "$RUNNER_TEMP/web-build.tar" --exclude=.next/cache .next public/pagefind public/sw.js
+          { echo '### Build artifact'; echo '```'; du -sh --exclude=cache .next/* | sort -rh | head -8; ls -lh "$RUNNER_TEMP/web-build.tar"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - if: steps.filter.outputs.site == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-build
+          path: ${{ runner.temp }}/web-build.tar
+          retention-days: 1
+          compression-level: 1
+
+  web-pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read # wait-for-build.mjs reads this run's jobs and artifacts
+    # Playwright's own image carries Chromium and its system libraries, so nothing is installed from the runner's package
+    # mirror (which failed or hung on most runs, Nov 11). Its tag must match @playwright/test in apps/web; a step checks.
+    container: mcr.microsoft.com/playwright:v1.65.0-noble
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    name: web-pages (${{ matrix.shard }}/6)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci --prefix apps/web
+      - name: The container's Playwright is the one apps/web installs
+        run: '[ "$(npx --prefix apps/web playwright --version)" = "Version 1.65.0" ] || { echo "Update the container tag above to match @playwright/test"; exit 1; }'
+      # Set up while web-build runs, then wait for it (.github/scripts/wait-for-build.mjs): not `needs`, which would
+      # start the container and npm ci only after the build. site=false is a docs-only change: nothing to run.
+      - name: Wait for web-build
+        id: wait
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/wait-for-build.mjs
+      # A download stalled for 3 minutes once (Nov 12): two minutes, then one more try.
+      - id: get
+        if: steps.wait.outputs.site == 'true'
+        uses: actions/download-artifact@v7
+        timeout-minutes: 2
+        continue-on-error: true
+        with:
+          name: web-build
+          path: ${{ runner.temp }}
+      - if: steps.wait.outputs.site == 'true' && steps.get.outcome != 'success'
+        uses: actions/download-artifact@v7
+        timeout-minutes: 3
+        with:
+          name: web-build
+          path: ${{ runner.temp }}
+      - if: steps.wait.outputs.site == 'true'
+        run: tar -xf "$RUNNER_TEMP/web-build.tar" -C apps/web
+      - name: Page tests on phone and desktop, with axe (shard ${{ matrix.shard }} of 6)
+        if: steps.wait.outputs.site == 'true'
+        env:
+          E2E_BUILT: "1" # serve the build above (playwright.config.ts) instead of building again
+        # Two workers: the tests mostly wait on the page, so a second browser fits beside the server on 2 cores.
+        run: npx --prefix apps/web playwright test -c apps/web/playwright.config.ts --shard=${{ matrix.shard }}/6 --workers=2
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: page-test-results-${{ matrix.shard }}
+          path: apps/web/e2e/.results
+          retention-days: 7
+
+  # Speed and accessibility scores on mobile settings, on the shared build (lighthouserc.cjs), two pages a job. Its own
+  # check, beside the shards, and not part of `web`. Run with npx, pinned, so its 300-odd packages stay out of the
+  # site's own install (and Vercel's).
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read # wait-for-build.mjs
+    container: mcr.microsoft.com/playwright:v1.65.0-noble # the same tag as web-pages
+    strategy:
+      fail-fast: false
+      matrix:
+        pages: ["/,/rankings", "/results,/programs/jayton"]
+    name: lighthouse (${{ matrix.pages }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci --prefix apps/web
+      # Set up while web-build runs, then wait for it (.github/scripts/wait-for-build.mjs): not `needs`, which would
+      # start the container and npm ci only after the build. site=false is a docs-only change: nothing to run.
+      - name: Wait for web-build
+        id: wait
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/wait-for-build.mjs
+      # A download stalled for 3 minutes once (Nov 12): two minutes, then one more try.
+      - id: get
+        if: steps.wait.outputs.site == 'true'
+        uses: actions/download-artifact@v7
+        timeout-minutes: 2
+        continue-on-error: true
+        with:
+          name: web-build
+          path: ${{ runner.temp }}
+      - if: steps.wait.outputs.site == 'true' && steps.get.outcome != 'success'
+        uses: actions/download-artifact@v7
+        timeout-minutes: 3
+        with:
+          name: web-build
+          path: ${{ runner.temp }}
+      - if: steps.wait.outputs.site == 'true'
+        run: tar -xf "$RUNNER_TEMP/web-build.tar" -C apps/web
+      - name: Lighthouse on mobile settings (${{ matrix.pages }})
+        if: steps.wait.outputs.site == 'true'
+        working-directory: apps/web
+        env:
+          LHCI_PAGES: ${{ matrix.pages }}
+        run: |
+          export CHROME_PATH="$(node -e 'console.log(require("@playwright/test").chromium.executablePath())')"
+          npx --yes @lhci/cli@0.16.0 autorun --config=lighthouserc.cjs
+      - name: Lighthouse numbers in the run summary
+        if: always() && steps.wait.outputs.site == 'true'
+        working-directory: apps/web
+        run: node e2e/lighthouse-summary.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: always() && steps.wait.outputs.site == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-${{ strategy.job-index }}
+          path: apps/web/e2e/.lighthouse
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # The site's one pass or fail. It fails unless web-checks and web-build succeeded and, when the site changed, every
+  # page-test shard did too (failed, cancelled or skipped all fail it). Docs only: no shards, and it passes. Lighthouse
+  # is its own check.
+  web:
+    if: always()
+    needs: [web-checks, web-build, web-pages]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Every site job passed (or the change is docs only)
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          [ "$(echo "$NEEDS" | jq -r '.["web-checks"].result')" = success ] || exit 1
+          [ "$(echo "$NEEDS" | jq -r '.["web-build"].result')" = success ] || exit 1
+          if [ "$(echo "$NEEDS" | jq -r '.["web-build"].outputs.site')" = false ]; then
+            echo "Docs only: no build and no page tests." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          [ "$(echo "$NEEDS" | jq -r '.["web-pages"].result')" = success ]

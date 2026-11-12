@@ -1,0 +1,182 @@
+{
+ "games": 14,
+ "games_outside": 0,
+ "home_field": 0.0,
+ "sigma": 8.2,
+ "playoff_edge": 1.0,
+ "calibration": {
+  "family": "logistic",
+  "scale": 15.57
+ },
+ "model": {
+  "rho": 0.6,
+  "tau": 30.0,
+  "sigma_prior": 17.0,
+  "group_sd": 15.0,
+  "prior_season": false
+ },
+ "group_means": {
+  "Unlisted": 0.0
+ },
+ "report": {
+  "forfeits": 1,
+  "no_contests": 0,
+  "duplicates": 0,
+  "ties": 0,
+  "outside_games": 0,
+  "outside_games_left_out": 0,
+  "hidden_teams": 0
+ },
+ "teams": [
+  {
+   "team": "Red Bluff Creek",
+   "rating": 35.3,
+   "sd": 5.4,
+   "rated": 4,
+   "rated_outside": 0,
+   "won": 4,
+   "lost": 0,
+   "tied": 0
+  },
+  {
+   "team": "Cedar Gap",
+   "rating": 18.5,
+   "sd": 6.9,
+   "rated": 3,
+   "rated_outside": 0,
+   "won": 2,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Stillwater Draw",
+   "rating": 18.4,
+   "sd": 5.5,
+   "rated": 4,
+   "rated_outside": 0,
+   "won": 3,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Caprock",
+   "rating": 15.7,
+   "sd": 7.7,
+   "rated": 2,
+   "rated_outside": 0,
+   "won": 2,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Windmill Christian",
+   "rating": 11.0,
+   "sd": 8.2,
+   "rated": 2,
+   "rated_outside": 0,
+   "won": 1,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Lone Post",
+   "rating": 8.3,
+   "sd": 10.7,
+   "rated": 1,
+   "rated_outside": 0,
+   "won": 0,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Mesquite Flat",
+   "rating": 4.2,
+   "sd": 9.8,
+   "rated": 1,
+   "rated_outside": 0,
+   "won": 0,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Pecan Valley",
+   "rating": 4.2,
+   "sd": 9.4,
+   "rated": 2,
+   "rated_outside": 0,
+   "won": 1,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Dry Wash",
+   "rating": -2.7,
+   "sd": 9.0,
+   "rated": 2,
+   "rated_outside": 0,
+   "won": 1,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Bluestem",
+   "rating": -8.1,
+   "sd": 11.2,
+   "rated": 1,
+   "rated_outside": 0,
+   "won": 0,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Hackberry",
+   "rating": -10.9,
+   "sd": 11.5,
+   "rated": 1,
+   "rated_outside": 0,
+   "won": 0,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Live Oak Springs",
+   "rating": -16.4,
+   "sd": 10.4,
+   "rated": 2,
+   "rated_outside": 0,
+   "won": 1,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Sandy Ford",
+   "rating": -20.4,
+   "sd": 13.6,
+   "rated": 1,
+   "rated_outside": 0,
+   "won": 0,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "Oak Chapel Academy",
+   "rating": -22.7,
+   "sd": 12.2,
+   "rated": 1,
+   "rated_outside": 0,
+   "won": 0,
+   "lost": 1,
+   "tied": 0
+  },
+  {
+   "team": "North Fence",
+   "rating": -34.3,
+   "sd": 12.2,
+   "rated": 1,
+   "rated_outside": 0,
+   "won": 0,
+   "lost": 1,
+   "tied": 0
+  }
+ ]
+}

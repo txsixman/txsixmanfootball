@@ -1,0 +1,77 @@
+# Loads the hosted database (Supabase) from main: new migrations, then every alignment and game file, then the live
+# security checks (row-level security everywhere, no table rights for the API roles). Called by main.yml after a push to
+# main and by Results watch after it commits new scores; also runs by hand. Safe to re-run.
+# Also weekly: a free Supabase project pauses after 7 days without activity, and the off-season (Feb to Jul) can pass
+# weeks without a push or a results run. The weekly load keeps it awake and re-runs the live security checks.
+# Needs the repo secrets SUPABASE_DB_PASSWORD and DATA_PRIVATE_TOKEN (never from a pull-request run: CI's data job
+# checks). Without the password the job says so in the run summary and does nothing.
+name: Supabase
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 11 * * 1" # Mondays, 5:17 AM Central (6:17 in daylight time)
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # One load at a time; a newer one waits rather than cancelling a load half done.
+    concurrency:
+      group: supabase
+      cancel-in-progress: false
+    env:
+      # Project vhgnaihnyjdnaaergtcl (the owner's personal org, us-east-1), through the IPv4 session pooler. Not secrets.
+      PGHOST: aws-0-us-east-1.pooler.supabase.com
+      PGUSER: postgres.vhgnaihnyjdnaaergtcl
+      PGSSLROOTCERT: packages/db/supabase-ca.crt
+      PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main # the newest main, including a commit the caller just pushed
+      - name: Skip, loudly, without the password or before the repo is live
+        id: gate
+        env:
+          LIVE: ${{ vars.LIVE }} # repo variable, set at cut-over; until then nothing is written
+        run: |
+          if [ "$LIVE" != true ]; then
+            echo "Supabase not loaded: the repo variable LIVE is not true yet." >> "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$PGPASSWORD" ]; then
+            echo "::warning::SUPABASE_DB_PASSWORD is not set; Supabase was not loaded."
+            echo "Supabase not loaded: the SUPABASE_DB_PASSWORD secret is not set." >> "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v7
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: 22
+      - name: The private data (robot-read games with their source pages; this repo holds the facts only)
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: txsixman/data-private
+          token: ${{ secrets.DATA_PRIVATE_TOKEN }}
+          path: private
+          persist-credentials: false
+      - if: steps.gate.outputs.run == 'true'
+        run: npm ci --prefix packages/db
+      - name: Load and check
+        if: steps.gate.outputs.run == 'true'
+        env:
+          PRIVATE_DATA: ${{ github.workspace }}/private
+        run: |
+          node packages/db/load.mjs > "$RUNNER_TEMP/load.json"
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+            const games = r.games.map((g) => `${g.file}: ${g.inserted} new, ${g.updated} updated, ${g.unchanged} unchanged, ${g.flags} flagged`);
+            console.log(["Supabase loaded.", `Migrations applied: ${r.migrations.join(", ") || "none new"}`, ...games,
+              `Live checks: ${r.problems.length ? r.problems.join("; ") : "pass"}`].map((l) => `- ${l}`).join("\n"));
+          ' "$RUNNER_TEMP/load.json" >> "$GITHUB_STEP_SUMMARY"

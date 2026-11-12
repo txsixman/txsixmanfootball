@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* Red, white and blue (the owner, Nov 10, 2026; replaces plan section 13.2). */
+@theme {
+  --color-page: #ffffff;
+  --color-panel: #f4f6fb;
+  --color-line: #cdd6e8;
+  --color-navy: #0a2a5e;
+  --color-red: #bf1e2e;
+  --color-ink: #14213d;
+  --color-muted: #55617a;
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  /* --font-barlow is set by layout.tsx (next/font); Ladle, outside Next, loads @fontsource's "Barlow Condensed". */
+  --font-num: var(--font-barlow, "Barlow Condensed"), "Arial Narrow", sans-serif;
+
+  /* shadcn/ui's token names (components/ui), mapped onto the colors above. New names only: `muted` stays the site's
+     gray text, so no existing page changes. Its muted-foreground is the site's `muted`. */
+  --color-background: var(--color-page);
+  --color-foreground: var(--color-ink);
+  --color-primary: var(--color-navy);
+  --color-primary-foreground: #ffffff;
+  --color-accent: var(--color-panel);
+  --color-accent-foreground: var(--color-navy);
+  --color-destructive: var(--color-red);
+  --color-border: var(--color-line);
+  --color-input: var(--color-line);
+  --color-ring: var(--color-navy);
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Shared type and control styles, so every page speaks in the same voice. Page titles are h1, section titles h2,
+   sub-sections h3 (a rule under them). A link or button that stands alone is at least 44px tall (tests enforce it). */
+@utility kicker {
+  @apply text-[12px] font-bold uppercase tracking-widest text-red;
+}
+@utility page-title {
+  @apply font-num text-[36px] font-bold uppercase leading-[0.95] tracking-wide text-navy sm:text-[52px];
+}
+@utility section-title {
+  @apply border-l-4 border-red pl-2 font-num text-[26px] font-bold uppercase leading-none tracking-wide text-navy;
+}
+@utility sub-title {
+  @apply border-b-2 border-navy pb-1 font-num text-[16px] font-bold uppercase tracking-wider text-navy;
+}
+@utility section-note {
+  @apply mt-2 text-[14px] text-muted;
+}
+@utility link-more {
+  @apply inline-flex min-h-11 items-center text-[14px] font-semibold text-navy underline;
+}
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center border-2 border-navy px-4 font-bold text-navy hover:bg-panel;
+}
+@utility btn-red {
+  @apply inline-flex min-h-11 items-center justify-center border-2 border-red bg-red px-4 font-bold text-white hover:brightness-110;
+}
