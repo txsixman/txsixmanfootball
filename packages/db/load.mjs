@@ -183,9 +183,75 @@ export async function loadAll(db, { retrievedOn, reason, publicResults = false }
   return report;
 }
 
+// Functions a signed-in user (never anon) may call, each as schema.name(argument types) so an overload with other
+// arguments is not allowed by its name. Each acts only on auth.uid()'s own rows, or refuses unless auth.uid() is the
+// admin; a migration that adds one adds its signature here, and the schema tests check it is not open to anon.
+const SIGNED_IN_FUNCTIONS = [
+  "public.is_admin()", "public.record_admin_audit(text, uuid, jsonb, jsonb, text)", "public.create_profile(text, integer, boolean)",
+  "public.my_profile()", "public.delete_my_account()",
+  // Fan follows (migration 0012): each acts on auth.uid()'s own rows.
+  "public.follow_program(text)", "public.unfollow_program(text)", "public.my_follows()",
+  // Posts (migrations 0013 to 0015, ADR 0018): each acts on auth.uid() and refuses a banned or muted account; the admin_*
+  // ones refuse anyone who is not is_admin(). The owner's overrides write audit_log as the function's owner, so they need no
+  // table right either.
+  "public.add_comment(text, text)", "public.edit_post(uuid, text, text)", "public.flag_post(uuid)",
+  "public.admin_unhide_post(uuid, text)", "public.admin_unmute(uuid, text)", "public.admin_set_ban(uuid, boolean, text)",
+  "public.admin_moderation_overview()", "public.submit_score_report(text, integer, integer)",
+  "public.create_thread(text, text, text)", "public.reply_to_thread(uuid, text)",
+];
+
+// Public reads, open to anon and authenticated alike: they return display names, text and counts, never a user id,
+// birth year or email (migrations 0013 to 0015, ADR 0018). The push sign-up pair (0008) is open to both as well.
+const ANON_FUNCTIONS = [
+  "public.list_comments(text, integer, integer)", "public.fan_score_status(text)", "public.forum_boards()",
+  "public.forum_threads(text, integer, integer)", "public.forum_thread_info(uuid)", "public.forum_posts(uuid, integer, integer)",
+  "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)",
+];
+
+/** Schemas the project owns and the API could reach. */
+const OWNED_SCHEMAS = ["public", "ops"];
+
+/**
+ * Erase sign-ups nobody finished (ADR 0018): a Supabase Auth user older than `days` with no fan profile, not in
+ * admin_user, and created AFTER the first fan profile existed. Anyone can make an Auth user straight through Supabase's
+ * public API, so the site cannot mark who started fan sign-up; this rule needs no mark. Before any fan has finished sign-up
+ * (no profile at all) nothing is erased, so an account made before launch (the admin's, before its id is in admin_user)
+ * is never touched. The user's copies in auth.flow_state and auth.audit_log_entries (no foreign key to auth.users; the log
+ * holds the email and IP) go first, where those tables exist, in one transaction. Returns only a count: no address or id is
+ * read out or logged. Does nothing where Supabase's auth schema is missing (the tests' plain Postgres without it).
+ */
+export async function purgeUnfinishedSignups(db, { days = 7 } = {}) {
+  const { rows } = await db.query(
+    "select to_regclass('auth.users') is not null as users, to_regclass('auth.flow_state') is not null as flow, to_regclass('auth.audit_log_entries') is not null as audit",
+  );
+  if (!rows[0].users) return 0;
+  return db.transaction(async (tx) => {
+    const victims = await tx.query(
+      `select u.id::text as id from auth.users u
+        where u.created_at < now() - make_interval(days => $1::int)
+          and u.created_at > (select min(created_at) from profile)
+          and not exists (select 1 from profile p where p.user_id = u.id)
+          and not exists (select 1 from admin_user a where a.user_id = u.id)`,
+      [days],
+    );
+    const ids = victims.rows.map((r) => r.id);
+    if (!ids.length) return 0;
+    if (rows[0].flow) await tx.query("delete from auth.flow_state where user_id = any($1::uuid[])", [ids]);
+    if (rows[0].audit) {
+      await tx.query("delete from auth.audit_log_entries where payload->>'actor_id' = any($1::text[]) or payload->'traits'->>'user_id' = any($1::text[])", [ids]);
+    }
+    await tx.query("delete from auth.users where id = any($1::uuid[])", [ids]);
+    return ids.length;
+  });
+}
+
 /**
  * The schema test's rules, checked on the live database after every load: row-level security on every public table,
- * and no table rights for Supabase's API roles until a migration grants them beside a policy (migration 0005).
+ * and Supabase's API roles (anon, authenticated) holding NO rights on any table, view or sequence (migration 0005), by any
+ * route: a direct grant, a column grant, or a grant to PUBLIC, which has_*_privilege counts as the role's own. The only
+ * thing they may do is call a function: ANON_FUNCTIONS (the push sign-up pair, 0008, and the public reads) for both, SIGNED_IN_FUNCTIONS for signed-in users
+ * (is_admin and record_admin_audit from 0010, the fan profile functions from 0011, the follow functions from 0012). No policy is expected anywhere: with
+ * no table rights a policy would only be an unreviewed way in.
  */
 export async function checkLive(db) {
   const problems = [];
@@ -194,24 +260,63 @@ export async function checkLive(db) {
        where n.nspname = 'public' and c.relkind in ('r', 'p') and not c.relrowsecurity order by 1`,
   );
   for (const r of noRls.rows) problems.push(`public.${r.relname} has no row-level security`);
-  const grants = await db.query(
-    `select grantee, table_schema, table_name, string_agg(privilege_type, ',' order by privilege_type) as rights
-       from information_schema.role_table_grants
-       where grantee in ('anon', 'authenticated') and table_schema in ('public', 'ops')
-       group by 1, 2, 3 order by 1, 2, 3`,
-  );
-  for (const g of grants.rows) problems.push(`${g.grantee} holds ${g.rights} on ${g.table_schema}.${g.table_name}`);
-  // Functions the API roles can run, directly or through PUBLIC: only the push sign-up pair (migration 0008). Trigger
-  // and event trigger functions (Supabase's own rls_auto_enable) cannot be called, by the API or anyone, so are left out.
-  const runnable = await db.query(
-    `select r.rolname, p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  // Effective table rights (direct, inherited from PUBLIC, or column-level) on every table, view, materialized view,
+  // foreign table and partitioned table.
+  const tables = await db.query(
+    `select r.rolname as grantee, n.nspname as schema, c.relname as name,
+            string_agg(p.priv, ',' order by p.priv) filter (where has_table_privilege(r.rolname, c.oid, p.priv)) as rights,
+            string_agg(p.priv, ',' order by p.priv) filter (
+              where p.priv in ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES')
+                and has_any_column_privilege(r.rolname, c.oid, p.priv) and not has_table_privilege(r.rolname, c.oid, p.priv)) as column_rights
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
        cross join pg_roles r
-       where n.nspname = 'public' and r.rolname in ('anon', 'authenticated')
-         and p.prorettype not in ('trigger'::regtype, 'event_trigger'::regtype)
-         and p.proname not in ('push_follow', 'push_unfollow') and has_function_privilege(r.rolname, p.oid, 'execute')
-       order by 2, 1`,
+       cross join (values ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) as p(priv)
+       where n.nspname = any($1) and c.relkind in ('r', 'p', 'v', 'm', 'f') and r.rolname in ('anon', 'authenticated')
+       group by 1, 2, 3 order by 1, 2, 3`,
+    [OWNED_SCHEMAS],
   );
-  for (const f of runnable.rows) problems.push(`${f.rolname} can run public.${f.proname}()`);
+  for (const t of tables.rows) {
+    if (t.rights) problems.push(`${t.grantee} holds ${t.rights} on ${t.schema}.${t.name}`);
+    if (t.column_rights) problems.push(`${t.grantee} holds column ${t.column_rights} on ${t.schema}.${t.name}`);
+  }
+  // Sequences: no USAGE, SELECT or UPDATE. (An INSERT through a function runs as the function's owner.)
+  const sequences = await db.query(
+    `select r.rolname, n.nspname, c.relname, p.priv from pg_class c join pg_namespace n on n.oid = c.relnamespace
+       cross join pg_roles r cross join (values ('USAGE'), ('SELECT'), ('UPDATE')) as p(priv)
+       where n.nspname = any($1) and c.relkind = 'S' and r.rolname in ('anon', 'authenticated')
+         and has_sequence_privilege(r.rolname, c.oid, p.priv)
+       order by 3, 1, 4`,
+    [OWNED_SCHEMAS],
+  );
+  for (const q of sequences.rows) problems.push(`${q.rolname} holds ${q.priv} on sequence ${q.nspname}.${q.relname}`);
+  // Functions the API roles can run, directly or through PUBLIC. Trigger and event trigger functions (Supabase's own
+  // rls_auto_enable) cannot be called, by the API or anyone, so are left out.
+  const runnable = await db.query(
+    `select r.rolname, sig.name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       cross join pg_roles r
+       cross join lateral (select n.nspname || '.' || p.proname || '(' || oidvectortypes(p.proargtypes) || ')' as name) sig
+       where n.nspname = any($2) and r.rolname in ('anon', 'authenticated')
+         and p.prorettype not in ('trigger'::regtype, 'event_trigger'::regtype)
+         and not (sig.name = any($1) and r.rolname = 'authenticated')
+         and not sig.name = any($3)
+         and has_function_privilege(r.rolname, p.oid, 'execute')
+       order by 2, 1`,
+    [SIGNED_IN_FUNCTIONS, OWNED_SCHEMAS, ANON_FUNCTIONS],
+  );
+  for (const f of runnable.rows) problems.push(`${f.rolname} can run ${f.name}`);
+  // A security-definer function that does not pin its search_path can be made to run a look-alike from another schema.
+  const unpinned = await db.query(
+    `select n.nspname || '.' || p.proname || '(' || oidvectortypes(p.proargtypes) || ')' as name
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = any($1) and p.prosecdef
+        and not exists (select 1 from unnest(coalesce(p.proconfig, '{}'::text[])) c where c like 'search_path=%')
+      order by 1`,
+    [OWNED_SCHEMAS],
+  );
+  for (const f of unpinned.rows) problems.push(`${f.name} is security definer with no search_path`);
+  // Policies: none expected anywhere.
+  const policies = await db.query(`select tablename, policyname from pg_policies where schemaname = any($1) order by 1, 2`, [OWNED_SCHEMAS]);
+  for (const p of policies.rows) problems.push(`unexpected policy ${p.policyname} on public.${p.tablename}`);
   return problems;
 }
 
@@ -247,6 +352,12 @@ async function main() {
     const db = adapt(client);
     const report = await loadAll(db, { retrievedOn: today, reason: "packages/db/load.mjs" });
     report.problems = await checkLive(db);
+    // After the security check, and on its own: a failure here is reported (the error code only) but never fails the load.
+    try {
+      report.unfinishedSignupsRemoved = await purgeUnfinishedSignups(db);
+    } catch (error) {
+      report.purgeError = String(error?.code ?? "unknown");
+    }
     console.log(JSON.stringify(report, null, 2));
     if (report.problems.length) throw new Error(`live database checks failed:\n${report.problems.join("\n")}`);
   } finally {

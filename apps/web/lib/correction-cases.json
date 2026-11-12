@@ -1,0 +1,31 @@
+{
+  "_note": "One table, two readers: apps/web/scripts/corrections.test.mjs (lib/corrections.ts) and services/ratings/test_corrections.py (corrections.py) apply the same corrections to the same rows and must give the same answers. Corrections are listed in file order: the last row for a game wins.",
+  "merges": [{ "name": "Faith Acad", "same_as": "Faith Academy" }],
+  "games": [
+    { "game_date": "2030-09-05", "home": "Alpha", "away": "Beta", "action": "score", "home_score": "41", "away_score": "20" },
+    { "game_date": "2030-09-12", "home": "Beta", "away": "Gamma", "action": "forfeit", "home_score": "0", "away_score": "1" },
+    { "game_date": "2030-09-19", "home": "Gamma", "away": "Alpha", "action": "void", "home_score": "", "away_score": "" },
+    { "game_date": "2030-10-03", "home": "Faith Acad", "away": "Delta", "action": "score", "home_score": "30", "away_score": "12" },
+    { "game_date": "2030-10-10", "home": "Alpha", "away": "Delta", "action": "score", "home_score": "22", "away_score": "8" },
+    { "game_date": "2030-10-10", "home": "Alpha", "away": "Delta", "action": "score", "home_score": "23", "away_score": "8" }
+  ],
+  "quoteFile": {
+    "_note": "A reason that opens a double quote. The site refuses to write or read such a row; the ratings reader must not let it swallow the row below it.",
+    "header": "game_date,home,away,action,home_score,away_score,source_url,reason,corrected_on",
+    "lines": [
+      "2030-09-05,Alpha,Beta,score,41,20,https://example.com/box,\"typo,2030-11-01",
+      "2030-09-12,Beta,Gamma,void,,,https://example.com/box,listed twice,2030-11-01"
+    ],
+    "pythonHomes": ["Alpha", "Beta"]
+  },
+  "cases": [
+    { "name": "a score fix", "row": ["2030-09-05", "Alpha", "Beta", "40", "20", "regulation"], "expect": ["Alpha", "Beta", "41", "20", "unknown", true] },
+    { "name": "the same game listed the other way round swaps the fixed score with the sides", "row": ["2030-09-05", "Beta", "Alpha", "20", "40", "regulation"], "expect": ["Beta", "Alpha", "20", "41", "unknown", true] },
+    { "name": "a forfeit is recorded 1-0 to the winner and ends as a forfeit", "row": ["2030-09-12", "Beta", "Gamma", "12", "14", "unknown"], "expect": ["Beta", "Gamma", "0", "1", "forfeit", true] },
+    { "name": "a voided game is gone", "row": ["2030-09-19", "Gamma", "Alpha", "7", "6", "unknown"], "expect": null },
+    { "name": "a fix naming the retired spelling still finds the game, and the merge renames it", "row": ["2030-10-03", "Faith Acad", "Delta", "28", "12", "unknown"], "expect": ["Faith Academy", "Delta", "30", "12", "unknown", true] },
+    { "name": "a merge alone renames and leaves the score", "row": ["2030-09-01", "Faith Acad", "Echo", "9", "7", "unknown"], "expect": ["Faith Academy", "Echo", "9", "7", "unknown", false] },
+    { "name": "the last row for a game wins", "row": ["2030-10-10", "Alpha", "Delta", "21", "8", "unknown"], "expect": ["Alpha", "Delta", "23", "8", "unknown", true] },
+    { "name": "another date is another game", "row": ["2030-09-06", "Alpha", "Beta", "40", "20", "regulation"], "expect": ["Alpha", "Beta", "40", "20", "regulation", false] }
+  ]
+}

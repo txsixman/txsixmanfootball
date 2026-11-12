@@ -39,10 +39,10 @@ export type OtherName = { name: string; note: string };
 
 /**
  * A program's other names for its page: the schools that merged into it (with the year) and the older spellings UIL's
- * state final records use for it. An alias that names a merged school belongs to the program that school became. No
+ * state final records use for it, and spellings a program merge folded into it. An alias that names a merged school belongs to the program that school became. No
  * source is named (ADR 0010).
  */
-export function otherNames(slug: string, lineage: Lineage[], aliases: Record<string, string>): OtherName[] {
+export function otherNames(slug: string, lineage: Lineage[], aliases: Record<string, string>, merges: Map<string, string> = new Map()): OtherName[] {
   const successors = successorOf(lineage);
   const merged = lineage
     .filter((l) => slugify(l.successor) === slug)
@@ -50,5 +50,7 @@ export function otherNames(slug: string, lineage: Lineage[], aliases: Record<str
   const spellings = Object.entries(aliases)
     .filter(([, current]) => slugify(successors.get(slugify(current)) ?? current) === slug)
     .map(([spelling]) => ({ name: spelling, note: "as listed in state final records" }));
-  return [...merged, ...spellings];
+  // A name the game files spell for this program (data/corrections/programs.csv, merged by the admin console).
+  const spelled = [...merges].filter(([, program]) => slugify(program) === slug).map(([name]) => ({ name, note: "as written in game results" }));
+  return [...merged, ...spellings, ...spelled];
 }

@@ -15,7 +15,6 @@ test("Supabase's API roles hold no rights on any table after the migrations", as
        where table_schema = 'public' and grantee in ('anon', 'authenticated')`,
   );
   assert.deepEqual(rows, []);
-
   // A table a later migration adds gets nothing by default either.
   await db.exec("create table later (id int)");
   const later = await db.query("select 1 from information_schema.role_table_grants where table_name = 'later' and grantee = 'anon'");

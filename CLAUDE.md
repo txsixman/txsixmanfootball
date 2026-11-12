@@ -136,7 +136,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   MaxPreps, Hudl, fan sites, SixManFootball.com or CalPreps.
 - **Partnership hard lines** (plan section 15): never poach the site's moderators or members publicly, never
   disparage it, never use its name or content without permission.
-- **Minors**: no birth dates, contact details, player rankings or precise location for minors. No direct messages.
+- **Minors**: no birth dates (fan accounts keep the birth year only, never shown; ADR 0018), no public real names,
+  contact details, player rankings or precise location for minors; no minor's data to any third party. No direct messages.
 - **Betting**: the words are rating, projected margin and win probability. Never spreads, lines or odds.
 - **Row-level security on every table.** A new table without it fails the schema test.
 - **`score_submission` is never deleted; `audit_log` is append-only.** Enforced by triggers.

@@ -65,6 +65,71 @@ export const LineageRow = z.object({
   notes: z.string(),
 });
 
+// ---- Corrections (data/corrections/, written by the admin console, lib/admin) -----------------------------------------
+// Each row is one person's fix to a robot-read fact, with a public page that shows the right fact (ADR 0002) and a
+// reason. Files are append-only logs: for the same game (or name) the LAST row wins, and the rows above it stay as
+// history. A correction never names a winner and never marks a score confirmed (ADR 0011): the rows below carry scores,
+// and pages keep calling a corrected score unconfirmed. The files hold no quoted cells (parseCsv), so no field may
+// contain a comma, a double quote or a line break; the console turns commas into semicolons and quotes into apostrophes.
+
+// No comma, no double quote (a quote would open a quoted cell in a spreadsheet or csv reader and swallow the rows below it),
+// no line break, and no leading = + - or @ (a spreadsheet would run the cell as a formula).
+const csvSafe = (what: string) =>
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(300)
+    .regex(/^[^,"\r\n]+$/, `${what} may not hold a comma, a double quote or a line break`)
+    .regex(/^[^=+\-@]/, `${what} may not start with = + - or @`);
+const httpsUrl = csvSafe("a url").pipe(z.url({ protocol: /^https$/, hostname: z.regexes.domain })).refine((u) => u.length <= 500, "url too long");
+const fixScore = z.string().regex(/^\d{1,3}$/, "a score is a whole number").refine((v) => Number(v) <= 200, "a score is 0 to 200");
+// Same rule as `forfeitScore` in lib/forfeit.ts and `forfeit_score` in services/ratings/rows.py (this file imports
+// nothing but zod, so it cannot import the lib one; scripts/corrections.test.mjs holds the three to one table).
+const forfeitShaped = (a: number, b: number) => Math.max(a, b) <= 2 && Math.min(a, b) === 0 && a !== b;
+
+export const GAME_CORRECTION_COLUMNS = [
+  "game_date", "home", "away", "action", "home_score", "away_score", "source_url", "reason", "corrected_on",
+];
+/**
+ * One fix to one game, found by its date and the two teams (either way round, names as the game files spell them after
+ * program merges). `score`: the right score. `forfeit`: the game was forfeited; the score is the way results record one,
+ * 1-0 or 2-0 to the side that won it, which both the pages and the ratings already read as a forfeit. `void`: the game was
+ * listed in error and is left out everywhere.
+ */
+export const GameCorrectionRow = z
+  .object({
+    game_date: isoDate,
+    home: csvSafe("a team"),
+    away: csvSafe("a team"),
+    action: z.enum(["score", "forfeit", "void"]),
+    home_score: fixScore.or(blank),
+    away_score: fixScore.or(blank),
+    source_url: httpsUrl,
+    reason: csvSafe("a reason"),
+    corrected_on: isoDate,
+  })
+  .superRefine((r, ctx) => {
+    const issue = (message: string) => ctx.addIssue({ code: "custom", message });
+    if (r.home === r.away) issue("a team cannot play itself");
+    if (r.action === "void") {
+      if (r.home_score !== "" || r.away_score !== "") issue("a void carries no score");
+      return;
+    }
+    if (r.home_score === "" || r.away_score === "") return issue("a score or forfeit needs both scores");
+    const [h, a] = [Number(r.home_score), Number(r.away_score)];
+    if (r.action === "forfeit" && !forfeitShaped(h, a)) issue("a forfeit is recorded 1-0 or 2-0 to the winner");
+    if (r.action === "score" && (forfeitShaped(h, a) || (h === 0 && a === 0))) {
+      issue("1-0, 2-0 and 0-0 are a forfeit or a game nobody played: use forfeit or void");
+    }
+  });
+
+export const PROGRAM_MERGE_COLUMNS = ["name", "same_as", "source_url", "reason", "corrected_on"];
+/** `name` is a spelling the game files use that no alignment lists; `same_as` is the listed program it is. */
+export const ProgramMergeRow = z
+  .object({ name: csvSafe("a name"), same_as: csvSafe("a name"), source_url: httpsUrl, reason: csvSafe("a reason"), corrected_on: isoDate })
+  .refine((r) => r.name !== r.same_as, "a name cannot be merged into itself");
+
 export const FINAL_COLUMNS = [
   "season", "conference", "division", "champion", "runner_up", "champion_score", "runner_up_score", "score_note", "notes", "source_url",
 ];

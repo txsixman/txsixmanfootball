@@ -6,10 +6,14 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildCorrections } from "../lib/corrections.ts";
 import * as s from "../lib/data-schemas.ts";
 
 const root = path.resolve(process.argv[2] ?? path.join(import.meta.dirname, "../../.."));
 const seed = (...p) => path.join("data/seed", ...p);
+
+/** What the admin console writes (lib/admin); both files appear with the first correction. */
+const CORRECTIONS = { programs: "data/corrections/programs.csv", games: "data/corrections/games.csv" };
 
 /** Every file the site reads, with how to check it. */
 function files() {
@@ -30,6 +34,8 @@ function files() {
     }
   }
   list.push(
+    { file: CORRECTIONS.programs, csv: [s.PROGRAM_MERGE_COLUMNS, s.ProgramMergeRow], optional: true },
+    { file: CORRECTIONS.games, csv: [s.GAME_CORRECTION_COLUMNS, s.GameCorrectionRow], optional: true },
     { file: seed("lineage/programs.csv"), csv: [s.LINEAGE_COLUMNS, s.LineageRow], optional: true },
     { file: seed("uil-champions/six-man.csv"), csv: [s.FINAL_COLUMNS, s.FinalRow], optional: true },
     { file: seed("uil-champions/six-man-no-final.csv"), csv: [s.NO_FINAL_COLUMNS, s.NoFinalRow], optional: true },
@@ -57,6 +63,7 @@ export function checkAll() {
       const text = readFileSync(full, "utf8");
       if (csv) {
         const rows = s.parseCsv(file, text, ...csv);
+        parsed[file] = rows.map(({ row }) => row);
         results.push({ file, ok: true, note: `${rows.length} rows` });
       } else {
         parsed[file] = s.parseJson(file, text, json);
@@ -64,6 +71,14 @@ export function checkAll() {
       }
     } catch (e) {
       results.push({ file, ok: false, note: e.message });
+    }
+  }
+  // Corrections as the site applies them: a merge may not point at a name another merge retires.
+  if (parsed[CORRECTIONS.programs]) {
+    try {
+      buildCorrections(parsed[CORRECTIONS.programs], parsed[CORRECTIONS.games] ?? []);
+    } catch (e) {
+      results.push({ file: CORRECTIONS.programs, ok: false, note: e.message });
     }
   }
   // Every color a school names must be in colors.json (lib/identity.ts throws on one that is not).
