@@ -19,11 +19,13 @@ export function Follow({ slug, school }: { slug: string; school: string }) {
   const [note, setNote] = useState("");
   const [me, setMe] = useState<Me | null>(null);
   const [enabled, setEnabled] = useState(false); // fan accounts on (FAN_SIGNIN): else this is the browser-only button as ever
+  // Whether this browser can show alerts, kept apart from `state`: once signed in, `state` holds on/off for the account.
+  const [canPush, setCanPush] = useState(true);
   const signedIn = me !== null && me.displayName !== null;
-  const canPush = state !== "unsupported";
 
   useEffect(() => {
     const supported = pushSupported();
+    setCanPush(supported);
     const here = supported && followedHere().includes(slug);
     if (!supported) setState("unsupported");
     else setState(here ? "on" : "off");

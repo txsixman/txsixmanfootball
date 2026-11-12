@@ -7,6 +7,10 @@ import { expect, test, type Page } from "@playwright/test";
 // The browser-side tests answer /api/me with a stub, so they run either way. No Supabase project is configured here, so
 // every real call to the account routes answers as "signed out".
 const ON = process.env.FAN_SIGNIN === "on";
+// The production build (CI) registers the site's service worker, which would fetch /api itself, past page.route. Block
+// it, so every stub below sees every request.
+test.use({ serviceWorkers: "block" });
+
 const me = (answer: { displayName: string | null; follows: string[]; admin?: boolean } | null) => ({ enabled: true, me: answer });
 
 const axe = (page: Page) => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
@@ -147,7 +151,7 @@ const fakePush = (page: Page) =>
       unsubscribe: async () => ((sub = null), true),
     };
     Object.defineProperty(navigator, "serviceWorker", {
-      value: { ready: Promise.resolve({ pushManager: { getSubscription: async () => sub, subscribe: async () => (sub = fake) } }) },
+      value: { register: async () => ({}), ready: Promise.resolve({ pushManager: { getSubscription: async () => sub, subscribe: async () => (sub = fake) } }) },
     });
     Object.defineProperty(window, "Notification", { value: { permission: "granted", requestPermission: async () => "granted" } });
   });
@@ -222,7 +226,7 @@ test("signed in, the header shows the display name and the Follow button follows
 
 test("signed in with no push support, Follow still follows on the account", async ({ page }) => {
   const writes: unknown[] = [];
-  await page.addInitScript(() => Object.defineProperty(navigator, "serviceWorker", { value: undefined, configurable: true }));
+  await page.addInitScript(() => delete (window as unknown as { PushManager?: unknown }).PushManager); // no push alerts here
   await page.route("**/api/me", (route) => route.fulfill({ json: me({ displayName: "Bobcat Fan", follows: [] }) }));
   await page.route("**/api/follows", (route) => {
     writes.push(route.request().postDataJSON());
