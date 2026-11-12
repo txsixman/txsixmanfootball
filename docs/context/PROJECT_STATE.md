@@ -109,8 +109,8 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 1. Past UIL alignments (2024-26 first): UIL's robots.txt disallows `/files/`, where the PDFs live, so a robot may not
    fetch them. Needs the owner to download the 2024-26 six-man PDFs by hand. Loader and reader plumbing waits, unmerged, on
    branch `worktree-agent-a5da57ea8cad69af1` (e1417b1); `app/rankings/view.tsx` must stop throwing on unknown teams first
-2. Check the first scheduled `Results watch` run (Fri Nov 13, 6:23 AM Central), its rerate (now with `was`) and the
-   Supabase load after it
+2. Check the first scheduled `Results watch` run in this repo (Fri Nov 13, 11:23 UTC, 5:23 AM CST): data-private
+   commit first, then this repo's, its rerate (now with `was`), alerts and the Supabase load after it
 3. Watch UIL region chances appear once area games are listed (around Nov 20) and round names as the playoffs advance
 4. Open the site to search engines once step 2's run is clean (the owner, Nov 11: before the regional rounds, so it is
    indexed for the playoffs and the December finals): drop `robots` in `app/layout.tsx`, the disallow in
@@ -122,9 +122,9 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 - **Remote:** public repo `txsixman/txsixmanfootball`; commits as `TX Six-Man Football <contact@txsixmanfootball.com>`.
   Push with `GH_TOKEN="$(gh auth token)" git push`. Supabase is reached with `pg`. Raw captures: private
   `txsixman/data-private` (ADR 0017); set `PRIVATE_DATA` to a checkout of it to rate or load exactly as main does.
-- **Cut-over** (Fri Nov 13 night if the dispatch proofs pass by ~3 PM Central, else Sat Nov 14): set the repo variable
-  `LIVE` to `true` here, disable the old repo's schedules, point Vercel at this repo. Until `LIVE`, no schedule, alert,
-  hosted-database load or ratings-table commit runs here. Open PRs from the old repo are re-created here after.
+- **Cut-over done Thu Nov 12, 2026 (evening):** the old private repo's Results watch, League watch and Supabase
+  workflows are disabled, `LIVE` is `true` here, and Vercel builds from this repo. Proofs before it: CI, League watch,
+  Results watch (data-private commit, then this repo's) and the ratings table, all by hand. The old repo is history.
 - **Never read SixManFootball.com** (robots.txt blocks Claude; partnership hard lines). Build from first principles.
 - **Accepted risks (ADRs 0008, 0014):** MaxPreps terms of use; the domain's closeness to the incumbent's name; no
   attorney review. Optional: reset the Supabase password (it appeared in a transcript), then Keychain and the secret
