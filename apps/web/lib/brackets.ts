@@ -1,4 +1,7 @@
-import { loadAlignments } from "./alignments";
+import { heading, loadAlignments, type Alignment } from "./alignments";
+import { memo } from "./memo";
+import { pairsOf, type Pair } from "./playoff-path";
+import { slugify } from "./slug";
 import { loadPlayoffGames, playoffLeagueSet, ROUNDS, type PlayoffGame } from "./games";
 import { project, type Projection } from "./projection";
 import { loadRatings, ratingSeasons } from "./ratings";
@@ -12,8 +15,14 @@ import { CURRENT_SEASON } from "./season";
 
 export type BracketRow = PlayoffGame & { projection?: Projection };
 type BracketRound = { round: string; label: string; games: BracketRow[] };
-/** `chances`: state title chances (the last four, or a template plus every region settled). `regionChances`: UIL region titles. */
-export type Bracket = { name: string; league: string; rounds: BracketRound[]; chances?: Chance[]; regionChances?: RegionChances[] };
+/** `chances`: state title chances (the last four, or a template plus every region settled). `regionChances`: UIL region titles.
+ * `pairs`: games whose winners meet next, so the next pairing is known (lib/playoff-path.ts). */
+export type Bracket = { name: string; league: string; rounds: BracketRound[]; pairs: Pair[]; chances?: Chance[]; regionChances?: RegionChances[] };
+
+/** A bracket's own page (/playoffs/bracket/<slug>), and its name without the league ("Division II Large School"; a league's one bracket keeps the league). */
+export const bracketSlug = (name: string) => slugify(name);
+export const bracketHref = (name: string) => `/playoffs/bracket/${bracketSlug(name)}`;
+export const bracketLabel = (b: Pick<Bracket, "name" | "league">) => b.name.slice(b.league.length).trim() || b.league;
 
 /** League tabs, in page order: UIL first, then the private leagues. */
 export const LEAGUES = ["UIL", "TAPPS", "TAIAO", "TCAF"] as const;
@@ -51,7 +60,15 @@ function ordered(rounds: BracketRound[]): BracketRound[] {
   return rounds;
 }
 
-export async function loadBrackets(season = CURRENT_SEASON): Promise<Bracket[]> {
+/** Each team's region in a UIL bracket, from the alignments: where an area game stays inside one region. Other leagues have none (ADR 0012). */
+const regionLookup = (alignments: Alignment[], league: string, name: string) => {
+  const region = new Map(alignments.filter((a) => a.league === league && league === "UIL" && heading(a) === name).map((a) => [a.school, a.region]));
+  return (team: string) => region.get(team);
+};
+
+/** Read once per season per build worker: every program page asks for its bracket path. Never mutate what it returns. */
+export const loadBrackets = (season = CURRENT_SEASON): Promise<Bracket[]> => bracketsOf(season);
+const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
   const [alignments, ratings, template] = await Promise.all([loadAlignments(), loadRatings(season), loadBracketTemplate()]);
   const games = await loadPlayoffGames(alignments, season);
   const brackets = [...Map.groupBy(games, (g) => g.bracket)].map(([name, list]): Bracket => {
@@ -66,11 +83,11 @@ export async function loadBrackets(season = CURRENT_SEASON): Promise<Bracket[]> 
     const found = bracketTitleChances(ratings, alignments, template, name, list);
     const chances = found.state?.chances;
     return {
-      name, league, rounds: ordered(rounds),
+      name, league, rounds: ordered(rounds), pairs: pairsOf(rounds, regionLookup(alignments, league, name)),
       ...(chances ? { chances } : {}),
       ...(found.regions.length ? { regionChances: found.regions } : {}),
     };
   });
   const order = (b: Bracket) => LEAGUES.indexOf(b.league as (typeof LEAGUES)[number]);
   return brackets.sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
-}
+});

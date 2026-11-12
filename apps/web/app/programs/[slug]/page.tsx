@@ -20,6 +20,7 @@ import { loadGames, loadSeasonResults, playoffReach, roundPhrase } from "@/lib/g
 import { fromResult, seasonRows, type Row } from "@/lib/program-games";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest } from "../crest";
+import { PathToFinal } from "../path-to-final";
 import { Follow } from "../follow";
 import { ShareButton } from "../../share-button";
 import { RatingChart, ratingPoints } from "../rating-chart";
@@ -316,6 +317,9 @@ export default async function ProgramPage({ params }: Props) {
 
         <Follow slug={slug} school={school.school} />
         <ShareButton title={`${school.school} | Project 80x40`} className="mt-4 px-3" />
+
+        {/* A team in this season's playoff bracket: its path, round by round, before the full schedule. */}
+        <PathToFinal school={school.school} accent={accent} />
 
         {/* This season's games lead, right after the next and latest game: a fan mid-season wants the schedule before six seasons of history. */}
         <Section id="games" title={`${CURRENT_SEASON} games`} accent={accent} className="mt-4">

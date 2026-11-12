@@ -1,5 +1,6 @@
 import type { Game } from "./demo-games";
 import type { SeasonResult } from "./games";
+import { isForfeit } from "./score-display";
 
 /** One game of a school's season: a robot-read result or a playoff game, each with its own page (a playoff game also has a projection until played). */
 export type Row = { id: string; date: string; status: string; home: boolean; opponent: string; score: string | null; note?: string; href: string };
@@ -46,7 +47,7 @@ export function seasonRows(school: string, allGames: Game[], seasonResults: Seas
         status: g.date ? dateLabel(g.date) : g.status,
         home,
         opponent: (home ? g.away : g.home).name,
-        score: us == null ? null : `${us}-${them}`,
+        score: us == null ? null : isForfeit(g) ? "Forfeit" : `${us}-${them}`, // a forfeit shows the word, never 1-0 (ADR 0004)
         note: g.state === "scheduled" && g.projected ? `Projected: ${g.projected}` : g.league,
         href: `/scores/${g.id}`,
       };
