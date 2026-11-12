@@ -16,7 +16,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const b = (await loadBrackets()).find((x) => bracketSlug(x.name) === slug);
-  return { title: `${b?.name ?? "Bracket"} playoff bracket | Project 80x40` };
+  return { title: `${b?.name ?? "Bracket"} playoff bracket` };
 }
 
 export default async function BracketPage({ params }: Props) {
