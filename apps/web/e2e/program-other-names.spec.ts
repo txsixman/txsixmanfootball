@@ -23,7 +23,7 @@ test("otherNames: mergers with their year and finals, UIL spellings with the yea
   const finals = [final(1972, "O'Brien", "Jarrell"), final(1983, "Roscoe Highland", "Mozelle"), final(1997, "Borden County", "Valera Panther Creek"), final(2008, "Borden County", "Woodson")];
   expect(otherNames("knox-city", lineage, aliases)).toEqual([{ name: "O'Brien", note: "merged into this program in 1976" }]);
   expect(otherNames("knox-city", lineage, aliases, { finals })).toEqual([{ name: "O'Brien", note: "merged into this program in 1976, state finals 1972" }]);
-  expect(otherNames("borden-county", lineage, aliases, { finals })).toEqual([{ name: "Gail Borden County", note: "in state finals 1997 to 2008" }]);
+  expect(otherNames("borden-county", lineage, aliases, { finals })).toEqual([{ name: "Gail Borden County", note: "in state final records between 1997 and 2008" }]);
   expect(otherNames("borden-county", lineage, aliases)).toEqual([{ name: "Gail Borden County", note: "in state finals" }]);
   expect(otherNames("valera-panther-creek", lineage, aliases, { finals }).map((n) => `${n.name}: ${n.note}`)).toEqual([
     "Mozelle: merged into this program in 1986, state finals 1983",
@@ -55,7 +55,7 @@ test("a merged-in school shows on its program's page, with its merger year and t
 test("a UIL spelling shows on its program's page with the years of the school's finals", async ({ page }) => {
   await page.goto("/programs/borden-county");
   const section = page.getByRole("region", { name: "Other names" });
-  await expect(section).toContainText(/Gail Borden County.*in state finals 1997 to 20\d\d/s);
+  await expect(section).toContainText(/Gail Borden County.*in state final records between 1997 and 20\d\d/s);
   await page.goto("/programs/valera-panther-creek");
   const valera = page.getByRole("region", { name: "Other names" });
   await expect(valera).toContainText(/Mozelle.*merged into this program in 1986, state finals 1983/s);

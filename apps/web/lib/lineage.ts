@@ -39,6 +39,9 @@ export type OtherName = { name: string; note: string; /** The program page to li
 
 type FinalYears = { season: number; champion: string; runnerUp: string }[];
 
+/** A spelling's years are its school's finals, a bound: one final is exact, a span says "between" (it shows in some). */
+const spellingNote = (span: string) => (span.includes(" to ") ? `in state final records between ${span.replace(" to ", " and ")}` : `in state finals${span && ` ${span}`}`);
+
 /** "1983", "1997 to 2017", or "" when the name has no state final: the seasons a name appears in the finals. */
 const finalsSpan = (finals: FinalYears, name: string) => {
   const years = finals.filter((f) => slugify(f.champion) === slugify(name) || slugify(f.runnerUp) === slugify(name)).map((f) => f.season);
@@ -76,7 +79,7 @@ export function otherNames(
     .map((l) => ({ name: l.successor, note: `${l.event === "consolidation" ? "this school merged into it" : l.event} in ${l.season}`, ...link(l.successor) }));
   const spellings = Object.entries(aliases)
     .filter(([, current]) => slugify(successors.get(slugify(current)) ?? current) === slug)
-    .map(([spelling, current]) => ({ name: spelling, note: `in state finals${years(current) && ` ${years(current)}`}` }));
+    .map(([spelling, current]) => ({ name: spelling, note: spellingNote(years(current)) }));
   // A name the game files spell for this program (data/corrections/programs.csv, merged by the admin console).
   const spelled = [...merges].filter(([, program]) => slugify(program) === slug).map(([name]) => ({ name, note: "as written in game results" }));
   return [...merged, ...became, ...spellings, ...spelled];
