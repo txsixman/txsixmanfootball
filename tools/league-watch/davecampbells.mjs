@@ -564,9 +564,15 @@ export function asOf(slug, season, renamed) {
  */
 export function programByName(schoolName, slugs, theirSlug = "") {
   const name = slugify(String(schoolName ?? ""));
-  const hits = [...slugs].filter((s) => sameSchool(schoolName, s) && (!s.startsWith(`${name}-`) || `-${theirSlug ?? ""}-`.includes(`-${s.slice(name.length + 1)}-`)));
+  const theirs = new Set(String(theirSlug ?? "").split("-"));
+  // The words our slug adds, less the ones that name a kind of school rather than a place.
+  const town = (s) => (s.startsWith(`${name}-`) ? s.slice(name.length + 1).split("-").filter((w) => !SCHOOL_WORDS.has(w)) : []);
+  const hits = [...slugs].filter((s) => sameSchool(schoolName, s) && town(s).every((w) => theirs.has(w)));
   return hits.length === 1 ? hits[0] : null;
 }
+
+/** Words our program slugs add to a school's name that say what kind of school it is, not where. */
+const SCHOOL_WORDS = new Set(["school", "schools", "high", "hs", "academy", "charter", "christian", "classical", "prep", "preparatory", "the", "of", "and", "isd", "cisd"]);
 
 const flag = (b) => (b === true ? "true" : "false");
 const cell = (n) => (score(n) === null ? "" : String(n));

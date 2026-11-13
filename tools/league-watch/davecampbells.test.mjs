@@ -418,6 +418,8 @@ test("a same-named school in another town is not ours: our slug's town must be i
   assert.equal(programByName("Community Christian", ours, "orange-community-christian-lions"), null);
   assert.equal(programByName("Community Christian", ours, "mineral-wells-community-christian-warriors"), "community-christian-mineral-wells");
   assert.equal(programByName("Wren", ours, "wren-wrens"), "wren");
+  // Words that say what kind of school, not where, need not be in the feed's slug.
+  assert.equal(programByName("Finch Charter", new Set(["finch-charter-school", "wren"]), "finch-charter-falcons"), "finch-charter-school");
 });
 
 test("a forfeit keeps its side's flag; one naming no side is not written", () => {
