@@ -127,3 +127,17 @@ test("a season hub: games read, the organizations, and what the page holds; past
   assert.equal(clean(d.seasonsIndexDescription({ first: 2021, latest: 2026 })), "Every Texas six-man football season on this site, 2021 to 2026. Each season's state finals, rankings, team leaders and week-by-week results.");
   assert.equal(clean(d.seasonsIndexDescription({})), "Every Texas six-man football season on this site. Each season's state finals, rankings, team leaders and week-by-week results.");
 });
+
+test("a program's season: record and rank, the round it reached, what the page lists; no score and no winner; it fits with a long name", () => {
+  const facts = { name: "Jayton", season: 2024, games: 15, record: "13-2", rank: { place: 2, org: "UIL" }, playoff: "the state final" };
+  assert.equal(
+    clean(d.programSeasonDescription(facts)),
+    "Jayton 2024 six-man football: 13-2, 2nd in UIL. Playoffs: reached the state final. Every game, with its date, opponent and a projected margin.",
+  );
+  assert.equal(clean(d.programSeasonDescription({ ...facts, rank: undefined, playoff: undefined })), "Jayton 2024 six-man football: 13-2. Every game, with its date, opponent and a projected margin.");
+  assert.equal(clean(d.programSeasonDescription({ name: "Dell City", season: 2022, games: 1 })), "Dell City 2022 six-man football: 1 game. Every game, with its date, opponent and a projected margin.");
+  const long = clean(d.programSeasonDescription({ ...facts, name: LONG }));
+  assert.ok(long.startsWith(LONG), long);
+  assert.doesNotMatch(long, /…/);
+  assert.doesNotMatch(d.programSeasonDescription(facts), /\b(won|beat|winner)\b|\d\s*[-–]\s*\d\d/);
+});

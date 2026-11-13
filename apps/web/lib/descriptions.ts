@@ -170,6 +170,29 @@ export function programDescription({ name, group, place, season, since, titles, 
   );
 }
 
+type ProgramSeasonFacts = {
+  name: string;
+  season: number;
+  /** Games read for the school that season. */
+  games: number;
+  /** The season's record ("12-2"), counting playoffs; absent when the data has none. */
+  record?: string;
+  /** Its place among its organization's teams: "UIL" with place 3; absent for a team with too few games to be ranked. */
+  rank?: { place: number; org: string };
+  /** The last playoff round it played, as a phrase: "the state final". */
+  playoff?: string;
+};
+
+/** A program's page for one season: the record and rank, the playoff round it reached and what the page lists. No score and no winner. */
+export function programSeasonDescription({ name, season, games, record, rank, playoff }: ProgramSeasonFacts) {
+  const lead = record ? `${name} ${season} six-man football: ${record}${rank ? `, ${ordinal(rank.place)} in ${rank.org}` : ""}.` : `${name} ${season} six-man football: ${count(games, "game")}.`;
+  return fit(
+    [lead, `${name} ${season} six-man football.`],
+    playoff ? `Playoffs: reached ${playoff}.` : "",
+    ["Every game, with its date, opponent and a projected margin.", "Every game, with its date and opponent.", "Every game of the season."],
+  );
+}
+
 type GameFacts = {
   away: string;
   home: string;

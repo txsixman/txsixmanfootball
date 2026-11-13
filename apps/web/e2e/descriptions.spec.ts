@@ -44,6 +44,8 @@ test("every kind of page has its own short description, with no betting word, so
     ["weeks", "/weeks"],
     ["program", "/programs/jayton"],
     ["program, another", first(/^\/programs\/(?!jayton$)[^/]+$/)],
+    ["program season", "/programs/jayton/2025"],
+    ["program season, another", first(/^\/programs\/(?!jayton\/)[^/]+\/2025$/)],
     ["game, regular season", first(/^\/scores\/2026-\d\d-\d\d-/)],
     ["game, playoffs", first(/^\/scores\/2026-(bi-district|area|quarterfinal|regional|semifinal|final)-/)],
     ["game, past season", first(/^\/scores\/2025-\d\d-\d\d-/)],

@@ -22,11 +22,11 @@ import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
 import { seasonRows, type Row } from "@/lib/program-games";
 import { embedSnippet } from "@/lib/embed-html";
 import { ratingSeries, type Rivalry } from "@/lib/program-history";
-import { programHistory } from "@/lib/program-seasons";
+import { programHistory, programSeasonPages } from "@/lib/program-seasons";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
-import { Crest } from "../crest";
+import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../crest";
 import { PathToFinal } from "../path-to-final";
 import { Follow } from "../follow";
 import { Breadcrumbs } from "../../breadcrumbs";
@@ -68,8 +68,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const NAVY = "#0a2a5e";
-/** The widest logo the header crest draws; a wider one gets the badge, and the markup names a logo only when the page shows one. */
-const CREST_MAX_ASPECT = 4.8;
 
 /** A section: the site's navy heading band, with a stripe in one of the school's own colors down its left edge. */
 function Section({ id, title, accent, children, className = "mt-7" }: { id: string; title: string; accent: string; children: ReactNode; className?: string }) {
@@ -161,6 +159,8 @@ export default async function ProgramPage({ params }: Props) {
   // season's table (lib/program-seasons.ts); a season with nothing on record keeps its row, with dashes.
   const seasons = await ratingSeasons();
   const { entries, opponents } = await programHistory(school, seasons);
+  // The seasons with a page of their own (lib/program-seasons.ts): each season's row links to it.
+  const seasonPages = new Set((await programSeasonPages()).get(slug));
   // The opponents this program has a series page with (lib/series-data.ts): their games count links to it.
   const partners = (await seriesPartners()).get(slug);
   const current = await loadRatings(seasons[0]);
@@ -177,8 +177,6 @@ export default async function ProgramPage({ params }: Props) {
   const rivals = opponents.filter((o) => o.games >= 3).slice(0, 6);
   const ratingLine = ratingSeries(entries.map((e) => e.line));
   const group = school.district === "0" ? "Division" : /^\d+$/.test(school.district) ? "District" : school.district;
-  // A wide wordmark is drawn smaller, so it never fills the band; the logo itself is untouched (ADR 0006).
-  const crestSize = identity.logo && identity.logo.aspect > 2 ? Math.max(49, Math.min(72, Math.floor(260 / identity.logo.aspect))) : 72;
 
   /** A game row: date, opponent (and a projection or round), score. Every game links to its page: the score is the link,
    * stretched over the row, and the opponent's name stays its own link above it. */
@@ -262,10 +260,10 @@ export default async function ProgramPage({ params }: Props) {
       {/* data-pagefind-body: this page is in the site search (app/search). */}
       <article data-pagefind-body aria-labelledby="school" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
         <Breadcrumbs trail={[{ name: "Home", href: "/" }, { name: "Programs", href: "/programs" }, { name: school.school, href: `/programs/${slug}` }]} />
-        <JsonLd data={programJsonLd({ name: school.school, slug, league: school.league === "Independent" ? undefined : school.league, logo: identity.logo && identity.logo.aspect <= CREST_MAX_ASPECT ? identity.logo.src : undefined })} />
+        <JsonLd data={programJsonLd({ name: school.school, slug, league: school.league === "Independent" ? undefined : school.league, logo: identity.logo && identity.logo.aspect <= HEADER_CREST_MAX_ASPECT ? identity.logo.src : undefined })} />
         <header className="px-3 pb-3 pt-5" style={{ background: theme.bg, color: theme.fg, borderBottom: `6px solid ${theme.stripe ?? theme.bg}` }}>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <Crest school={school.school} identity={identity} size={crestSize} maxAspect={CREST_MAX_ASPECT} />
+            <Crest school={school.school} identity={identity} size={headerCrestSize(identity)} maxAspect={HEADER_CREST_MAX_ASPECT} />
             <div className="min-w-0">
               <p className="text-[12px] font-bold uppercase tracking-widest">
                 {[...new Set([heading(school), placeLabel(school)])].join(" · ")}
@@ -529,6 +527,15 @@ export default async function ProgramPage({ params }: Props) {
                     </span>
                     {line.playoff && (
                       <span className="block text-[14px] font-semibold text-navy">Playoffs: reached {roundPhrase(line.playoff.round, line.playoff.league)}</span>
+                    )}
+                    {seasonPages.has(line.season) && (
+                      <Link
+                        href={`/programs/${slug}/${line.season}`}
+                        prefetch={false}
+                        className="flex min-h-11 items-center text-[14px] font-semibold text-navy underline underline-offset-2"
+                      >
+                        {line.season} season page
+                      </Link>
                     )}
                   </span>
                   <span className="text-right">

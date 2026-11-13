@@ -482,7 +482,8 @@ test("a program page lists each season: record, place and the last playoff round
   expect(await rivals.count()).toBeGreaterThan(0);
   await expect(rivals.first()).toContainText(/\d+ games · last 20\d\d, \d+-\d+/);
   await expect(last).toContainText(/#\d+ of \d+ in UIL/);
-  await expect(last.getByRole("link")).toHaveAttribute("href", "/rankings/season/2025");
+  await expect(last.getByRole("link", { name: "2025 rankings" })).toHaveAttribute("href", "/rankings/season/2025");
+  await expect(last.getByRole("link", { name: "2025 season page" })).toHaveAttribute("href", "/programs/gordon/2025");
   await expect(seasons.getByRole("link", { name: "2026 rankings" })).toHaveAttribute("href", "/rankings");
   await seasons.getByText(/^2025 games \(\d+\)$/).click();
   await expect(seasons.getByText(/vs Rankin|at Rankin/)).toBeVisible();

@@ -71,3 +71,7 @@ export function seasonLine(input: {
 /** Each season's final rating, oldest first, null where the school had none: the chart breaks its line there. */
 export const ratingSeries = (lines: SeasonLine[]) =>
   [...lines].sort((a, b) => a.season - b.season).map((l) => ({ season: l.season, rating: l.rating }));
+
+/** The seasons (newest first) in which `school` has at least one game, from the team names each season's results hold. A program's season page exists for exactly these. */
+export const seasonsWithGames = (school: string, teamsBySeason: ReadonlyMap<number, ReadonlySet<string>>): number[] =>
+  [...teamsBySeason].filter(([, teams]) => teams.has(school)).map(([season]) => season).sort((a, b) => b - a);

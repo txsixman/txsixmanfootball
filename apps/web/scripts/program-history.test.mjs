@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { lineChart, niceTicks } from "../lib/line-chart.ts";
-import { opponentRecords, ratingSeries, seasonLine, tally } from "../lib/program-history.ts";
+import { opponentRecords, ratingSeries, seasonLine, seasonsWithGames, tally } from "../lib/program-history.ts";
 
 const meet = (opponent, date, us, them, forfeit = false) => ({ opponent, date, us, them, forfeit });
 
@@ -82,4 +82,15 @@ test("the history is drawn on the server: no client component in the page, the l
   for (const file of ["../app/programs/season-ratings.tsx", "../app/programs/[slug]/page.tsx", "../lib/program-seasons.ts"]) {
     assert.doesNotMatch(readFileSync(new URL(file, import.meta.url), "utf8"), /^\s*["']use client["']/m, file);
   }
+});
+
+test("seasonsWithGames: the seasons a school has a game in, newest first; none for a school with no game", () => {
+  const teams = new Map([
+    [2021, new Set(["Jayton", "Roby"])],
+    [2023, new Set(["Roby"])],
+    [2025, new Set(["Jayton"])],
+  ]);
+  assert.deepEqual(seasonsWithGames("Jayton", teams), [2025, 2021]);
+  assert.deepEqual(seasonsWithGames("Roby", teams), [2023, 2021]);
+  assert.deepEqual(seasonsWithGames("Dell City", teams), []);
 });

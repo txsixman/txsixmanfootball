@@ -38,7 +38,13 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   the bracket game's page (`<season>-<round>-<away>-at-<home>`) and its result's `href` points there, never a second page.
   Teams (crest, program link), score (a forfeit shows the word), unconfirmed, the week-before projection and how far the
   result was from it, each team's record (and rating, with a projection) going in, earlier meetings 2021 on (each its own
-  page), Share. Results rows, program schedules, "Why the rating moved", Records and a ranking's best win and worst loss link to it
+  page), Share. Results rows, program schedules, "Why the rating moved", Records and a ranking's best win and worst loss link to it.
+  Each title carries the date ("Away at Home, Nov 13, 2026"), so the same pair's meetings never share a title; a pair
+  with a series page gets "Every <away> and <home> game since 2021"; this season's games have their own share card
+  (`app/scores/[id]/card/route.tsx`, a route handler with its own static params), a past season's game the site's card
+- **Getting found** (live since Nov 13): open to search engines (robots, a sitemap of the public pages with no sample
+  games, `app/sitemap.ts`), canonical links, breadcrumbs, structured data (`lib/json-ld.ts`), a meta description per page
+  (below), and a 404 and an error page of the site's own (noindex, a plain search form, the main sections)
 - **Playoffs** `/playoffs` (UIL), `/playoffs/tapps`, `/taiao`, `/tcaf`: each 2026 bracket round by round
   (`lib/brackets.ts`), earlier games in the order of the later games they feed, projections for unplayed games; no
   winner named. Title chances (`lib/title-chances.ts`): UIL region chances once a region's bracket closes (data only, no
@@ -62,6 +68,7 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   organization or UIL division): colors and logo (ADR 0006), rank, district
   place, a rank-by-week line (`trend.tsx`), a rating-by-week chart (Observable Plot, drawn at build time), most-played opponents with the record against each, season by season (all-time record and playoff trips; per season record, place, last playoff round), season scores with opponent links, playoff projections,
   state championships (merged schools' too, via lineage), other names (merged schools and state-final spellings, `otherNames` in `lib/lineage.ts`) Also rank range, rating give-or-take, a Record and schedule section (record strength, opponents' rating, best win, worst loss; forfeits left out, a forfeit loss can be the worst loss and shows as "Forfeit") and Why the rating moved (each week's biggest miss against the projection, `lib/why-moved.ts`).
+- **Program seasons** `/programs/<slug>/<season>` (1,522 pages: every program and season from 2021 with at least one game read, so "Jayton football 2024" has its own page): the school's crest and organization, the season's record (playoffs counted, a forfeit a win or a loss, ADR 0013), its rank within its own organization and final rating (the program page's season row, `programSeason` in `lib/program-seasons.ts`), the last playoff round played, and every game oldest first with its round, the ratings' projection from the week before (`lib/pregame.ts`), a forfeit as the word, no winner named (ADR 0004), a link to its game page, to the opponent's season page (else its program page) and to the pair's series page. Each program page's season row links to it; the sitemap lists it; it inherits the program's share card, adds no client script and is left out of the site search (the program page stays the one entry)
 - **Records** `/records` (UIL), `/records/<org>`: most points in a game, most by both teams, biggest upsets (week-before ratings), longest winning runs, unbeaten seasons (2021 on)
 - **Series** `/series/<a>/<b>` (slugs in alphabetical order; the reversed address is a 404): one page per pair of current programs that met 3 or more times since 2021 (965 pairs; a pair of two organizations is fine, ranks never shown). Both crests, the record from the first-named side (a forfeit counts, ADR 0013), every meeting newest first with its round and game page (a forfeit shows the word), UIL finals between them, and a projection if they met now (rating, projected margin, win probability; links to Matchup). `lib/series.ts` holds the rules; program pages link their games count to it, and the sitemap lists it. No client script, no share card
 - **Seasons** `/seasons` (every season with games, newest first) and `/seasons/<year>` (2021 to the current season, one static page each; `lib/season-hub.ts`, `app/seasons/`): games read and programs that played, the UIL state finals that year (champion, runner-up, score, from UIL's archive; the current season says the finals are in December), then each organization on its own (ADR 0012): its top five by rating (final for a past season), top three for points per game and for fewest allowed per game (teams with 6+ played games, forfeits left out entirely, `lib/season-leaders.ts`; scores unconfirmed, so the page says so), and links to its rankings, results, playoffs, week in review and records; then every results week and week in review of the season. The season under way links the bare addresses (`/results`, `/rankings`, `/playoffs`). Linked from the footer only (not the header nav); in the sitemap
@@ -118,20 +125,27 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   `docs/licenses.md` (web-push is MPL-2.0, used unmodified and only in GitHub Actions)
 
 ## In progress
-- Round 7 (My teams, Share, Sherman Grayson as one program in TAIAO and TCAF, Friday readiness tests for the CenTex
-  alias and the Independent tab) on its PR. Logo round (ADR 0016, all 279 logos) building in a worktree
+- Program season pages (Round N) on their PR.
+- Landed Nov 12 to 13: go-public (search engines), Round A (JSON-LD, share cards, canonical links, breadcrumbs), Rounds F,
+  G and H (embeddable scoreboard, sitemap, 404 page), J (descriptions), K (series pages), L (game pages link the series),
+  M (dated game titles), the game-day clock (ADR 0024), and a second live-score source (ADR 0025, read with its owner's
+  written permission, which the owner confirmed Nov 13; `tools/league-watch/davecampbells.mjs`, on since Nov 13 by the
+  repo variable `SECOND_LIVE`, 9 of 28 bracket games matched in its first check). Check its first night's summary lines.
 
 ## Next three steps
 1. Past UIL alignments (2024-26 first): UIL's robots.txt disallows `/files/`, where the PDFs live, so a robot may not
    fetch them. Needs the owner to download the 2024-26 six-man PDFs by hand. Loader and reader plumbing waits, unmerged, on
    branch `worktree-agent-a5da57ea8cad69af1` (e1417b1); `app/rankings/view.tsx` must stop throwing on unknown teams first
-2. Check the first scheduled `Results watch` run in this repo (Fri Nov 13, 11:23 UTC, 5:23 AM CST): data-private
-   commit first, then this repo's, its rerate (now with `was`), alerts and the Supabase load after it
+2. Game-night reads: GitHub's `schedule` never fires in this repo, so reads come only by dispatch: a loop on the
+   owner's Mac (`gh workflow run results-watch.yml -f tonight=true` every 10 minutes) and the game-day clock
+   (`gameday-clock.yml`, ADR 0024, started by hand each season). Check tonight's runs: finals commit (data-private
+   first), live rows reach `live_score`, and the first in-progress summary sets `PERIOD_INDEX` in `maxpreps.mjs`
 3. Watch UIL region chances appear once area games are listed (around Nov 20) and round names as the playoffs advance
 
 ## Blockers and open items
 - **Remote:** public repo `txsixman/txsixmanfootball`; commits as `TX Six-Man Football <contact@txsixmanfootball.com>`.
-  Push with `GH_TOKEN="$(gh auth token)" git push`. Supabase is reached with `pg`. Raw captures: private
+  Work goes on a branch with a draft PR; a PR lands only by a fast-forward push of its green head (`git push origin
+  <sha>:main`), never `gh pr merge`, a rebase or a force-push. Supabase is reached with `pg`. Raw captures: private
   `txsixman/data-private` (ADR 0017); set `PRIVATE_DATA` to a checkout of it to rate or load exactly as main does.
 - **Cut-over done Thu Nov 12, 2026 (evening):** the old private repo's Results watch, League watch and Supabase
   workflows are disabled, `LIVE` is `true` here, and Vercel builds from this repo. Proofs before it: CI, League watch,

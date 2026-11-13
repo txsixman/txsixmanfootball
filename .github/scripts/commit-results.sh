@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Results watch's commit (results-watch.yml): this read's captures to the private data repo first, then the facts
 # published from them and rerated to this repo, each on its newest main, with retries. Run from this repo's root, the
-# private repo checked out at ./private, after the MaxPreps read wrote its captures there.
+# private repo checked out at ./private, after the MaxPreps read wrote its captures there. The finals cross-check's report
+# (ADR 0026), when a run wrote one, is the private repo's `davecampbells-<season>/` and goes in the same private commit;
+# it never reaches this repo.
 #
 #   .github/scripts/commit-results.sh <season>
 #
@@ -14,12 +16,15 @@ set -euo pipefail
 
 year="${1:?usage: commit-results.sh <season>}"
 dir="maxpreps-$year"
+# The private folders this run wrote: the reader's captures, and the finals cross-check's report when there is one.
+private_dirs=("$dir")
+[ ! -d "private/davecampbells-$year" ] || private_dirs+=("davecampbells-$year")
 summary="${GITHUB_STEP_SUMMARY:-/dev/null}"
 output="${GITHUB_OUTPUT:-/dev/null}"
 read="${RUNNER_TEMP:?RUNNER_TEMP is needed}/read"
 
-rm -rf "$read"
-cp -r "private/$dir" "$read"
+rm -rf "$read" && mkdir -p "$read"
+for d in "${private_dirs[@]}"; do cp -r "private/$d" "$read/$d"; done
 for repo in private .; do
   git -C "$repo" config user.name "github-actions[bot]"
   git -C "$repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -31,8 +36,8 @@ for try in 1 2 3 4; do
   [ "$try" -le 3 ] || exit 1
   git -C private fetch -q origin main
   git -C private reset -q --hard origin/main
-  rm -rf "private/$dir" && cp -r "$read" "private/$dir"
-  if [ -z "$(git -C private status --porcelain -- "$dir")" ]; then
+  for d in "${private_dirs[@]}"; do rm -rf "private/${d:?}" && cp -r "$read/$d" "private/$d"; done
+  if [ -z "$(git -C private status --porcelain -- "${private_dirs[@]}")" ]; then
     echo "Private repo: no new captures." >> "$summary"
     break
   fi
@@ -40,7 +45,7 @@ for try in 1 2 3 4; do
     echo "Private repo: new captures, not pushed (not live, no \`write\` input)." >> "$summary"
     break
   fi
-  git -C private add "$dir"
+  git -C private add -- "${private_dirs[@]}"
   git -C private commit -q -m "$message"
   git -C private push -q origin HEAD:main && break
   echo "data-private main moved; try $try again"

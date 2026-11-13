@@ -20,10 +20,11 @@ const hasLogoInSlot = (slug: string) => {
 };
 const slugify = (name: string) => name.toLowerCase().replace(/'/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-/** For each link to a program page in a list item, whether its crest is a logo image or a badge. */
+/** For each link to a program page in a list item, whether its crest is a logo image or a badge. A program's own season
+ * pages (/programs/<slug>/<season>) are not program pages: a season row's link to one carries no crest. */
 async function crestsOf(page: Page) {
   return page.evaluate(() =>
-    [...document.querySelectorAll<HTMLAnchorElement>("main li a[href^='/programs/']")].map((a) => {
+    [...document.querySelectorAll<HTMLAnchorElement>("main li a[href^='/programs/']")].filter((a) => /^\/programs\/[^/]+$/.test(a.getAttribute("href")!)).map((a) => {
       // The crest is inside the link, or beside it in the nearest row (a span.flex) that has one.
       let scope: Element = a;
       while (!scope.querySelector("img, span[aria-hidden='true']") && scope.parentElement && scope.tagName !== "LI") scope = scope.parentElement;

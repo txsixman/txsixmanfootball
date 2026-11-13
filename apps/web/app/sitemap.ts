@@ -4,6 +4,7 @@ import { generateStaticParams as playoffLeagues } from "./playoffs/[league]/page
 import { generateStaticParams as playoffSeasons } from "./playoffs/season/[season]/page";
 import { generateStaticParams as playoffSeasonLeagues } from "./playoffs/season/[season]/[league]/page";
 import { generateStaticParams as programs } from "./programs/[slug]/page";
+import { generateStaticParams as programSeasons } from "./programs/[slug]/[season]/page";
 import { generateStaticParams as rankingViews } from "./rankings/[division]/page";
 import { generateStaticParams as rankingSeasons } from "./rankings/season/[season]/page";
 import { generateStaticParams as rankingSeasonOrgs } from "./rankings/season/[season]/[org]/page";
@@ -30,6 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const paths = [
     ...SECTIONS,
     ...(await programs()).map((p) => `programs/${p.slug}`),
+    ...(await programSeasons()).map((p) => `programs/${p.slug}/${p.season}`),
     ...(await results()).filter((p) => p.path.length).map((p) => `results/${p.path.join("/")}`),
     ...(await rankingViews()).map((p) => `rankings/${p.division}`),
     ...(await rankingWeeks()).map((p) => `rankings/week/${p.week}`),
