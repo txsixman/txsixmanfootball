@@ -203,3 +203,14 @@ test("a program page links its games count to the series page, only where the pa
   await page.goto((await guthrie.getAttribute("href"))!);
   await expect(rows(page)).toHaveCount(count);
 });
+
+test("a game page links to the two programs' series page, and a pair without one gets no link", async ({ page }) => {
+  await page.goto(`/series/${JAYTON.join("/")}`);
+  const game = await page.getByRole("main").locator('a[href^="/scores/"]').first().getAttribute("href");
+  await page.goto(game!);
+  const link = page.getByRole("link", { name: /^Every (Guthrie and Jayton|Jayton and Guthrie) game since 2021$/ });
+  await expect(link).toHaveAttribute("href", `/series/${JAYTON.join("/")}`);
+  expect((await link.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  await page.goto("/scores/g1"); // an invented sample game: no series
+  await expect(page.getByRole("link", { name: /game since 2021$/ })).toHaveCount(0);
+});

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
 import { gameDescription } from "@/lib/descriptions";
@@ -10,6 +11,8 @@ import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
 import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
+import { seriesHref } from "@/lib/series";
+import { seriesPartners } from "@/lib/series-data";
 import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
 import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
@@ -119,6 +122,9 @@ export default async function GamePage({ params }: Props) {
     const known = alignments.find((a) => a.school === team.name);
     return known && { slug: known.slug, identity: identities.get(known.slug) ?? EMPTY };
   };
+  // The two programs' series page, when they have met often enough to have one (lib/series.ts).
+  const [awaySlug, homeSlug] = [programOf(g.away)?.slug, programOf(g.home)?.slug];
+  const series = !sample && awaySlug && homeSlug && (await seriesPartners()).get(awaySlug)?.has(homeSlug) ? seriesHref(awaySlug, homeSlug) : undefined;
   // Fan comments and score reports exist only while FAN_SIGNIN is "on" (read when the page is built; flip it and redeploy).
   const fan = fanSignIn();
   const live = g.state === "live";
@@ -203,6 +209,13 @@ export default async function GamePage({ params }: Props) {
               <GoingInSection away={g.away.name} home={g.home.name} detail={detail} />
               <MeetingsSection detail={detail} />
             </>
+          )}
+          {series && (
+            <p className="px-3 pt-2">
+              <Link href={series} prefetch={false} className="inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-red">
+                Every {g.away.name} and {g.home.name} game since 2021
+              </Link>
+            </p>
           )}
         </div>
       )}
