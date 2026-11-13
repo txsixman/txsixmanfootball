@@ -128,3 +128,44 @@ test("filling a score keeps the stored row's round and order; only the score, it
   assert.equal(m.text.trim().split("\n")[1], "UIL,I,area,2026-11-13,Cedar Gap,Salt Fork,,28,30,unknown,,https://www.maxpreps.com/tx/football/game/a/?c=2,");
   assert.equal(m.counts.filled, 1);
 });
+
+test("full or targeted: a full read is the first of a season, a past season, Monday's audit or --full; the rest are targeted", async () => {
+  const { isFullRead } = await import("./maxpreps.mjs");
+  const friday = Date.parse("2026-11-13T12:00:00Z");
+  const monday = Date.parse("2026-11-16T12:00:00Z");
+  assert.equal(isFullRead({ argv: [], now: friday, past: false, scheduleStored: true }), false);
+  assert.equal(isFullRead({ argv: [], now: monday, past: false, scheduleStored: true }), true);
+  assert.equal(isFullRead({ argv: ["--full"], now: friday, past: false, scheduleStored: true }), true);
+  assert.equal(isFullRead({ argv: [], now: friday, past: false, scheduleStored: false }), true);
+  assert.equal(isFullRead({ argv: [], now: friday, past: true, scheduleStored: true }), true);
+});
+
+test("a targeted read reads only teams with a game in the last 14 days, a recent bracket game, or nothing stored", async () => {
+  const { targetPages } = await import("./maxpreps.mjs");
+  const g = (game_date, home, away, s = "") => ({ game_date, home, away, home_score: s, away_score: s });
+  const teams = new Map(["a", "b", "c", "d", "e", "f", "g", "h"].map((s) => [s, `https://www.maxpreps.com/tx/x/${s}/football/`]));
+  const t = targetPages({
+    today: "2026-11-13",
+    schedule: [g("2026-11-12", "A", "B"), g("2026-10-01", "C", "D"), g("2026-11-20", "C", "D")], // last night; long ago; next week
+    games: [g("2026-09-04", "C", "D", "40"), g("2026-11-06", "E", "F", "30")], // final: not read again
+    playoffs: [g("2026-11-07", "E", "F", "30")], // a recent bracket game: its winner's next game
+    teams,
+    schools: ["a", "b", "c", "d", "e", "f", "g", "z"], // g has no stored game; z has no known page
+  });
+  assert.deepEqual(t.pages.map((u) => u.split("/")[5]).sort(), ["a", "b", "e", "f", "g"]);
+  assert.equal(t.uncaptured, 2);
+  assert.equal(t.noPage, 1);
+});
+
+test("a targeted read names playoff rounds from the whole stored bracket, not only the games it read", async () => {
+  const { playoffsCsv, storedBracketGame, slugify } = await import("./maxpreps.mjs");
+  const P = `league,${COLUMNS}`;
+  // Eight first-round games: a four-round bracket, so the second week is the area round.
+  const names = ["Abbey", "Bend", "Cove", "Dale", "Eden", "Fern", "Gale", "Hope", "Iris", "Jade", "Knox", "Lark", "Mesa", "Nile", "Oak", "Pike"];
+  const stored = parseCsv([P, ...Array.from({ length: 8 }, (_, i) => `UIL,I,bi-district,2026-11-06,${names[2 * i]},${names[2 * i + 1]},,40,0,unknown,,https://www.maxpreps.com/tx/football/game/${i}/?c=${i},`)].join("\n") + "\n").rows.map(storedBracketGame);
+  const fresh = { date: "2026-11-13", bracket: { league: "UIL", division: "I" }, home: { slug: "abbey", score: null }, away: { slug: "cove", score: null }, played: false, gameUrl: "https://www.maxpreps.com/tx/football/game/3/?c=3" };
+  const bySlug = new Map(names.map((s) => [slugify(s), { school: s, division: "I" }]));
+  const rows = parseCsv(playoffsCsv([...stored, fresh], bySlug)).rows;
+  assert.equal(rows.find((r) => r.game_date === "2026-11-13").round, "area");
+  assert.equal(parseCsv(playoffsCsv([fresh], bySlug)).rows[0].round !== "area", true, "alone, the one game would be named wrongly");
+});

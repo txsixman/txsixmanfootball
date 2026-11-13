@@ -41,6 +41,10 @@ on:
         description: "Read a season stored and marked complete again (ADR 0031); with season, e.g. 2019"
         type: boolean
         default: false
+      full:
+        description: "A full read of every team page, not only what the store is missing (ADR 0031; Mondays are full anyway)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -128,6 +132,7 @@ jobs:
           TONIGHT: ${{ (inputs.tonight || (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0')) && 'true' || 'false' }}
           # A season stored and marked complete is read again only on this input (ADR 0031).
           REREAD: ${{ inputs.reread == true && 'true' || 'false' }}
+          FULL: ${{ inputs.full == true && 'true' || 'false' }}
         run: |
           # A night read also writes the games under way (live scores, ADR 0021) to a file outside the repo and the
           # private captures; the next step sends it to the database. A live score never commits and never rebuilds the site.
@@ -135,6 +140,8 @@ jobs:
             node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} --tonight --live-out "$RUNNER_TEMP/live.json"
           elif [ "$REREAD" = true ]; then
             node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} --reread
+          elif [ "$FULL" = true ]; then
+            node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} --full
           else
             node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }}
           fi

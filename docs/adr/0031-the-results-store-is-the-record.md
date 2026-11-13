@@ -26,16 +26,24 @@ rules stand.
    - A read that shows the stored score again drops the proposal.
    - The game stays unconfirmed on the site, as every robot-read score is (ADR 0004).
    - Game-day reads (`--tonight`, ADR 0030) only fill empty scores; they never propose a change.
-3. **Read only what is missing** (the next change). The read list comes from the store:
-   - team pages with an unscored game dated in the last 14 days or today;
-   - teams whose season has no stored schedule yet.
+3. **Read only what is missing.** A targeted read (`targetPages`) builds its list from the store and does not walk to
+   opponents' pages. It reads team pages for:
+   - both teams of an unplayed game (`schedule.csv`, private) dated in the last 14 days or today;
+   - both teams of a bracket game dated in that window, so a winner's next game is found;
+   - a school with no game stored this season.
 
-   The store keeps each season's unplayed games in a private `schedule.csv` for this. A game final and older than 14
-   days is not read again.
+   A game final and older than 14 days is not read again. A targeted read names playoff rounds from the whole stored
+   bracket, and when it fills a score it keeps the stored row's round and site.
 4. **A finished season is read once.** A past season read in full is marked complete (`season.json`). After that the
    reader stops before its first request unless it is run with `--reread`, which is Results watch's manual `reread` input.
-5. **One safety pass a week** (the next change). A Monday-morning full read stays as an audit. It merges under rules
-   1 and 2 and reports what differed in the run summary, as counts only. Every read already writes those counts.
+5. **One safety pass a week.** Some reads are full: walking every team page from the seeds. These are:
+   - every Monday (UTC, decided in the reader, so it holds whatever starts the run);
+   - the first read of a season (no `schedule.csv` yet);
+   - a past season;
+   - `--full`, which is Results watch's `full` input.
+
+   A full read merges under rules 1 and 2 like any other. Every read reports its merge counts in the run summary,
+   counts only.
 6. **The site builds from the store.**
    - `data/seed/maxpreps-<year>/games.csv` and `playoffs.csv` are the published snapshot, written from the store by
      `publish.mjs` (ADR 0029).
@@ -48,7 +56,8 @@ rules stand.
 ## Consequences
 - A score once stored survives a source that later drops it. A real correction takes two reads to land and leaves a
   record.
-- The private repo gains three files a season: `pending-scores.csv`, `score-changes.csv` and `season.json`.
+- The private repo gains four files a season: `pending-scores.csv`, `score-changes.csv`, `schedule.csv` and
+  `season.json`.
   `publish.mjs` copies none of them.
 - Each read's merge counts are in coverage.txt and the run summary: added, filled, unchanged, changed, proposed, kept
   and dropped.
