@@ -14,12 +14,12 @@ on:
     # Game nights are Thursday to Saturday. Read Friday, Saturday and Sunday mornings (6:23 AM Central), August to
     # January. Playoffs run into December; January catches late corrections.
     - cron: "23 11 * 8-12,1 5,6,0"
-    # Playoff game days (ADR 0015, widened by ADR 0019): every 30 minutes, noon to midnight Central (CST, UTC-6: 18:00
+    # Playoff game days (ADR 0015, widened by ADR 0019): every 10 minutes, noon to midnight Central (CST, UTC-6: 18:00
     # to 06:00 UTC), every day of November and December. The `due` job lets a run read only when a bracket game of
     # that game night has no score yet, so days without games cost one short check. A run reads only those games, one
     # page each; the Central game night comes from maxpreps.mjs (gameNight), never the UTC date.
-    - cron: "*/30 18-23 * 11,12 *"
-    - cron: "*/30 0-5 * 11,12 *"
+    - cron: "*/10 18-23 * 11,12 *"
+    - cron: "*/10 0-5 * 11,12 *"
     - cron: "0 6 * 11,12 *"
   workflow_dispatch:
     inputs:

@@ -1,6 +1,7 @@
 # ADR 0019: Playoff reads follow the games, any day
 
-**Status:** Accepted Nov 13, 2026 (the owner: "They need to run whenever games are being played"). Widens ADR 0015's
+**Status:** Accepted Nov 13, 2026 (the owner: "They need to run whenever games are being played", then "Every ten
+minutes"). Widens ADR 0015's
 nights and hours only; every other rule of ADRs 0008 and 0015 stands.
 
 ## Context
@@ -10,7 +11,7 @@ played and none was read until 5:23 AM Friday. TAPPS and TAIAO play many playoff
 afternoon.
 
 ## Decision
-- **When:** every day of November and December, every 30 minutes from noon to midnight Central (`results-watch.yml`:
+- **When:** every day of November and December, every 10 minutes from noon to midnight Central (`results-watch.yml`:
   18:00 to 06:00 UTC, Central Standard Time).
 - **Only when a game is due:** a short `due` job reads this repo's `playoffs.csv` first (`maxpreps.mjs --due`), and the
   read runs only when a bracket game of that game night has no score yet. A day with no game, or with every final in,
@@ -20,7 +21,8 @@ afternoon.
 - Pages, manners, output rules and stop on request: as ADR 0015.
 
 ## Consequences
-- Playoff finals and alerts arrive within about half an hour on whatever day and hour they are played.
-- Up to 25 short checks a day in the playoffs; MaxPreps is read only for games that are due, as on Friday nights.
+- Playoff finals and alerts arrive within about 10 minutes (plus GitHub's start delay) on whatever day and hour they are played.
+- Up to 73 short checks a day in the playoffs; MaxPreps is read only for games that are due, one page a game a run,
+  so a busy night reads each unscored game's page about six times an hour until its final is in.
 - Regular-season games (August to October) still wait for the Friday to Sunday morning reads: the files list a game
   only once it is played, so a game-day read has nothing to look for. Reading those live needs a schedule source first.
