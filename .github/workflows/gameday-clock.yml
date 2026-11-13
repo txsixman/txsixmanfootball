@@ -3,6 +3,8 @@
 # November and December, from GitHub itself, so the reads need no one's computer. A tick is skipped when a read is
 # already queued or running, when GitHub's schedule started one in the last 12 minutes, or when any read started in the
 # last 8 (the Mac's loop, a run by hand); Results watch's `due` job makes a tick with no game left a short check.
+# A daytime catch-up tick at 15:03 UTC starts one more read (ADR 0030); `due` counts the 3 game nights before tonight
+# too, so it reads only when an earlier night's bracket game is still unscored.
 # One run keeps the clock about 5.5 hours (the 6-hour job limit). It queues the next run first (ADR 0027), which waits on
 # this one and starts however it ends: done, failed, timed out, cancelled or its runner lost. The chain stops by itself
 # after December or when every bracket has a scored final; to stop it by hand, cancel the queued run, then the running
