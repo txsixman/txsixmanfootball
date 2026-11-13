@@ -18,9 +18,11 @@ export const SEASON_IDS = { 2026: "ddb8e968-3ddb-4c32-ba99-8329ed0a2853" };
 const GAP_MS = 2500;
 const TEAMS_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), "davecampbells-teams.json");
 
-/** Their team slug from a team address ("https://www.davecampbells.com/team/jayton-jaybirds" or "/team/jayton-jaybirds"). */
+/** Their team slug: the feed gives it bare ("jayton-jaybirds") or in a team address (".../team/jayton-jaybirds"). */
 export function teamSlugOf(url) {
-  const m = /(?:^|\/)team\/([a-z0-9-]+)\/?(?:[?#]|$)/.exec(String(url ?? ""));
+  const text = String(url ?? "");
+  if (/^[a-z0-9]+(-[a-z0-9]+)*$/.test(text)) return text;
+  const m = /(?:^|\/)team\/([a-z0-9-]+)\/?(?:[?#]|$)/.exec(text);
   return m ? m[1] : null;
 }
 
@@ -47,16 +49,29 @@ export function createClient({ fetchImpl = fetch, sleep = (ms) => new Promise((r
       return null;
     }
     const body = await res.json().catch(() => null);
-    return body?.success === true ? body.data : null;
+    if (body?.success === true) return body.data;
+    // The shape changed: say which fields came back (names only, never values), so the fix is one look away.
+    console.warn(`feed answer without success: ${shapeOf(body)}`);
+    return null;
   }
   return { getData };
 }
 
-/** The feed's id of a team (their slug) for a season, or null. */
+/** Field names of an answer, two levels deep, with no values: `{a, b:{c, d}}`. */
+export function shapeOf(value, depth = 2) {
+  if (Array.isArray(value)) return `[${value.length ? shapeOf(value[0], depth) : ""}]`;
+  if (value === null || typeof value !== "object") return typeof value;
+  if (depth === 0) return "{…}";
+  return `{${Object.entries(value).map(([k, v]) => (v !== null && typeof v === "object" ? `${k}:${shapeOf(v, depth - 1)}` : k)).join(", ")}}`;
+}
+
+/** The feed's id of a team (their slug) for a season, or null (the answer's field names are logged). */
 export async function teamId(client, theirSlug, seasonId) {
   const data = await client.getData(`/api/public/teams/${encodeURIComponent(theirSlug)}?seasonId=${encodeURIComponent(seasonId)}`);
-  const id = data?.id ?? data?.team?.id;
-  return typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id) ? id : null;
+  const id = data?.teamId ?? data?.id;
+  if (typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)) return id;
+  if (data) console.warn(`no team id in the answer for ${theirSlug}: ${shapeOf(data)}`);
+  return null;
 }
 
 /** A team's games that are live or still to come this season. */
@@ -100,30 +115,10 @@ export function sameSchool(schoolName, ourSlug) {
  * with no period (a game may list 0-0 before kickoff). One row a game.
  */
 export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() }) {
-  const dueByKey = new Map(due.map((r) => [[r.game_date, ...[slugify(r.home), slugify(r.away)].sort()].join("|"), r]));
-  // Tonight, each program's opponent in its bracket game.
-  const opponent = new Map(due.filter((r) => r.game_date === date).flatMap((r) => [[slugify(r.home), slugify(r.away)], [slugify(r.away), slugify(r.home)]]));
-  const resolve = (p, other) => {
-    const mapped = ours.get(teamSlugOf(p.websiteUrl));
-    if (mapped) return mapped;
-    const theirs = other && ours.get(teamSlugOf(other.websiteUrl));
-    const expected = theirs && opponent.get(theirs);
-    return expected && sameSchool(p.schoolName, expected) ? expected : undefined;
-  };
   const rows = new Map();
-  for (const item of items) {
-    if (!isLive(item) || !item?.scheduledKickoff) continue;
-    const kickoff = new Date(item.scheduledKickoff);
-    if (Number.isNaN(kickoff.getTime()) || centralDate(kickoff) !== date) continue;
-    const parts = Array.isArray(item.participants) ? item.participants : [];
-    const side = (type) => parts.find((p) => p?.participantType === type);
-    const [h, a] = [side("HOME"), side("AWAY")];
-    if (!h || !a || h.forfeited === true || a.forfeited === true) continue;
-    const [hs, as] = [resolve(h, a), resolve(a, h)];
-    if (!hs || !as || hs === as) continue;
-    const key = [date, ...[hs, as].sort()].join("|");
-    const row = dueByKey.get(key);
-    if (!row || rows.has(key)) continue;
+  for (const m of matchTonight(items, { date, due, ours })) {
+    const { item, key, row, h, a, hs, as } = m;
+    if (!isLive(item) || rows.has(key) || h.forfeited === true || a.forfeited === true) continue;
     const [hScore, aScore] = [score(h.score ?? item.summary?.homeScore), score(a.score ?? item.summary?.awayScore)];
     if (hScore === null || aScore === null) continue;
     const period = periodLabel(item.summary);
@@ -141,6 +136,36 @@ export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() 
     });
   }
   return [...rows.values()].sort((x, y) => x.game_key.localeCompare(y.game_key));
+}
+
+/** The feed's games of `date` (Central) that are one of tonight's due bracket games, whatever their status. */
+export function matchTonight(items, { date, due, ours }) {
+  const dueByKey = new Map(due.map((r) => [[r.game_date, ...[slugify(r.home), slugify(r.away)].sort()].join("|"), r]));
+  // Tonight, each program's opponent in its bracket game.
+  const opponent = new Map(due.filter((r) => r.game_date === date).flatMap((r) => [[slugify(r.home), slugify(r.away)], [slugify(r.away), slugify(r.home)]]));
+  const resolve = (p, other) => {
+    const mapped = ours.get(teamSlugOf(p.websiteUrl));
+    if (mapped) return mapped;
+    const theirs = other && ours.get(teamSlugOf(other.websiteUrl));
+    const expected = theirs && opponent.get(theirs);
+    return expected && sameSchool(p.schoolName, expected) ? expected : undefined;
+  };
+  const found = [];
+  for (const item of items) {
+    if (!item?.scheduledKickoff) continue;
+    const kickoff = new Date(item.scheduledKickoff);
+    if (Number.isNaN(kickoff.getTime()) || centralDate(kickoff) !== date) continue;
+    const parts = Array.isArray(item.participants) ? item.participants : [];
+    const side = (type) => parts.find((p) => p?.participantType === type);
+    const [h, a] = [side("HOME"), side("AWAY")];
+    if (!h || !a) continue;
+    const [hs, as] = [resolve(h, a), resolve(a, h)];
+    if (!hs || !as || hs === as) continue;
+    const key = [date, ...[hs, as].sort()].join("|");
+    const row = dueByKey.get(key);
+    if (row) found.push({ item, key, row, h, a, hs, as });
+  }
+  return found;
 }
 
 /**
@@ -181,15 +206,20 @@ async function live() {
   const teams = [...new Set(due.map((r) => theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away))).filter(Boolean))];
   const client = createClient();
   const items = [];
+  let ids = 0;
   for (const t of teams) {
     const id = await teamId(client, t, seasonId);
-    if (id) items.push(...(await liveAndUpcoming(client, seasonId, id)));
+    if (id) (ids++, items.push(...(await liveAndUpcoming(client, seasonId, id))));
   }
   const rows = liveRowsFromItems(items, { date, due, ours });
+  const seen = new Set(matchTonight(items, { date, due, ours }).map((m) => m.key));
   const before = JSON.parse(readFileSync(mergeFile, "utf8"));
   if (!Array.isArray(before)) throw new Error(`${mergeFile} is not a list of live rows`);
   writeFileSync(mergeFile, `${JSON.stringify(mergeLive(before, rows), null, 2)}\n`);
-  summary(`Second live read: ${due.length} games due, ${teams.length} teams read, ${rows.length} under way (${due.length - due.filter((r) => theirs.has(slugify(r.home)) || theirs.has(slugify(r.away))).length} games with no mapped team).`);
+  // Games listed but none of tonight's found: the item shape (names only) shows whether matching or the feed changed.
+  if (items.length && !seen.size) console.warn(`none of tonight's games matched; a listed game looks like ${shapeOf(items[0])}`);
+  const unmapped = due.filter((r) => !theirs.has(slugify(r.home)) && !theirs.has(slugify(r.away))).length;
+  summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.length} under way.`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await live();

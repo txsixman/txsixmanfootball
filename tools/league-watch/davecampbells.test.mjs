@@ -10,7 +10,7 @@ test("the client asks only public feed paths, with our agent, one request per ga
   const calls = [];
   const waits = [];
   const client = createClient({
-    fetchImpl: async (url, init) => (calls.push({ url, init }), json(200, { success: true, data: { id: "019ff136-fb13-7f5a-9e95-c8a10eadfcfa" } })),
+    fetchImpl: async (url, init) => (calls.push({ url, init }), json(200, { success: true, data: { teamId: "019ff136-fb13-7f5a-9e95-c8a10eadfcfa", schoolName: "Lark" } })),
     sleep: async (ms) => waits.push(ms),
   });
   assert.equal(await teamId(client, "lark-owls", "s1"), "019ff136-fb13-7f5a-9e95-c8a10eadfcfa");
@@ -54,6 +54,8 @@ test("team slugs come from team addresses only", () => {
   assert.equal(teamSlugOf("https://www.davecampbells.com/team/lark-owls"), "lark-owls");
   assert.equal(teamSlugOf("/team/lark-owls/?x=1"), "lark-owls");
   assert.equal(teamSlugOf("https://example.org/teams/lark-owls"), null);
+  assert.equal(teamSlugOf("lark-owls"), "lark-owls");
+  assert.equal(teamSlugOf("Lark Owls"), null);
   assert.equal(teamSlugOf(undefined), null);
 });
 
