@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, CalendarClock, Check, Search } from "lucide-react";
+import { ArrowUpRight, CalendarClock, Check, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
@@ -168,7 +168,8 @@ function Section({ id, title, live, games, crests, liveRows }: { id: string; tit
 /** A game's organization (ADR 0012): its league label starts with it ("UIL DI · Bi-district", "TCAF · Final"). */
 const orgOf = (g: Game) => ORGS.find((o) => g.league === o.league || g.league.startsWith(`${o.league} `));
 
-export default function Board({ games, eyebrow, title, crests }: { games: Game[]; eyebrow: string; title: string; crests?: Crests }) {
+/** `weekInReview`: a link to the newest week in review, on the live page only (the sample page stays as it is). */
+export default function Board({ games, eyebrow, title, crests, weekInReview }: { games: Game[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string } }) {
   const [query, setQuery] = useState("");
   // Only a game with a date and no final can be under way; a board of invented sample games or finals asks for nothing.
   const liveRows = useLiveScores(games.some((g) => g.date && g.state === "scheduled"));
@@ -221,6 +222,13 @@ export default function Board({ games, eyebrow, title, crests }: { games: Game[]
           </div>
         )}
       </header>
+
+      {weekInReview && (
+        <Link href={weekInReview.href} className="flex min-h-11 items-center justify-between gap-3 border-b border-line px-3 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
+          {weekInReview.label}
+          <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+        </Link>
+      )}
 
       <nav aria-label="Jump to" className="sticky top-0 z-20 flex h-[45px] border-b border-line bg-white">
         {jumps.map((j) =>
