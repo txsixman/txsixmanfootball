@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
+import { SITE_NAME } from "../lib/site";
 
 // Lets a phone add the site to its home screen and open it full screen, like an app (ADR 0001: a PWA).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Texas six-man football",
-    short_name: "80x40",
+    name: SITE_NAME,
+    short_name: "TX Six-Man",
     description: "Scores, rankings, standings and every state championship.",
     start_url: "/",
     display: "standalone",

@@ -19,7 +19,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { week, org } = await params;
-  return { title: `${orgBySlug(org)?.label ?? ""} rankings after week ${week} | Project 80x40` };
+  return { title: `${orgBySlug(org)?.label ?? ""} rankings after week ${week}` };
 }
 
 /** One of the other organizations' rankings as they stood at the end of a week of the season under way. */

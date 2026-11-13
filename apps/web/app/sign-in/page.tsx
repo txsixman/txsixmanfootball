@@ -9,7 +9,7 @@ import { LegalLinks } from "../legal-links";
 
 // Per request, never cached or indexed: it reads the visitor's session.
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Sign in | Project 80x40", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Sign in", robots: { index: false, follow: false } };
 
 const ERRORS: Record<string, string> = {
   link: "That link did not work. It may have expired or been used already. Ask for a new one.",

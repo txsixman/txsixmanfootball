@@ -12,7 +12,7 @@ import { PageHeader } from "../ui";
 import { Matchup } from "./picker";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Matchup | Project 80x40" };
+export const metadata: Metadata = { title: "Matchup" };
 
 const orgIndex = (league: string) => ORGS.findIndex((o) => o.league === league);
 

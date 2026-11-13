@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fanSignIn } from "@/lib/auth/config";
 
-export const metadata: Metadata = { title: "You must be 13 or older | Project 80x40", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "You must be 13 or older", robots: { index: false, follow: false } };
 
 // Read per request: with fan accounts off (FAN_SIGNIN) there is no such page.
 export const dynamic = "force-dynamic";

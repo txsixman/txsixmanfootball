@@ -9,7 +9,7 @@ import { EmptyState, PageHeader } from "../ui";
 import Board from "./board";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Scores | Project 80x40" };
+export const metadata: Metadata = { title: "Scores" };
 
 export default async function ScoresPage() {
   const games = await loadGames(await loadAlignments());

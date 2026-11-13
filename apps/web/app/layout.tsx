@@ -8,11 +8,13 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { MainNav } from "./main-nav";
 import { Offline } from "./offline-notice";
+import { SITE_NAME, SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
-  title: "Project 80x40",
-  description: "Private build.",
-  robots: { index: false, follow: false },
+  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+  description: "Texas six-man football: scores, rankings, playoffs, standings and every state championship.",
+  // Share cards and canonical links use the public address, whichever host served the page.
+  metadataBase: new URL(SITE_URL),
 };
 
 export const viewport: Viewport = { themeColor: "#0a2a5e" };
@@ -56,7 +58,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <header className="border-b-4 border-red bg-navy text-white">
             <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between px-4">
               <Link href="/" className="inline-flex min-h-11 items-center font-num text-[26px] font-bold tracking-wide sm:min-h-12">
-                80x40
+                {SITE_NAME}
               </Link>
               {/* On a phone the sections scroll sideways; the right edge fades out to show there is more, and the footer lists them all. */}
               <MainNav sections={SECTIONS} />
@@ -65,7 +67,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main id="main" tabIndex={-1} className="mx-auto outline-none w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">{children}</main>
           <footer className="mt-10 border-t-4 border-red bg-navy text-white">
             <div className="mx-auto max-w-5xl px-4 py-6">
-              <p className="font-num text-[22px] font-bold tracking-wide">80x40 · Texas six-man football</p>
+              <p className="font-num text-[22px] font-bold tracking-wide">{SITE_NAME}</p>
               <nav aria-label="Site sections" className="mt-2 grid grid-cols-2 gap-x-4 sm:grid-cols-5">
                 {[...SECTIONS, { href: "/matchup", label: "Matchup" }].map((s) => (
                   <Link key={s.href} href={s.href} className="inline-flex min-h-11 items-center text-[15px] text-white/85 hover:text-white hover:underline">

@@ -7,7 +7,7 @@ import { loadLineage, successorOf } from "@/lib/lineage";
 import { CrestSlot, PageHeader, SectionBar } from "../ui";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "State Championships | Project 80x40" };
+export const metadata: Metadata = { title: "State Championships" };
 
 /** `now`: today's program when the school merged into one (ADR 0003). */
 type Linker = (name: string) => { href?: string; identity: Identity; now?: string };
