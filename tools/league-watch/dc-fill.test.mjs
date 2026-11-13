@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { COLUMNS } from "./maxpreps.mjs";
 import { counts, dcScore, fillStore, NOTE, planFill, reportCsv, REPORT_COLUMNS } from "./dc-fill.mjs";
-import { parseCsv } from "./store.mjs";
+import { mergeStored, parseCsv } from "./store.mjs";
 
 const alignments = new Map([
   ["wren", { school: "Wren", division: "I" }],
@@ -72,4 +72,22 @@ test("the private report keeps one row a game and the counts name no team", () =
   const { report } = plan([dc("2026-09-04", "wren", "lark", "44", "20")]);
   assert.equal(reportCsv(report).split("\n")[0], REPORT_COLUMNS.join(","));
   assert.deepEqual(counts(report), { added: 1, agree: 0, differs: 0, "near-date": 0, "playoff-time": 0, "not-aligned": 0, "no-score": 0 });
+});
+
+test("MaxPreps wins on overlap: a filled game whose score MaxPreps later shows is MaxPreps' row after the store's two reads", () => {
+  const empty = `${COLUMNS}\n`;
+  const { add } = plan([dc("2026-09-04", "wren", "lark", "44", "20")]);
+  const filled = fillStore(empty, add, [], "2026-11-13T00:00:00Z").text;
+  const mp = (home, away) => [COLUMNS, `I,season,2026-09-04,Wren,Lark,false,${home},${away},unknown,,https://example.org/mp-game,`].join("\n") + "\n";
+  // The same score from MaxPreps: the game stands as it is.
+  assert.equal(mergeStored({ file: "games.csv", stored: filled, fresh: mp("44", "20"), pending: [], readTeam: () => true, now: "t1" }).counts.same, 1);
+  // A different score: proposed on the first read, MaxPreps' on the second, with MaxPreps' page as its source.
+  const first = mergeStored({ file: "games.csv", stored: filled, fresh: mp("42", "20"), pending: [], readTeam: () => true, now: "t1" });
+  assert.equal(first.counts.proposed, 1);
+  const second = mergeStored({ file: "games.csv", stored: first.text, fresh: mp("42", "20"), pending: first.pending, readTeam: () => true, now: "t2" });
+  assert.equal(second.counts.changed, 1);
+  const [row] = parseCsv(second.text).rows;
+  assert.deepEqual([row.home_score, row.away_score, row.source_url], ["42", "20", "https://example.org/mp-game"]);
+  // MaxPreps listing it with no score never blanks it.
+  assert.equal(mergeStored({ file: "games.csv", stored: filled, fresh: mp("", ""), pending: [], readTeam: () => true, now: "t1" }).counts.keptBlank, 1);
 });
