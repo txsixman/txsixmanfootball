@@ -9,6 +9,8 @@ import { FEW_GAMES, signed } from "@/lib/ratings";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
 import { loadTitleChances } from "@/lib/title-chances";
 import { loadNight } from "@/lib/tonight";
+import { weekHref } from "@/lib/week-review-hrefs";
+import { latestReview } from "@/lib/week-review-load";
 import { MyTeams } from "./my-teams/block";
 import { ChanceList } from "./playoffs/chance-list";
 import { Crest } from "./programs/crest";
@@ -50,8 +52,8 @@ function Top({ title, href, teams, identities }: {
 }
 
 export default async function Home() {
-  const [ranked, finals, identities, alignments, chances, tonight] = await Promise.all([
-    loadRanked(), loadFinals(), loadIdentities(), loadAlignments(), loadTitleChances(), loadNight(),
+  const [ranked, finals, identities, alignments, chances, tonight, review] = await Promise.all([
+    loadRanked(), loadFinals(), loadIdentities(), loadAlignments(), loadTitleChances(), loadNight(), latestReview(),
   ]);
   const current = new Set(alignments.map((a) => a.slug));
   // The closest projected games still to play in each organization: the ones most worth watching.
@@ -80,12 +82,19 @@ export default async function Home() {
 
       <MyTeams />
 
-      {/* Linked only when the night has games, decided when the site is built. */}
-      {tonight.count > 0 && (
-        <Link href="/scores/tonight" className="btn mt-4 w-full sm:w-auto">
-          Tonight, {nightTitle(tonight.night)}: {tonight.count} {tonight.count === 1 ? "game" : "games"}
-        </Link>
-      )}
+      {/* Tonight is linked only when the night has games, and the week in review is the newest week with a game: both decided when the site is built. */}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        {tonight.count > 0 && (
+          <Link href="/scores/tonight" className="btn w-full sm:w-auto">
+            Tonight, {nightTitle(tonight.night)}: {tonight.count} {tonight.count === 1 ? "game" : "games"}
+          </Link>
+        )}
+        {review && (
+          <Link href={weekHref(review.season, review.week)} className="btn w-full sm:w-auto">
+            Week in review: {review.season} week {review.week}
+          </Link>
+        )}
+      </div>
 
       {watch.length > 0 && (
         <section aria-labelledby="watch" className="mt-6">
