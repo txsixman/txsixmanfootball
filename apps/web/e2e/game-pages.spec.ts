@@ -1,6 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import path from "node:path";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test);
 
 // A page for every robot-read game (/scores/<id>, all seasons): teams, score, status words, the week-before projection,
 // earlier meetings, and the lists that link to it. Fixtures come from the same lib the site is built from.

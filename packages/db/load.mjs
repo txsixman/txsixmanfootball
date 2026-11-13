@@ -205,7 +205,7 @@ const SIGNED_IN_FUNCTIONS = [
 const ANON_FUNCTIONS = [
   "public.list_comments(text, integer, integer)", "public.fan_score_status(text)", "public.forum_boards()",
   "public.forum_threads(text, integer, integer)", "public.forum_thread_info(uuid)", "public.forum_posts(uuid, integer, integer)",
-  "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)",
+  "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)", "public.live_scores()",
 ];
 
 /** Schemas the project owns and the API could reach. */
@@ -321,7 +321,7 @@ export async function checkLive(db) {
 }
 
 /** node-postgres behind the same transaction/query/exec shape as PGlite, which the importers are written against. */
-function adapt(client) {
+export function adapt(client) {
   const db = {
     query: (sql, params) => client.query(sql, params),
     exec: (sql) => client.query(sql),

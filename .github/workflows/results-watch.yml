@@ -1,10 +1,12 @@
-# Reads six-man game results from MaxPreps team schedule pages (ADR 0008; playoff Friday nights, ADR 0015), rerates the
+# Reads six-man game results from MaxPreps team schedule pages (ADR 0008; playoff game days, ADRs 0015 and 0019), rerates the
 # season, and commits straight to main, so Vercel deploys new scores and ratings with no one at a keyboard. The full
 # captures (each game's source page, coverage, outside games) live in the private repo txsixman/data-private; this repo
 # gets the facts the site shows (tools/league-watch/publish.mjs). The private repo is committed first, then this one,
 # and every run republishes from the private files, so a run whose public push failed is repaired by the next. A commit
 # made with the workflow's token does not start CI, so this job runs the same checks first. A failed read fails the job
 # and GitHub emails the repo owner.
+# A night read also sends the scores of games still under way to the hosted database (live_score, ADR 0021): no commit and
+# no rebuild, the site reads them in the browser. Only finals are committed.
 # Before cut-over (repo variable LIVE not true) the schedules do nothing, a dispatch reads and checks but pushes only
 # with the input `write`, and alerts and the hosted database are never touched.
 name: Results watch
@@ -14,17 +16,20 @@ on:
     # Game nights are Thursday to Saturday. Read Friday, Saturday and Sunday mornings (6:23 AM Central), August to
     # January. Playoffs run into December; January catches late corrections.
     - cron: "23 11 * 8-12,1 5,6,0"
-    # Playoff Friday nights (ADR 0015): every 30 minutes, 7 PM to midnight Central (CST, UTC-6: Saturday 01:00 to
-    # 06:00 UTC), November and December only. A night run reads only tonight's unscored bracket games, one page each.
-    - cron: "*/30 1-5 * 11,12 6"
-    - cron: "0 6 * 11,12 6"
+    # Playoff game days (ADR 0015, widened by ADR 0019): every 10 minutes, noon to midnight Central (CST, UTC-6: 18:00
+    # to 06:00 UTC), every day of November and December. The `due` job lets a run read only when a bracket game of
+    # that game night has no score yet, so days without games cost one short check. A run reads only those games, one
+    # page each; the Central game night comes from maxpreps.mjs (gameNight), never the UTC date.
+    - cron: "*/10 18-23 * 11,12 *"
+    - cron: "*/10 0-5 * 11,12 *"
+    - cron: "0 6 * 11,12 *"
   workflow_dispatch:
     inputs:
       season:
         description: "Season year (blank: the one under way)"
         required: false
       tonight:
-        description: "Night read: only today's unscored bracket games (ADR 0015)"
+        description: "Game-day read: only today's unscored bracket games (ADRs 0015, 0019)"
         type: boolean
         default: false
       write:
@@ -38,8 +43,40 @@ permissions:
 concurrency: results-watch
 
 jobs:
+  # A game-day run (any schedule but the morning one) goes on only when a bracket game of today's game night has no
+  # score yet (ADR 0019). Read from this repo's published playoffs.csv, which carries every bracket row and score.
+  due:
+    # Always runs, so `maxpreps` never depends on a skipped job: a skipped `due` skipped every morning read and dispatch
+    # (Nov 13, 2026). Only a game-day tick counts tonight's games; any other run answers "run".
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      count: ${{ steps.due.outputs.count }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Bracket games of tonight without a score
+        id: due
+        env:
+          GAME_DAY_TICK: ${{ github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0' }}
+        run: |
+          if [ "$GAME_DAY_TICK" != true ]; then
+            echo "count=run" >> "$GITHUB_OUTPUT"
+            echo "Not a game-day tick: the read runs." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          season=$(( $(date -u +%-m) >= 7 ? $(date -u +%Y) : $(date -u +%Y) - 1 ))
+          # A failed check reads anyway rather than miss a final.
+          count=$(node tools/league-watch/maxpreps.mjs --due "data/seed/maxpreps-$season/playoffs.csv") || count=run
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Bracket games of tonight without a score: $count" >> "$GITHUB_STEP_SUMMARY"
+
   maxpreps:
-    if: github.event_name != 'schedule' || vars.LIVE == 'true'
+    needs: due
+    # `due` says "run" for morning reads, dispatches and a failed count; only a game-day tick with nothing due skips.
+    if: ${{ (github.event_name != 'schedule' || vars.LIVE == 'true') && needs.due.outputs.count != '0' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -59,7 +96,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
       - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: services/ratings/uv.lock
       - name: Season
         id: season
         run: |
@@ -69,18 +111,50 @@ jobs:
       - name: Reader checks
         run: node --test tools/league-watch/maxpreps.test.mjs
       - name: Read MaxPreps schedule pages
-        # Any schedule but the morning one is a playoff-night run.
-        run: node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} ${{ (inputs.tonight || (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0')) && '--tonight' || '' }}
-      - name: Rate the season
-        run: uv run --directory services/ratings python run.py --season ${{ steps.season.outputs.year }}
-      - name: Install the site's data checks (Zod)
-        run: npm ci --prefix apps/web
+        env:
+          # Any schedule but the morning one is a playoff-night run.
+          TONIGHT: ${{ (inputs.tonight || (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0')) && 'true' || 'false' }}
+        run: |
+          # A night read also writes the games under way (live scores, ADR 0021) to a file outside the repo and the
+          # private captures; the next step sends it to the database. A live score never commits and never rebuilds the site.
+          if [ "$TONIGHT" = true ]; then
+            node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} --tonight --live-out "$RUNNER_TEMP/live.json"
+          else
+            node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }}
+          fi
+      - name: Live scores to the hosted database
+        # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
+        # stops the finals from being committed below.
+        if: ${{ vars.LIVE == 'true' }}
+        continue-on-error: true
+        env:
+          PGHOST: aws-0-us-east-1.pooler.supabase.com
+          PGUSER: postgres.vhgnaihnyjdnaaergtcl
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PGSSLROOTCERT: packages/db/supabase-ca.crt
+        run: |
+          if [ ! -f "$RUNNER_TEMP/live.json" ]; then
+            echo "Live scores: not a night read, nothing to send." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -z "$PGPASSWORD" ]; then
+            echo "Live scores: the SUPABASE_DB_PASSWORD secret is not set, so nothing was sent." >> "$GITHUB_STEP_SUMMARY"
+          else
+            npm ci --omit=dev --prefix packages/db
+            result=$(node packages/db/live.mjs "$RUNNER_TEMP/live.json")
+            echo "Live scores sent: $result" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      # The ratings model's own tests use only its sample games, and CI ran them on the main this checks out. A game-day
+      # tick (every 10 minutes) skips them so a new score publishes sooner; the morning read and a dispatch still run them.
       - name: Ratings model checks
+        if: github.event_name != 'schedule' || github.event.schedule == '23 11 * 8-12,1 5,6,0'
         run: uv run --directory services/ratings pytest -q
       - name: Commit, the private repo first, then this one
         id: commit
         env:
           WRITE: ${{ (vars.LIVE == 'true' || inputs.write == true) && 'true' || 'false' }}
+          # Cross-file checks report here instead of blocking (scripts/check-data.mjs reportIntegrity): one bad source row
+          # must not hold back every final on a Friday night. The last step fails the job from this file, after the push.
+          INTEGRITY: report
+          INTEGRITY_REPORT: ${{ runner.temp }}/integrity-failures.txt
         run: |
           year=${{ steps.season.outputs.year }}
           dir="maxpreps-$year"
@@ -121,7 +195,13 @@ jobs:
               echo "No new results." >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-            # Zod checks on every file the site reads: a bad row fails the run here and never reaches main.
+            # Zod checks on every file the site reads: a bad row fails the run here and never reaches main. Then the
+            # cross-file checks (a program twice on one date, a playoff game missing from games.csv, a bracket team that
+            # lost its last round...), in report mode: written to INTEGRITY_REPORT and the summary, the push goes ahead,
+            # and the last step fails the job. The checks' packages install only when there is something new to check
+            # (most game-day ticks have nothing).
+            [ -d apps/web/node_modules ] || npm ci --prefix apps/web --no-audit --no-fund
+            : > "$INTEGRITY_REPORT"
             node apps/web/scripts/check-data.mjs
             if [ "$WRITE" != true ]; then
               { echo "New results, not pushed (not live, no \`write\` input):"; git diff --stat -- data; } >> "$GITHUB_STEP_SUMMARY"
@@ -137,12 +217,21 @@ jobs:
             echo "main moved; try $try again"
           done
           exit 1
+      # After the push: a cross-file failure the commit step reported (not blocking) fails the job, so the owner is emailed.
+      # The jobs below run on the pushed commit all the same (their `if` reads the sha, not this job's result).
+      - name: Cross-file data checks (reported above, after the push)
+        run: |
+          f="$RUNNER_TEMP/integrity-failures.txt"
+          [ -s "$f" ] || exit 0
+          echo "Cross-file data checks failed; the results were pushed anyway (scripts/check-data.mjs, INTEGRITY=report):"
+          cat "$f"
+          exit 1
 
   # Push alerts (tools/push/send-finals.mjs, web-push) to everyone following a program with a new final in the commit
   # just pushed. Without the VAPID_PRIVATE_KEY or SUPABASE_DB_PASSWORD secret it says so and sends nothing.
   alerts:
     needs: maxpreps
-    if: needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true'
+    if: ${{ !cancelled() && needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -162,8 +251,33 @@ jobs:
       - name: Send alerts for the new finals
         run: node tools/push/send-finals.mjs --season ${{ needs.maxpreps.outputs.year }} --before HEAD~1
 
+  # Did the new scores reach the live site? Report only: waits up to 5 minutes for production's /build.json to show the
+  # commit just pushed and says "Deployed" or "Not yet" in the run summary; it never fails the run. The hourly Site
+  # freshness check (site-freshness.yml) is the one that fails and emails when a deploy stays missing.
+  deployed:
+    needs: maxpreps
+    if: ${{ !cancelled() && needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Production has the new results (deployed or not yet)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/site-freshness.mjs --expect "${{ needs.maxpreps.outputs.sha }}" --wait 300 | tee -a "$GITHUB_STEP_SUMMARY"
+
   # New scores go into the hosted database too, once they are committed (supabase.yml does nothing before LIVE).
   supabase:
     needs: maxpreps
+    # Also after a cross-file failure, which fails the maxpreps job only after its push.
+    if: ${{ !cancelled() && (needs.maxpreps.result == 'success' || needs.maxpreps.outputs.sha != '') }}
     uses: ./.github/workflows/supabase.yml
     secrets: inherit

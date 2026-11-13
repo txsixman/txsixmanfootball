@@ -1,0 +1,59 @@
+# After each production deploy: the pages fans open load on the live site (.github/scripts/smoke.mjs). Each must answer
+# 200, show its main heading and log no console error, and /build.json must name the deployed commit. A failure fails the
+# run, so GitHub emails the repo owner. Reads only: the workflow's own token, no secrets.
+#
+# Triggers. Vercel reports each deploy as a commit status named "Vercel" (it creates no GitHub Deployments for this repo,
+# Nov 13, 2026), so `status` is the deploy signal: success on a commit on main, except "Canceled by Ignored Build Step"
+# (also reported as success; that commit is never served). `deployment_status` is kept for when
+# Vercel sends deployments. The schedule is the fallback for a deploy whose event never came.
+name: Post-deploy smoke
+
+on:
+  status:
+  deployment_status:
+  schedule:
+    - cron: "23 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: >-
+      (github.event_name == 'status' && github.event.context == 'Vercel' && github.event.state == 'success'
+        && !contains(github.event.description, 'Canceled') && contains(github.event.branches.*.name, 'main'))
+      || (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success'
+        && startsWith(github.event.deployment.environment, 'Production'))
+      || (github.event_name == 'schedule' && vars.LIVE == 'true')
+      || github.event_name == 'workflow_dispatch'
+    # Queued, never cancelled: a skipped event must not stop a smoke run that is checking a deploy.
+    concurrency:
+      group: post-deploy-smoke
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Playwright's own image carries Chromium; its tag matches @playwright/test in apps/web (ci.yml checks the same).
+    container: mcr.microsoft.com/playwright:v1.65.0-noble
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts
+            apps/web/package.json
+            apps/web/package-lock.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci --prefix apps/web --ignore-scripts --no-audit --no-fund
+      - name: The container's Playwright is the one apps/web installs
+        run: '[ "$(npx --prefix apps/web playwright --version)" = "Version 1.65.0" ] || { echo "Update the container tag above to match @playwright/test"; exit 1; }'
+      - name: The live site, page by page
+        env:
+          # The deployed commit on a deploy event; empty on a schedule or by hand (any build marker passes then).
+          EXPECT_SHA: ${{ github.event_name == 'status' && github.event.sha || github.event_name == 'deployment_status' && github.event.deployment.sha || '' }}
+        shell: bash
+        run: node .github/scripts/smoke.mjs | tee -a "$GITHUB_STEP_SUMMARY"; exit "${PIPESTATUS[0]}"

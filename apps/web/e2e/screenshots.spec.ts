@@ -1,4 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import { noLiveScores } from "./live-route";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test);
 
 // Screenshot tests: each page below must look the same as its baseline in e2e/screenshots.spec.ts-snapshots/, on
 // phone and desktop. Baselines are made only in CI's Playwright container (fonts and rendering match there, not on a

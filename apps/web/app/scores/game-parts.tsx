@@ -38,7 +38,7 @@ export function BigLine({ g, side, program, neutral }: { g: Game; side: Side; pr
         <p className={`font-num text-[28px] font-bold uppercase leading-none tracking-wide ${lost ? "text-ink/70" : "text-ink"}`}>
           {team.rank != null && <span className="mr-1.5 text-[18px] text-navy">#{team.rank}</span>}
           {program ? (
-            <Link href={`/programs/${program.slug}`} className="inline-flex min-h-11 items-center hover:text-navy hover:underline">
+            <Link href={`/programs/${program.slug}`} className="name-link">
               {team.name}
             </Link>
           ) : (

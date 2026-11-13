@@ -33,8 +33,8 @@ export function Crest({
           background: logo.light ? identity.theme.bg : "#ffffff",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- small fixed-size logos, served as-is per ADR 0006 */}
-        <img src={size <= 48 ? logo.small : logo.src} alt={decorative ? "" : `${school} logo`} loading={decorative ? "lazy" : "eager"} className="size-full object-contain" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size logos, a copy sized for the crest (ADR 0022) */}
+        <img src={size <= 24 ? logo.tiny : size <= 48 ? logo.small : logo.large} alt={decorative ? "" : `${school} logo`} loading={decorative ? "lazy" : "eager"} className="size-full object-contain" />
       </span>
     );
   }

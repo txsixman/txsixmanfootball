@@ -4,8 +4,9 @@ import { loadAlignments } from "@/lib/alignments";
 import { fanSignIn } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
-import { bracketGames, findGame, gameIds, longDate, resolveGame } from "@/lib/game-pages";
+import { bracketGames, findGame, gameIds, gamePreview, longDate, resolveGame } from "@/lib/game-pages";
 import { gameJsonLd } from "@/lib/json-ld";
+import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
 import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
 import { Breadcrumbs } from "../../breadcrumbs";
@@ -15,6 +16,8 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
+import { GamePreviewSection } from "../game-preview";
+import { LiveScore } from "../live-score";
 import { BigLine, Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 
@@ -89,6 +92,11 @@ export default async function GamePage({ params }: Props) {
   const resolved = await resolveGame(id);
   if (!resolved) notFound();
   const { g, found, own, sample, detail, neutral } = resolved;
+  // A bracket game not yet played gets a preview in place of "Going in" and "Earlier meetings" (it holds both).
+  const preview =
+    detail && g.date && !own && !sample && g.state === "scheduled"
+      ? await gamePreview({ season: found?.season ?? CURRENT_SEASON, date: g.date, home: g.home.name, away: g.away.name, org: orgOfLabel(g.league), detail })
+      : undefined;
   const [alignments, identities] = await Promise.all([loadAlignments(), loadIdentities()]);
   const programOf = (team: Team): Program | undefined => {
     const known = alignments.find((a) => a.school === team.name);
@@ -124,6 +132,9 @@ export default async function GamePage({ params }: Props) {
         </p>
         <ShareButton title={`${g.away.name} at ${g.home.name} | ${SITE_NAME}`} className="px-3 pt-1" />
       </header>
+
+      {/* A game with no final yet may be under way: its live score is read in the browser (ADR 0021). */}
+      {!sample && g.date && g.state === "scheduled" && <LiveScore date={g.date} home={g.home.name} away={g.away.name} />}
 
       <section aria-label="Score" className="px-3">
         <BigLine g={g} side="away" program={programOf(g.away)} neutral={neutral} />
@@ -168,8 +179,14 @@ export default async function GamePage({ params }: Props) {
       {detail && (
         <div className="pb-6">
           {found && <ProjectionSection result={found.result} detail={detail} />}
-          <GoingInSection away={g.away.name} home={g.home.name} detail={detail} />
-          <MeetingsSection detail={detail} />
+          {preview ? (
+            <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} />
+          ) : (
+            <>
+              <GoingInSection away={g.away.name} home={g.home.name} detail={detail} />
+              <MeetingsSection detail={detail} />
+            </>
+          )}
         </div>
       )}
       {!detail && <div className="pb-6" />}

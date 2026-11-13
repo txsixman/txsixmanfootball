@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import { IDENTITY, LOGOS, ORIGINALS, SMALL, sourceProblem } from "./fetch-logos.mjs";
+import { copyName, IDENTITY, LARGE, LOGOS, ORIGINALS, SMALL, sourceProblem, TINY } from "./fetch-logos.mjs";
 import { knownSchools } from "./merge.mjs";
 
 const table = JSON.parse(readFileSync(new URL("../../data/seed/schools/colors.json", import.meta.url), "utf8"));
@@ -30,7 +30,11 @@ test("every logo came from an allowed source, exists on disk, and removed school
     if (s.logo.file) {
       assert.ok(!removed.has(slug), `${slug} is removed but still has a logo file`);
       assert.ok(existsSync(new URL(s.logo.file, LOGOS)), `${slug}: ${s.logo.file} is missing`);
-      if (s.logo.file.endsWith(".png")) assert.ok(existsSync(new URL(s.logo.file, SMALL)), `${slug}: small/${s.logo.file} is missing; run fetch-logos.mjs`);
+      if (s.logo.file.endsWith(".png")) {
+        for (const [dir, name] of [[SMALL, "small"], [TINY, "tiny"], [LARGE, "large"]]) {
+          assert.ok(existsSync(new URL(copyName(s.logo.file), dir)), `${slug}: ${name}/${copyName(s.logo.file)} is missing; run fetch-logos.mjs`);
+        }
+      }
       assert.match(s.logo.retrievedOn ?? "", /^\d{4}-\d{2}-\d{2}$/);
     }
   }

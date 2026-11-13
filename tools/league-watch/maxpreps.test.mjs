@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, centralDate, COLUMNS, gameNight, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, gameNight, inProgressShape, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -208,6 +208,13 @@ test("every Friday-night run reads Friday's games, the midnight one and a late s
   assert.equal(gameNight(new Date("2026-11-14T12:00:00Z")), "2026-11-14"); // 6 AM Saturday Central: Saturday's games
 });
 
+// ADR 0019: runs on any game day (a Thursday or Saturday too, afternoons included) read that day's games, not the UTC date's.
+test("Thursday, Saturday and afternoon runs read that game day's games", () => {
+  assert.equal(gameNight(new Date("2026-11-14T19:00:00Z")), "2026-11-14"); // 1 PM Saturday Central
+  for (const utc of ["2026-11-13T01:00:00Z", "2026-11-13T05:30:00Z", "2026-11-13T06:00:00Z"]) assert.equal(gameNight(new Date(utc)), "2026-11-12", utc);
+  for (const utc of ["2026-11-15T01:00:00Z", "2026-11-15T05:30:00Z", "2026-11-15T06:00:00Z"]) assert.equal(gameNight(new Date(utc)), "2026-11-14", utc);
+});
+
 test("a night read fills tonight's finals into the bracket and the games file, and changes nothing else", () => {
   const bySlug = new Map([
     ["cedar-gap", { school: "Cedar Gap", division: "I" }],
@@ -250,4 +257,82 @@ test("a night read fills tonight's finals into the bracket and the games file, a
   assert.equal(again.filled, 0);
   assert.equal(again.games, once.games);
   assert.equal(again.playoffs, once.playoffs);
+});
+
+test("a game under way is logged by its fields only, never names or links", () => {
+  const team = (name, home, score) => { const t = []; t[5] = null; t[6] = score; t[11] = home; t[13] = `https://www.maxpreps.com/tx/x/${name}/football/`; t[14] = name; t[15] = "Town"; return t; };
+  const contest = (start, result, a, b) => { const c = [[team("Alpha", 0, a), team("Beta", 1, b)]]; c[3] = false; c[4] = result; c[11] = start; c[12] = "Q3"; c[18] = "https://www.maxpreps.com/games/x"; return c; };
+  const html = page([contest("2026-11-13T19:00:00", false, 28, 14), contest("2026-11-13T19:00:00", true, 40, 20), contest("2026-11-14T19:00:00", false, 7, 0), contest("2026-11-13T19:00:00", false, null, null)]);
+  const shapes = inProgressShape(html, "2026-11-13");
+  assert.equal(shapes.length, 1);
+  assert.match(shapes[0], /4=false/);
+  assert.match(shapes[0], /12=Q3/);
+  assert.match(shapes[0], /6=28/);
+  assert.doesNotMatch(shapes[0], /Alpha|Beta|Town|maxpreps/);
+});
+
+test("canaryProblems: a healthy page has none; an empty, misdated or unplayed page is named", () => {
+  const g = (date, played, home = "Alpha", away = "Beta") => ({ date, played, home: { name: home }, away: { name: away } });
+  const nov = new Date("2026-11-13T12:00:00Z");
+  assert.deepEqual(canaryProblems([g("2026-08-28", true), g("2026-11-13", false)], 2026, nov), []);
+  assert.deepEqual(canaryProblems([], 2026, nov), ["no games on the page"]);
+  assert.match(canaryProblems([g("2025-09-01", true)], 2026, nov)[0], /outside the season \(2025-09-01\)/);
+  assert.deepEqual(canaryProblems([g("2026-09-05", false)], 2026, nov), ["no played game with both scores after mid-September"]);
+  // Before mid-September a page with no played game yet is fine.
+  assert.deepEqual(canaryProblems([g("2026-08-28", false)], 2026, new Date("2026-08-20T12:00:00Z")), []);
+  assert.deepEqual(canaryProblems([g("2026-09-05", true, "")], 2026, nov), ["a game without both team names"]);
+});
+
+// Live scores (ADR 0021): a contest of the night with a score for both teams and no result yet is under way.
+test("a game with both scores and no result is live; a final, a game with no score and a deleted one are not", () => {
+  const live = contest({ teams: [team({ name: "Cedar Gap", homeAway: 1, score: 28 }), team({ name: "Salt Fork", homeAway: 0, score: 14 })], start: "2026-11-13T19:00:00" });
+  const notStarted = contest({ teams: [team({ name: "Dry Wash", homeAway: 0 }), team({ name: "Mesa Verde", homeAway: 1 })], start: "2026-11-13T19:00:00" });
+  const [a, b, c, d] = parseSchedule(page([live, notStarted, played, upcoming]));
+  assert.deepEqual([a.live, a.played, a.home.score, a.away.score], [true, false, 14, 28]);
+  assert.deepEqual([b.live, b.played], [false, false]);
+  assert.deepEqual([c.live, c.played], [false, true]);
+  assert.deepEqual([d.live, d.played], [false, false]);
+});
+
+test("the period is null until its contest index is known, and never a guess", () => {
+  assert.equal(PERIOD_INDEX, null);
+  const c = Array(41).fill(null);
+  c[12] = "Q3";
+  assert.equal(periodText(c), null);
+  assert.equal(periodText(c, 12), "Q3");
+  c[12] = 2;
+  assert.equal(periodText(c, 12), "Q2");
+  for (const odd of ["a much too long period text", "Q<3>", "", null, true, {}]) { c[12] = odd; assert.equal(periodText(c, 12), null); }
+});
+
+test("live rows: tonight's still-unscored bracket games only, our slugs, the site's key, one row a game", () => {
+  const at = new Date("2026-11-13T23:40:00Z");
+  const side = (slug, score) => ({ slug, score });
+  const game = (over) => ({ live: true, date: "2026-11-13", period: null, home: side("cedar-gap", 28), away: side("salt-fork", 14), ...over });
+  const due = [
+    { game_date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" },
+    { game_date: "2026-11-13", home: "Dry Wash", away: "Mesa Verde" },
+  ];
+  const rows = liveRows([
+    game({ period: "Q3" }),
+    game({ period: "Q4" }), // the same game seen from the other team's page: one row
+    game({ home: side("dry-wash", 7), away: side("outside-school", 0) }), // not a bracket game of tonight
+    game({ home: side("mesa-verde", 201), away: side("dry-wash", 0) }), // an impossible score is never written
+    game({ home: side("dry-wash", 0), away: side("mesa-verde", 0) }), // 0-0 with no period: maybe not kicked off, never written
+    game({ date: "2026-11-14" }),
+    game({ live: false }),
+    game({ home: side(null, 3) }),
+  ], "2026-11-13", due, at);
+  assert.deepEqual(rows, [{
+    game_key: "2026-11-13|cedar-gap|salt-fork", home: "cedar-gap", away: "salt-fork", home_score: 28, away_score: 14,
+    period: "Q3", read_at: "2026-11-13T23:40:00.000Z",
+  }]);
+  assert.deepEqual(liveRows([game()], "2026-11-13", []), []);
+  // A 0-0 is written only with a period (known only once PERIOD_INDEX is set).
+  const zero = (period) => game({ home: side("dry-wash", 0), away: side("mesa-verde", 0), period });
+  assert.deepEqual(liveRows([zero(null)], "2026-11-13", due), []);
+  assert.deepEqual(liveRows([zero("Q1")], "2026-11-13", due, at).map((r) => [r.game_key, r.home_score, r.away_score, r.period]), [["2026-11-13|dry-wash|mesa-verde", 0, 0, "Q1"]]);
+  // The key is the one lib/games.ts gameKey builds from the same date and names.
+  const siteKey = (date, a, b) => [date, ...[slugify(a), slugify(b)].sort()].join("|");
+  assert.equal(rows[0].game_key, siteKey("2026-11-13", "Salt Fork", "Cedar Gap"));
 });

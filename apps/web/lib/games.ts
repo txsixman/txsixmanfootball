@@ -112,6 +112,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
     return {
       id: playoffGameId(season, r),
       date: r.game_date,
+      round: r.round,
       league: `${heading({ league, division: r.division, region: "1" }).replace("Division ", "D")} · ${roundLabel(r.round, league)}`,
       home,
       away,
@@ -138,10 +139,12 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
 export type PlayoffGame = {
   league: string; bracket: string; round: string; date: string; home: string; away: string;
   homeScore?: number; awayScore?: number; forfeit: boolean; neutral: boolean;
+  /** A played game whose score only the robot or a correction gave: false, so no row names a winner from it (ADR 0004, ADR 0011). */
+  confirmed: boolean;
 };
 
 export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT_SEASON): Promise<PlayoffGame[]> {
-  return (await playoffRows([season])).map(({ r, league }) => {
+  return (await playoffRows([season])).map(({ r, league, robot, corrected }) => {
     const name = (n: string) => programFor(alignments, n, league)?.school ?? n;
     const played = r.home_score !== "" && r.away_score !== "";
     const [h, a] = [Number(r.home_score), Number(r.away_score)];
@@ -155,6 +158,7 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
       ...(played ? { homeScore: h, awayScore: a } : {}),
       forfeit: r.end_reason === "forfeit" || (played && forfeitScore(h, a)),
       neutral: r.neutral !== "false",
+      confirmed: played && !robot && !corrected,
     };
   });
 }
@@ -176,8 +180,9 @@ export function roundPhrase(round: string, league: string): string {
   return `the ${round} round`;
 }
 
-/** Each team's last playoff round of a season (team name as the season's files spell it) and its league. */
-export async function playoffReach(season: number): Promise<Map<string, { round: string; league: string }>> {
+/** Each team's last playoff round of a season (team name as the season's files spell it) and its league. Shared across
+ * pages: never mutate it. */
+export const playoffReach = memo(async (season: number): Promise<Map<string, { round: string; league: string }>> => {
   const reach = new Map<string, { round: string; league: string }>();
   for (const { r, league } of await playoffRows([season])) {
     for (const team of [r.home, r.away]) {
@@ -186,7 +191,7 @@ export async function playoffReach(season: number): Promise<Map<string, { round:
     }
   }
   return reach;
-}
+});
 
 /** The key two files agree on for one game: date and both teams (spelling and order of the teams do not matter). */
 export const gameKey = (date: string, home: string, away: string) => [date, ...[slugify(home), slugify(away)].sort()].join("|");

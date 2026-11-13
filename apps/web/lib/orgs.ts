@@ -22,3 +22,6 @@ export const orgHref = (base: string, org: Org): string => (org === ORGS[0] ? ba
 
 /** True when the school plays in the organization. A school unknown to the current alignments is in none. */
 export const inOrg = (org: Org, school: Pick<Alignment, "league"> | undefined): boolean => school?.league === org.league;
+
+/** The organization a game's label names: "UIL D1 · Bi-district" and "TCAF · Final" start with it (ADR 0012). */
+export const orgOfLabel = (label: string): Org | undefined => ORGS.find((o) => label === o.league || label.startsWith(`${o.league} `));

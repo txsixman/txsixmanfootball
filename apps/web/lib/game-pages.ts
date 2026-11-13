@@ -2,10 +2,13 @@ import { heading, loadAlignments, placeLabel, programFor, programsFor, slugify }
 import { roundLabel } from "./brackets";
 import { demoGames, type Game, type Team } from "./demo-games";
 import { initials, loadGames, loadPlayoffGames, loadSeasonResults, gameKey, type SeasonResult } from "./games";
+import { commonOpponents, type CommonOpponent } from "./game-preview";
 import { pairKey } from "./meetings";
 import { memo } from "./memo";
+import type { Org } from "./orgs";
 import { pregame } from "./pregame";
 import type { Projection } from "./projection";
+import { loadRanked, rankLabel } from "./rankings";
 import { loadRatings, record } from "./ratings";
 import { CURRENT_SEASON } from "./season";
 import { resultSeasons } from "./weeks";
@@ -56,8 +59,9 @@ export async function resultPageIds(): Promise<string[]> {
 
 const ratingRows = memo(async (season: number) => new Map((await loadRatings(season)).teams.map((t) => [slugify(t.team), t])));
 
-/** Playoff rounds of a past season (the season's playoff file), to say a game was one. The current season's playoff games have bracket pages instead. */
-const pastPlayoffs = memo(async (season: number) =>
+/** Playoff rounds of a season (the season's playoff file), to say a game was one: "TAPPS Division II · Quarterfinal", by `gameKey`.
+ * A game page uses it for past seasons (the current season's playoff games have bracket pages instead); a program page tags its history rows with it. */
+export const playoffLabels = memo(async (season: number) =>
   new Map((await loadPlayoffGames(await loadAlignments(), season)).map((g) => [gameKey(g.date, g.home, g.away), `${g.bracket} · ${roundLabel(g.round, g.league)}`])),
 );
 
@@ -116,10 +120,31 @@ export async function gameDetail({ season, date, home, away, id }: { season: num
     ...(projection ? { projection } : {}),
     going: { home: going(home), away: going(away) },
     meetings: { total: earlier.length, list: earlier.slice(0, MEETINGS_SHOWN) },
-    ...(!current ? { playoff: (await pastPlayoffs(season)).get(gameKey(date, home, away)) } : {}),
+    ...(!current ? { playoff: (await playoffLabels(season)).get(gameKey(date, home, away)) } : {}),
     places: { home: place(home), away: place(away) },
     districtGame,
   };
+}
+
+/** One team of a game not yet played: its record this season, and its current rating and rank where it has one. */
+export type PreviewSide = { team: string; record: string; rating?: number; rank?: { text: string; sub?: string } };
+/** `common`: the opponents both met this season, each team's scores against it (away team's first), see lib/game-preview.ts. */
+export type GamePreview = { away: PreviewSide; home: PreviewSide; common: { shown: CommonOpponent[]; rest: number } };
+
+/**
+ * The preview of a game not yet played, from data already loaded: each team's record (`detail.going`), its rating and rank
+ * within the game's organization (`org`: ranks never cross organizations, ADR 0012), and the opponents both met this season.
+ * Head-to-head is `detail.meetings`.
+ */
+export async function gamePreview({ season, date, home, away, org, detail }: { season: number; date: string; home: string; away: string; org?: Org; detail: GameDetail }): Promise<GamePreview> {
+  const [{ teams }, ranked] = await Promise.all([index(), loadRanked()]);
+  const side = (team: string, going: Going): PreviewSide => {
+    const row = ranked.teams.find((r) => r.school.school === team && (!org || r.org.league === org.league));
+    const rank = row && rankLabel(row);
+    return { team, record: going.record, ...(row && rank ? { rating: row.rating, rank: { text: rank.text, ...(rank.sub ? { sub: rank.sub } : {}) } } : {}) };
+  };
+  const games = (team: string) => teams.get(`${season}|${slugify(team)}`) ?? [];
+  return { away: side(away, detail.going.away), home: side(home, detail.going.home), common: commonOpponents(away, home, games(away), games(home), date) };
 }
 
 /** "Friday, October 24, 2025". */
