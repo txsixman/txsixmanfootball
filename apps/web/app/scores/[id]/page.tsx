@@ -6,15 +6,17 @@ import { loadAlignments } from "@/lib/alignments";
 import { fanSignIn } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
-import { findGame, gameDetail, longDate, resultAsGame, resultPageIds } from "@/lib/game-pages";
+import { findGame, gameDetail, gamePreview, longDate, resultAsGame, resultPageIds } from "@/lib/game-pages";
 import { loadGames } from "@/lib/games";
 import { memo } from "@/lib/memo";
+import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
 import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
 import { ShareButton } from "../../share-button";
 import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
+import { GamePreviewSection } from "../game-preview";
 import { LiveScore } from "../live-score";
 import { BigLine, Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
@@ -109,6 +111,11 @@ export default async function GamePage({ params }: Props) {
         })
       : undefined;
   const g: Game = own ? resultAsGame(own, detail!) : bracket!;
+  // A bracket game not yet played gets a preview in place of "Going in" and "Earlier meetings" (it holds both).
+  const preview =
+    detail && g.date && bracket && !sample && g.state === "scheduled"
+      ? await gamePreview({ season: found?.season ?? CURRENT_SEASON, date: g.date, home: g.home.name, away: g.away.name, org: orgOfLabel(g.league), detail })
+      : undefined;
   const [alignments, identities] = await Promise.all([loadAlignments(), loadIdentities()]);
   const programOf = (team: Team): Program | undefined => {
     const known = alignments.find((a) => a.school === team.name);
@@ -197,8 +204,14 @@ export default async function GamePage({ params }: Props) {
       {detail && (
         <div className="pb-6">
           {found && <ProjectionSection result={found.result} detail={detail} />}
-          <GoingInSection away={g.away.name} home={g.home.name} detail={detail} />
-          <MeetingsSection detail={detail} />
+          {preview ? (
+            <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} />
+          ) : (
+            <>
+              <GoingInSection away={g.away.name} home={g.home.name} detail={detail} />
+              <MeetingsSection detail={detail} />
+            </>
+          )}
         </div>
       )}
       {!detail && <div className="pb-6" />}
