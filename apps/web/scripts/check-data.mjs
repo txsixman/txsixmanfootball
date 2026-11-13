@@ -162,14 +162,38 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   console.log(bad ? `${bad} file(s) failed the data checks.` : `All ${results.length} data files pass.`);
   if (bad) process.exit(1);
   // The cross-file checks need every file to parse, so they run only after the checks above pass.
-  const { failures, warnings, excused } = checkIntegrity();
-  for (const f of failures) console.log(`BAD  integrity: ${f}`);
-  for (const e of excused) console.log(`known integrity: ${e}`);
-  for (const w of warnings) console.log(`warn integrity: ${w}`);
-  console.log(failures.length ? `${failures.length} cross-file check(s) failed.` : `Cross-file checks pass (${excused.length} known, ${warnings.length} warning(s)).`);
-  if (process.env.GITHUB_STEP_SUMMARY && (failures.length || warnings.length || excused.length)) {
+  process.exit(reportIntegrity(checkIntegrity(), process.env));
+}
+
+/**
+ * Prints the cross-file results, adds them to the run summary, and gives the exit code. INTEGRITY=report (Results watch,
+ * during the playoffs): a hard failure still prints and goes to the summary, and to the file INTEGRITY_REPORT names,
+ * but exits 0, so one bad source row never holds back every final on a Friday night; the workflow fails the job from
+ * that file after its push, so the owner is still emailed. Anything else: a hard failure exits 1 (CI, check.sh).
+ * The Zod checks above never take this path: a malformed row always blocks.
+ */
+export function reportIntegrity({ failures, warnings, excused }, env = {}, log = console.log) {
+  const report = env.INTEGRITY === "report";
+  for (const f of failures) log(`BAD  integrity: ${f}`);
+  for (const e of excused) log(`known integrity: ${e}`);
+  for (const w of warnings) log(`warn integrity: ${w}`);
+  log(
+    failures.length
+      ? `${failures.length} cross-file check(s) failed${report ? " (report mode: not blocking; the job fails after its push)" : "."}`
+      : `Cross-file checks pass (${excused.length} known, ${warnings.length} warning(s)).`,
+  );
+  if (env.GITHUB_STEP_SUMMARY && (failures.length || warnings.length || excused.length)) {
     const list = (title, items) => (items.length ? `\n**${title}**\n\n${items.map((i) => `- ${i}`).join("\n")}\n` : "");
-    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Data checks\n${list("Failed", failures)}${list("Known (data/integrity-exceptions.json)", excused)}${list("Warnings", warnings)}\n`);
+    const failed = report ? "Failed (reported; pushed anyway, the job fails at the end)" : "Failed";
+    appendFileSync(env.GITHUB_STEP_SUMMARY, `### Data checks\n${list(failed, failures)}${list("Known (data/integrity-exceptions.json)", excused)}${list("Warnings", warnings)}\n`);
   }
-  process.exit(failures.length ? 1 : 0);
+  if (report && failures.length) {
+    if (!env.INTEGRITY_REPORT) {
+      log("INTEGRITY=report needs INTEGRITY_REPORT (a file the workflow fails on after its push); blocking instead.");
+      return 1;
+    }
+    appendFileSync(env.INTEGRITY_REPORT, failures.map((f) => `${f}\n`).join(""));
+    return 0;
+  }
+  return failures.length ? 1 : 0;
 }

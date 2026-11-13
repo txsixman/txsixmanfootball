@@ -112,7 +112,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   `.env.local`; delete it, the site uses none
 - `node apps/web/scripts/check-data.mjs`: Zod check of every seed and robot-read file (`lib/data-schemas.ts`), then
   the cross-file checks (`scripts/data-integrity.mjs`: hard ones fail, on the current season; soft ones warn in the
-  run summary); the robots run it before they commit. Fix a hard failure with a correction or an alias, never by
+  run summary); the robots run it before they commit. Results watch runs the cross-file checks with
+  `INTEGRITY=report`: a failure goes to the run summary, the results are pushed anyway (one bad source row must not
+  hold back the finals), and the job fails after the push; Zod failures still block. Fix a hard failure with a correction or an alias, never by
   editing robot output; one the source cannot settle goes in `data/integrity-exceptions.json` with its reason (an
   exception that matches nothing fails, so remove it once fixed). `node --test apps/web/scripts/*.test.mjs`: its tests and the build scripts' tests
 - `(cd apps/web && npx --yes knip@6.45.1)`: unused files, exports and dependencies (a CI check; unexport, don't ignore)

@@ -2,8 +2,11 @@
 // rows that look like it but are fine; soft rules warn; history only warns; exceptions excuse and go stale.
 //   node --test apps/web/scripts/
 import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
-import { checkIntegrity } from "./check-data.mjs";
+import { checkIntegrity, reportIntegrity } from "./check-data.mjs";
 import { applyExceptions, checkSeason, mondayOf } from "./data-integrity.mjs";
 
 const game = (game_date, home, away, home_score = "", away_score = "", extra = {}) => ({
@@ -119,4 +122,31 @@ test("exceptions excuse a known problem and fail once they match nothing", () =>
 test("the repo's data passes the hard checks today", () => {
   const { failures } = checkIntegrity("2026-11-13");
   assert.deepEqual(failures, []);
+});
+
+test("blocking mode (CI, check.sh): a hard failure exits 1; warnings alone exit 0", () => {
+  const quiet = () => {};
+  assert.equal(reportIntegrity({ failures: ["jayton has 2 games"], warnings: [], excused: [] }, {}, quiet), 1);
+  assert.equal(reportIntegrity({ failures: [], warnings: ["margin over 90"], excused: ["known"] }, {}, quiet), 0);
+});
+
+test("report mode (Results watch): a hard failure is written down and the summary says so, but the push is not blocked", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "integrity-"));
+  const env = { INTEGRITY: "report", INTEGRITY_REPORT: path.join(dir, "failures.txt"), GITHUB_STEP_SUMMARY: path.join(dir, "summary.md") };
+  const lines = [];
+  const result = { failures: ["jayton has 2 games on 2026-09-04", "playoff game not in games.csv"], warnings: ["margin over 90"], excused: [] };
+  assert.equal(reportIntegrity(result, env, (l) => lines.push(l)), 0);
+  assert.equal(readFileSync(env.INTEGRITY_REPORT, "utf8"), "jayton has 2 games on 2026-09-04\nplayoff game not in games.csv\n");
+  assert.match(readFileSync(env.GITHUB_STEP_SUMMARY, "utf8"), /Failed \(reported; pushed anyway, the job fails at the end\).*- jayton has 2 games.*Warnings.*margin over 90/s);
+  assert.match(lines.join("\n"), /BAD  integrity: jayton has 2 games.*2 cross-file check\(s\) failed \(report mode: not blocking/s);
+  // Nothing failed: no file, so the workflow's last step passes.
+  const clean = { ...env, INTEGRITY_REPORT: path.join(dir, "none.txt") };
+  assert.equal(reportIntegrity({ failures: [], warnings: [], excused: [] }, clean, () => {}), 0);
+  assert.equal(existsSync(clean.INTEGRITY_REPORT), false);
+});
+
+test("report mode without a file to report to blocks rather than letting a failure pass unseen", () => {
+  const lines = [];
+  assert.equal(reportIntegrity({ failures: ["x"], warnings: [], excused: [] }, { INTEGRITY: "report" }, (l) => lines.push(l)), 1);
+  assert.match(lines.at(-1), /needs INTEGRITY_REPORT/);
 });
