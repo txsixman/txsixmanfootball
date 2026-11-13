@@ -443,6 +443,24 @@ export function mergeTonight({ playoffsText, gamesText, finals, bySlug }) {
   };
 }
 
+/**
+ * How a page shows a game under way: contests of `date` with a score but no result yet, as their numeric and boolean
+ * fields and short strings ("4=false 7=3 ..."), the teams' numeric and boolean fields after. Logged only, to learn where
+ * the period and status live before live scores are built (ADR 0019). Never names, links, places or narrative.
+ */
+export function inProgressShape(html, date) {
+  const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  const contests = (m && JSON.parse(m[1])?.props?.pageProps?.contests) || [];
+  const scalar = (v) => typeof v === "number" || typeof v === "boolean";
+  const fields = (arr, ok) => arr.flatMap((v, i) => (ok(v, i) ? [`${i}=${v}`] : [])).join(" ");
+  return contests
+    .filter((c) => Array.isArray(c?.[0]) && String(c[C.start] ?? "").startsWith(date) && c[C.hasResult] !== true && c[0].some((t) => typeof t?.[T.score] === "number"))
+    .map((c) => [
+      `contest ${fields(c, (v, i) => i > 0 && i !== 29 && (scalar(v) || (typeof v === "string" && v.length <= 24 && !v.includes("/"))))}`,
+      ...c[0].map((t, n) => `team ${n} ${fields(Array.isArray(t) ? t : [], scalar)}`),
+    ].join(" | "));
+}
+
 async function tonight() {
   const date = gameNight();
   const [playoffsFile, gamesFile] = ["playoffs.csv", "games.csv"].map((f) => path.join(OUT, f));
@@ -453,8 +471,10 @@ async function tonight() {
   // One page a game: either team's schedule lists it.
   const urls = [...new Set(due.map((r) => pageOf.get(slugify(r.home)) ?? pageOf.get(slugify(r.away))).filter(Boolean))];
   const finals = [];
+  const underway = [];
   for (const [i, teamUrl] of urls.entries()) {
     const page = await fetchSchedule(teamUrl);
+    if (page) underway.push(...inProgressShape(page.html, date));
     for (const g of page ? parseSchedule(page.html) : []) {
       if (g.date !== date || !g.played) continue;
       for (const t of [g.home, g.away]) t.slug = match(t, bySlug);
@@ -466,6 +486,11 @@ async function tonight() {
   writeFileSync(playoffsFile, merged.playoffs);
   writeFileSync(gamesFile, merged.games);
   console.log(`${date}: ${due.length} bracket games without a score, ${urls.length} pages read, ${merged.filled} finals filled in.`);
+  const note = underway.length
+    ? [`Games showing a score before the final (${underway.length}):`, ...new Set(underway)].join("\n")
+    : "No game on these pages showed a score before its final.";
+  console.log(note);
+  if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${note.replaceAll("\n", "  \n")}\n`, { flag: "a" });
 }
 
 /** `--due <playoffs.csv>`: how many bracket games of tonight have no score yet. The workflow reads only when it is not 0. */
