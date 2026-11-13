@@ -37,17 +37,22 @@ function sides(games: (SeasonResult & { season: number })[]): GameRecord[] {
   ]);
 }
 
-/** Longest runs of wins in a row, across seasons; a tie or a loss ends a run. One entry per team: its longest, marked
+/** Longest runs of wins in a row, across seasons; a tie or a loss ends a run, and so does a read season with none of the team's games. One entry per team: its longest, marked
  * `current` when no loss or tie has ended it yet. */
-function longestStreaks(all: GameRecord[]): Streak[] {
-  const latest = Math.max(...all.map((g) => g.season));
+export function longestStreaks(all: GameRecord[]): Streak[] {
+  const seasons = [...new Set(all.map((g) => g.season))].sort((a, b) => a - b);
+  const latest = seasons.at(-1)!;
   const byTeam = Map.groupBy(all, (g) => g.team);
   const best: Streak[] = [];
   for (const [team, games] of byTeam) {
     games.sort((a, b) => a.date.localeCompare(b.date));
     let top: Streak | undefined;
     let run: Streak | undefined;
+    let before: number | undefined;
     for (const g of games) {
+      // A season the files hold but this team has no game in is a hole in the record: a run cannot be joined across it.
+      if (before !== undefined && seasons.some((s) => s > before! && s < g.season)) run = undefined;
+      before = g.season;
       if (g.points > g.against) {
         run = run ? { ...run, wins: run.wins + 1, to: g.date } : { team, wins: 1, from: g.date, to: g.date, current: false };
         if (!top || run.wins > top.wins) top = run;

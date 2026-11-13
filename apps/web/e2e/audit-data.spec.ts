@@ -5,6 +5,7 @@ import type { Alignment } from "../lib/alignments";
 import { loadFinals, titleCounts } from "../lib/champions";
 import type { SeasonResult } from "../lib/games";
 import { parseCsv, PlayoffRow, GAME_COLUMNS } from "../lib/data-schemas";
+import { longestStreaks } from "../lib/records";
 import { projectionParts, projectionText } from "../lib/projection";
 import { signed } from "../lib/signed";
 import { slugify } from "../lib/slug";
@@ -92,6 +93,27 @@ test("district records leave out playoff games; overall records and points keep 
   expect(row("Elk Flat").pointsFor).toBe(0);
   // The same results with no playoff keys count the rematch as a district game, so the exclusion is what the test sees.
   expect(standingsFrom(alignments, results, new Set())[0].rows.find((r) => r.school.school === "Cedar Gap")!.district).toEqual({ won: 1, lost: 1, tied: 0 });
+});
+
+test("a winning streak is still going only in the latest season, and never runs across a season with no game of the team's", () => {
+  type G = Parameters<typeof longestStreaks>[0][number];
+  const g = (team: string, season: number, date: string, points: number, against: number): G =>
+    ({ season, href: "/x", date, team, opponent: "Other", points, against, home: true });
+  const streaks = longestStreaks([
+    // Old Town won 3 in 2022 and 3 in 2024 and nothing was read for it in 2023 (others played): two runs of 3, never one of 6.
+    ...[1, 2, 3].map((n) => g("Old Town", 2022, `2022-09-0${n}`, 10, 0)),
+    ...[1, 2, 3].map((n) => g("Old Town", 2024, `2024-09-0${n}`, 10, 0)),
+    g("New Town", 2023, "2023-09-01", 10, 0),
+    // Late Town's last win was in 2023 and it has no game in 2024: no loss ended it, but it is not "still going".
+    ...[1, 2].map((n) => g("Late Town", 2023, `2023-09-0${n}`, 10, 0)),
+    // Live Town won 2 in 2023 and 2 in 2024: one run of 4, still going.
+    ...[1, 2].map((n) => g("Live Town", 2023, `2023-09-0${n}`, 10, 0)),
+    ...[1, 2].map((n) => g("Live Town", 2024, `2024-09-0${n}`, 10, 0)),
+  ]);
+  const of = (team: string) => streaks.find((s) => s.team === team)!;
+  expect(of("Old Town")).toMatchObject({ wins: 3, from: "2022-09-01", current: false }); // the first of two equal runs; not 6
+  expect(of("Late Town")).toMatchObject({ wins: 2, current: false });
+  expect(of("Live Town")).toMatchObject({ wins: 4, from: "2023-09-01", current: true });
 });
 
 test("no source URL reaches the browser on Programs (ADR 0010)", async ({ request }) => {
