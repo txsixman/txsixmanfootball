@@ -14,7 +14,7 @@
 // only. The run summary gets counts, never a team or a score.
 //
 // Seasons (ADR 0032), run by hand, to the private data repo only: `--seasons` lists the feed's seasons,
-// `--history <year> --private <private repo>` writes a season's six-man games to <private>/davecampbells-<year>/games.csv,
+// `--history <year> --private <private repo>` writes a season's six-man games to <private>/davecampbells-history-<year>/games.csv,
 // and `--team <year> <their slug>` shows one team's game count and statuses. On Nov 13, 2026 only 2026 had games.
 //
 // Problems that do not fail the step (it runs with continue-on-error) are named in the file OPS_REASONS, when set, for
@@ -478,7 +478,7 @@ async function live() {
 // lists the feed's seasons (year, id, sport, school type).
 //   node tools/league-watch/davecampbells.mjs --history <year> --private <private data repo>
 // reads the finished games of every mapped team (davecampbells-teams.json) in the feed's high school football season of
-// <year>, and writes the six-man games among them to <private>/davecampbells-<year>/games.csv: date, both programs, the
+// <year>, and writes the six-man games among them to <private>/davecampbells-history-<year>/games.csv: date, both programs, the
 // scores and the forfeit flags. Never a ranking, poll, spread or the `winner` field. It writes nothing to this repo.
 
 /** The private per-season file's columns: the facts the merge needs, our program slugs, no source. */
@@ -665,7 +665,7 @@ async function history() {
     items.push(...games);
   }
   const { rows, skipped } = historyRows(items, { ours, slugs, renamed, season: year });
-  const dir = path.join(root, `davecampbells-${year}`);
+  const dir = path.join(root, `davecampbells-history-${year}`);
   if (rows.length) {
     mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, HISTORY_FILE), historyCsv(rows));

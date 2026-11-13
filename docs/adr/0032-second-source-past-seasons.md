@@ -31,7 +31,8 @@ ADR 0025 stands for these reads. ADRs 0004, 0010, 0017, 0026, 0029 and 0031 stan
     seasons or the lineage table (`sameSchool`, as the finals check uses). When our name adds a town to the feed's,
     the town must be in the feed's own team slug too, so a same-named school in another town is never taken for ours.
   - A program renamed after that season is written under the name it had then (`data/seed/lineage/programs.csv`).
-  - One row a game in `davecampbells-<year>/games.csv` in the private repo: date (Central), home and away program
+  - One row a game in `davecampbells-history-<year>/games.csv` in the private repo (its own folder: Results watch
+    replaces `davecampbells-<year>/` with its own copy on every commit): date (Central), home and away program
     slugs, both scores, and each side's forfeit flag.
   - Never a ranking, poll, spread or the `winner` field.
   - A final of 0-0 that is not a forfeit is the feed's placeholder, so it is written with no score.
@@ -43,7 +44,7 @@ ADR 0025 stands for these reads. ADRs 0004, 0010, 0017, 0026, 0029 and 0031 stan
   - MaxPreps wins wherever both sources have a game on the same date with the same two programs.
   - The second source only adds games that the store does not have. It never changes or blanks a stored score.
   - Where the two disagree (scores, or the same pair a day or two apart), nothing is added. The game goes into
-    `davecampbells-<year>/history-check.csv` in the private repo.
+    `davecampbells-history-<year>/history-check.csv` in the private repo.
   - An added game reaches `data/seed/maxpreps-<year>/` only through `publish.mjs`'s columns, so no page names a source
     (ADR 0010). The private copy keeps where each row came from.
 - **Manners:** ADR 0025's client, unchanged:
