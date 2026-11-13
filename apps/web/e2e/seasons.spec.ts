@@ -94,6 +94,9 @@ test("2025: the UIL finals, one section per organization with five ranked teams,
   await expect(main).toContainText(`${hub.games.toLocaleString("en-US")} games read from ${hub.programs} programs`);
   await expect(main).toContainText("Scores are not confirmed here");
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("2025 season");
+  // A past season says how many of today's schools it reaches.
+  expect(hub.coverage.played).toBeLessThanOrEqual(hub.coverage.total);
+  await expect(page.locator("#season-coverage")).toHaveText(`Games from ${hub.coverage.played} of ${hub.coverage.total} schools for this season.`);
 
   // The UIL state finals: one row per division, champion, runner-up and score (UIL's own archive).
   expect(hub.finals.length).toBeGreaterThanOrEqual(2);
@@ -155,6 +158,17 @@ test("2025: the UIL finals, one section per organization with five ranked teams,
   await checkWords(page, teams);
 });
 
+test("every past season's hub carries the coverage line, with no more schools played than listed", async ({ page }) => {
+  const { seasons, hubs, CURRENT_SEASON } = await fixtures();
+  for (const s of seasons.filter((y) => y < CURRENT_SEASON)) {
+    const { played, total } = hubs.get(s)!.coverage;
+    expect(played, String(s)).toBeLessThanOrEqual(total);
+    expect(played, String(s)).toBeGreaterThan(0);
+    await page.goto(`/seasons/${s}`);
+    await expect(page.locator("#season-coverage")).toHaveText(`Games from ${played} of ${total} schools for this season.`);
+  }
+});
+
 test("2026: the finals are in December, with the playoffs one tap away; links use the bare addresses", async ({ page, request }) => {
   const { hubs, CURRENT_SEASON } = await fixtures();
   const hub = hubs.get(CURRENT_SEASON)!;
@@ -167,6 +181,7 @@ test("2026: the finals are in December, with the playoffs one tap away; links us
   }
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${CURRENT_SEASON} season`);
   await expect(page.locator("main")).toContainText("so far");
+  await expect(page.locator("#season-coverage")).toHaveCount(0); // the season under way has no coverage line
   const hrefs = await page.locator("main a[href^='/']").evaluateAll((els) => [...new Set(els.map((a) => a.getAttribute("href")!.split("#")[0]))]);
   // The season under way lives at the bare addresses, which a redirect would otherwise send visitors through.
   expect(hrefs).toEqual(expect.arrayContaining(["/results", "/rankings", "/playoffs"]));
