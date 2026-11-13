@@ -45,7 +45,7 @@ function StatusCell({ g }: { g: Game }) {
     return (
       <div className={`${base} border-r border-line text-ink`}>
         <span>{g.status}</span>
-        <KickoffStatus date={g.date} kickoff={g.kickoff} short className="mt-0.5 w-fit text-[12px] leading-4" />
+        <KickoffStatus date={g.date} kickoff={g.kickoff} short className="mt-0.5 w-fit text-[13px] leading-4" />
       </div>
     );
   }

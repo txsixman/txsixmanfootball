@@ -194,7 +194,7 @@ export default async function ProgramPage({ params }: Props) {
           <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">
             {r.status}
             {/* Not yet played: its kickoff status when the page is viewed (ADR 0036). */}
-            {!r.score && r.date && <KickoffStatus date={r.date} kickoff={r.kickoff} short className="block w-fit font-sans text-[12px] normal-case" />}
+            {!r.score && r.date && <KickoffStatus date={r.date} kickoff={r.kickoff} short className="block w-fit font-sans text-[13px] normal-case" />}
           </span>
           <span className="min-w-0 text-[15px] leading-5 text-ink">
             <span className="flex items-center">
