@@ -8,6 +8,7 @@ import { noLiveScores } from "./live-route";
 // then: audit-a11y.spec.ts), and a text box inside a label that is itself the 44px target.
 
 noLiveScores(test);
+test.setTimeout(120_000); // nine pages a test
 test.beforeEach(({}, info) => test.skip(info.project.name !== "phone", "phone widths only"));
 
 type Problems = { overflow: number; wide: string[]; small: string[] };
