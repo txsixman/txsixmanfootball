@@ -92,3 +92,20 @@ test("a regular-season game has no type or round, and is matched on its date whe
   const later = csv(`I,season,2026-10-16,Alpha,Beta,false,7,6,unknown,,${SRC},`);
   assert.equal((await seedGames(db, parseGames(later), opts)).inserted, 1); // a rematch is a second game
 });
+
+test("a 0-0 final is no score: a file row loads unplayed, and one stored by an earlier load is blanked", async () => {
+  const at = (date) => db.query("select status, home_score, away_score, end_reason from game where game_date = $1", [date]).then((r) => r.rows);
+  // Read now: a 0-0 row with a result loads as not yet played.
+  await seedGames(db, parseGames(csv(`I,season,2026-10-23,Alpha,Beta,false,0,0,unknown,,${SRC},`)), opts);
+  assert.deepEqual(await at("2026-10-23"), [{ status: "scheduled", home_score: null, away_score: null, end_reason: null }]);
+  // Stored by an earlier load as a 0-0 final (here, a 7-7 game set to 0-0): the next load blanks it, though its file
+  // no longer lists it; a real tie and a 0-0 forfeit stay.
+  await seedGames(db, parseGames(csv(`I,season,2026-10-30,Beta,Alpha,false,7,7,unknown,,${SRC},`, `I,season,2026-10-31,Alpha,Beta,false,7,7,unknown,,${SRC},`, `I,season,2026-11-01,Alpha,Beta,false,7,7,unknown,,${SRC},`)), opts);
+  await db.query("update game set home_score = 0, away_score = 0 where game_date in ('2026-10-30', '2026-11-01')");
+  await db.query("update game set end_reason = 'forfeit' where game_date = '2026-11-01'");
+  const result = await seedGames(db, parseGames(csv(`I,season,2026-10-31,Alpha,Beta,false,7,7,unknown,,${SRC},`)), opts);
+  assert.deepEqual([result.updated, result.unchanged], [1, 1]);
+  assert.deepEqual(await at("2026-10-30"), [{ status: "scheduled", home_score: null, away_score: null, end_reason: null }]);
+  assert.deepEqual(await at("2026-10-31"), [{ status: "final", home_score: 7, away_score: 7, end_reason: "unknown" }]);
+  assert.deepEqual(await at("2026-11-01"), [{ status: "final", home_score: 0, away_score: 0, end_reason: "forfeit" }]);
+});
