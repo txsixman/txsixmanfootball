@@ -4,6 +4,7 @@ import type { BracketRow } from "@/lib/brackets";
 import { EMPTY, type loadIdentities } from "@/lib/identity";
 import { gameStatus } from "@/lib/playoff-status";
 import { projectionParts } from "@/lib/projection";
+import { KickoffStatus } from "../kickoff-status";
 import { CrestSlot } from "../ui";
 
 const day = (iso: string) =>
@@ -57,7 +58,12 @@ export function GameList({ games, league, alignments, identities, today, showSta
               {g.neutral ? "" : ` · at ${g.home}`}
               {(showStatus || g.forfeit) && (
                 <span className="flex flex-wrap items-center gap-x-2">
-                  <span className={status.kind === "tonight" ? "bg-red px-1.5 font-bold text-white" : "font-semibold text-ink"}>{status.label}</span>
+                  {/* Not yet played: its kickoff status, worked out in the browser when the page is viewed (ADR 0036). */}
+                  {["scheduled", "tonight", "awaiting"].includes(status.kind) ? (
+                    <KickoffStatus date={g.date} kickoff={g.kickoff} className="font-semibold" />
+                  ) : (
+                    <span className="font-semibold text-ink">{status.label}</span>
+                  )}
                   {showStatus && status.unconfirmed && <UnconfirmedMark />}
                 </span>
               )}

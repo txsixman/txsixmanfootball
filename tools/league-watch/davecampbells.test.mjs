@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
+import { DETAIL_COLUMNS, kickoffRows, mergeKickoffs } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -456,4 +457,19 @@ test("scores follow the feed's own home and away sides, whichever side is mapped
   const swapped = past({ participants: [{ ...a, participantType: "HOME" }, { ...h, participantType: "AWAY" }] });
   const { rows } = historyRows([swapped], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
   assert.deepEqual([rows[0].home, rows[0].away, rows[0].home_score, rows[0].away_score], ["finch", "wren", "6", "52"]);
+});
+
+test("kickoffs: a bracket game still to play gets the feed's kickoff in UTC, the bracket's names, and no source", () => {
+  const due = [{ game_date: "2026-11-13", home: "Lark", away: "Wren", home_score: "", away_score: "" }];
+  // The feed has Wren at home: the row keeps the bracket's home and away.
+  const rows = kickoffRows([finalItem("wren-wrens", "lark-owls", null, null, { status: "Upcoming", scheduledKickoff: "2026-11-14T01:00:00.000Z" })], { due, ours: oursMap });
+  assert.deepEqual(rows, [{ date: "2026-11-13", home: "Lark", away: "Wren", kickoff_utc: "2026-11-14T01:00:00Z", site_name: "", site_city: "" }]);
+  // A kickoff on another Central date is another game.
+  assert.deepEqual(kickoffRows([finalItem("wren-wrens", "lark-owls", null, null, { scheduledKickoff: "2026-11-15T01:00:00Z" })], { due, ours: oursMap }), []);
+  const text = mergeKickoffs("", rows);
+  assert.equal(text, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,,\n`);
+  assert.doesNotMatch(text, /davecampbells|https?:/i);
+  // A fresh value wins over a kept one, a blank keeps it; other kept rows stay.
+  const kept = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`;
+  assert.equal(mergeKickoffs(kept, rows), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
 });

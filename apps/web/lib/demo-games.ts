@@ -24,6 +24,8 @@ export type Game = {
   state: "live" | "final" | "scheduled" | "postponed";
   /** Short status as it should read: "Q3 4:12", "Halftime", "Final", "7:30 PM". */
   status: string;
+  /** Kickoff in UTC, for a game not yet played, when known (lib/kickoffs.ts, ADR 0036). */
+  kickoff?: string;
   /** Why it ended, when that matters: "45-point rule, halftime", "Forfeit". */
   endReason?: string;
   verification: "confirmed" | "unconfirmed" | "disputed" | "none";

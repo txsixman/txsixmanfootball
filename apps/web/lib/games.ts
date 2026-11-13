@@ -12,6 +12,7 @@ import { forfeitScore } from "./forfeit";
 import { applyToGame } from "./corrections";
 import { buildSeasonResults, type SeasonResult } from "./season-results";
 import { loadCorrections } from "./correction-files";
+import { kickoffOf, loadKickoffs } from "./kickoffs";
 
 // Hand-captured games (data/seed/*/playoffs-*.csv), read at build time. Same columns as packages/db/games.mjs, checked
 // row by row in lib/data-schemas.ts: a bad row fails the build.
@@ -97,7 +98,7 @@ export async function playoffLeagueSet(season: number): Promise<Set<string>> {
 }
 
 export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
-  const [rows, ratings] = await Promise.all([playoffRows(), loadRatings()]);
+  const [rows, ratings, kickoffs] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON)]);
   return rows.map(({ r, league, season, file, line: i, robot, corrected }) => {
     const team = (name: string): Team => {
       const known = programFor(alignments, name, league);
@@ -120,6 +121,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
       awayScore: played ? Number(r.away_score) : null,
       state: played ? "final" : "scheduled",
       status: played ? "Final" : shortDate(r.game_date),
+      ...(!played && season === CURRENT_SEASON && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
       // A robot-read 1-0 or 2-0 is how the source records a forfeit: shown as one, never as a score (ADR 0004).
       endReason: played
         ? endReason(robot && forfeitScore(Number(r.home_score), Number(r.away_score)) ? "forfeit" : r.end_reason, r.end_period)
@@ -141,9 +143,12 @@ export type PlayoffGame = {
   homeScore?: number; awayScore?: number; forfeit: boolean; neutral: boolean;
   /** A played game whose score only the robot or a correction gave: false, so no row names a winner from it (ADR 0004, ADR 0011). */
   confirmed: boolean;
+  /** Kickoff in UTC, for a game not yet played, when known (lib/kickoffs.ts, ADR 0036). */
+  kickoff?: string;
 };
 
 export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT_SEASON): Promise<PlayoffGame[]> {
+  const kickoffs = await loadKickoffs(season);
   return (await playoffRows([season])).map(({ r, league, robot, corrected }) => {
     const name = (n: string) => programFor(alignments, n, league)?.school ?? n;
     const played = r.home_score !== "" && r.away_score !== "";
@@ -159,6 +164,7 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
       forfeit: r.end_reason === "forfeit" || (played && forfeitScore(h, a)),
       neutral: r.neutral !== "false",
       confirmed: played && !robot && !corrected,
+      ...(!played && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
     };
   });
 }

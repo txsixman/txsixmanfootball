@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 /**
  * The round being played in every bracket, on one page: organization, then division. Each bracket shows the round its
  * own page opens on (lib/playoff-status.ts currentRound), so a bracket a round ahead or behind shows its own round.
- * Built only from the brackets: date, site, status and projection. The data holds dates, not kickoff times, and a
+ * Built from the brackets and their kickoff times (ADR 0036): date, kickoff, site, status and projection. A
  * robot-read score is unconfirmed and names no winner (ADR 0004). The site is static: "as of" is the time of this build.
  */
 export default async function ThisRoundPage() {
@@ -41,7 +41,7 @@ export default async function ThisRoundPage() {
       <div className="mt-4 border-2 border-navy bg-panel px-3 py-2">
         <p className="font-num text-[22px] font-bold uppercase leading-tight tracking-wide text-navy">Scores as of {clock.label}</p>
         <p className="mt-1 text-[14px] leading-5 text-ink">
-          Each bracket&rsquo;s current round. Dates are Central; kickoff times are not listed yet. A score marked Unconfirmed may change, and no game here
+          Each bracket&rsquo;s current round. Kickoff times are Central, and each game&rsquo;s status is as of when you opened this page. A score marked Unconfirmed may change, and no game here
           names a winner from one.
         </p>
       </div>

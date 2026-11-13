@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { liveView, type LiveRow } from "@/lib/live-scores";
 import type { Night, NightGame } from "@/lib/tonight";
+import { KickoffStatus } from "../../kickoff-status";
 import { LiveLine, useLiveScores } from "../live-score";
 
 // Tonight's games, one organization at a time and each round under it (ADR 0012). A game with no final yet may be under way,
@@ -26,7 +27,9 @@ function Status({ g, liveRows }: { g: NightGame; liveRows: LiveRow[] }) {
   if (live) return <LiveLine live={live} />;
   return (
     <>
-      <p className="text-[14px] font-bold uppercase leading-5 tracking-wide text-navy">Tonight, no score yet</p>
+      <p className="text-[14px] font-bold uppercase leading-5 tracking-wide text-navy">
+        <KickoffStatus date={g.date} kickoff={g.kickoff} />
+      </p>
       {g.projected && <p className="text-[14px] leading-5 text-muted">Projected: {g.projected}</p>}
     </>
   );

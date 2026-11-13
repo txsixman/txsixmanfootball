@@ -205,7 +205,7 @@ test.describe("Tonight", () => {
         const row = section.locator(`li[data-game="${g.id}"]`);
         await expect(row.getByRole("link")).toHaveAttribute("href", g.href);
         await expect(row).toContainText(`${g.away} at ${g.home}`);
-        if (g.state === "later") await expect(row).toContainText("Tonight, no score yet");
+        if (g.state === "later") await expect(row).toContainText(/Starts \d{1,2}:\d\d [AP]M CT|\d{1,2}:\d\d [AP]M CT|In progress|Time not listed|Score not reported yet/i); // kickoff status (ADR 0036)
         if (g.state === "forfeit") {
           await expect(row).toContainText("Forfeit");
           await expect(row).not.toContainText(/\b[0-2]\s*,\s|\b[0-2]–[0-2]\b/);

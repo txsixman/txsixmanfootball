@@ -28,6 +28,8 @@ export type NightGame = {
   unconfirmed: boolean;
   /** "Jayton by 12 · 74% win probability" for a game not yet played, when both teams are rated. */
   projected?: string;
+  /** Kickoff in UTC, for a game not yet played, when known (ADR 0036). */
+  kickoff?: string;
 };
 type NightRound = { label: string; games: NightGame[] };
 type NightOrg = { slug: string; label: string; rounds: NightRound[] };
@@ -64,6 +66,7 @@ export async function loadNight(night = tonightsDate()): Promise<Night> {
         homeScore: forfeit ? null : g.homeScore,
         unconfirmed: g.state === "final" && g.verification !== "confirmed",
         ...(g.projected ? { projected: g.projected } : {}),
+        ...(g.kickoff ? { kickoff: g.kickoff } : {}),
       },
     });
   }

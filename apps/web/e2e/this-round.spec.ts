@@ -48,13 +48,13 @@ test("this round: every bracket's current round, a status for every game, no win
     const games = d.locator("li");
     for (let j = 0; j < (await games.count()); j++) {
       const text = (await games.nth(j).innerText()).replace(/\s+/g, " ");
-      expect(text).toMatch(/(Not yet played|Tonight, no score yet|Score not reported yet|Reported tonight|Score reported|Final|Forfeit)/);
-      if (/Reported tonight|Score reported/.test(text)) expect(text).toContain("Unconfirmed");
+      expect(text).toMatch(/(Starts \d|In progress|Time not listed|Score not reported yet|Reported tonight|Score reported|Final|Forfeit)/i);
+      if (/Reported tonight|Score reported/i.test(text)) expect(text).toMatch(/Unconfirmed/i);
+      expect(text).not.toMatch(NAMES_A_WINNER);
     }
   }
   const body = await page.locator("main").innerText();
   expect(body).not.toMatch(BETTING);
-  expect(body).not.toMatch(NAMES_A_WINNER);
   expect(errors).toEqual([]);
 
   for (const { href, round } of checks) {
@@ -64,7 +64,7 @@ test("this round: every bracket's current round, a status for every game, no win
   }
 
   // Home links here while a game is still to play (the playoffs page always does).
-  const toPlay = /Not yet played|Tonight, no score yet/.test(body);
+  const toPlay = /Starts \d|In progress|Time not listed/i.test(body);
   await page.goto("/");
   if (toPlay) await expect(page.locator("main").getByRole("link", { name: /this round/i }).first()).toHaveAttribute("href", "/playoffs/this-round");
   await page.goto("/playoffs");

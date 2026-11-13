@@ -24,6 +24,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, write
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { centralDate, gameNight, slugify, tonightsGames } from "./maxpreps.mjs";
+import { parseCsv } from "./store.mjs";
 
 export const ORIGIN = "https://www.davecampbells.com";
 export const USER_AGENT = "project-80x40-results-reader/1.0 (six-man scores; one request per 2.5 s)";
@@ -695,5 +696,62 @@ async function team() {
   }
 }
 
-const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team };
+// Game details (ADR 0036): the feed's scheduled kickoff, in UTC, for every bracket game with no score yet, kept in the public
+// facts file data/seed/game-details/<year>.csv. The file names no source: date, the two teams as the bracket spells them, the
+// kickoff, and the site (filled by a later read; blank until then).
+export const DETAIL_COLUMNS = "date,home,away,kickoff_utc,site_name,site_city";
+const kickoffKey = (date, home, away) => gameKey(date, slugify(home), slugify(away));
+
+/** The kickoff of each `due` bracket row the feed lists, as a facts row; a row the feed does not list is left out. */
+export function kickoffRows(items, { due, ours }) {
+  return matchGames(items, { rows: due, ours }).map(({ item, row }) => ({
+    date: row.game_date,
+    home: row.home,
+    away: row.away,
+    kickoff_utc: new Date(item.scheduledKickoff).toISOString().replace(/\.\d{3}Z$/, "Z"),
+    site_name: "",
+    site_city: "",
+  }));
+}
+
+/** The facts file with `fresh` rows laid over the kept ones, field by field: a fresh value wins, a blank keeps the old one. */
+export function mergeKickoffs(text, fresh) {
+  const kept = text.trim() ? parseCsv(text, "game details").rows : [];
+  const out = new Map(kept.map((r) => [kickoffKey(r.date, r.home, r.away), r]));
+  for (const r of fresh) {
+    const k = kickoffKey(r.date, r.home, r.away);
+    const old = out.get(k) ?? {};
+    out.set(k, Object.fromEntries(DETAIL_COLUMNS.split(",").map((c) => [c, r[c] || old[c] || ""])));
+  }
+  const rows = [...out.values()].sort((a, b) => a.kickoff_utc.localeCompare(b.kickoff_utc) || a.home.localeCompare(b.home));
+  const cols = DETAIL_COLUMNS.split(",");
+  for (const r of rows) if (cols.some((c) => r[c].includes(","))) throw new Error(`a comma in a game detail: ${r.date} ${r.home} / ${r.away}`);
+  return [DETAIL_COLUMNS, ...rows.map((r) => cols.map((c) => r[c]).join(","))].join("\n") + "\n";
+}
+
+async function kickoffs() {
+  const arg = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : null);
+  const playoffsFile = arg("--kickoffs");
+  const out = arg("--out");
+  if (!playoffsFile || !out) throw new Error("usage: davecampbells.mjs --kickoffs <playoffs.csv> --out <data/seed/game-details/YYYY.csv>");
+  const today = centralDate();
+  const seasonId = SEASON_IDS[Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1)];
+  if (!seasonId) return console.log("Kickoffs: no feed season id for this season, nothing read.");
+  const due = parseCsv(readFileSync(playoffsFile, "utf8"), "playoffs.csv").rows.filter((r) => r.home_score === "" && r.game_date >= today);
+  if (!due.length) return console.log("Kickoffs: no bracket game still to play.");
+  const { theirs, ours } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
+  // One mapped team a game is enough: its schedule lists the game.
+  const teams = [...new Set(due.map((r) => theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away))).filter(Boolean))];
+  const client = createClient();
+  const items = [];
+  for (const t of teams) {
+    const id = await teamId(client, t, seasonId);
+    if (id) items.push(...(await liveAndUpcoming(client, seasonId, id)));
+  }
+  const fresh = kickoffRows(items, { due, ours });
+  writeFileSync(out, mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh));
+  console.log(`Kickoffs: ${due.length} bracket games still to play, ${teams.length} teams read, ${fresh.length} kickoff times found.`);
+}
+
+const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs };
 if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(Object.entries(MODES).find(([f]) => process.argv.includes(f))?.[1] ?? live);

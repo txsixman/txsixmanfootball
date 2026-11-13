@@ -9,6 +9,7 @@ import { liveView, type LiveRow } from "@/lib/live-scores";
 import { ORGS } from "@/lib/orgs";
 import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
 import { CrestSlot, EmptyState, PageHeader } from "../ui";
+import { KickoffStatus } from "../kickoff-status";
 import { LiveLine, useLiveScores } from "./live-score";
 import { ForfeitMark, VerifyBar, scoreClass } from "./parts";
 
@@ -38,6 +39,16 @@ function StatusCell({ g }: { g: Game }) {
     );
   }
   if (g.state === "postponed") return <div className={`${base} border-r border-line text-[13px] tracking-normal text-red`}>Postponed</div>;
+  // A real game not yet played: its date, then its kickoff status at the moment of viewing (ADR 0036). An invented sample
+  // game keeps its written time.
+  if (g.state === "scheduled" && g.date) {
+    return (
+      <div className={`${base} border-r border-line text-ink`}>
+        <span>{g.status}</span>
+        <KickoffStatus date={g.date} kickoff={g.kickoff} short className="mt-0.5 w-fit text-[12px] leading-4" />
+      </div>
+    );
+  }
   const [time, ampm] = g.status.split(" ");
   return (
     <div className={`${base} border-r border-line text-ink`}>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { KickoffStatus } from "../../kickoff-status";
 import { notFound } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
 import { gameDescription } from "@/lib/descriptions";
@@ -143,7 +144,16 @@ export default async function GamePage({ params }: Props) {
 
       <header>
         <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-red" : "bg-navy"}`}>
-          <span>{live ? "Live" : g.status}</span>
+          <span>
+            {live ? "Live" : g.status}
+            {/* A real game not yet played: its kickoff status at the moment of viewing (ADR 0036). */}
+            {!live && !sample && g.state === "scheduled" && g.date && (
+              <>
+                {" · "}
+                <KickoffStatus date={g.date} kickoff={g.kickoff} tone={false} />
+              </>
+            )}
+          </span>
           {live && <span>{g.status}</span>}
         </div>
         <VerifyBar g={g} />

@@ -1,6 +1,7 @@
 import { ChevronRight, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { KickoffStatus } from "../../kickoff-status";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { heading, loadAlignments, placeLabel, programFor, slugify, uniquePrograms } from "@/lib/alignments";
@@ -190,7 +191,11 @@ export default async function ProgramPage({ params }: Props) {
     return (
       <li key={r.id} className="relative border-b border-line hover:bg-panel">
         <div className="grid min-h-14 grid-cols-[4.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
-          <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{r.status}</span>
+          <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">
+            {r.status}
+            {/* Not yet played: its kickoff status when the page is viewed (ADR 0036). */}
+            {!r.score && r.date && <KickoffStatus date={r.date} kickoff={r.kickoff} short className="block w-fit font-sans text-[12px] normal-case" />}
+          </span>
           <span className="min-w-0 text-[15px] leading-5 text-ink">
             <span className="flex items-center">
               {opponentCrest(r.opponent)}
@@ -335,6 +340,11 @@ export default async function ProgramPage({ params }: Props) {
                   <Link href={next.href} className="flex min-h-11 items-center justify-between gap-2 text-[16px] font-semibold text-ink hover:text-navy">
                     <span>
                       {next.status} · {next.home ? "vs" : "at"} {next.opponent}
+                      {next.date && (
+                        <span className="block text-[14px]">
+                          <KickoffStatus date={next.date} kickoff={next.kickoff} />
+                        </span>
+                      )}
                       {next.note && <span className="block text-[14px] font-normal text-muted">{next.note}</span>}
                     </span>
                     <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted" />

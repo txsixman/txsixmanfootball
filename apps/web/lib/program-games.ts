@@ -3,7 +3,7 @@ import type { SeasonResult } from "./games";
 import { isForfeit } from "./score-display";
 
 /** One game of a school's season: a robot-read result or a playoff game, each with its own page (a playoff game also has a projection until played). */
-export type Row = { id: string; date: string; status: string; home: boolean; opponent: string; score: string | null; note?: string; href: string };
+export type Row = { id: string; date: string; status: string; home: boolean; opponent: string; score: string | null; note?: string; href: string; kickoff?: string };
 
 const dateLabel = (iso: string) => {
   const d = new Date(`${iso}T12:00:00Z`);
@@ -52,6 +52,7 @@ export function seasonRows(school: string, allGames: Game[], seasonResults: Seas
         score: us == null ? null : isForfeit(g) ? "Forfeit" : `${us}-${them}`, // a forfeit shows the word, never 1-0 (ADR 0004)
         note: g.state === "scheduled" && g.projected ? `Projected: ${g.projected}` : g.league,
         href: `/scores/${g.id}`,
+        ...(g.kickoff && { kickoff: g.kickoff }),
       };
     }),
   ].sort((a, b) => a.date.localeCompare(b.date));

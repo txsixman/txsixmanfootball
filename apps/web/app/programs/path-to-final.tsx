@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { KickoffStatus } from "../kickoff-status";
 import { loadAlignments, programFor } from "@/lib/alignments";
 import { bracketHref, loadBrackets, roundLabel } from "@/lib/brackets";
 import { EMPTY, loadIdentities, type Identity } from "@/lib/identity";
@@ -74,7 +75,11 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
                         {home ? "vs" : "at"}&nbsp;{opponent(other, b.league)}
                       </span>
                       <span className="flex flex-wrap items-center gap-x-2 text-[13px] leading-5 text-muted">
-                        <span className={status.kind === "tonight" ? "bg-red px-1.5 font-bold text-white" : "font-semibold text-ink"}>{status.label}</span>
+                        {["scheduled", "tonight", "awaiting"].includes(status.kind) ? (
+                          <KickoffStatus date={game.date} kickoff={game.kickoff} className="font-semibold" />
+                        ) : (
+                          <span className="font-semibold text-ink">{status.label}</span>
+                        )}
                         {status.unconfirmed && <UnconfirmedMark />}
                       </span>
                     </span>
