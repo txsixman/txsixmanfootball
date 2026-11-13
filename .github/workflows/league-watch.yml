@@ -26,7 +26,7 @@ jobs:
           node-version: 22
       - run: npm ci --prefix tools/league-watch
       - name: Install Chromium (three tries of 4 minutes; the runner's package mirror sometimes fails or hangs)
-        run: for i in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && exit 0; sleep 20; done; exit 1
+        run: for _ in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && exit 0; sleep 20; done; exit 1
       - run: npm --prefix tools/league-watch test
       - name: Read TAPPS six-man
         run: node tools/league-watch/tapps.mjs
@@ -69,7 +69,7 @@ jobs:
           node-version: 22
       - run: npm ci --prefix tools/league-watch
       - name: Install Chromium (three tries of 4 minutes; the runner's package mirror sometimes fails or hangs)
-        run: for i in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && exit 0; sleep 20; done; exit 1
+        run: for _ in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && exit 0; sleep 20; done; exit 1
       - run: npm --prefix tools/league-watch test
       - name: Read TAIAO six-man divisions
         run: node tools/league-watch/taiao.mjs
