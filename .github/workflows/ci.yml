@@ -66,6 +66,9 @@ jobs:
       - run: npm ci --prefix packages/db
       - name: Zod checks on every seed and robot-read file, the fan and account routes, and their tests
         run: node --test apps/web/scripts/*.test.mjs
+      # The data as it is: every file, then the cross-file checks (hard ones fail; warnings go to the run summary).
+      - name: Data checks, files and cross-file (scripts/check-data.mjs, scripts/data-integrity.mjs)
+        run: node apps/web/scripts/check-data.mjs
       - name: Knip (unused files, exports and dependencies in apps/web; knip.json)
         working-directory: apps/web
         run: npx --yes knip@6.45.1 --no-progress

@@ -110,8 +110,11 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   `data/` changed (the project's Ignored Build Step). Never `vercel env pull` or `vercel deploy` from a laptop:
   pushes to `main` deploy, branches get protected previews. `vercel link` writes a short-lived OIDC token to
   `.env.local`; delete it, the site uses none
-- `node apps/web/scripts/check-data.mjs`: Zod check of every seed and robot-read file (`lib/data-schemas.ts`); the
-  robots run it before they commit. `node --test apps/web/scripts/*.test.mjs`: its tests and the build scripts' tests
+- `node apps/web/scripts/check-data.mjs`: Zod check of every seed and robot-read file (`lib/data-schemas.ts`), then
+  the cross-file checks (`scripts/data-integrity.mjs`: hard ones fail, on the current season; soft ones warn in the
+  run summary); the robots run it before they commit. Fix a hard failure with a correction or an alias, never by
+  editing robot output; one the source cannot settle goes in `data/integrity-exceptions.json` with its reason (an
+  exception that matches nothing fails, so remove it once fixed). `node --test apps/web/scripts/*.test.mjs`: its tests and the build scripts' tests
 - `(cd apps/web && npx --yes knip@6.45.1)`: unused files, exports and dependencies (a CI check; unexport, don't ignore)
 - `uvx ruff@0.17.4 check && uvx ruff@0.17.4 format --check`: Python lint and format (`ruff.toml`, a CI check)
 - `npm --prefix apps/web run stories` (Ladle, :61000): components in every state, invented schools only;
