@@ -214,3 +214,16 @@ test("a game page links to the two programs' series page, and a pair without one
   await page.goto("/scores/g1"); // an invented sample game: no series
   await expect(page.getByRole("link", { name: /game since 2021$/ })).toHaveCount(0);
 });
+
+test("each meeting's game page has a title of its own: the teams and the date", async ({ page }) => {
+  await page.goto(`/series/${JAYTON.join("/")}`);
+  const games = [...new Set(await page.getByRole("main").locator('a[href^="/scores/"]').evaluateAll((as) => as.map((a) => a.getAttribute("href")!)))];
+  const titles: string[] = [];
+  for (const href of games) {
+    await page.goto(href);
+    titles.push(await page.title());
+  }
+  expect(titles.length).toBeGreaterThanOrEqual(3);
+  for (const t of titles) expect(t).toMatch(/^(Guthrie at Jayton|Jayton at Guthrie), [A-Z][a-z]{2} \d{1,2}, \d{4} \| TX Six-Man Football$/);
+  expect(new Set(titles).size).toBe(titles.length);
+});

@@ -1,0 +1,208 @@
+// The game-day clock (ADR 0024): starts Results watch's game-day read (`tonight`) every 10 minutes of a playoff game
+// night, from GitHub itself, because GitHub's `schedule` events have never fired in this repo. One run of
+// gameday-clock.yml loops for up to about 5.5 hours, then starts the next run and exits, so the clock keeps going
+// within the 6-hour job limit. Through GitHub's API with the workflow's own token (actions: write); nothing else.
+// A dispatch made with that token starts a run: workflow_dispatch is GitHub's stated exception to the rule that the
+// token's events start no workflows.
+//
+//   node .github/scripts/gameday-clock.mjs [--minutes 330] [--dry-run] [--retry]
+//
+// --minutes  how long this run keeps the clock before handing on (1 to 340)
+// --dry-run  decides and logs every tick, but starts nothing: no read, no next clock run
+// --retry    this run was started after a run whose dispatch failed; if this one fails too, it hands on to no one
+// Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/name), GITHUB_STEP_SUMMARY (optional), PLAYOFFS (default: the season's
+// data/seed/maxpreps-<season>/playoffs.csv).
+
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+export const READ_WORKFLOW = "results-watch.yml";
+export const CLOCK_WORKFLOW = "gameday-clock.yml";
+export const MINUTE = 60_000;
+/** A tick is every 10 minutes at :03, :13, ... :53, as the Mac's loop did, so the two never double up for long. */
+export const TICK_OFFSET = 3;
+/** A `schedule` read this recent means GitHub's own timer is working: the clock stands down for that tick. */
+export const SCHEDULE_QUIET = 12;
+/** Any other read this recent (the Mac's loop, a run by hand) already covers this tick. */
+export const RECENT_QUIET = 8;
+
+/** November and December, by the UTC month, as Results watch's game-day cron lines count them. */
+export const seasonMonth = (now) => [10, 11].includes(new Date(now).getUTCMonth());
+
+/** Inside a game night's read hours: 18:00 to 06:10 UTC (noon to past midnight Central), in November and December. */
+export function inWindow(now) {
+  if (!seasonMonth(now)) return false;
+  const d = new Date(now);
+  const minutes = d.getUTCHours() * 60 + d.getUTCMinutes();
+  return minutes >= 18 * 60 || minutes <= 6 * 60 + 10;
+}
+
+/** The next tick strictly after `now`: the next time whose minute ends in 3, at :00 seconds. */
+export function nextTick(now) {
+  const d = new Date(now);
+  d.setUTCSeconds(0, 0);
+  const m = d.getUTCMinutes();
+  d.setUTCMinutes(m - (m % 10) + TICK_OFFSET);
+  while (d.getTime() <= now) d.setUTCMinutes(d.getUTCMinutes() + 10);
+  return d.getTime();
+}
+
+/** The season under way: from July on it is this year's, before July last year's (as Results watch counts it). */
+export const seasonOf = (now) => {
+  const d = new Date(now);
+  return d.getUTCMonth() >= 6 ? d.getUTCFullYear() : d.getUTCFullYear() - 1;
+};
+
+/**
+ * Is the season's bracket played out? Every row has a score, and every league and division in the file has a scored
+ * `final`. A division still short of its final (its later rounds not yet in the file) keeps the clock going.
+ */
+export function seasonDone(playoffsText) {
+  const [header, ...lines] = playoffsText.trimEnd().split("\n");
+  const cols = header.split(",");
+  const rows = lines.filter(Boolean).map((l) => Object.fromEntries(cols.map((c, i) => [c, l.split(",")[i] ?? ""])));
+  if (!rows.length || !cols.includes("round") || !cols.includes("home_score")) return false;
+  if (rows.some((r) => r.home_score === "")) return false;
+  const brackets = new Set(rows.map((r) => `${r.league}|${r.division}`));
+  const finals = new Set(rows.filter((r) => r.round === "final").map((r) => `${r.league}|${r.division}`));
+  return [...brackets].every((b) => finals.has(b));
+}
+
+/**
+ * One tick's decision from Results watch's newest runs (GitHub's `workflow_runs`: status, event, created_at).
+ * @returns {{ dispatch: boolean, line: string }}
+ */
+export function decide(now, runs) {
+  if (!inWindow(now)) return { dispatch: false, line: "outside the game-night hours (18:00 to 06:10 UTC, Nov and Dec): nothing to start" };
+  const ago = (r) => (now - Date.parse(r.created_at)) / MINUTE;
+  const active = runs.find((r) => r.status !== "completed");
+  if (active) return { dispatch: false, line: `skipped: a read is ${active.status} (run ${active.id}, ${active.event})` };
+  const scheduled = runs.find((r) => r.event === "schedule" && ago(r) < SCHEDULE_QUIET);
+  if (scheduled) return { dispatch: false, line: `skipped: GitHub's schedule started a read ${Math.floor(ago(scheduled))} min ago (run ${scheduled.id})` };
+  const recent = runs.find((r) => ago(r) < RECENT_QUIET);
+  if (recent) return { dispatch: false, line: `skipped: a read was started ${Math.floor(ago(recent))} min ago (run ${recent.id}, ${recent.event})` };
+  return { dispatch: true, line: "started the game-day read" };
+}
+
+/** GitHub's REST API with the workflow's token. A dispatch answers 204; anything else is a failure. */
+export function github({ token, repo, fetchImpl = fetch }) {
+  const base = `https://api.github.com/repos/${repo}/actions/workflows`;
+  const headers = { authorization: `Bearer ${token}`, accept: "application/vnd.github+json", "x-github-api-version": "2022-11-28" };
+  return {
+    async runs() {
+      const res = await fetchImpl(`${base}/${READ_WORKFLOW}/runs?per_page=30`, { headers });
+      if (!res.ok) throw new Error(`listing ${READ_WORKFLOW} runs: HTTP ${res.status}`);
+      return (await res.json()).workflow_runs ?? [];
+    },
+    async dispatch(workflow, inputs) {
+      const res = await fetchImpl(`${base}/${workflow}/dispatches`, { method: "POST", headers, body: JSON.stringify({ ref: "main", inputs }) });
+      if (res.status !== 204) throw new Error(`starting ${workflow}: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    },
+  };
+}
+
+/**
+ * The clock's loop. Everything outside (time, sleep, GitHub, the log) is passed in, so the tests run it on a fake clock.
+ * @returns {Promise<{ failed: boolean, handedOn: boolean, ticks: number }>}
+ */
+export async function runClock({ minutes, dryRun = false, retry = false, playoffsText, clock, sleep, api, log }) {
+  const start = clock();
+  const deadline = start + minutes * MINUTE;
+  if (!seasonMonth(start)) {
+    log(`Not November or December (UTC): the clock stops here and starts no next run.`);
+    return { failed: false, handedOn: false, ticks: 0 };
+  }
+  if (playoffsText != null && seasonDone(playoffsText)) {
+    log(`Every bracket of the ${seasonOf(start)} season has a scored final and no game is left: the clock stops here.`);
+    return { failed: false, handedOn: false, ticks: 0 };
+  }
+  if (playoffsText == null) log(`No playoffs.csv for the ${seasonOf(start)} season yet: the clock runs by the date alone.`);
+  let failed = false;
+  let ticks = 0;
+  let wasOutside = false;
+  for (;;) {
+    const tick = nextTick(clock());
+    if (tick > deadline) break;
+    await sleep(tick - clock());
+    const now = clock();
+    ticks++;
+    const stamp = new Date(now).toISOString().slice(0, 16).replace("T", " ");
+    let verdict;
+    try {
+      verdict = inWindow(now) ? decide(now, await api.runs()) : decide(now, []);
+    } catch (e) {
+      failed = true;
+      log(`${stamp} UTC: FAILED to read Results watch's runs: ${e.message}`);
+      break;
+    }
+    if (verdict.dispatch && !dryRun) {
+      try {
+        await api.dispatch(READ_WORKFLOW, { tonight: "true" });
+      } catch (e) {
+        failed = true;
+        log(`${stamp} UTC: FAILED to start the game-day read: ${e.message}`);
+        break;
+      }
+    }
+    // Outside the hours, only the first quiet tick is logged, not one line every 10 minutes all day.
+    const outside = !inWindow(now);
+    if (!(outside && wasOutside)) log(`${stamp} UTC: ${dryRun && verdict.dispatch ? "would have started the game-day read (dry run)" : verdict.line}`);
+    wasOutside = outside;
+  }
+  // Hand on: the next clock run waits on this one (concurrency: gameday-clock) and starts as this one ends.
+  const end = clock();
+  if (dryRun) {
+    log(`Dry run: no next clock run started.`);
+    return { failed, handedOn: false, ticks };
+  }
+  if (!seasonMonth(end)) {
+    log(`December is over: the clock stops here and starts no next run.`);
+    return { failed, handedOn: false, ticks };
+  }
+  if (failed && retry) {
+    log(`This run followed a failed one and failed too: no next clock run. Start the clock again by hand once it is fixed.`);
+    return { failed, handedOn: false, ticks };
+  }
+  try {
+    await api.dispatch(CLOCK_WORKFLOW, { minutes: String(minutes), retry: String(failed) });
+    log(`Started the next clock run${failed ? " (a retry: if it fails too, the chain stops)" : ""}.`);
+    return { failed, handedOn: true, ticks };
+  } catch (e) {
+    log(`FAILED to start the next clock run: ${e.message}. The clock has stopped; start it again by hand.`);
+    return { failed: true, handedOn: false, ticks };
+  }
+}
+
+function args(argv) {
+  const at = argv.indexOf("--minutes");
+  const minutes = at < 0 ? 330 : Number(argv[at + 1]);
+  if (!Number.isInteger(minutes) || minutes < 1 || minutes > 340) throw new Error(`--minutes must be a whole number from 1 to 340, not: ${argv[at + 1]}`);
+  return { minutes, dryRun: argv.includes("--dry-run"), retry: argv.includes("--retry") };
+}
+
+async function main() {
+  const { minutes, dryRun, retry } = args(process.argv);
+  const { GITHUB_TOKEN: token, GITHUB_REPOSITORY: repo, GITHUB_STEP_SUMMARY: summary } = process.env;
+  if (!token || !repo) throw new Error("GITHUB_TOKEN and GITHUB_REPOSITORY must be set");
+  const file = process.env.PLAYOFFS || `data/seed/maxpreps-${seasonOf(Date.now())}/playoffs.csv`;
+  const log = (line) => {
+    console.log(line);
+    if (summary) appendFileSync(summary, `- ${line}\n`);
+  };
+  log(`Game-day clock: ${minutes} min${dryRun ? ", dry run" : ""}${retry ? ", after a failed run" : ""}.`);
+  const result = await runClock({
+    minutes,
+    dryRun,
+    retry,
+    playoffsText: existsSync(file) ? readFileSync(file, "utf8") : null,
+    clock: Date.now,
+    sleep: (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms))),
+    api: github({ token, repo }),
+    log,
+  });
+  log(`${result.ticks} ticks; ${result.failed ? "FAILED" : "ok"}; ${result.handedOn ? "next clock run started" : "no next clock run"}.`);
+  // A failure fails the job, so GitHub emails the owner; the next run (if handed on) already has the clock.
+  if (result.failed) process.exitCode = 1;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

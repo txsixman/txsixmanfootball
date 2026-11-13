@@ -48,7 +48,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const card = (await hasCard(id)) && { openGraph: { images: [{ url: `/scores/${id}/card`, width: 1200, height: 630, alt: "Game card" }] } };
   // An invented sample game stays out of search (its schools are not real).
   return {
-    title: teams ? `${teams.away} at ${teams.home}` : "Game",
+    // The date keeps each meeting's title its own: the same two teams at the same field meet again in later seasons.
+    title: teams ? `${teams.away} at ${teams.home}${date ? `, ${mediumDate(date)}` : ""}` : "Game",
     ...(teams && { description: gameDescription({ away: teams.away, home: teams.home, date: date && mediumDate(date), season, playoff, scheduled: !found && g?.state === "scheduled", sample }) }),
     alternates: { canonical: `/scores/${id}` },
     ...card,
