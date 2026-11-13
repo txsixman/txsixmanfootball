@@ -6,12 +6,14 @@
 // writes maxpreps-<season>/games.csv, teams.csv (every team page found, the next run's seeds) and coverage.txt in
 // $PRIVATE_DATA (the private data repo; data/seed without it). tools/league-watch/publish.mjs copies the facts here.
 //   node tools/league-watch/maxpreps.mjs --due data/seed/maxpreps-2026/playoffs.csv
-// prints how many bracket games of tonight have no score yet (results-watch.yml reads only when it is not 0).
+// prints how many bracket games of tonight, or of the 3 game nights before it (ADR 0030), have no score yet
+// (results-watch.yml reads only when it is not 0).
 //   node tools/league-watch/maxpreps.mjs --canary
 // reads one seed team's schedule page and fails if MaxPreps changed its shape (maxpreps-canary.yml, before game nights).
 //   node tools/league-watch/maxpreps.mjs --tonight
-// (playoff game days, ADRs 0015 and 0019) reads only the pages of teams whose bracket game today has no score yet, one page a
-// game, and fills those finals into playoffs.csv and games.csv; every other row and file is left as it was.
+// (playoff game days, ADRs 0015, 0019 and 0030) reads only the pages of teams whose bracket game today, or on one of the 3
+// game nights before it, has no score yet, one page a game, and fills those finals into playoffs.csv and games.csv; every
+// other row and file is left as it was.
 //   node tools/league-watch/maxpreps.mjs --tonight --live-out <file>
 // also writes the games of tonight that show a score but no final yet (live scores, ADR 0021) to <file> as JSON, for
 // packages/db/live.mjs; the repo's files never change for a live score.
@@ -431,6 +433,21 @@ export function tonightsGames(playoffsText, date) {
   return parseRows(playoffsText).rows.filter((r) => r.game_date === date && r.home_score === "");
 }
 
+/** How many earlier game nights a game-day read catches up on (ADR 0030): a final MaxPreps posts after that night's last read. */
+export const CATCH_UP_NIGHTS = 3;
+
+/**
+ * Bracket rows with no score yet that a game-day read looks for (ADR 0030): tonight's, and those of the last
+ * `nights` game nights before it (the latest dates before `date` that have any bracket row). A game postponed past them
+ * leaves the list; the morning read and the next full read still find it.
+ */
+export function dueGames(playoffsText, date, nights = CATCH_UP_NIGHTS) {
+  const rows = parseRows(playoffsText).rows;
+  const earlier = [...new Set(rows.map((r) => r.game_date).filter((d) => d && d < date))].sort().slice(-nights);
+  const dates = new Set([date, ...(nights > 0 ? earlier : [])]);
+  return rows.filter((r) => dates.has(r.game_date) && r.home_score === "");
+}
+
 /**
  * Tonight's finals into the season's files. A bracket row with no score takes the final for the same date and teams
  * (scores in the row's own home and away order); games.csv gains each such game once, in toCsv's order. Nothing else
@@ -506,13 +523,16 @@ export function inProgressShape(html, date) {
 async function tonight() {
   const date = gameNight();
   const [playoffsFile, gamesFile] = ["playoffs.csv", "games.csv"].map((f) => path.join(OUT, f));
-  const due = tonightsGames(readFileSync(playoffsFile, "utf8"), date);
+  // Tonight's unscored bracket games and those of the last few game nights (ADR 0030). Live scores stay tonight's only.
+  const due = dueGames(readFileSync(playoffsFile, "utf8"), date);
+  const dates = new Set(due.map((r) => r.game_date));
+  const earlier = due.filter((r) => r.game_date !== date).length;
   const liveOut = process.argv.includes("--live-out") ? process.argv[process.argv.indexOf("--live-out") + 1] : null;
   if (process.argv.includes("--live-out") && (!liveOut || liveOut.startsWith("--"))) throw new Error("--live-out needs a file");
   if (!due.length) {
     // Nothing is due, so nothing is live: an empty list clears any live row the database still holds.
     if (liveOut) writeFileSync(liveOut, "[]\n");
-    return console.log(`No bracket game without a score on ${date}: nothing read.`);
+    return console.log(`No bracket game without a score on ${date} or the ${CATCH_UP_NIGHTS} game nights before it: nothing read.`);
   }
   const bySlug = loadAlignments();
   const pageOf = new Map(readFileSync(path.join(OUT, "teams.csv"), "utf8").trim().split("\n").slice(1).map((l) => l.split(",")));
@@ -525,7 +545,7 @@ async function tonight() {
     const page = await fetchSchedule(teamUrl);
     if (page) underway.push(...inProgressShape(page.html, date));
     for (const g of page ? parseSchedule(page.html) : []) {
-      if (g.date !== date || !(g.played || g.live)) continue;
+      if (!dates.has(g.date) || !(g.played || g.live)) continue;
       for (const t of [g.home, g.away]) t.slug = match(t, bySlug);
       if (g.home.slug && g.away.slug) (g.played ? finals : live).push(g);
     }
@@ -538,7 +558,7 @@ async function tonight() {
   const stillDue = tonightsGames(merged.playoffs, date);
   const liveNow = liveRows(live, date, stillDue);
   if (liveOut) writeFileSync(liveOut, `${JSON.stringify(liveNow, null, 2)}\n`);
-  console.log(`${date}: ${due.length} bracket games without a score, ${urls.length} pages read, ${merged.filled} finals filled in, ${liveNow.length} under way.`);
+  console.log(`${date}: ${due.length} bracket games without a score (${earlier} from earlier nights), ${urls.length} pages read, ${merged.filled} finals filled in, ${liveNow.length} under way.`);
   const note = underway.length
     ? [`Games showing a score before the final (${underway.length}):`, ...new Set(underway)].join("\n")
     : "No game on these pages showed a score before its final.";
@@ -577,10 +597,11 @@ async function canary() {
   if (problems.length) process.exitCode = 1;
 }
 
-/** `--due <playoffs.csv>`: how many bracket games of tonight have no score yet. The workflow reads only when it is not 0. */
+/** `--due <playoffs.csv>`: how many bracket games of tonight and the last few game nights have no score yet (dueGames).
+ * The workflow reads only when it is not 0. */
 function due() {
   const file = process.argv[process.argv.indexOf("--due") + 1];
-  console.log(tonightsGames(readFileSync(file, "utf8"), gameNight()).length);
+  console.log(dueGames(readFileSync(file, "utf8"), gameNight()).length);
 }
 
 /** A read writes its captures under RESULTS. In CI that must be the private data repo: without PRIVATE_DATA they would land
