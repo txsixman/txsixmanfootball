@@ -74,6 +74,10 @@ export async function seedGames(db, rows, { season, retrievedOn, reason }) {
       }
 
       const [homeTs, awayTs] = [teamSeason(r.home), teamSeason(r.away)];
+      // Two names for one team-season (one school on both sides) would fail the game_check constraint with no row named.
+      if (homeTs === awayTs) {
+        throw new Error(`season ${season}, ${r.game_date}: ${r.home} vs ${r.away} is one team on both sides; fix the capture, a game needs two teams`);
+      }
       const regular = r.round === "season";
       const key = keyOf(regular ? null : r.round, r.game_date, homeTs, awayTs);
       const existing = stored.get(key);
