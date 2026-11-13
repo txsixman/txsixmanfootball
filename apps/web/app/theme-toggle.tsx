@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 // The footer's theme choice (ADR 0035). "System" follows the device's light or dark setting; "Light" and "Dark" are kept in
 // this browser's localStorage and set data-theme on <html>, which globals.css's color-scheme rules read. THEME_SCRIPT
 // applies a kept choice before the first paint, so a dark page never flashes light.
-export const THEME_KEY = "theme";
+const THEME_KEY = "theme";
 const CHOICES = [
   { value: "system", label: "System" },
   { value: "light", label: "Light" },
