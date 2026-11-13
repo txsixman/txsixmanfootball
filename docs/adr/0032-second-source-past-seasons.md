@@ -61,5 +61,8 @@ ADR 0025 stands for these reads. ADRs 0004, 0010, 0017, 0026, 0029 and 0031 stan
 - A game between two teams the map does not name, where neither is matched by school name, is missed. Rows added to
   `davecampbells-teams.json` widen coverage.
 - Filled games stay unconfirmed on the site, like every robot-read score (ADR 0004).
+- Results watch's commit now copies the finals cross-check's two files (`finals-check.csv`, `team-ids.json`) by name,
+  never the whole private `davecampbells-<year>/` folder. A file someone else keeps there is no longer put back to the
+  copy the run read at its start (`commit-results.test.mjs`).
 - If the permission is withdrawn, the private files stay private and nothing more is read.
 - Tests use invented fixtures only (`davecampbells.test.mjs`); no test calls the feed.
