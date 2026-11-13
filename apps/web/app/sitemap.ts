@@ -13,10 +13,16 @@ import { generateStaticParams as recordOrgs } from "./records/[org]/page";
 import { generateStaticParams as results } from "./results/[[...path]]/page";
 import { generateStaticParams as games } from "./scores/[id]/page";
 import { generateStaticParams as standings } from "./standings/[group]/page";
+import { generateStaticParams as brackets } from "./playoffs/bracket/[slug]/page";
+import { generateStaticParams as weeks } from "./weeks/[[...path]]/page";
+import { demoGames } from "../lib/demo-games";
 
 // Every public page, built from the same lists that make the pages (each route's generateStaticParams), so a page and
-// its sitemap entry come and go together. Left out: the invented sample pages, search and the offline page (noindex).
-const SECTIONS = ["", "scores", "playoffs", "results", "rankings", "rankings/how", "standings", "programs", "records", "championships", "matchup"];
+// its sitemap entry come and go together. Left out: the invented sample pages and sample games, search, the offline
+// page, the embeds (all noindex), and the fan, sign-in and admin pages (privacy and terms too: they exist only while fan
+// accounts are on).
+const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "results", "rankings", "rankings/how", "standings", "programs", "records", "championships", "matchup"];
+const SAMPLE_GAMES = new Set(demoGames.map((g) => g.id));
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const paths = [
@@ -33,7 +39,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(await playoffSeasons()).map((p) => `playoffs/season/${p.season}`),
     ...(await playoffSeasonLeagues()).map((p) => `playoffs/season/${p.season}/${p.league}`),
     ...(await recordOrgs()).map((p) => `records/${p.org}`),
-    ...(await games()).map((p) => `scores/${p.id}`),
+    ...(await brackets()).map((p) => `playoffs/bracket/${p.slug}`),
+    ...(await weeks()).map((p) => ["weeks", ...(p.path ?? [])].join("/")),
+    ...(await games()).filter((p) => !SAMPLE_GAMES.has(p.id)).map((p) => `scores/${p.id}`),
   ];
-  return paths.map((p) => ({ url: p ? `${SITE_URL}/${p}` : SITE_URL }));
+  return [...new Set(paths)].map((p) => ({ url: p ? `${SITE_URL}/${p}` : SITE_URL }));
 }
