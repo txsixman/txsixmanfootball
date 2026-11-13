@@ -220,7 +220,7 @@ export default async function HowPage() {
         ))}
       </ol>
       <section aria-labelledby="track" className="mt-8">
-        <h2 id="track" className="font-num text-[24px] font-bold uppercase tracking-wide text-navy">How well it picks games</h2>
+        <h2 id="track" className="font-num text-[24px] font-bold uppercase tracking-wide text-navy">How well it projects games</h2>
         <p className="mt-1 text-[15px] text-ink">
           Before each game from {track.seasons.at(-1)} to {track.seasons[0]}, both teams&rsquo; ratings from the week before gave a
           projected team and a win probability. Across {track.games.toLocaleString("en-US")} games, the projected team won{" "}
@@ -255,8 +255,8 @@ export default async function HowPage() {
       <section aria-labelledby="backtest" className="mt-8">
         <h2 id="backtest" className="font-num text-[24px] font-bold uppercase tracking-wide text-navy">How well the ratings predict</h2>
         <p className="mt-1 text-[15px] text-ink">
-          To check the ratings fairly, each week of a season is rated only from the games before it, then used to pick that
-          week&rsquo;s winners and projected margins. Nothing from the week being predicted, or after it, is used. The same games
+          To check the ratings fairly, each week of a season is rated only from the games before it, then used to project that
+          week&rsquo;s games and their margins. Nothing from the week being predicted, or after it, is used. The same games
           are scored for all three methods:
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-[15px] text-ink">

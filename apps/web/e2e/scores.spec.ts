@@ -62,7 +62,7 @@ test("a rating on few games is marked, and the method page passes (backlog item 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("How the rankings work");
   await expect(page.locator("body")).not.toContainText(/\b(spread|odds|line|bet)s?\b|maxpreps|source/i);
   // The track record: each band's favorites should win about as often as the band says, within a loose margin.
-  const track = page.getByRole("region", { name: "How well it picks games" });
+  const track = page.getByRole("region", { name: "How well it projects games" });
   const rows = track.getByRole("table").locator("tbody tr");
   expect(await rows.count()).toBeGreaterThanOrEqual(4);
   for (const row of await rows.all()) {
