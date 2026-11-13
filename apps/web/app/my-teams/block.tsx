@@ -16,7 +16,7 @@ function Line({ label, game }: { label: string; game: MyGame }) {
         <span className="block">
           {game.status} · {game.home ? "vs" : "at"}{" "}
           {game.opponentSlug && !game.href ? (
-            <Link href={`/programs/${game.opponentSlug}`} className="inline-flex min-h-11 items-center hover:text-navy hover:underline">
+            <Link href={`/programs/${game.opponentSlug}`} className="name-link">
               {game.opponent}
             </Link>
           ) : (

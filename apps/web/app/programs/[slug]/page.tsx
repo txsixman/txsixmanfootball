@@ -85,7 +85,7 @@ export default async function ProgramPage({ params }: Props) {
   const opponentLink = (name: string) => {
     const opponent = programFor(all, name, school.league);
     return opponent ? (
-      <Link href={`/programs/${opponent.slug}`} className="relative z-10 inline-flex min-h-11 items-center hover:text-navy hover:underline">
+      <Link href={`/programs/${opponent.slug}`} className="name-link relative z-10">
         {name}
       </Link>
     ) : (

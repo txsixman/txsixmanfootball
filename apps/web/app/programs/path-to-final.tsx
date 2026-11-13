@@ -39,7 +39,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
       <>
         {crest(name, found && (identities.get(found.slug) ?? EMPTY))}
         {found ? (
-          <Link href={`/programs/${found.slug}`} className="inline-flex min-h-11 items-center hover:text-navy hover:underline">{name}</Link>
+          <Link href={`/programs/${found.slug}`} className="name-link">{name}</Link>
         ) : (
           name
         )}
