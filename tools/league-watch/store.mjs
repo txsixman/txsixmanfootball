@@ -65,9 +65,16 @@ export function mergeStored({ file, stored, fresh, pending, readTeam, now }) {
   if (s.header && f.header && s.header !== f.header) throw new Error(`${file}: the stored header ${s.header} is not this read's ${f.header}`);
   const header = s.header || f.header;
   const cols = s.cols.length ? s.cols : f.cols;
-  const counts = { added: 0, filled: 0, same: 0, proposed: 0, changed: 0, keptUnlisted: 0, keptBlank: 0, droppedUnplayed: 0, blankedZeroZero: 0 };
-  s.rows = s.rows.map((r) => (zeroZero(r) ? (counts.blankedZeroZero++, unscoreZeroZero(r)) : r));
-  f.rows = f.rows.map(unscoreZeroZero);
+  const counts = { added: 0, filled: 0, same: 0, proposed: 0, changed: 0, keptUnlisted: 0, keptBlank: 0, droppedUnplayed: 0, zeroZero: 0 };
+  // A 0-0 non-forfeit "final" is no score. games.csv holds played games only (PlayedGameRow), so there it is removed;
+  // playoffs.csv keeps the bracket game with its score blank, as a game not yet played.
+  if (file === "games.csv") {
+    s.rows = s.rows.filter((r) => !zeroZero(r) || (counts.zeroZero++, false));
+    f.rows = f.rows.filter((r) => !zeroZero(r));
+  } else {
+    s.rows = s.rows.map((r) => (zeroZero(r) ? (counts.zeroZero++, unscoreZeroZero(r)) : r));
+    f.rows = f.rows.map(unscoreZeroZero);
+  }
   const proposals = new Map(pending.filter((p) => p.file === file).map((p) => [p.key, p]));
   const nextPending = new Map(proposals);
   const changes = [];
@@ -153,5 +160,5 @@ export const changeLines = (changes, fileExists) =>
 
 /** One line for coverage.txt and the run summary: counts only, never a team or a source. */
 export function countsLine(file, c) {
-  return `${file}: ${c.added} added, ${c.filled} scores filled, ${c.same} unchanged, ${c.changed} changed after two reads, ${c.proposed} proposed changes waiting for a second read, ${c.keptUnlisted} kept that this read did not list, ${c.keptBlank} kept that this read showed with no score, ${c.droppedUnplayed} unplayed games no longer listed (dropped), ${c.blankedZeroZero} stored 0-0 non-forfeit "finals" written blank.`;
+  return `${file}: ${c.added} added, ${c.filled} scores filled, ${c.same} unchanged, ${c.changed} changed after two reads, ${c.proposed} proposed changes waiting for a second read, ${c.keptUnlisted} kept that this read did not list, ${c.keptBlank} kept that this read showed with no score, ${c.droppedUnplayed} unplayed games no longer listed (dropped), ${c.zeroZero} stored 0-0 non-forfeit "finals" ${file === "games.csv" ? "removed" : "written blank"}.`;
 }

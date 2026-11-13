@@ -58,4 +58,5 @@ Not in an ADR:
 - **A 0-0 "final" is no score.** MaxPreps sometimes posts 0-0 with a result for a placeholder or a cancelled game; the
   results reader treats it as unplayed (no rating, record or streak), as the second source's reader does. A real tie
   (7-7) stands, and a forfeit is still written 1-0 or 2-0. Before this, 0 to 4 such rows a season (2016 to 2026) were
-  read as finals (Nov 13, 2026).
+  read as finals (Nov 13, 2026). The store (ADR 0031) removes such a row from `games.csv`, which holds played games
+  only, and writes it blank in `playoffs.csv`, which keeps unplayed bracket games (Nov 13, 2026).
