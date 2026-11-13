@@ -114,7 +114,7 @@ jobs:
           [[ "$season" =~ ^20[0-9][0-9]$ ]] || { echo "season must be a year like 2026, not: $season"; exit 1; }
           echo "year=$season" >> "$GITHUB_OUTPUT"
       - name: Reader checks
-        run: node --test tools/league-watch/maxpreps.test.mjs
+        run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/davecampbells.test.mjs
       - name: Read MaxPreps schedule pages
         env:
           # Any schedule but the morning one is a playoff-night run.
@@ -126,6 +126,18 @@ jobs:
             node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} --tonight --live-out "$RUNNER_TEMP/live.json"
           else
             node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }}
+          fi
+      - name: Second live source
+        # ADR 0024: on a night read, the games under way from a second feed, merged into the same live file (one row a
+        # game, the newer read). Off until the repo variable SECOND_LIVE is "true". A failure here (a 403 or 429 stops it
+        # at once) leaves the first source's rows as they were.
+        if: ${{ vars.SECOND_LIVE == 'true' }}
+        continue-on-error: true
+        env:
+          SEASON: ${{ steps.season.outputs.year }}
+        run: |
+          if [ -f "$RUNNER_TEMP/live.json" ]; then
+            node tools/league-watch/davecampbells.mjs --live "data/seed/maxpreps-$SEASON/playoffs.csv" --merge "$RUNNER_TEMP/live.json"
           fi
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
