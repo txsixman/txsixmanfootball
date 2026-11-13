@@ -110,3 +110,17 @@ test("a series: meetings since 2021, what the page lists, no score and no winner
   const long = clean(d.seriesDescription({ ...facts, first: LONG, second: "Another Very Long Academy Name (Christian) Homeschool Association" }));
   assert.ok(long.startsWith("Tyler Heat"), long);
 });
+
+test("a program's season: record and rank, the round it reached, what the page lists; no score and no winner; it fits with a long name", () => {
+  const facts = { name: "Jayton", season: 2024, games: 15, record: "13-2", rank: { place: 2, org: "UIL" }, playoff: "the state final" };
+  assert.equal(
+    clean(d.programSeasonDescription(facts)),
+    "Jayton 2024 six-man football: 13-2, 2nd in UIL. Playoffs: reached the state final. Every game, with its date, opponent and a projected margin.",
+  );
+  assert.equal(clean(d.programSeasonDescription({ ...facts, rank: undefined, playoff: undefined })), "Jayton 2024 six-man football: 13-2. Every game, with its date, opponent and a projected margin.");
+  assert.equal(clean(d.programSeasonDescription({ name: "Dell City", season: 2022, games: 1 })), "Dell City 2022 six-man football: 1 game. Every game, with its date, opponent and a projected margin.");
+  const long = clean(d.programSeasonDescription({ ...facts, name: LONG }));
+  assert.ok(long.startsWith(LONG), long);
+  assert.doesNotMatch(long, /…/);
+  assert.doesNotMatch(d.programSeasonDescription(facts), /\b(won|beat|winner)\b|\d\s*[-–]\s*\d\d/);
+});

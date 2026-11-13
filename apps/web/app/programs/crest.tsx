@@ -10,6 +10,13 @@ export const crestLogo = (identity: Identity, maxAspect: number) => (identity.lo
 /** The copy sized for a crest of this height (ADR 0022). */
 export const logoCopy = (logo: NonNullable<Identity["logo"]>, size: number) => (size <= 24 ? logo.tiny : size <= 48 ? logo.small : logo.large);
 
+/** The widest logo a program page's header crest draws; a wider one gets the badge. */
+export const HEADER_CREST_MAX_ASPECT = 4.8;
+
+/** The header crest's height: a wide wordmark is drawn smaller, so it never fills the band; the logo itself is untouched (ADR 0006). */
+export const headerCrestSize = (identity: Identity) =>
+  identity.logo && identity.logo.aspect > 2 ? Math.max(49, Math.min(72, Math.floor(260 / identity.logo.aspect))) : 72;
+
 /**
  * The school's logo from its own site, or a badge in its colors when there is none (ADR 0006).
  * The box widens for a wide logo up to maxAspect; a wordmark wider than that would be unreadable, so it gets the badge.
