@@ -11,7 +11,7 @@ import { generateStaticParams as rankingWeeks } from "./rankings/week/[week]/pag
 import { generateStaticParams as rankingWeekOrgs } from "./rankings/week/[week]/[org]/page";
 import { generateStaticParams as recordOrgs } from "./records/[org]/page";
 import { generateStaticParams as results } from "./results/[[...path]]/page";
-import { generateStaticParams as games } from "./scores/[id]/layout";
+import { generateStaticParams as games } from "./scores/[id]/page";
 import { generateStaticParams as standings } from "./standings/[group]/page";
 
 // Every public page, built from the same lists that make the pages (each route's generateStaticParams), so a page and

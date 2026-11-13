@@ -152,7 +152,7 @@ test("a game's share image is a PNG", async ({ page, request }) => {
   expect(response.headers()["content-type"]).toContain("image/png");
   expect((await response.body()).subarray(1, 4).toString()).toBe("PNG");
   // The invented sample game has one too.
-  const sample = await request.get("/scores/g2/opengraph-image/card");
+  const sample = await request.get("/scores/g2/card");
   expect(sample.headers()["content-type"]).toContain("image/png");
 });
 

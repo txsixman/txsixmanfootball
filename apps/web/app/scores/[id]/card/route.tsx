@@ -3,36 +3,26 @@ import path from "node:path";
 import { ImageResponse } from "next/og";
 import { loadAlignments } from "@/lib/alignments";
 import type { Team } from "@/lib/demo-games";
-import { findGame, gameIds, mediumDate, resolveGame } from "@/lib/game-pages";
-import { CURRENT_SEASON } from "@/lib/season";
+import { mediumDate, resolveGame } from "@/lib/game-pages";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { memo } from "@/lib/memo";
 import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
-import { brandFont } from "../../mark";
+import { brandFont } from "../../../mark";
+import { cardIds } from "./ids";
 
-// The card a link preview shows when a game page is shared: both teams (logo from the school's own site, ADR 0006,
-// shown as published beside the name; the school's colors and initials when there is none), the date, and the score.
-// The score says "Final" only for a confirmed final; a robot-read score says "Unconfirmed" and names no winner (ADR 0004).
-// An unplayed game shows no score. Drawn at build time from the same game the page shows (lib/game-pages.ts).
+// The card a link preview shows when a game page is shared (/scores/<id>/card, the page's og:image): both teams (logo
+// from the school's own site, ADR 0006, shown as published beside the name; the school's colors and initials when there
+// is none), the date, and the score. The score says "Final" only for a confirmed final; a robot-read score says
+// "Unconfirmed" and names no winner (ADR 0004). An unplayed game shows no score. Drawn at build time from the same game
+// the page shows (lib/game-pages.ts).
+//
+// A plain route, not an opengraph-image file: Next gives a route its static params only from its own file, and an
+// opengraph-image with generateImageMetadata under [id] cannot list them, so it built no cards and every og:image was a
+// 404 (Nov 13, 2026). This route lists this season's games itself, as playoffs/[league]/opengraph-image does.
 const size = { width: 1200, height: 630 };
 export const dynamicParams = false;
-
-/** This season's games (bracket and sample games, and robot-read games of the current season) get a card; a past season's
- * game page shares the site's card. One card per game of every season would be ~6,800 images drawn on every build. */
-const hasCard = async (id: string) => ((await findGame(id))?.season ?? CURRENT_SEASON) === CURRENT_SEASON;
-const cardIds = memo<void, string[]>(async () => {
-  const ids = await gameIds();
-  const keep = await Promise.all(ids.map(hasCard));
-  return ids.filter((_, i) => keep[i]);
-});
-
-// Next builds this route's static params from the segment layout's ids (layout.tsx) and this list (one "card" image,
-// or none).
-export async function generateImageMetadata({ params }: { params: { id: string } | Promise<{ id: string }> }) {
-  const { id } = await params;
-  return (await cardIds()).includes(id) ? [{ id: "card", size, alt: "Game card", contentType: "image/png" }] : [];
-}
+export const generateStaticParams = async () => (await cardIds()).map((id) => ({ id }));
 
 const TILE = 150;
 /** The widest logo the site's crests draw (programs/crest.tsx); a wider wordmark gets the badge. */
@@ -43,7 +33,7 @@ const logoData = memo(async (src: string) => {
   return `data:${src.endsWith(".svg") ? "image/svg+xml" : "image/png"};base64,${bytes.toString("base64")}`;
 });
 
-export default async function Card({ params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const game = (await resolveGame(id))!;
   const { g } = game;

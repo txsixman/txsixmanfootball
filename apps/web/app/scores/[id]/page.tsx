@@ -4,7 +4,7 @@ import { loadAlignments } from "@/lib/alignments";
 import { fanSignIn } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
-import { bracketGames, findGame, gamePreview, longDate, resolveGame } from "@/lib/game-pages";
+import { bracketGames, findGame, gameIds, gamePreview, longDate, resolveGame } from "@/lib/game-pages";
 import { gameJsonLd } from "@/lib/json-ld";
 import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
@@ -20,18 +20,28 @@ import { GamePreviewSection } from "../game-preview";
 import { LiveScore } from "../live-score";
 import { BigLine, Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
+import { hasCard } from "./card/ids";
 
 type Props = { params: Promise<{ id: string }> };
 
-// The game ids and dynamicParams are in layout.tsx, so the share card gets them too.
+export const dynamicParams = false;
+
+export const generateStaticParams = async () => (await gameIds()).map((id) => ({ id }));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const found = await findGame(id);
   const g = found ? undefined : (await bracketGames()).find((x) => x.id === id);
   const teams = found ? found.result : g && { away: g.away.name, home: g.home.name };
+  // This season's games share their own card (card/route.tsx); a past season's game shares the site's card.
+  const card = (await hasCard(id)) && { openGraph: { images: [{ url: `/scores/${id}/card`, width: 1200, height: 630, alt: "Game card" }] } };
   // An invented sample game stays out of search (its schools are not real).
-  return { title: teams ? `${teams.away} at ${teams.home}` : "Game", alternates: { canonical: `/scores/${id}` }, ...(g && demoGames.includes(g) && { robots: { index: false } }) };
+  return {
+    title: teams ? `${teams.away} at ${teams.home}` : "Game",
+    alternates: { canonical: `/scores/${id}` },
+    ...card,
+    ...(g && demoGames.includes(g) && { robots: { index: false } }),
+  };
 }
 
 function Linescore({ g }: { g: Game }) {
