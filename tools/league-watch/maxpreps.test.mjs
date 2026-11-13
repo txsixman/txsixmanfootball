@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames  } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -375,4 +375,38 @@ test("in CI a read refuses to run without PRIVATE_DATA, naming it; a local run a
   assert.throws(() => requirePrivateData({ CI: "true", PRIVATE_DATA: "" }), /PRIVATE_DATA/);
   assert.doesNotThrow(() => requirePrivateData({ CI: "true", PRIVATE_DATA: "/w/private" }));
   assert.doesNotThrow(() => requirePrivateData({}));
+});
+
+test("a game-day read also looks for the last 3 game nights' unscored bracket games (ADR 0030), and merges their finals", () => {
+  const P = `league,${COLUMNS}`;
+  const row = (date, home, away, score = ",") => `UIL,I,area,${date},${home},${away},,${score},${score === "," ? "" : "unknown"},,https://www.maxpreps.com/tx/football/game/x/?c=${home},`;
+  const playoffsText = [
+    P,
+    row("2026-11-05", "Old Night", "Older"), // four game nights back: dropped
+    row("2026-11-06", "Fri A", "Fri B"),
+    row("2026-11-07", "Sat A", "Sat B", "40,8"), // scored: not due
+    row("2026-11-12", "Thu A", "Thu B"),
+    row("2026-11-13", "Tonight A", "Tonight B"),
+    row("2026-11-14", "Tomorrow A", "Tomorrow B"), // after tonight: not due
+  ].join("\n") + "\n";
+  const homes = (rows) => rows.map((r) => r.home);
+  assert.deepEqual(homes(dueGames(playoffsText, "2026-11-13")), ["Fri A", "Thu A", "Tonight A"]);
+  assert.deepEqual(homes(dueGames(playoffsText, "2026-11-13", 0)), ["Tonight A"]);
+  assert.deepEqual(homes(tonightsGames(playoffsText, "2026-11-13")), ["Tonight A"]);
+  // A morning with no game tonight still catches up on the night before.
+  assert.deepEqual(homes(dueGames(playoffsText, "2026-11-08")), ["Old Night", "Fri A"]);
+
+  // Thursday's final, read on Friday, fills Thursday's row and joins games.csv.
+  const bySlug = new Map(["thu-a", "thu-b"].map((s) => [s, { school: s === "thu-a" ? "Thu A" : "Thu B", division: "I" }]));
+  const t = (slug, score) => ({ slug, score });
+  const merged = mergeTonight({
+    playoffsText,
+    gamesText: `${COLUMNS}\n`,
+    finals: [{ date: "2026-11-12", played: true, home: t("thu-b", 30), away: t("thu-a", 28), gameUrl: "https://www.maxpreps.com/tx/football/game/thu/?c=t" }],
+    bySlug,
+  });
+  assert.equal(merged.filled, 1);
+  assert.match(merged.playoffs, /2026-11-12,Thu A,Thu B,,28,30,unknown/);
+  assert.deepEqual(homes(dueGames(merged.playoffs, "2026-11-13")), ["Fri A", "Tonight A"]);
+  assert.equal(merged.games.trim().split("\n").length, 2);
 });
