@@ -79,11 +79,14 @@ export function mergeStored({ file, stored, fresh, pending, readTeam, now }) {
     }
     if (!scored(r)) {
       if (scored(old)) counts.keptBlank++;
-      else out.set(key, r); // still to be played: this read's row (its date, site and round) stands
+      else out.set(key, { ...old, ...fillBlanks(old, r) }); // still to be played: the stored row stands
       continue;
     }
     if (!scored(old)) {
-      out.set(key, r);
+      // The score, in the stored row's home and away order; its round, site and teams stay (a targeted read sees only
+      // part of a bracket, so its own round names can be off).
+      const [home, away] = scoresAs(old, r);
+      out.set(key, { ...old, ...fillBlanks(old, r), home_score: home, away_score: away, end_reason: r.end_reason || old.end_reason, source_url: r.source_url || old.source_url });
       nextPending.delete(key);
       counts.filled++;
       continue;

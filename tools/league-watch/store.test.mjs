@@ -119,3 +119,12 @@ test("a finished season makes zero requests: the reader stops before reading a p
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /marked complete .*nothing read/);
 });
+
+test("filling a score keeps the stored row's round and order; only the score, its end and its source come from the read", () => {
+  const P = `league,${COLUMNS}`;
+  const stored = `${P}\nUIL,I,area,2026-11-13,Cedar Gap,Salt Fork,,,,,,https://www.maxpreps.com/tx/football/game/a/?c=1,\n`;
+  const fresh = `${P}\nUIL,I,state,2026-11-13,Salt Fork,Cedar Gap,,30,28,unknown,,https://www.maxpreps.com/tx/football/game/a/?c=2,\n`;
+  const m = mergeStored({ file: "playoffs.csv", stored, fresh, pending: [], readTeam: none, now: "t" });
+  assert.equal(m.text.trim().split("\n")[1], "UIL,I,area,2026-11-13,Cedar Gap,Salt Fork,,28,30,unknown,,https://www.maxpreps.com/tx/football/game/a/?c=2,");
+  assert.equal(m.counts.filled, 1);
+});
