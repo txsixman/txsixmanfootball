@@ -1,11 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { demoGames } from "../lib/demo-games";
 import { normalCdf, project, projectionText } from "../lib/projection";
 import { chancesFor } from "../lib/title-chances";
 import { movement } from "../lib/ratings";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test, false);
 
 const SHOTS = path.join(__dirname, ".results", "shots");
 

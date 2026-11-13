@@ -1,15 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../lib/supabase-public";
+import { LIVE_SCORES_URL } from "./live-route";
 
-// Live scores during a game (ADR 0021): the page reads the public live_score table in the browser, so every request to
+// Live scores during a game (ADR 0021): the page reads the public function live_scores() in the browser, so every request to
 // Supabase here is answered from a fixture. The service worker is blocked: it would otherwise fetch outside page.route.
-// The site must be built (or served by `next dev`) with NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY set,
-// as CI does (ci.yml); without them the feature renders nothing, so these tests skip.
 test.use({ serviceWorkers: "block" });
-test.skip(!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "needs NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
 const NO_WINNER_OR_BETTING = /\b(wins?|won|winner|winning|leads?|leading|leader|ahead|beat|beats|defeated|victory|spread|odds|line|lines|favorite|favourite|underdog|bet|bets|betting)\b/i;
-const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "GET, OPTIONS" };
+const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" };
 
 /** The loaders read ../../data from the working directory; the tests run from the repo root. */
 async function inWeb<T>(run: () => Promise<T>): Promise<T> {
@@ -49,11 +48,11 @@ const liveRow = (f: Fixture, over: Record<string, unknown> = {}) => ({
 
 /** Answers the live_score request with whatever `current.rows` holds, and keeps what the page sent. */
 async function serveLive(page: Page, current: { rows: unknown; status?: number }) {
-  const seen: { url: string; headers: Record<string, string> }[] = [];
-  await page.route(/\/rest\/v1\/live_score/, (route) => {
+  const seen: { url: string; method: string; headers: Record<string, string> }[] = [];
+  await page.route(LIVE_SCORES_URL, (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
-    seen.push({ url: request.url(), headers: request.headers() });
+    seen.push({ url: request.url(), method: request.method(), headers: request.headers() });
     return route.fulfill({ status: current.status ?? 200, headers: CORS, contentType: "application/json", body: JSON.stringify(current.rows) });
   });
   return seen;
@@ -77,10 +76,10 @@ test("a game under way shows its live line on the game page and the board: Live,
   await expect(line).toContainText(`${f.away} 14, ${f.home} 28`);
   await expect(line).toContainText(/checked \d{1,2}:\d{2} (AM|PM) CT/);
   expect((await line.innerText()).replace(f.away, "").replace(f.home, "")).not.toMatch(NO_WINNER_OR_BETTING);
-  // The public key goes in both headers, and nothing else is asked for.
-  expect(seen[0].url).toContain("/rest/v1/live_score?select=game_key,home,away,home_score,away_score,period,read_at");
-  expect(seen[0].headers.apikey).toBe(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  expect(seen[0].headers.authorization).toBe(`Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`);
+  // One POST to the function, with the public key and nothing else.
+  expect(seen[0].url).toBe(`${SUPABASE_URL}/rest/v1/rpc/live_scores`);
+  expect(seen[0].method).toBe("POST");
+  expect(seen[0].headers.apikey).toBe(SUPABASE_PUBLISHABLE_KEY);
   // The page still names nobody: no winner mark anywhere on it.
   await expect(page.locator("body")).not.toContainText(/winner/i);
 

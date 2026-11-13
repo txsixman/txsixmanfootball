@@ -36,8 +36,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `tools/league-watch/`: robot readers. `tapps.mjs` and `taiao.mjs` (alignments, weekly via `league-watch.yml`); `maxpreps.mjs` (game
   results, Fri to Sun mornings Aug to Jan, plus every 10 minutes noon to midnight on playoff game days (`--tonight`, ADRs 0015 and 0019), via `results-watch.yml`, which also rerates and commits to `main`; `--season 2025`
   reads a past season's pages). A night read also writes the games under way (`--live-out`, ADR 0021) for `packages/db/live.mjs`,
-  which replaces the rows of the public `live_score` table (migration 0016); the site reads it in the browser
-  (`apps/web/lib/live-scores.ts`, `app/scores/live-score.tsx`). Never committed, never a rebuild; "Unconfirmed", no winner
+  which replaces the rows of the `live_score` table (migration 0016); the site reads it in the browser through the
+  public function `live_scores()` (`apps/web/lib/live-scores.ts`, `app/scores/live-score.tsx`; the Supabase URL and key
+  are `lib/supabase-public.ts`, shared with push). Never committed, never a rebuild; "Unconfirmed", no winner
 - `data/seed/maxpreps-<season>/`: `games.csv` (played games) and `playoffs.csv` (bracket games with league, division and
   round, for `/scores`), the facts only (ADR 0017): no `source_url` or `notes`. Published by
   `tools/league-watch/publish.mjs` from the reader's own folder, never by hand

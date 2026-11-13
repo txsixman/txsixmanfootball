@@ -318,6 +318,7 @@ test("live rows: tonight's still-unscored bracket games only, our slugs, the sit
     game({ period: "Q4" }), // the same game seen from the other team's page: one row
     game({ home: side("dry-wash", 7), away: side("outside-school", 0) }), // not a bracket game of tonight
     game({ home: side("mesa-verde", 201), away: side("dry-wash", 0) }), // an impossible score is never written
+    game({ home: side("dry-wash", 0), away: side("mesa-verde", 0) }), // 0-0 with no period: maybe not kicked off, never written
     game({ date: "2026-11-14" }),
     game({ live: false }),
     game({ home: side(null, 3) }),
@@ -327,6 +328,10 @@ test("live rows: tonight's still-unscored bracket games only, our slugs, the sit
     period: "Q3", read_at: "2026-11-13T23:40:00.000Z",
   }]);
   assert.deepEqual(liveRows([game()], "2026-11-13", []), []);
+  // A 0-0 is written only with a period (known only once PERIOD_INDEX is set).
+  const zero = (period) => game({ home: side("dry-wash", 0), away: side("mesa-verde", 0), period });
+  assert.deepEqual(liveRows([zero(null)], "2026-11-13", due), []);
+  assert.deepEqual(liveRows([zero("Q1")], "2026-11-13", due, at).map((r) => [r.game_key, r.home_score, r.away_score, r.period]), [["2026-11-13|dry-wash|mesa-verde", 0, 0, "Q1"]]);
   // The key is the one lib/games.ts gameKey builds from the same date and names.
   const siteKey = (date, a, b) => [date, ...[slugify(a), slugify(b)].sort()].join("|");
   assert.equal(rows[0].game_key, siteKey("2026-11-13", "Salt Fork", "Cedar Gap"));

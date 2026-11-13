@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { authEnv, type AuthEnv } from "./auth/config.ts";
 import { slugify } from "./slug.ts";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-public.ts";
 
 // Live scores during a game (migration 0016, ADR 0021). Results watch writes the score of each game under way to the
-// public table live_score every 10 minutes; the browser reads it here with Supabase's public key and shows it beside the
+// table live_score every 10 minutes; the browser reads it through the function live_scores() with Supabase's public key
+// (lib/supabase-public.ts, the one push uses; no sign-in setting is involved) and shows it beside the
 // game. It is the read's score, not a result: always "Unconfirmed", never a winner or leader. Imports nothing but zod and
 // two plain files, so the node tests run it as it is.
 
@@ -36,20 +37,16 @@ export function parseLiveRows(json: unknown): LiveRow[] {
  * program slugs, sorted. Change both together. */
 export const liveKey = (date: string, home: string, away: string) => [date, ...[slugify(home), slugify(away)].sort()].join("|");
 
-/** The Supabase address and public key, or null (nothing is shown). The two NEXT_PUBLIC names are written out in full so
- * Next puts their values into the browser's code. */
-export const liveEnv = (): AuthEnv | null =>
-  authEnv({ NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY });
-
-/** Every live row, as the REST API serves the table to the anon role (row-level security allows reading it, nothing more). */
-export async function fetchLiveRows(env: AuthEnv, signal?: AbortSignal): Promise<LiveRow[]> {
-  const base = env.url.replace(/\/$/, "");
-  const res = await fetch(`${base}/rest/v1/live_score?select=game_key,home,away,home_score,away_score,period,read_at`, {
-    headers: { apikey: env.anonKey, Authorization: `Bearer ${env.anonKey}`, Accept: "application/json" },
+/** The rows of the public function live_scores() (migration 0016): the one thing the API roles can read here, and read-only. */
+export async function fetchLiveRows(signal?: AbortSignal, supabase = { url: SUPABASE_URL, key: SUPABASE_PUBLISHABLE_KEY }): Promise<LiveRow[]> {
+  const res = await fetch(`${supabase.url}/rest/v1/rpc/live_scores`, {
+    method: "POST",
+    headers: { apikey: supabase.key, "Content-Type": "application/json" },
+    body: "{}",
     cache: "no-store",
     signal,
   });
-  if (!res.ok) throw new Error(`live_score: ${res.status}`);
+  if (!res.ok) throw new Error(`live_scores: ${res.status}`);
   return parseLiveRows(await res.json());
 }
 
@@ -57,7 +54,7 @@ export async function fetchLiveRows(env: AuthEnv, signal?: AbortSignal): Promise
 export type LiveView = { away: { name: string; score: number }; home: { name: string; score: number }; period: string | null; readAt: Date };
 
 /** The live row for a game, with each score on the right team (the row's home and away may differ from the page's: a
- * neutral site has no real home), or null when there is none, or the row is too old, or its teams are not this game's. */
+ * neutral site has no real home), or null when there is none, or the row is too old, its teams are not this game's, or it is 0-0 with no period. */
 export function liveView(rows: LiveRow[], game: { date?: string; home: string; away: string }, now = Date.now()): LiveView | null {
   if (!game.date) return null;
   const row = rows.find((r) => r.game_key === liveKey(game.date!, game.home, game.away));
@@ -67,6 +64,8 @@ export function liveView(rows: LiveRow[], game: { date?: string; home: string; a
   const score = (slug: string) => (row.home === slug ? row.home_score : row.away === slug ? row.away_score : null);
   const [h, a] = [score(home), score(away)];
   if (h === null || a === null || home === away) return null;
+  // 0-0 with no period may be a game that has not kicked off: not shown as live (the reader skips it too, maxpreps.mjs liveRows).
+  if (h === 0 && a === 0 && row.period === null) return null;
   return { away: { name: game.away, score: a }, home: { name: game.home, score: h }, period: row.period, readAt };
 }
 

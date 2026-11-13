@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { checkedAt, fetchLiveRows, liveEnv, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
+import { checkedAt, fetchLiveRows, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
 
-// Live scores during a game (ADR 0021). The pages are static; this reads the score of games under way from the public
-// live_score table in the browser, every minute while the tab is visible. It shows nothing when the Supabase address
-// is not set, the request fails or no row matches. The score is the read's, so it says "Unconfirmed" and names no leader.
+// Live scores during a game (ADR 0021). The pages are static; this reads the score of games under way through the public
+// function live_scores() in the browser, every minute while the tab is visible. It shows nothing when the request fails or
+// no row matches. The score is the read's, so it says "Unconfirmed" and names no leader.
 const REFRESH_MS = 60_000;
 
 /** The live rows, refreshed every minute while the tab is visible. Empty until a read succeeds, and again when one fails.
@@ -13,8 +13,7 @@ const REFRESH_MS = 60_000;
 export function useLiveScores(enabled = true): LiveRow[] {
   const [rows, setRows] = useState<LiveRow[]>([]);
   useEffect(() => {
-    const env = enabled ? liveEnv() : null;
-    if (!env) return;
+    if (!enabled) return;
     let stopped = false;
     let pending: AbortController | undefined;
     const load = async () => {
@@ -23,7 +22,7 @@ export function useLiveScores(enabled = true): LiveRow[] {
       const mine = new AbortController();
       pending = mine;
       try {
-        const next = await fetchLiveRows(env, mine.signal);
+        const next = await fetchLiveRows(mine.signal);
         if (!stopped && !mine.signal.aborted) setRows(next);
       } catch {
         if (!stopped && !mine.signal.aborted) setRows([]);

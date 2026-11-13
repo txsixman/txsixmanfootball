@@ -468,7 +468,8 @@ export function mergeTonight({ playoffsText, gamesText, finals, bySlug }) {
  * The games under way tonight, as the rows live.mjs writes (ADR 0021): games of `date` that parseSchedule marked live, whose
  * two teams are in our alignments (slugs set) and that are one of tonight's still-unscored bracket games (`due`). One row
  * a game, the key the site uses (`gameKey` in lib/games.ts: date, then both slugs sorted). Scores outside 0 to 200 are
- * skipped, never written.
+ * skipped, never written; so is a 0-0 with no period (while PERIOD_INDEX is null that is every 0-0): a game not yet
+ * started may list 0-0, and "Live 0-0" before kickoff would be wrong. A 0-0 shows once its period is known.
  */
 export function liveRows(games, date, due, readAt = new Date()) {
   const dueKeys = new Set(due.map((r) => pairKey(r.game_date, r.home, r.away)));
@@ -478,6 +479,7 @@ export function liveRows(games, date, due, readAt = new Date()) {
     const key = pairKey(g.date, g.home.slug, g.away.slug);
     if (!dueKeys.has(key) || rows.has(key)) continue;
     if (![g.home.score, g.away.score].every((n) => Number.isInteger(n) && n >= 0 && n <= 200)) continue;
+    if (g.home.score === 0 && g.away.score === 0 && !g.period) continue;
     rows.set(key, { game_key: key, home: g.home.slug, away: g.away.slug, home_score: g.home.score, away_score: g.away.score, period: g.period ?? null, read_at: readAt.toISOString() });
   }
   return [...rows.values()].sort((a, b) => a.game_key.localeCompare(b.game_key));

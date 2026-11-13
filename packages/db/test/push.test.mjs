@@ -75,6 +75,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "forum_threads", anon: false },
     { proname: "is_admin", anon: false }, // migration 0010: not for anon, ever
     { proname: "list_comments", anon: false }, // migration 0013: a public read, granted to anon only where auth.uid() exists (Supabase)
+    { proname: "live_scores", anon: true }, // migration 0016: the games under way, read-only, for anon and signed-in alike
     { proname: "moderation_blocked", anon: false },
     { proname: "moderation_name_blocked", anon: false },
     { proname: "moderation_normalize", anon: false },

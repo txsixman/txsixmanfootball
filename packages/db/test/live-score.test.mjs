@@ -4,7 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { checkLive, migrate } from "../load.mjs";
 import { MAX_AGE_HOURS, validateLiveRows, writeLive } from "../live.mjs";
 
-// Live scores (migration 0016, ADR 0021): the one table the API roles may read directly, and only read.
+// Live scores (migration 0016, ADR 0021): the table is closed to the API roles like every other; live_scores() is the one read.
 const row = (over = {}) => ({
   game_key: "2026-11-13|salt-fork|cedar-gap", home: "salt-fork", away: "cedar-gap", home_score: 28, away_score: 14,
   period: "Q3", read_at: new Date().toISOString(), ...over,
@@ -19,13 +19,14 @@ async function supabaseLike() {
   return d;
 }
 
-test("anon and authenticated can read live_score and cannot write it, in any way", async () => {
+test("anon and authenticated read live scores through live_scores() and cannot touch the table in any way", async () => {
   const d = await supabaseLike();
   await writeLive(d, validateLiveRows([row()]));
   for (const role of ["anon", "authenticated"]) {
     await d.exec(`set role ${role}`);
-    const { rows } = await d.query("select game_key, home_score, away_score, period from live_score");
-    assert.deepEqual(rows, [{ game_key: "2026-11-13|salt-fork|cedar-gap", home_score: 28, away_score: 14, period: "Q3" }]);
+    const { rows } = await d.query("select game_key, home, away, home_score, away_score, period from live_scores()");
+    assert.deepEqual(rows, [{ game_key: "2026-11-13|salt-fork|cedar-gap", home: "salt-fork", away: "cedar-gap", home_score: 28, away_score: 14, period: "Q3" }]);
+    await assert.rejects(d.query("select * from live_score"), /permission denied/);
     await assert.rejects(d.exec("insert into live_score (game_key, home, away, home_score, away_score, read_at) values ('2026-11-13|a|b', 'a', 'b', 1, 0, now())"), /permission denied/);
     await assert.rejects(d.exec("update live_score set home_score = 99"), /permission denied/);
     await assert.rejects(d.exec("delete from live_score"), /permission denied/);
@@ -33,6 +34,16 @@ test("anon and authenticated can read live_score and cannot write it, in any way
     await d.exec("reset role");
   }
   assert.equal((await d.query("select count(*)::int as n from live_score")).rows[0].n, 1);
+});
+
+test("live_scores() leaves out rows read over 6 hours ago, and returns nothing when the table is empty", async () => {
+  const d = await supabaseLike();
+  await d.exec("set role anon");
+  assert.deepEqual((await d.query("select * from live_scores()")).rows, []);
+  await d.exec("reset role");
+  await d.exec("insert into live_score (game_key, home, away, home_score, away_score, read_at) values ('2026-11-13|a|b', 'a', 'b', 1, 0, now() - interval '7 hours')");
+  await d.exec("set role anon");
+  assert.deepEqual((await d.query("select * from live_scores()")).rows, []);
 });
 
 test("the table's checks refuse a bad key, slug, score, period or source", async () => {
@@ -54,12 +65,12 @@ test("the table's checks refuse a bad key, slug, score, period or source", async
   await insert({ period: null });
 });
 
-test("the live check expects exactly SELECT on live_score and its one policy, and still names anything wider", async () => {
+test("the live check stays clean with live_scores() granted, and still names a table right on live_score", async () => {
   const d = await supabaseLike();
   assert.deepEqual(await checkLive(d), []);
-  await d.exec("grant insert on live_score to anon");
-  assert.deepEqual(await checkLive(d), ["anon holds INSERT,SELECT on public.live_score"]);
-  await d.exec("revoke insert on live_score from anon; create policy sneaky on live_score for insert to anon with check (true)");
+  await d.exec("grant select on live_score to anon");
+  assert.deepEqual(await checkLive(d), ["anon holds SELECT on public.live_score"]);
+  await d.exec("revoke select on live_score from anon; create policy sneaky on live_score for select to anon using (true)");
   assert.deepEqual(await checkLive(d), ["unexpected policy sneaky on public.live_score"]);
 });
 

@@ -70,8 +70,8 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   (no winner named). Stores only the browser's push address and keys and the followed programs
 - **Live scores** (ADR 0021): on a game page and on `/scores`, a game with no final that the game-day read sees under way shows
   "Live · <period> · <away>–<home> · Unconfirmed", the teams with their scores and when it was read (Central); no winner or
-  leader. Read in the browser from the public `live_score` table every 60 s (needs `NEXT_PUBLIC_SUPABASE_URL` and
-  `NEXT_PUBLIC_SUPABASE_ANON_KEY` at build); nothing shows without them. **The period is not shown yet:** `PERIOD_INDEX` in
+  leader. Read in the browser through the public function `live_scores()` every 60 s (the project's public URL and key,
+  `lib/supabase-public.ts`, shared with push; no sign-in setting involved); a 0-0 with no period is never shown. **The period is not shown yet:** `PERIOD_INDEX` in
   `maxpreps.mjs` is null until a night run's summary (`inProgressShape`) shows which contest field holds it; no real
   in-progress page has been seen
 - **Share** button on program and game pages: the phone's share sheet, else copies the link (`app/share-button.tsx`)
@@ -95,7 +95,7 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   hand in `data/seed/lineage/programs.csv` (TEA's consolidation list): 49 of 52 finalists reach a current program
   (O'Brien became Knox City, 1976; the other three, Jarrell, Marathon and Christoval, are still independent districts that no longer play
   six-man, so no lineage)
-- **Supabase** (`vhgnaihnyjdnaaergtcl`): migrations 0001 to 0016 (0009: `team_season_league`, every league that lists a team that season; 0016: `live_score`, the one table the API roles may read directly, ADR 0021), loaded after every push to `main` (`main.yml`) with live RLS and
+- **Supabase** (`vhgnaihnyjdnaaergtcl`): migrations 0001 to 0016 (0009: `team_season_league`, every league that lists a team that season; 0016: `live_score` and `live_scores()`, ADR 0021), loaded after every push to `main` (`main.yml`) with live RLS and
   API-role checks (`.github/workflows/supabase.yml`, with `PRIVATE_DATA`); unchanged games are skipped, ~5 min. The site does not read the database yet
 - **CI** on every push: database, league readers, history, school identity, ratings, typecheck, 98 page tests (phone
   and desktop, axe) on a production build, inside Playwright's container image

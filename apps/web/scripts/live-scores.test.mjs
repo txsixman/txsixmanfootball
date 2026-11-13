@@ -2,6 +2,7 @@
 // belongs to which game.   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../lib/supabase-public.ts";
 import { checkedAt, fetchLiveRows, LIVE_MAX_AGE_MS, liveKey, liveView, parseLiveRows } from "../lib/live-scores.ts";
 
 const NOW = Date.parse("2026-11-13T23:45:00Z");
@@ -46,6 +47,10 @@ test("no row, another date, a stale or future read, or a key that does not fit t
   assert.equal(liveView(parseLiveRows([row({ read_at: new Date(NOW - LIVE_MAX_AGE_MS - 1000).toISOString() })]), game, NOW), null);
   assert.ok(liveView(parseLiveRows([row({ read_at: new Date(NOW - LIVE_MAX_AGE_MS + 1000).toISOString() })]), game, NOW));
   assert.equal(liveView(parseLiveRows([row({ read_at: new Date(NOW + 3600_000).toISOString() })]), game, NOW), null);
+  // 0-0 with no period may be a game that has not kicked off: nothing. With a period it is shown.
+  assert.equal(liveView(parseLiveRows([row({ home_score: 0, away_score: 0, period: null })]), game, NOW), null);
+  assert.ok(liveView(parseLiveRows([row({ home_score: 0, away_score: 0, period: "Q1" })]), game, NOW));
+  assert.ok(liveView(parseLiveRows([row({ home_score: 7, away_score: 0, period: null })]), game, NOW));
   // A key that matches but whose home and away columns name other teams cannot be placed: nothing, not a guess.
   assert.equal(liveView(parseLiveRows([row({ home: "dry-wash", away: "mesa-verde" })]), game, NOW), null);
 });
@@ -55,20 +60,20 @@ test("the time is shown in Central", () => {
   assert.equal(checkedAt(new Date("2026-11-14T01:05:00Z")), "7:05 PM CT");
 });
 
-test("the request carries the public key twice and asks for this table only; a refusal throws", async () => {
+test("the request calls the live_scores function with the public key, the one push uses; a refusal throws", async () => {
   const seen = [];
   const real = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
-    seen.push([String(url), init.headers]);
-    return seen.length === 1 ? new Response(JSON.stringify([row()]), { status: 200 }) : new Response("{}", { status: 401 });
+    seen.push([String(url), init]);
+    return seen.length === 1 ? new Response(JSON.stringify([row()]), { status: 200 }) : new Response("{}", { status: 404 });
   };
   try {
-    const env = { url: "https://abc.supabase.co/", anonKey: "sb_publishable_test" };
-    assert.equal((await fetchLiveRows(env)).length, 1);
-    assert.match(seen[0][0], /^https:\/\/abc\.supabase\.co\/rest\/v1\/live_score\?select=game_key,home,away,home_score,away_score,period,read_at$/);
-    assert.equal(seen[0][1].apikey, "sb_publishable_test");
-    assert.equal(seen[0][1].Authorization, "Bearer sb_publishable_test");
-    await assert.rejects(fetchLiveRows(env), /401/);
+    assert.equal((await fetchLiveRows()).length, 1);
+    assert.equal(seen[0][0], `${SUPABASE_URL}/rest/v1/rpc/live_scores`);
+    assert.equal(seen[0][1].method, "POST");
+    assert.equal(seen[0][1].headers.apikey, SUPABASE_PUBLISHABLE_KEY);
+    assert.equal(seen[0][1].body, "{}");
+    await assert.rejects(fetchLiveRows(), /404/);
   } finally {
     globalThis.fetch = real;
   }
