@@ -1,9 +1,60 @@
-// The browser's live-score reading (lib/live-scores.ts, ADR 0021): the Zod check of each row, the game key, and which row
-// belongs to which game.   node --test apps/web/scripts/
+// The browser's live-score reading (lib/live-scores.ts, ADR 0021): the check of each row (the same rules as the Zod
+// schema it replaced, proved below), the game key, and which row belongs to which game.   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { z } from "zod";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../lib/supabase-public.ts";
 import { checkedAt, fetchLiveRows, LIVE_MAX_AGE_MS, liveKey, liveView, parseLiveRows } from "../lib/live-scores.ts";
+
+/** The Zod schema lib/live-scores.ts used until its check was written out by hand (so phones need not download Zod). */
+const REFERENCE = z.object({
+  game_key: z.string().max(200),
+  home: z.string().max(80),
+  away: z.string().max(80),
+  home_score: z.number().int().min(0).max(200),
+  away_score: z.number().int().min(0).max(200),
+  period: z.string().min(1).max(12).regex(/^[A-Za-z0-9 ]+$/).nullable(),
+  read_at: z.iso.datetime({ offset: true }),
+});
+
+test("the hand-written check keeps and drops exactly the rows the Zod schema did, with the same fields", () => {
+  const good = {
+    game_key: "2026-11-13|cedar-gap|salt-fork", home: "salt-fork", away: "cedar-gap", home_score: 28, away_score: 14,
+    period: "Q3", read_at: "2026-11-13T23:40:00.123+00:00",
+  };
+  const values = {
+    game_key: ["", "k".repeat(200), "k".repeat(201), 5, null, undefined, ["a"]],
+    home: ["", "h".repeat(80), "h".repeat(81), "é".repeat(80), 0, null, {}],
+    home_score: [0, 200, 201, -1, 1.5, -0, NaN, Infinity, "28", null, 2 ** 53, true],
+    away_score: [0, 199, 200.0001, -0.5, undefined],
+    period: [null, "", " ", "OT", "Q4 0 12", "x".repeat(12), "x".repeat(13), "<b>", "Q3\n", "Ⅲ", 3, undefined, false],
+    read_at: [
+      "2026-11-13T23:40:00Z", "2026-11-13T23:40:00.1Z", "2026-11-13T23:40:00.123456789-05:00", "2026-11-13T23:40Z",
+      "2026-11-13T23:40:00", "2026-11-13T24:00:00Z", "2026-11-13T23:60:00Z", "2026-11-13T23:40:60Z", "2026-11-13t23:40:00Z",
+      "2026-11-13 23:40:00Z", "2026-11-13T23:40:00+0500", "2026-11-13T23:40:00+24:00", "2026-11-13T23:40:00+05:60",
+      "2024-02-29T00:00:00Z", "2026-02-29T00:00:00Z", "2000-02-29T00:00:00Z", "1900-02-29T00:00:00Z", "0000-02-29T00:00:00Z",
+      "2026-04-31T00:00:00Z", "2026-12-31T00:00:00Z", "2026-13-01T00:00:00Z", "2026-00-10T00:00:00Z", "2026-11-00T00:00:00Z",
+      "２026-11-13T23:40:00Z", "2026-11-13T23:40:00.Z", "+2026-11-13T23:40:00Z", "2026-11-13", "soon", "", 0, null,
+    ],
+  };
+  const rows = [good, null, [], [good], "row", 5, { ...good, extra: "<script>" }, Object.assign(Object.create({ home: "x" }), good)];
+  for (const [key, list] of Object.entries(values)) {
+    for (const v of list) {
+      rows.push({ ...good, [key]: v });
+      if (key === "home") rows.push({ ...good, away: v });
+    }
+    const { [key]: _, ...without } = good;
+    rows.push(without);
+  }
+  let kept = 0;
+  for (const row of rows) {
+    const ref = REFERENCE.safeParse(row);
+    const ours = parseLiveRows([row]);
+    assert.deepEqual(ours, ref.success ? [ref.data] : [], `${JSON.stringify(row)}: Zod ${ref.success ? "keeps" : "drops"} it`);
+    kept += ours.length;
+  }
+  assert.ok(kept > 20 && kept < rows.length - 40, `both sides of the rules are exercised (${kept} of ${rows.length} kept)`);
+});
 
 const NOW = Date.parse("2026-11-13T23:45:00Z");
 const row = (over = {}) => ({

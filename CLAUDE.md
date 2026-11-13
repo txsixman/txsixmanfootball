@@ -65,8 +65,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `tools/school-identity/`: `merge.mjs` fills gaps from research batches, `wikipedia.mjs` fills colors and mascots
   from infoboxes, `fetch-logos.mjs` downloads logos (outside a sandbox; `--refresh` all, `--rebuild` from the originals,
   `--only slug,slug`), keeps each untouched original in `data/seed/schools/logo-originals/` and stores the tidied
-  copy (fits 1200x320, plus a 288x96 copy in `small/`) in `apps/web/public/logos/`; `measure.mjs` is its tidy and
-  light-mark rules; `audit-logos.mjs` lists logos that look wrong; `contact-sheet.mjs` draws every logo on white and navy
+  copy (fits 1200x320) in `apps/web/public/logos/`, plus the WebP copies crests draw (`tiny/`, `small/`,
+  `large/`, ADR 0022); `measure.mjs` is its tidy and light-mark rules; `audit-logos.mjs` lists logos that look
+  wrong; `contact-sheet.mjs` draws every logo on white and navy
 - `apps/web`: Next.js site (Vercel, Root Directory `apps/web`); `lib/score-display.ts` holds the winner and
   verification rules (ADR 0004); `lib/demo-games.ts` is invented schools only
 - `tools/push/`: score alerts (web-push), sent by `results-watch.yml` after it pushes new finals; subscriptions in

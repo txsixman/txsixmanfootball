@@ -124,7 +124,7 @@ test("the programs finder groups schools by organization, never one mixed list",
     await expect(page.locator(`#org-${org}`).getByRole("link", { name: /Grayson Christian/ })).toHaveAttribute("href", "/programs/sherman-grayson-christian-school");
   }
   await page.goto("/programs/sherman-grayson-christian-school");
-  await expect(page.locator("main img").first()).toHaveAttribute("src", "/logos/sherman-grayson-christian-school.png");
+  await expect(page.locator("main img").first()).toHaveAttribute("src", "/logos/large/sherman-grayson-christian-school.webp");
   await expect(page.locator("main")).toContainText("Savoy");
   expect((await page.goto("/programs/grayson-christian"))?.status()).toBe(404);
 });
