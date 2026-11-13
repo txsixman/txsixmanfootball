@@ -53,7 +53,7 @@ from model import (
     simulate,
     subset,
 )
-from rows import DATA, PLAYOFF_EDGE, RESULTS, Season, prepare
+from rows import DATA, PLAYOFF_EDGE, RESULTS, Season, prepare, require_private_data
 
 # Rounded to a tenth, so a rerun on another machine does not churn the file over floating-point noise.
 TENTH = 1
@@ -376,6 +376,7 @@ def playoff_sites(season: int) -> frozenset:
 
 def main() -> None:
     if len(sys.argv) == 3 and sys.argv[1] == "--season":
+        require_private_data()
         season = int(sys.argv[2])
         files = season_files(season)
         if not files:

@@ -93,6 +93,29 @@ export function checkAll() {
     if (unknown.length) results.push({ file: seed("schools/identity.json"), ok: false, note: `colors not in colors.json: ${unknown.join(", ")}` });
   }
   if (identity) results.push(checkLogoFiles(identity));
+  results.push(...checkMaxprepsFolders(path.join(root, "data/seed")));
+  return results;
+}
+
+/** The only files a robot-read folder in this repo may hold: the facts publish.mjs writes (ADRs 0017, 0029). The reader's
+ * captures (source pages, teams.csv, outside.csv, coverage.txt) belong in the private data repo only. `.DS_Store` is
+ * Finder's, never committed (.gitignore). */
+export const MAXPREPS_PUBLIC_FILES = ["games.csv", "playoffs.csv"];
+
+/** One result for each robot-read folder under `seedDir` that holds anything else, or whose name is not maxpreps-<year>. */
+export function checkMaxprepsFolders(seedDir) {
+  const results = [];
+  for (const d of readdirSync(seedDir).filter((d) => d.startsWith("maxpreps")).sort()) {
+    const file = seed(d);
+    if (!/^maxpreps-\d{4}$/.test(d)) {
+      results.push({ file, ok: false, note: "a robot-read folder must be named maxpreps-<year> (ADR 0029)" });
+      continue;
+    }
+    const stray = readdirSync(path.join(seedDir, d)).filter((f) => f !== ".DS_Store" && !MAXPREPS_PUBLIC_FILES.includes(f)).sort();
+    if (stray.length) {
+      results.push({ file, ok: false, note: `only ${MAXPREPS_PUBLIC_FILES.join(" and ")} may be here; the reader's captures belong in the private data repo (ADR 0029): ${stray.join(", ")}` });
+    }
+  }
   return results;
 }
 

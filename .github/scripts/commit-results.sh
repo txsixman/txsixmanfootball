@@ -75,7 +75,11 @@ for try in 1 2 3; do
     { echo "New results, not pushed (not live, no \`write\` input):"; git diff --stat -- data; } >> "$summary"
     exit 0
   fi
-  git add "data/seed/$dir" data/ratings
+  # The published facts by name, never the folder (ADR 0029): a stray file there (a capture written outside the private
+  # repo) stays unstaged, and the data checks above have already failed the run over it.
+  public=()
+  for f in games.csv playoffs.csv; do [ ! -f "data/seed/$dir/$f" ] || public+=("data/seed/$dir/$f"); done
+  git add -- "${public[@]}" data/ratings
   git commit -q -m "$message"
   if git push -q origin HEAD:main; then
     echo "sha=$(git rev-parse HEAD)" >> "$output"

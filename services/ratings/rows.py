@@ -28,6 +28,17 @@ DATA = Path(__file__).resolve().parents[2] / "data"
 # data repo; CI checks it out and sets PRIVATE_DATA to it. Without it, the facts-only copies in data/seed are read, and
 # a season has no outside.csv (no hidden teams in the fit), so a table made that way is not the published one.
 RESULTS = Path(os.environ["PRIVATE_DATA"]).resolve() if os.environ.get("PRIVATE_DATA") else DATA / "seed"
+
+
+def require_private_data(env=os.environ) -> None:
+    """In CI the season's table is the published one, so it needs the private data (ADR 0029); a local run may go without."""
+    if env.get("CI") == "true" and not env.get("PRIVATE_DATA"):
+        raise SystemExit(
+            "PRIVATE_DATA is not set: in CI the season's table is made from the private data repo's checkout (outside "
+            "games, playoff sites), so set PRIVATE_DATA to it (ADR 0029)."
+        )
+
+
 MERCY = {"mercy_half", "mercy_2h"}
 DUPLICATE_DAYS = 2
 OUTSIDE_PREFIX = "outside: "
