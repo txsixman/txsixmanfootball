@@ -5,7 +5,9 @@ import { FEW_GAMES, movement, MOVE_THRESHOLD, record, signed, type RatingRow } f
 import { meetingScore, type Meeting, type TeamSchedule } from "@/lib/schedule-strength";
 import { CrestSlot, PageHeader } from "../ui";
 
-export type Row = RatingRow & { name: string; href?: string; identity: Identity; schedule?: TeamSchedule };
+/** `played`: the season's games the team has played, from the games the site lists (lib/season-results.ts playedCounts); the
+ * rated count beside it is the ratings table's own `rated`. Absent on the invented sample, which then shows neither. */
+export type Row = RatingRow & { name: string; href?: string; identity: Identity; schedule?: TeamSchedule; played?: number };
 
 export function RankingsHeader({ eyebrow, note }: { eyebrow: string; note?: string }) {
   return <PageHeader id="rankings" eyebrow={eyebrow} title="Rankings" note={note} />;
@@ -58,7 +60,7 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
   const wide = rows.some((r) => r.schedule);
   return (
     <table className="mt-4 w-full border-collapse text-[15px]">
-      <caption className="sr-only">Teams ranked by rating, best first. Teams in one tier have ratings that overlap. Teams with few games are not ranked.</caption>
+      <caption className="sr-only">Teams ranked by rating, best first. Teams in one tier have ratings that overlap. Teams with few games are not ranked. Under each team name: games played and games rated.</caption>
       <thead>
         <tr className="border-b-2 border-navy font-num text-[13px] uppercase tracking-wider text-muted">
           <th scope="col" className="w-8 py-1.5 pr-1.5 text-right font-semibold">#</th>
@@ -92,6 +94,7 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
                     {rangeText(place.range)}
                   </span>
                 )}
+                {r.played != null && <span className="text-[13px] leading-4 text-muted">{r.played} played, {r.rated} rated</span>}
               </span>
             </>
           );
@@ -158,7 +161,7 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
   );
 }
 
-export function HowToRead({ schedule = false }: { schedule?: boolean }) {
+export function HowToRead({ schedule = false, basis = false }: { schedule?: boolean; basis?: boolean }) {
   return (
     <section aria-labelledby="how" className="mt-8 border border-line bg-panel px-4 py-3 text-[15px] text-ink">
       <h2 id="how" className="font-num text-[18px] font-bold uppercase tracking-wide text-navy">How to read this</h2>
@@ -168,6 +171,12 @@ export function HowToRead({ schedule = false }: { schedule?: boolean }) {
         <li>The projected margin between two teams is the difference in their ratings.</li>
         <li>A game ended by the 45-point rule counts as a win by at least 45, not by the score on the board.</li>
         <li>Forfeits count in the record but not the rating.</li>
+        {basis && (
+          <li>
+            Under each team: games played this season, and how many of them are rated. A rating rests on the rated games only; a forfeit is played but not rated.
+            <Link href="/about/ratings" className="flex min-h-11 w-fit items-center font-semibold text-navy underline">What a rating rests on</Link>
+          </li>
+        )}
         <li>An arrow beside a rank shows places moved since a week earlier, within the organization (or division) tab you are on. It shows only when the rating itself moved by more than {MOVE_THRESHOLD} points.</li>
         <li>A team with fewer than {FEW_GAMES} rated games is not ranked (NR), is listed last, and shows its game count: one result can move its rating a long way.</li>
         {schedule && <li>On wide screens: record strength is a team&rsquo;s wins minus the wins a typical top-25 team would be expected to get against the same opponents at the same sites; the opponents&rsquo; rating is the average rating of the teams it played. Both, with the best win and worst loss, are also on every program page.</li>}

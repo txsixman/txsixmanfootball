@@ -58,3 +58,17 @@ export function buildSeasonResults(
   });
   return { results, voided };
 }
+
+/**
+ * Games each team played: one for every result of `results` it is in, a forfeit too (it counts in the record). Through
+ * `through` (an ISO date, a week's Sunday) when given. This is the "played" half of "played, rated" on the rankings and
+ * program pages; "rated" is the ratings table's own `rated` (services/ratings/run.py), never counted here.
+ */
+export function playedCounts(results: Pick<SeasonResult, "home" | "away" | "date">[], through?: string): Map<string, number> {
+  const played = new Map<string, number>();
+  for (const g of results) {
+    if (through && g.date > through) continue;
+    for (const team of [g.home, g.away]) played.set(team, (played.get(team) ?? 0) + 1);
+  }
+  return played;
+}
