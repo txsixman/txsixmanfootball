@@ -72,6 +72,7 @@ fi
 
 # The `web-checks` job.
 run "Site packages" install apps/web
+run "Data checks, files and cross-file" node apps/web/scripts/check-data.mjs
 run "Typecheck" npm --prefix apps/web run typecheck
 run "Database package (PGlite, for the route tests)" install packages/db
 run "Data checks, route tests and build-script tests" sh -c 'node --test apps/web/scripts/*.test.mjs'

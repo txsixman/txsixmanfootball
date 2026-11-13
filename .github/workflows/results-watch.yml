@@ -142,6 +142,10 @@ jobs:
         id: commit
         env:
           WRITE: ${{ (vars.LIVE == 'true' || inputs.write == true) && 'true' || 'false' }}
+          # Cross-file checks report here instead of blocking (scripts/check-data.mjs reportIntegrity): one bad source row
+          # must not hold back every final on a Friday night. The last step fails the job from this file, after the push.
+          INTEGRITY: report
+          INTEGRITY_REPORT: ${{ runner.temp }}/integrity-failures.txt
         run: |
           year=${{ steps.season.outputs.year }}
           dir="maxpreps-$year"
@@ -182,9 +186,13 @@ jobs:
               echo "No new results." >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-            # Zod checks on every file the site reads: a bad row fails the run here and never reaches main. The checks'
-            # packages install only when there is something new to check (most game-day ticks have nothing).
+            # Zod checks on every file the site reads: a bad row fails the run here and never reaches main. Then the
+            # cross-file checks (a program twice on one date, a playoff game missing from games.csv, a bracket team that
+            # lost its last round...), in report mode: written to INTEGRITY_REPORT and the summary, the push goes ahead,
+            # and the last step fails the job. The checks' packages install only when there is something new to check
+            # (most game-day ticks have nothing).
             [ -d apps/web/node_modules ] || npm ci --prefix apps/web --no-audit --no-fund
+            : > "$INTEGRITY_REPORT"
             node apps/web/scripts/check-data.mjs
             if [ "$WRITE" != true ]; then
               { echo "New results, not pushed (not live, no \`write\` input):"; git diff --stat -- data; } >> "$GITHUB_STEP_SUMMARY"
@@ -200,12 +208,21 @@ jobs:
             echo "main moved; try $try again"
           done
           exit 1
+      # After the push: a cross-file failure the commit step reported (not blocking) fails the job, so the owner is emailed.
+      # The jobs below run on the pushed commit all the same (their `if` reads the sha, not this job's result).
+      - name: Cross-file data checks (reported above, after the push)
+        run: |
+          f="$RUNNER_TEMP/integrity-failures.txt"
+          [ -s "$f" ] || exit 0
+          echo "Cross-file data checks failed; the results were pushed anyway (scripts/check-data.mjs, INTEGRITY=report):"
+          cat "$f"
+          exit 1
 
   # Push alerts (tools/push/send-finals.mjs, web-push) to everyone following a program with a new final in the commit
   # just pushed. Without the VAPID_PRIVATE_KEY or SUPABASE_DB_PASSWORD secret it says so and sends nothing.
   alerts:
     needs: maxpreps
-    if: needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true'
+    if: ${{ !cancelled() && needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -230,7 +247,7 @@ jobs:
   # freshness check (site-freshness.yml) is the one that fails and emails when a deploy stays missing.
   deployed:
     needs: maxpreps
-    if: needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true'
+    if: ${{ !cancelled() && needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     continue-on-error: true
@@ -251,5 +268,7 @@ jobs:
   # New scores go into the hosted database too, once they are committed (supabase.yml does nothing before LIVE).
   supabase:
     needs: maxpreps
+    # Also after a cross-file failure, which fails the maxpreps job only after its push.
+    if: ${{ !cancelled() && (needs.maxpreps.result == 'success' || needs.maxpreps.outputs.sha != '') }}
     uses: ./.github/workflows/supabase.yml
     secrets: inherit
