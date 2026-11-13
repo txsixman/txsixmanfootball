@@ -289,11 +289,18 @@ export function playoffsCsv(games, bySlug) {
 
 /**
  * MaxPreps sometimes lists one game twice under two contest ids. Copies that agree on the score are one game (a copy
- * with a bracket wins); copies that disagree are all dropped and returned as conflicts, for coverage.txt.
+ * with a bracket wins); copies that disagree are all dropped and returned as conflicts, for coverage.txt. A game whose
+ * two sides are the same school of ours (two schools of one name matched to one) is never written: it is returned in
+ * selfGames, named, so the run says so before anything reaches the private repo or the database.
  */
 export function dedupe(games) {
   const groups = new Map();
+  const selfGames = [];
   for (const g of games) {
+    if (g.home.slug === g.away.slug) {
+      selfGames.push(`${g.date} ${g.home.name} (${g.home.city}) vs ${g.away.name} (${g.away.city}), both matched to ${g.home.slug}`);
+      continue;
+    }
     const key = [g.date, ...[g.home.slug, g.away.slug].sort()].join("|");
     groups.set(key, [...(groups.get(key) ?? []), g]);
   }
@@ -310,7 +317,7 @@ export function dedupe(games) {
     const pool = played.length ? played : copies;
     kept.push(pool.find((g) => g.bracket) ?? pool[0]);
   }
-  return { kept, conflicts };
+  return { kept, conflicts, selfGames };
 }
 
 export const OUTSIDE_COLUMNS = "game_date,team,opponent,opponent_url,team_is_home,team_score,opponent_score,source_url";
@@ -452,7 +459,9 @@ async function main() {
     .filter(([slug]) => !reached.has(slug))
     .map(([slug, r]) => `${r.league} ${r.division}: ${r.school}${elevenSlugs.has(slug) ? " (11-man this season)" : readNames.has(slug) ? ` (MaxPreps page read: no ${SEASON} games)` : ""}`);
   mkdirSync(OUT, { recursive: true });
-  const { kept, conflicts } = dedupe([...games.values()]);
+  const { kept, conflicts, selfGames } = dedupe([...games.values()]);
+  // A row with the same school on both sides breaks the database (a game needs two team-seasons): name it loudly.
+  for (const s of selfGames) console.log(`::warning::left out, the same school on both sides: ${s}`);
   // The store is the record (ADR 0031): this read merges into the stored files and never deletes or blanks a score.
   const now = new Date().toISOString();
   const readTeam = (name) => readPages.has(teamPages.get(slugify(name)));
@@ -494,6 +503,9 @@ async function main() {
       "",
       `Listed twice with different scores, so left out (${conflicts.length}):`,
       ...conflicts.sort(),
+      "",
+      `The same school on both sides, so left out (${selfGames.length}; fix the match or an alias):`,
+      ...selfGames.sort(),
       "",
       `${outside.size} opponents outside our alignments (${[...outside.values()].reduce((a, b) => a + b, 0)} game sides skipped; for a past season these include schools no longer six-man or no longer listed), most games first:`,
       ...[...outside.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([n, k]) => `${k}  ${n}`),

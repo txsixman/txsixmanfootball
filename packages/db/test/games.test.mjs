@@ -38,6 +38,15 @@ test("a scheduled game loads without a score, then gains one on re-import", asyn
   assert.ok(row.source_document_id);
 });
 
+test("one team on both sides fails with the season, date and names, and stores nothing", async () => {
+  const before = (await game()).length;
+  await assert.rejects(
+    seedGames(db, parseGames(csv(`I,season,2026-08-30,Alpha,Alpha,false,81,75,unknown,,${SRC},`)), opts),
+    { message: "season 2026, 2026-08-30: Alpha vs Alpha is one team on both sides; fix the capture, a game needs two teams" },
+  );
+  assert.equal((await game()).length, before);
+});
+
 test("a suspicious score is stored and reported, not blocked", async () => {
   const result = await seedGames(db, parseGames(csv(`I,area,2026-11-20,Beta,Alpha,true,60,10,regulation,,${SRC},`)), opts);
   assert.equal(result.inserted, 1);
