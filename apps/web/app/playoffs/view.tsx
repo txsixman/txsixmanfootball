@@ -48,7 +48,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
   return (
     <section aria-labelledby="playoffs">
       <PageHeader id="playoffs" eyebrow={`${year} season · ${brackets.length} ${brackets.length === 1 ? "bracket" : "brackets"}`} title="Playoffs" />
-      {seasons.length > 1 && <TabNav label="Season" tabs={seasonTabs} current={seasonTabs[seasons.indexOf(year)].href} />}
+      {seasons.length > 1 && <TabNav label="Season" wrap tabs={seasonTabs} current={seasonTabs[seasons.indexOf(year)].href} />}
       <TabNav label="League" tabs={leagues.map((l) => ({ href: leagueHref(l, past ? year : undefined), label: l }))} current={leagueHref(league, past ? year : undefined)} />
       {brackets.map((b) => {
         const id = `bracket-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;

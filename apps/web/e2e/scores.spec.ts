@@ -589,7 +589,7 @@ test("rankings stand at the end of each week, with records then and moves from t
 test("past playoff seasons list their brackets round by round, with no projections, winners or source", async ({ page }, info) => {
   await checkPage(page, "/playoffs/season/2025", `playoffs-2025-${info.project.name}`);
   const seasons = page.getByRole("navigation", { name: "Season" });
-  await expect(seasons.getByRole("link")).toHaveText(["2026", "2025", "2024", "2023", "2022", "2021"]);
+  await expect(seasons.getByRole("link")).toHaveText(Array.from({ length: SEASONS }, (_, i) => String(CURRENT_SEASON - i)));
   await expect(seasons.getByRole("link", { name: "2025" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("navigation", { name: "League" }).getByRole("link")).toHaveText(["UIL", "TAPPS", "TAIAO", "TCAF"]);
   const division = page.getByRole("region", { name: "UIL Division I", exact: true });

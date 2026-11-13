@@ -60,25 +60,26 @@ test("a season with no games and no rating shows a dash, not a guess, and the ra
   await expect(gone.getByRole("link")).toHaveCount(1); // only its rankings link; no games to open
   await expect(gone.locator("details")).toHaveCount(0);
   await expect(season(page, 2022)).toContainText(/#\d+ of \d+ in UIL|Not ranked/);
-  const chart = seasons(page).getByRole("img", { name: /^Final rating of each season, from .+ in 2021 to .+ in 2026; highest .+\. \d seasons have no rating\. Zero is an average team\.$/ });
+  const chart = seasons(page).getByRole("img", { name: new RegExp(`^Final rating of each season, from .+ in ${FIRST_SEASON} to .+ in ${CURRENT_SEASON}; highest .+\\. \\d seasons have no rating\\. Zero is an average team\\.$`) });
   await expect(chart).toBeVisible();
-  // Two seasons either side of the gap are dots without a line; no season is drawn as a rating it never had.
-  expect(await chart.locator("circle").count()).toBe(3);
   const table = seasons(page).getByRole("table", { name: "Final rating by season" });
-  await expect(table.getByRole("row")).toHaveCount(7);
+  await expect(table.getByRole("row")).toHaveCount(CURRENT_SEASON - FIRST_SEASON + 2); // a header and one row a season
+  // Seasons either side of a gap are dots without a line: one dot a rated season, none for a season with no rating.
+  const rated = (await table.getByRole("row").filter({ hasNotText: "No rating" }).count()) - 1;
+  expect(await chart.locator("circle").count()).toBe(rated);
   await expect(table.getByRole("row", { name: /^2024 No rating$/ })).toHaveCount(1);
 });
 
 test("the rating line is an image with words and numbers for a screen reader, drawn without a chart library", async ({ page }) => {
   await open(page, "jayton");
-  const chart = seasons(page).getByRole("img", { name: /^Final rating of each season, from [+−]\d+\.\d in 2021 to [+−]\d+\.\d in 2026; highest [+−]\d+\.\d in 20\d\d\. Zero is an average team\.$/ });
+  const chart = seasons(page).getByRole("img", { name: new RegExp(`^Final rating of each season, from [+−]\\d+\\.\\d in ${FIRST_SEASON} to [+−]\\d+\\.\\d in ${CURRENT_SEASON}; highest [+−]\\d+\\.\\d in 20\\d\\d\\. Zero is an average team\\.$`) });
   await expect(chart).toBeVisible();
   await expect(chart.locator("polyline")).toHaveCount(1);
-  await expect(chart.locator("circle")).toHaveCount(6);
+  await expect(chart.locator("circle")).toHaveCount(CURRENT_SEASON - FIRST_SEASON + 1);
   await expect(seasons(page).locator("figure figcaption").first()).toContainText("Zero is an average team.");
   const rows = seasons(page).getByRole("table", { name: "Final rating by season" }).getByRole("row");
-  await expect(rows).toHaveCount(7);
-  await expect(rows.nth(1)).toContainText(/^2021[+−]\d+\.\d$/);
+  await expect(rows).toHaveCount(CURRENT_SEASON - FIRST_SEASON + 2);
+  await expect(rows.nth(1)).toContainText(new RegExp(`^${FIRST_SEASON}[+−]\\d+\\.\\d$`));
   // Labels are readable at the size the drawing is shown.
   const sizes = await chart.evaluate((svg: SVGSVGElement) => {
     const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;

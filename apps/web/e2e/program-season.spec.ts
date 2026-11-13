@@ -133,7 +133,7 @@ test("a forfeit shows the word, never 1-0 or 2-0, and counts in the record", asy
 });
 
 test("a season with no game on record, a year out of range and a malformed year are all 404", async ({ request }) => {
-  for (const path of ["/programs/dell-city/2024", "/programs/jayton/2019", "/programs/jayton/2099", "/programs/jayton/02025", "/programs/jayton/abc", "/programs/no-such-school/2025"]) {
+  for (const path of ["/programs/dell-city/2024", `/programs/jayton/${FIRST_SEASON - 1}`, "/programs/jayton/2099", "/programs/jayton/02025", "/programs/jayton/abc", "/programs/no-such-school/2025"]) {
     expect((await request.get(path)).status(), path).toBe(404);
   }
 });

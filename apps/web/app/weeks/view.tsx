@@ -124,7 +124,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
           .map(([o, played]) => ({ href: played.some((w) => w.number === week) ? weekHref(season, week, o) : weekHref(season, played.at(-1)!.number, o), label: o.label }))}
         current={weekHref(season, week, org)}
       />
-      {seasons.length > 1 && <TabNav label="Season" tabs={seasonTabs} current={weekHref(season, week, org)} />}
+      {seasons.length > 1 && <TabNav label="Season" wrap tabs={seasonTabs} current={weekHref(season, week, org)} />}
       <nav aria-label="Week" className="mt-3 flex flex-wrap gap-1.5">
         {weeks.map((w) => (
           <Link
