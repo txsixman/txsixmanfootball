@@ -23,6 +23,8 @@ export type EmbedView = {
   /** The last results, latest first. */
   recent: EmbedGame[];
   next: EmbedGame | null;
+  /** The next game is dated before tonight: it is waiting on its score, not still to play. */
+  nextWaiting?: boolean;
 };
 
 /** The program page the embed links to: absolute, because the embed is shown on another site. */
@@ -105,7 +107,7 @@ export function renderEmbed(v: EmbedView): string {
     `<header class="band" style="background:${color(v.band.bg, "#0a2a5e")};color:${color(v.band.fg, "#ffffff")};border-color:${color(v.band.stripe ?? v.band.bg, "#bf1e2e")}">` +
     `${crestHtml(v.crest)}<div><h1>${school}</h1>${v.record ? `<p class="rec"><b>${escapeHtml(v.record)}</b> ${v.season} record</p>` : ""}</div></header>` +
     `<main>${v.recent.length ? `<section aria-labelledby="r"><h2 id="r">Latest results</h2><ul>${v.recent.map(gameRow).join("")}</ul></section>` : ""}` +
-    `${v.next ? `<section aria-labelledby="n"><h2 id="n">Next game</h2><ul>${gameRow(v.next)}</ul></section>` : ""}` +
+    `${v.next ? `<section aria-labelledby="n"><h2 id="n">${v.nextWaiting ? "Score not in yet" : "Next game"}</h2><ul>${gameRow(v.next)}</ul></section>` : ""}` +
     `${empty ? `<p class="fine">No ${v.season} games on record yet.</p>` : ""}` +
     `${v.recent.length ? `<p class="fine">Scores are not confirmed here.</p>` : ""}</main>` +
     `<footer><a href="${escapeHtml(href)}" target="_blank" rel="noopener">Full schedule on TX Six-Man Football</a></footer></body></html>`
