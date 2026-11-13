@@ -208,6 +208,13 @@ test("every Friday-night run reads Friday's games, the midnight one and a late s
   assert.equal(gameNight(new Date("2026-11-14T12:00:00Z")), "2026-11-14"); // 6 AM Saturday Central: Saturday's games
 });
 
+// ADR 0019: runs on any game day (a Thursday or Saturday too, afternoons included) read that day's games, not the UTC date's.
+test("Thursday, Saturday and afternoon runs read that game day's games", () => {
+  assert.equal(gameNight(new Date("2026-11-14T19:00:00Z")), "2026-11-14"); // 1 PM Saturday Central
+  for (const utc of ["2026-11-13T01:00:00Z", "2026-11-13T05:30:00Z", "2026-11-13T06:00:00Z"]) assert.equal(gameNight(new Date(utc)), "2026-11-12", utc);
+  for (const utc of ["2026-11-15T01:00:00Z", "2026-11-15T05:30:00Z", "2026-11-15T06:00:00Z"]) assert.equal(gameNight(new Date(utc)), "2026-11-14", utc);
+});
+
 test("a night read fills tonight's finals into the bracket and the games file, and changes nothing else", () => {
   const bySlug = new Map([
     ["cedar-gap", { school: "Cedar Gap", division: "I" }],

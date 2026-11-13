@@ -32,7 +32,7 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   (the school's own site for Community Christian and CenTex Chargers; `maxpreps-aliases.json` maps their MaxPreps pages)
 - `data/seed/tapps-2026-28/`: written by `tools/league-watch/tapps.mjs`, never by hand (ADR 0005)
 - `tools/league-watch/`: robot readers. `tapps.mjs` and `taiao.mjs` (alignments, weekly via `league-watch.yml`); `maxpreps.mjs` (game
-  results, Fri to Sun mornings Aug to Jan, plus every 30 minutes on playoff Friday nights (`--tonight`, ADR 0015), via `results-watch.yml`, which also rerates and commits to `main`; `--season 2025`
+  results, Fri to Sun mornings Aug to Jan, plus every 30 minutes noon to midnight on playoff game days (`--tonight`, ADRs 0015 and 0019), via `results-watch.yml`, which also rerates and commits to `main`; `--season 2025`
   reads a past season's pages)
 - `data/seed/maxpreps-<season>/`: `games.csv` (played games) and `playoffs.csv` (bracket games with league, division and
   round, for `/scores`), the facts only (ADR 0017): no `source_url` or `notes`. Published by

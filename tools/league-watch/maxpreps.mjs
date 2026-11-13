@@ -5,8 +5,10 @@
 //   node tools/league-watch/maxpreps.mjs [--season 2027]
 // writes maxpreps-<season>/games.csv, teams.csv (every team page found, the next run's seeds) and coverage.txt in
 // $PRIVATE_DATA (the private data repo; data/seed without it). tools/league-watch/publish.mjs copies the facts here.
+//   node tools/league-watch/maxpreps.mjs --due data/seed/maxpreps-2026/playoffs.csv
+// prints how many bracket games of tonight have no score yet (results-watch.yml reads only when it is not 0).
 //   node tools/league-watch/maxpreps.mjs --tonight
-// (playoff Friday nights, ADR 0015) reads only the pages of teams whose bracket game today has no score yet, one page a
+// (playoff game days, ADRs 0015 and 0019) reads only the pages of teams whose bracket game today has no score yet, one page a
 // game, and fills those finals into playoffs.csv and games.csv; every other row and file is left as it was.
 // The season defaults to the one under way: August to January belongs to the year it started. A past season is read
 // from the same team pages with the season segment in the path (--season 2025 reads .../football/25-26/schedule/).
@@ -392,7 +394,7 @@ async function main() {
 export const centralDate = (now = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(now);
 
 /** The game night a run belongs to: until 6 AM Central it is still the night before, so the midnight run (and a run
- * GitHub starts late) reads Friday's games, not Saturday's. */
+ * GitHub starts late) reads that night's games (Thursday's, Friday's or Saturday's), not the next day's. */
 export const gameNight = (now = new Date()) => centralDate(new Date(now.getTime() - 6 * 3600_000));
 
 const parseRows = (text) => {
@@ -466,4 +468,10 @@ async function tonight() {
   console.log(`${date}: ${due.length} bracket games without a score, ${urls.length} pages read, ${merged.filled} finals filled in.`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--tonight") ? tonight() : main());
+/** `--due <playoffs.csv>`: how many bracket games of tonight have no score yet. The workflow reads only when it is not 0. */
+function due() {
+  const file = process.argv[process.argv.indexOf("--due") + 1];
+  console.log(tonightsGames(readFileSync(file, "utf8"), gameNight()).length);
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--due") ? due() : process.argv.includes("--tonight") ? tonight() : main());

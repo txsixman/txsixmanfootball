@@ -20,6 +20,7 @@
 | [0016](../adr/0016-logos-may-be-edited-and-come-from-more-sources.md) | School logos may be edited to look right (originals and an edit note kept); Dave Campbell's team pages are an allowed logo source, logo images only | Accepted Nov 11, 2026 (the owner) |
 | [0017](../adr/0017-public-repo-private-captures.md) | The code is public; the robot's raw captures (source pages, team lists, outside games, coverage) are in the private `txsixman/data-private`, reached only by push, schedule and dispatch runs | Accepted Nov 12, 2026 (the owner) |
 | [0018](../adr/0018-fan-accounts-and-posts.md) | Fan accounts (13+, email link or Google), follows, forums, game comments and score reports, moderated by code with no queue; supersedes 0014's no-posts and no-minor-accounts lines and 0011's three-source rule for fan reports | Accepted Nov 12, 2026 (the owner) |
+| [0019](../adr/0019-playoff-reads-follow-the-games.md) | Playoff reads (ADR 0015) follow the games: every 30 minutes noon to midnight Central on any November or December day with an unscored bracket game, same rules | Accepted Nov 13, 2026 (the owner) |
 
 Not in an ADR:
 - Interviews are cut from the plan (the owner, Nov 10, 2026; see `docs/plan/v1.2-notes.md`).
