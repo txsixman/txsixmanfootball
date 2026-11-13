@@ -21,7 +21,7 @@ export function ChanceList({ id, title, chances, identities }: {
                 <span className="line-clamp-2 min-w-0 leading-tight">{c.team}</span>
               </Link>
               <span aria-hidden="true" className="h-2 w-12 shrink-0 bg-panel sm:w-16">
-                <span className="block h-2 bg-red" style={{ width: `${Math.max(2, pct)}%` }} />
+                <span className="block h-2 bg-alert" style={{ width: `${Math.max(2, pct)}%` }} />
               </span>
               <span className="w-12 text-right font-num text-[18px] font-bold tabular-nums text-navy">
                 {c.chance < 0.01 ? "<1%" : c.chance > 0.99 ? ">99%" : `${pct}%`}

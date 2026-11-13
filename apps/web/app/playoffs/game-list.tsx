@@ -57,7 +57,7 @@ export function GameList({ games, league, alignments, identities, today, showSta
               {g.neutral ? "" : ` · at ${g.home}`}
               {(showStatus || g.forfeit) && (
                 <span className="flex flex-wrap items-center gap-x-2">
-                  <span className={status.kind === "tonight" ? "bg-red px-1.5 font-bold text-white" : "font-semibold text-ink"}>{status.label}</span>
+                  <span className={status.kind === "tonight" ? "bg-alert px-1.5 font-bold text-white" : "font-semibold text-ink"}>{status.label}</span>
                   {showStatus && status.unconfirmed && <UnconfirmedMark />}
                 </span>
               )}

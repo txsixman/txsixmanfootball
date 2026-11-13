@@ -60,7 +60,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
               key={r.round}
               href={`#${roundId(r.round)}`}
               aria-current={r === current ? "location" : undefined}
-              className={`inline-flex min-h-11 items-center px-2 font-num text-[17px] font-bold uppercase tracking-wide underline-offset-4 hover:underline ${r === current ? "bg-navy text-white" : "text-navy"}`}
+              className={`inline-flex min-h-11 items-center px-2 font-num text-[17px] font-bold uppercase tracking-wide underline-offset-4 hover:underline ${r === current ? "bg-band text-white" : "text-navy"}`}
             >
               {r.label}
             </a>

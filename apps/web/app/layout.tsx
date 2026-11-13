@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { MainNav } from "./main-nav";
 import { Offline } from "./offline-notice";
+import { THEME_SCRIPT, ThemeToggle } from "./theme-toggle";
 import { SITE_NAME, SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
@@ -17,7 +18,13 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
 };
 
-export const viewport: Viewport = { themeColor: "#0a2a5e" };
+// The browser bar matches the header band in each theme (globals.css --color-band).
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0a2a5e" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c3a72" },
+  ],
+};
 
 // The headings' font (Barlow Condensed, OFL), the same files @fontsource ships, loaded by Next so each page preloads
 // them from its <head> and sizes the fallback to match. Through @fontsource's CSS the browser found them only after
@@ -45,17 +52,21 @@ const SECTIONS = [
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={barlow.variable}>
+    // suppressHydrationWarning: THEME_SCRIPT may set data-theme on <html> before React hydrates (theme-toggle.tsx).
+    <html lang="en" className={barlow.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <Offline>
           {/* First stop for a keyboard or screen reader: past the header's links to the page itself. Out of sight until focused. */}
           <a
             href="#main"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:bg-white focus:px-4 focus:font-bold focus:text-navy focus:outline-2 focus:outline-navy"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:bg-page focus:px-4 focus:font-bold focus:text-navy focus:outline-2 focus:outline-navy"
           >
             Skip to content
           </a>
-          <header className="border-b-4 border-red bg-navy text-white">
+          <header className="border-b-4 border-red bg-band text-white">
             <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between px-4">
               <Link href="/" className="inline-flex min-h-11 items-center font-num text-[26px] font-bold tracking-wide sm:min-h-12">
                 {SITE_NAME}
@@ -65,7 +76,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
           <main id="main" tabIndex={-1} className="mx-auto outline-none w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">{children}</main>
-          <footer className="mt-10 border-t-4 border-red bg-navy text-white">
+          <footer className="mt-10 border-t-4 border-red bg-band text-white">
             <div className="mx-auto max-w-5xl px-4 py-6">
               <p className="font-num text-[22px] font-bold tracking-wide">{SITE_NAME}</p>
               <nav aria-label="Site sections" className="mt-2 grid grid-cols-2 gap-x-4 sm:grid-cols-5">
@@ -78,6 +89,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <p className="mt-3 max-w-prose text-[13px] text-white/75">
                 Ratings, projected margins and win probabilities are estimates. A score marked unconfirmed may change.
               </p>
+              <ThemeToggle />
             </div>
           </footer>
         </Offline>

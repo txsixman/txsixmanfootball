@@ -28,8 +28,8 @@ function chart(series: ChartSeries[]): { svg: string; summary: string } {
       Plot.line([[0.5, 0.5], [1, 1]], { stroke: "var(--color-muted)", strokeDasharray: "2 4", strokeWidth: 1.5 }),
       Plot.line(data.filter((d) => d.series === series[0].label), { x: "said", y: "happened", stroke: "var(--color-navy)", strokeWidth: 2 }),
       Plot.line(data.filter((d) => d.series !== series[0].label), { x: "said", y: "happened", stroke: "var(--color-red)", strokeWidth: 2 }),
-      Plot.dot(data.filter((d) => d.series === series[0].label), { x: "said", y: "happened", symbol: "circle", fill: "var(--color-navy)", stroke: "white", r: 4 }),
-      Plot.dot(data.filter((d) => d.series !== series[0].label), { x: "said", y: "happened", symbol: "diamond", fill: "white", stroke: "var(--color-red)", strokeWidth: 2, r: 5 }),
+      Plot.dot(data.filter((d) => d.series === series[0].label), { x: "said", y: "happened", symbol: "circle", fill: "var(--color-navy)", stroke: "var(--color-page)", r: 4 }),
+      Plot.dot(data.filter((d) => d.series !== series[0].label), { x: "said", y: "happened", symbol: "diamond", fill: "var(--color-page)", stroke: "var(--color-red)", strokeWidth: 2, r: 5 }),
     ],
   });
   svg.setAttribute("role", "img");

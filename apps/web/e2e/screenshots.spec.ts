@@ -19,21 +19,33 @@ async function open(page: Page, url: string) {
   await page.evaluate(() => document.fonts.ready);
 }
 
+// Each in the light theme and the dark one (ADR 0035); a dark baseline's name ends in -dark.
+const SCHEMES = [
+  { scheme: "light", suffix: "" },
+  { scheme: "dark", suffix: "-dark" },
+] as const;
+
 const whole = ["/scores/sample", "/rankings/sample", "/search", "/~offline"];
 for (const url of whole) {
-  test(`looks the same: ${url}`, async ({ page }) => {
-    await open(page, url);
-    await expect(page).toHaveScreenshot(`${url.replace(/\W+/g, "-").replace(/^-/, "")}.png`, { fullPage: true, animations: "disabled" });
-  });
+  for (const { scheme, suffix } of SCHEMES) {
+    test(`looks the same (${scheme}): ${url}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await open(page, url);
+      await expect(page).toHaveScreenshot(`${url.replace(/\W+/g, "-").replace(/^-/, "")}${suffix}.png`, { fullPage: true, animations: "disabled" });
+    });
+  }
 }
 
 // The site header (the banner landmark) and the page's main heading.
 const live = ["/", "/rankings", "/results", "/scores", "/playoffs", "/programs/jayton"];
 for (const url of live) {
-  test(`header and title look the same: ${url}`, async ({ page }) => {
-    await open(page, url);
-    const name = url === "/" ? "home" : url.replace(/\W+/g, "-").replace(/^-/, "");
-    await expect(page.getByRole("banner")).toHaveScreenshot(`${name}-site-header.png`);
-    await expect(page.locator("main h1").first()).toHaveScreenshot(`${name}-title.png`);
-  });
+  for (const { scheme, suffix } of SCHEMES) {
+    test(`header and title look the same (${scheme}): ${url}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await open(page, url);
+      const name = url === "/" ? "home" : url.replace(/\W+/g, "-").replace(/^-/, "");
+      await expect(page.getByRole("banner")).toHaveScreenshot(`${name}-site-header${suffix}.png`);
+      await expect(page.locator("main h1").first()).toHaveScreenshot(`${name}-title${suffix}.png`);
+    });
+  }
 }

@@ -77,12 +77,12 @@ function Linescore({ g }: { g: Game }) {
               <span className="sr-only">Team</span>
             </th>
             {[1, 2, 3, 4].map((n) => (
-              <th key={n} scope="col" className={`w-12 py-1 pr-2 font-semibold ${current === n ? "bg-navy text-white" : ""}`}>
+              <th key={n} scope="col" className={`w-12 py-1 pr-2 font-semibold ${current === n ? "bg-band text-white" : ""}`}>
                 {n}
                 {current === n && <span className="sr-only"> (in progress)</span>}
               </th>
             ))}
-            <th scope="col" className="w-14 bg-red py-1 pr-2 font-bold text-white">
+            <th scope="col" className="w-14 bg-alert py-1 pr-2 font-bold text-white">
               T<span className="sr-only">otal</span>
             </th>
           </tr>
@@ -142,7 +142,7 @@ export default async function GamePage({ params }: Props) {
       {!sample && <JsonLd data={gameJsonLd(g, { url: `${SITE_URL}/scores/${id}`, home: programOf(g.home), away: programOf(g.away) })} />}
 
       <header>
-        <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-red" : "bg-navy"}`}>
+        <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-alert" : "bg-band"}`}>
           <span>{live ? "Live" : g.status}</span>
           {live && <span>{g.status}</span>}
         </div>

@@ -49,7 +49,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
 
   return (
     <section aria-labelledby="path" className="mt-4">
-      <h2 id="path" className="bg-navy py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white" style={{ boxShadow: `inset 8px 0 0 ${accent}` }}>
+      <h2 id="path" className="bg-band py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white" style={{ boxShadow: `inset 8px 0 0 ${accent}` }}>
         Path to the final
       </h2>
       {paths.map(({ b, steps, ahead, state, region }) => (
@@ -74,7 +74,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
                         {home ? "vs" : "at"}&nbsp;{opponent(other, b.league)}
                       </span>
                       <span className="flex flex-wrap items-center gap-x-2 text-[13px] leading-5 text-muted">
-                        <span className={status.kind === "tonight" ? "bg-red px-1.5 font-bold text-white" : "font-semibold text-ink"}>{status.label}</span>
+                        <span className={status.kind === "tonight" ? "bg-alert px-1.5 font-bold text-white" : "font-semibold text-ink"}>{status.label}</span>
                         {status.unconfirmed && <UnconfirmedMark />}
                       </span>
                     </span>

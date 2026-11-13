@@ -39,7 +39,7 @@ export default function TonightBoard({ night }: { night: Night }) {
     <>
       {night.orgs.map((org) => (
         <section key={org.slug} aria-labelledby={`night-${org.slug}`}>
-          <h2 id={`night-${org.slug}`} className="bg-navy px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">
+          <h2 id={`night-${org.slug}`} className="bg-band px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">
             {org.label}
           </h2>
           {org.rounds.map((round) => (

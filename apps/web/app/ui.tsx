@@ -22,7 +22,7 @@ export function PageHeader({ eyebrow, title, note, id, size = "lg" }: { eyebrow:
 /** The navy bar over a table or list. `aside` sits at the right edge, outside the heading (it is not part of its name). */
 export function SectionBar({ id, title, aside, className = "mt-8" }: { id: string; title: string; aside?: ReactNode; className?: string }) {
   return (
-    <div className={`flex items-baseline justify-between gap-3 bg-navy px-3 py-1 text-white ${className}`}>
+    <div className={`flex items-baseline justify-between gap-3 bg-band px-3 py-1 text-white ${className}`}>
       <h2 id={id} className="min-w-0 scroll-mt-4 font-num text-[18px] font-bold uppercase tracking-wider">{title}</h2>
       {aside && <p className="shrink-0 font-num text-[14px] font-semibold uppercase tracking-wide text-white/80">{aside}</p>}
     </div>
@@ -66,7 +66,7 @@ export function EmptyState({ children, action }: { children: ReactNode; action?:
     <div className="mt-6 border border-line bg-panel px-4 py-6 text-center text-[15px] text-ink">
       <p className="mx-auto max-w-prose">{children}</p>
       {action && (
-        <Link href={action.href} className="mt-4 inline-flex min-h-11 items-center border-2 border-navy bg-white px-4 font-bold text-navy hover:bg-panel">
+        <Link href={action.href} className="mt-4 inline-flex min-h-11 items-center border-2 border-navy bg-page px-4 font-bold text-navy hover:bg-panel">
           {action.label}
         </Link>
       )}

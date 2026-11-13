@@ -17,7 +17,7 @@ export default function PageError({ reset }: { error: Error & { digest?: string 
         <Button type="button" className="h-11" onClick={() => reset()}>
           Try again
         </Button>
-        <Link href="/" className="flex min-h-11 items-center border border-line px-4 text-[15px] font-semibold text-navy hover:bg-navy hover:text-white">
+        <Link href="/" className="flex min-h-11 items-center border border-line px-4 text-[15px] font-semibold text-navy hover:bg-band hover:text-white">
           Home
         </Link>
       </div>
