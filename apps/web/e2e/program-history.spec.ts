@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { EMBED_HEIGHT } from "../lib/embed-html";
 import { noLiveScores } from "./live-route";
 
 // A program's history, 2021 on: every season in one table (dashes where the data has nothing), a rating line, the record
@@ -167,7 +168,8 @@ test("no betting or source words in the history", async ({ page }) => {
     expect(text).not.toMatch(BETTING);
     expect(text).not.toMatch(SOURCE);
   }
-  await expect(page.locator("main")).not.toContainText(SOURCE);
+  // The site's own address, in the "Put this on your site" snippet, is the one place "sixmanfootball" may appear.
+  expect(((await page.locator("main").textContent()) ?? "").replaceAll("txsixmanfootball.com", "")).not.toMatch(SOURCE);
 });
 
 for (const slug of ["jayton", "dell-city", "calvert"]) {
@@ -197,3 +199,17 @@ for (const slug of ["jayton", "dell-city", "calvert"]) {
     expect(errors).toEqual([]);
   });
 }
+
+test("\"Put this on your site\" holds the iframe as text to copy, and no iframe is on the page", async ({ page }) => {
+  await open(page, "jayton");
+  const block = page.locator("details").filter({ has: page.getByText("Put this on your site", { exact: true }) });
+  await expect(block).toHaveCount(1);
+  await expect(block.locator("details, summary")).toHaveCount(1); // only its own summary
+  await block.getByText("Put this on your site", { exact: true }).click();
+  await expect(block.locator("pre code")).toHaveText(
+    `<iframe src="https://txsixmanfootball.com/embed/programs/jayton" title="Jayton scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>`,
+  );
+  await expect(block).toContainText("?theme=dark");
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await expect(block.locator("pre code *")).toHaveCount(0); // text, not elements
+});

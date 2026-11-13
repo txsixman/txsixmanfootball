@@ -74,6 +74,9 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   `lib/supabase-public.ts`, shared with push; no sign-in setting involved); a 0-0 with no period is never shown. **The period is not shown yet:** `PERIOD_INDEX` in
   `maxpreps.mjs` is null until a night run's summary (`inProgressShape`) shows which contest field holds it; no real
   in-progress page has been seen
+- **Embeddable scoreboard** (ADR 0023): `/embed/programs/<slug>` for every program, a static route handler (`app/embed/`, `lib/embed-html.ts`): crest,
+  record, last three results, next game, a link back; light, dark or auto by `?theme=`; framable by any site (the only route that is), no
+  cookies or client bundle, noindex, under 30 KB. Each program page has a "Put this on your site" block with the iframe as text
 - **Share** button on program and game pages: the phone's share sheet, else copies the link (`app/share-button.tsx`)
 - Installable to a phone's home screen (manifest, generated icon), and works offline for visited pages (Serwist:
   pages network first, cached ones served for 30 minutes at most); share cards per program (`opengraph-image.tsx`)

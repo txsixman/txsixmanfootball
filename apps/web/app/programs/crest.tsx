@@ -1,7 +1,14 @@
 import type { Identity } from "@/lib/identity";
 
-const initials = (name: string) =>
+/** The badge's letters when a school has no logo it can use. */
+export const initials = (name: string) =>
   name.replace(/-.*$/, "").split(/\s+/).filter((w) => /^[A-Z]/.test(w)).slice(0, 2).map((w) => w[0]).join("") || name[0];
+
+/** The logo a crest draws, or null when there is none or it is wider than `maxAspect` (a wordmark that wide would be unreadable). */
+export const crestLogo = (identity: Identity, maxAspect: number) => (identity.logo && identity.logo.aspect <= maxAspect ? identity.logo : null);
+
+/** The copy sized for a crest of this height (ADR 0022). */
+export const logoCopy = (logo: NonNullable<Identity["logo"]>, size: number) => (size <= 24 ? logo.tiny : size <= 48 ? logo.small : logo.large);
 
 /**
  * The school's logo from its own site, or a badge in its colors when there is none (ADR 0006).
@@ -21,7 +28,7 @@ export function Crest({
   /** Beside the school's name in a link, the logo adds nothing for a screen reader. */
   decorative?: boolean;
 }) {
-  const logo = identity.logo && identity.logo.aspect <= maxAspect ? identity.logo : null;
+  const logo = crestLogo(identity, maxAspect);
   if (logo) {
     return (
       <span
@@ -34,7 +41,7 @@ export function Crest({
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size logos, a copy sized for the crest (ADR 0022) */}
-        <img src={size <= 24 ? logo.tiny : size <= 48 ? logo.small : logo.large} alt={decorative ? "" : `${school} logo`} loading={decorative ? "lazy" : "eager"} className="size-full object-contain" />
+        <img src={logoCopy(logo, size)} alt={decorative ? "" : `${school} logo`} loading={decorative ? "lazy" : "eager"} className="size-full object-contain" />
       </span>
     );
   }

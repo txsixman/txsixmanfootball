@@ -4,9 +4,15 @@ import type { NextConfig } from "next";
 
 const headers = [
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+];
+
+// No route can be framed except the embeddable scoreboard (ADR 0023): every address but /embed/... says so twice, for browsers that read
+// only one of the two. The lookahead is the only thing keeping /embed out; the embed rule below must never send either header.
+const noFraming = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
 ];
 
 // The newest season with a ratings table (lib/ratings.ts ratingSeasons, which reads the same folder at build time).
@@ -45,6 +51,10 @@ const config: NextConfig = {
       // Search engines index the public address only (lib/site.ts); the vercel.app address, previews and a local
       // server say noindex, so the same pages never show up twice.
       { source: "/(.*)", missing: [{ type: "host", value: "txsixmanfootball.com" }], headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/((?!embed/).*)", headers: noFraming },
+      // The embeddable scoreboard may be framed by any site; its own Content-Security-Policy comes from the route (app/embed).
+      // It says noindex on every address, the public one too, so it never competes with the program pages in search.
+      { source: "/embed/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex" }] },
       // The service worker is checked for a new version on every visit, so a deploy reaches phones at once.
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },
       // School logos come from other sites (ADR 0006). Opened directly, a file can run nothing and load nothing.
