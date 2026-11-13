@@ -8,6 +8,7 @@ import { seasonRows, type Row } from "@/lib/program-games";
 import { loadRanked } from "@/lib/rankings";
 import { record } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
+import { tonightsDate } from "@/lib/tonight";
 import { crestLogo, initials, logoCopy } from "@/app/programs/crest";
 
 // The embeddable scoreboard (ADR 0023): a program's crest, record, last three results and next game as one small static HTML
@@ -57,6 +58,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     record: ranked ? record(ranked) : null,
     recent: rows.filter((r) => r.score).slice(-3).reverse().map(game),
     next: next ? game(next) : null,
+    nextWaiting: !!next && next.date < tonightsDate(),
   };
   return new Response(renderEmbed(view), {
     headers: { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": embedCsp() },

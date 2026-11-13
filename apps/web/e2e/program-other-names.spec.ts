@@ -64,6 +64,6 @@ test("/rankings/how shows how well the ratings predict, by season, without scrol
   await expect(section).toContainText("last season’s final rating");
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   // The existing track-record table stays.
-  await expect(page.getByRole("heading", { name: "How well it picks games" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How well it projects games" })).toBeVisible();
   await shot(page, "rankings-how.png");
 });

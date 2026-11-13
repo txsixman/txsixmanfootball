@@ -17,6 +17,7 @@ import { meetingScore, schedulesFor, type Meeting } from "@/lib/schedule-strengt
 import { whyItMoved } from "@/lib/why-moved";
 import { seasonHref } from "../../rankings/view";
 import { CURRENT_SEASON } from "@/lib/season";
+import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
 import { seasonRows, type Row } from "@/lib/program-games";
@@ -328,7 +329,8 @@ export default async function ProgramPage({ params }: Props) {
           <section aria-label="Next and latest game" className="grid gap-px border-b border-line bg-line sm:grid-cols-2">
             {next && (
               <div className="bg-white px-3 py-2.5">
-                <p className="text-[12px] font-bold uppercase tracking-widest text-red">Next game</p>
+                {/* A game dated before tonight with no score yet is waiting on its score, not still to play. */}
+                <p className="text-[12px] font-bold uppercase tracking-widest text-red">{next.date < tonightsDate() ? "Score not in yet" : "Next game"}</p>
                 {next.href ? (
                   <Link href={next.href} className="flex min-h-11 items-center justify-between gap-2 text-[16px] font-semibold text-ink hover:text-navy">
                     <span>
