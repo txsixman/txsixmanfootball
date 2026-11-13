@@ -410,7 +410,14 @@ test("an old name: a program renamed after the season is written under the name 
 
 test("a school name that could be two of our programs is not guessed", () => {
   assert.equal(programByName("Lark", new Set(["lark-west", "lark-east"])), null);
-  assert.equal(programByName("Lark", new Set(["lark-west", "wren"])), "lark-west");
+  assert.equal(programByName("Lark", new Set(["lark-west", "wren"]), "west-lark-owls"), "lark-west");
+});
+
+test("a same-named school in another town is not ours: our slug's town must be in the feed's team slug", () => {
+  const ours = new Set(["community-christian-mineral-wells", "wren"]);
+  assert.equal(programByName("Community Christian", ours, "orange-community-christian-lions"), null);
+  assert.equal(programByName("Community Christian", ours, "mineral-wells-community-christian-warriors"), "community-christian-mineral-wells");
+  assert.equal(programByName("Wren", ours, "wren-wrens"), "wren");
 });
 
 test("a forfeit keeps its side's flag; one naming no side is not written", () => {

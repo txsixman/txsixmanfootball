@@ -557,9 +557,14 @@ export function asOf(slug, season, renamed) {
   return later.length ? asOf(later[0].from, season, renamed) : slug;
 }
 
-/** One of our programs by the feed's school name: the only known slug that is the same school, or null. */
-export function programByName(schoolName, slugs) {
-  const hits = [...slugs].filter((s) => sameSchool(schoolName, s));
+/**
+ * One of our programs by the feed's school name: the only known slug that is the same school, or null. When our slug
+ * adds a town to the feed's name ("community-christian-mineral-wells" for "Community Christian"), the town must be in
+ * the feed's own team slug too, so a same-named school elsewhere is never taken for ours.
+ */
+export function programByName(schoolName, slugs, theirSlug = "") {
+  const name = slugify(String(schoolName ?? ""));
+  const hits = [...slugs].filter((s) => sameSchool(schoolName, s) && (!s.startsWith(`${name}-`) || `-${theirSlug ?? ""}-`.includes(`-${s.slice(name.length + 1)}-`)));
   return hits.length === 1 ? hits[0] : null;
 }
 
@@ -587,7 +592,7 @@ export function historyRows(items, { ours, slugs, renamed, season }) {
     }
     const parts = Array.isArray(item.participants) ? item.participants : [];
     const [h, a] = ["HOME", "AWAY"].map((t) => parts.find((p) => p?.participantType === t));
-    const program = (p) => p && (ours.get(teamSlugOf(p.websiteUrl)) ?? programByName(p.schoolName, slugs));
+    const program = (p) => p && (ours.get(teamSlugOf(p.websiteUrl)) ?? programByName(p.schoolName, slugs, teamSlugOf(p.websiteUrl)));
     const [hs, as] = [program(h), program(a)].map((s) => s && asOf(s, season, renamed));
     if (!hs || !as || hs === as) {
       skipped.notOurs++;

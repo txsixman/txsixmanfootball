@@ -28,7 +28,8 @@ ADR 0025 stands for these reads. ADRs 0004, 0010, 0017, 0026, 0029 and 0031 stan
   - All three are run by hand, never by a workflow.
 - **What is kept:** a game where both teams are ours.
   - A team is ours by the map, or else by its school name when that matches exactly one program in our published
-    seasons or the lineage table (`sameSchool`, as the finals check uses).
+    seasons or the lineage table (`sameSchool`, as the finals check uses). When our name adds a town to the feed's,
+    the town must be in the feed's own team slug too, so a same-named school in another town is never taken for ours.
   - A program renamed after that season is written under the name it had then (`data/seed/lineage/programs.csv`).
   - One row a game in `davecampbells-<year>/games.csv` in the private repo: date (Central), home and away program
     slugs, both scores, and each side's forfeit flag.
