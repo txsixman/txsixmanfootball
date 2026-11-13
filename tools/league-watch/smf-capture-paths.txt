@@ -1,0 +1,2 @@
+# SixManFootball.com pages to capture (ADR 0020): score and schedule pages only, at most 6.
+/scores/

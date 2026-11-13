@@ -1,0 +1,42 @@
+# Captures a few SixManFootball.com score pages into the private data repo, to build the score parser from (ADR 0020).
+# Runs when a branch named smf-capture/<anything> is pushed: it requests only the paths in
+# tools/league-watch/smf-capture-paths.txt of that branch (at most 6), through the polite fetcher (our own bot name,
+# robots.txt first, one request at a time). Pages are never uploaded as artifacts: this repo is public.
+name: SixManFootball capture
+
+on:
+  push:
+    branches: ["smf-capture/**"]
+
+permissions:
+  contents: read
+
+concurrency: smf-capture
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: txsixman/data-private
+          token: ${{ secrets.DATA_PRIVATE_TOKEN }}
+          path: private
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Fetcher checks
+        run: node --test tools/league-watch/smf-fetch.test.mjs tools/league-watch/smf-capture.test.mjs
+      - name: Capture the listed pages
+        run: node tools/league-watch/smf-capture.mjs tools/league-watch/smf-capture-paths.txt "private/smf-samples/$(date -u +%Y-%m-%dT%H%MZ)"
+      - name: Commit them to the private data repo
+        run: |
+          git -C private config user.name "github-actions[bot]"
+          git -C private config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C private add smf-samples
+          if git -C private diff --cached --quiet; then echo "Nothing captured." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          git -C private commit -q -m "SixManFootball.com sample pages (ADR 0020), $(date -u +%Y-%m-%d)"
+          for try in 1 2 3; do git -C private pull -q --rebase origin main && git -C private push -q origin HEAD:main && break; done
+          git -C private diff --stat HEAD~1 >> "$GITHUB_STEP_SUMMARY"

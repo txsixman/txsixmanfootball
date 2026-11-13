@@ -9,7 +9,7 @@
 
 import { robotsAllows } from "./tapps.mjs";
 
-export const ORIGIN = "https://www.sixmanfootball.com";
+export const ORIGIN = "https://sixmanfootball.com";
 export const USER_AGENT = "TXSixManFootballBot/1.0 (+https://txsixmanfootball.com/about; contact@txsixmanfootball.com)";
 const AGENT_TOKEN = "TXSixManFootballBot";
 
