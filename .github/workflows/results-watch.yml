@@ -128,7 +128,7 @@ jobs:
             node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }}
           fi
       - name: Second live source
-        # ADR 0024: on a night read, the games under way from a second feed, merged into the same live file (one row a
+        # ADR 0025: on a night read, the games under way from a second feed, merged into the same live file (one row a
         # game, the newer read). Off until the repo variable SECOND_LIVE is "true". A failure here (a 403 or 429 stops it
         # at once) leaves the first source's rows as they were.
         if: ${{ vars.SECOND_LIVE == 'true' }}

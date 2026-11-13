@@ -1,5 +1,5 @@
 // Live scores from Dave Campbell's Texas Football's public game-schedule feed, a second live source beside MaxPreps
-// (ADR 0024: read with the site owner's written permission, live scores only, for now). Run only by results-watch.yml
+// (ADR 0025: read with the site owner's written permission, live scores only, for now). Run only by results-watch.yml
 // on a game-day tick, after the MaxPreps night read:
 //   node tools/league-watch/davecampbells.mjs --live <playoffs.csv> --merge <live.json>
 // reads tonight's still-unscored bracket games (the same Central game-night rule as maxpreps.mjs --tonight), asks the
@@ -43,7 +43,7 @@ export function createClient({ fetchImpl = fetch, sleep = (ms) => new Promise((r
       redirect: "manual",
       signal: AbortSignal.timeout(30_000),
     });
-    if (res.status === 403 || res.status === 429) throw new Error(`HTTP ${res.status} from the feed: stopping the read (ADR 0024)`);
+    if (res.status === 403 || res.status === 429) throw new Error(`HTTP ${res.status} from the feed: stopping the read (ADR 0025)`);
     if (res.status !== 200) {
       console.warn(`feed answered ${res.status}: skipped`);
       return null;

@@ -1,4 +1,4 @@
-# ADR 0024: A second live source, read with its owner's written permission
+# ADR 0025: A second live source, read with its owner's written permission
 
 **Status:** Proposed Nov 13, 2026; the owner confirmed first-hand the same day that the written permission exists and
 approved this use. Accepted when its pull request is merged.
