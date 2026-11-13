@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { fanSignIn } from "@/lib/auth/config";
 import { LegalH2, LegalPage } from "../legal-page";
 
-export const metadata: Metadata = { title: "Terms | Project 80x40", description: "The rules for using this site and having an account." };
+export const metadata: Metadata = { title: "Terms", description: "The rules for using this site and having an account." };
 
 // Read per request: with fan accounts off (FAN_SIGNIN) there are no accounts to write about, so no such page.
 export const dynamic = "force-dynamic";

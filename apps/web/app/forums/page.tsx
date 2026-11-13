@@ -10,7 +10,7 @@ import { when } from "./when";
 // The forums: a few fixed boards. Read by anyone; posting needs a signed-in account (the boards' pages). Per request and
 // noindex for now (proxy.ts sends the same header).
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Forums | Project 80x40", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Forums", robots: { index: false, follow: false } };
 
 export default async function ForumsPage() {
   if (!fanSignIn()) notFound();

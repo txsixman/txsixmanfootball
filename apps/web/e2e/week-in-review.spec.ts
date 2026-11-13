@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 import { noLiveScores } from "./live-route";
+import { SITE_NAME } from "../lib/site";
 
 // The week in review (/weeks, /weeks/<season>/<week>[/<org>]): every expectation comes from the same lib the site is built from.
 // The pages are static, and no request reaches Supabase (e2e/live-route.ts).
@@ -93,7 +94,8 @@ async function checkWords(page: Page, teams: string[] = []) {
   expect(rows).not.toMatch(WINNER_WORDS);
   const text = bare(await page.locator("main").innerText());
   expect(text).not.toMatch(BETTING_OR_SOURCE);
-  expect(await page.title()).not.toContain("|"); // the page's own name; the layout names the site
+  // The page's own name holds no "|": the layout's title template adds the site's name after one.
+  expect((await page.title()).replace(` | ${SITE_NAME}`, "")).not.toContain("|");
 }
 
 const teamsOf = (r: { games: { home: string; away: string }[] }) => r.games.flatMap((g) => [g.home, g.away]);

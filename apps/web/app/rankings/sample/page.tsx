@@ -5,7 +5,7 @@ import sample from "@/lib/demo-ratings.json";
 import { HowToRead, RankingsHeader, RatingsTable } from "../table";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Sample rankings | Project 80x40" };
+export const metadata: Metadata = { title: "Sample rankings", robots: { index: false } };
 
 // services/ratings/sample-games.csv, rated by the real model. Invented schools only.
 export default function SampleRatingsPage() {

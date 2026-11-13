@@ -3,7 +3,7 @@ import { loadAlignments } from "@/lib/alignments";
 import { loadIdentities } from "@/lib/identity";
 import { SearchBox, type SearchPrograms } from "./search-box";
 
-export const metadata: Metadata = { title: "Search | Project 80x40" };
+export const metadata: Metadata = { title: "Search", robots: { index: false } };
 
 export default async function SearchPage() {
   // A program result carries its school's crest (looked up by the page's address); week-of-results results have none.

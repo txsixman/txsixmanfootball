@@ -3,6 +3,7 @@ import { heading, loadAlignments, placeLabel, uniquePrograms } from "@/lib/align
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { loadRanked, rankLabel } from "@/lib/rankings";
 import { record } from "@/lib/ratings";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { brandFont } from "../../mark";
 
 // The card a link preview shows when a program page is shared: the school's colors, name, place and ranking. Drawn at
@@ -34,8 +35,8 @@ export default async function Card({ params }: { params: Promise<{ slug: string 
           {rank && <div style={{ fontSize: 40, marginTop: 28 }}>{`${ranked.season} · ${rank}`}</div>}
         </div>
         <div style={{ height: 96, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 72px", background: "#0a2a5e", color: "#ffffff", borderTop: `10px solid ${theme.stripe ?? "#bf1e2e"}` }}>
-          <div style={{ fontSize: 40, fontWeight: 900 }}>80x40</div>
-          <div style={{ fontSize: 30 }}>Texas six-man football</div>
+          <div style={{ fontSize: 40, fontWeight: 900 }}>{SITE_NAME}</div>
+          <div style={{ fontSize: 30 }}>{SITE_URL.replace("https://", "")}</div>
         </div>
       </div>
     ),

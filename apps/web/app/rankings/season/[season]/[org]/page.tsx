@@ -20,7 +20,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { season, org } = await params;
-  return { title: `${season} ${orgBySlug(org)?.label ?? ""} rankings | Project 80x40` };
+  return { title: `${season} ${orgBySlug(org)?.label ?? ""} rankings` };
 }
 
 export default async function SeasonOrgRankingsPage({ params }: Props) {

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-export const metadata: Metadata = { title: "Thread | Forums | Project 80x40", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Thread | Forums", robots: { index: false, follow: false } };
 
 export default async function ThreadPage({ params, searchParams }: Props) {
   const { id } = await params;

@@ -8,7 +8,7 @@ import { WelcomeForm } from "./form";
 
 // The last step of sign-up, and where anyone signed in without a profile is sent first. Per request, never cached.
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Finish sign-up | Project 80x40", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Finish sign-up", robots: { index: false, follow: false } };
 
 export default async function WelcomePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!fanSignIn()) redirect("/"); // fan accounts are off

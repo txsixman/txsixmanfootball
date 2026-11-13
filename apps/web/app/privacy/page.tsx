@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { fanSignIn } from "@/lib/auth/config";
 import { LegalH2, LegalPage } from "../legal-page";
 
-export const metadata: Metadata = { title: "Privacy | Project 80x40", description: "What this site keeps about you, and what it never does." };
+export const metadata: Metadata = { title: "Privacy", description: "What this site keeps about you, and what it never does." };
 
 const A = ({ href, children }: { href: string; children: string }) => (
   <Link href={href} className="text-navy underline hover:no-underline">{children}</Link>
