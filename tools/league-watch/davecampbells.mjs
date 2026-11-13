@@ -86,14 +86,30 @@ export function isLive(item) {
 
 const score = (n) => (Number.isInteger(n) && n >= 0 && n <= 200 ? n : null);
 
+/** The feed's school name is our program's: the same slug, or one is the other plus a town ("Lark" and "lark-west"). */
+export function sameSchool(schoolName, ourSlug) {
+  const s = slugify(String(schoolName ?? ""));
+  return s !== "" && (s === ourSlug || ourSlug.startsWith(`${s}-`) || s.startsWith(`${ourSlug}-`));
+}
+
 /**
  * Tonight's games under way as live rows (packages/db/live.mjs): games of `date` (Central) that are one of tonight's
- * still-unscored bracket games (`due`), with both teams mapped to our programs (`ours`: their slug to our slug). Scores
- * are set in the bracket row's own home and away order. Skipped: a forfeit, a score outside 0 to 200, and a 0-0 with no
- * period (a game may list 0-0 before kickoff). One row a game.
+ * still-unscored bracket games (`due`). A team is ours by the map (`ours`: their slug to our slug); when only one team is
+ * mapped, the other is that team's opponent in tonight's bracket row, and only if the feed's school name matches it.
+ * Scores are set in the bracket row's own home and away order. Skipped: a forfeit, a score outside 0 to 200, and a 0-0
+ * with no period (a game may list 0-0 before kickoff). One row a game.
  */
 export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() }) {
   const dueByKey = new Map(due.map((r) => [[r.game_date, ...[slugify(r.home), slugify(r.away)].sort()].join("|"), r]));
+  // Tonight, each program's opponent in its bracket game.
+  const opponent = new Map(due.filter((r) => r.game_date === date).flatMap((r) => [[slugify(r.home), slugify(r.away)], [slugify(r.away), slugify(r.home)]]));
+  const resolve = (p, other) => {
+    const mapped = ours.get(teamSlugOf(p.websiteUrl));
+    if (mapped) return mapped;
+    const theirs = other && ours.get(teamSlugOf(other.websiteUrl));
+    const expected = theirs && opponent.get(theirs);
+    return expected && sameSchool(p.schoolName, expected) ? expected : undefined;
+  };
   const rows = new Map();
   for (const item of items) {
     if (!isLive(item) || !item?.scheduledKickoff) continue;
@@ -103,7 +119,7 @@ export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() 
     const side = (type) => parts.find((p) => p?.participantType === type);
     const [h, a] = [side("HOME"), side("AWAY")];
     if (!h || !a || h.forfeited === true || a.forfeited === true) continue;
-    const [hs, as] = [ours.get(teamSlugOf(h.websiteUrl)), ours.get(teamSlugOf(a.websiteUrl))];
+    const [hs, as] = [resolve(h, a), resolve(a, h)];
     if (!hs || !as || hs === as) continue;
     const key = [date, ...[hs, as].sort()].join("|");
     const row = dueByKey.get(key);

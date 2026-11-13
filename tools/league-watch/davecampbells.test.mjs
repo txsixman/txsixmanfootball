@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { createClient, isLive, liveRowsFromItems, mergeLive, periodLabel, teamId, teamMaps, teamSlugOf, USER_AGENT } from "./davecampbells.mjs";
+import { createClient, isLive, liveRowsFromItems, mergeLive, periodLabel, sameSchool, teamId, teamMaps, teamSlugOf, USER_AGENT } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
 
@@ -117,6 +117,24 @@ test("skips games not live, not tonight, not due, unmapped, forfeited, out of ra
   assert.equal(liveRowsFromItems([item({ participants: [{ ...h, score: 0 }, { ...a, score: 0 }], summary: { period: 1 } })], opts)[0].period, "Q1");
   // The summary's scores stand in when a participant has none.
   assert.equal(liveRowsFromItems([item({ participants: [{ ...h, score: undefined }, { ...a, score: undefined }] })], opts)[0].away_score, 20);
+});
+
+test("with one team mapped, the other is tonight's bracket opponent, only when the school name matches", () => {
+  const opts = { date: "2026-11-13", due, ours: new Map([["lark-owls", "lark"]]), readAt };
+  const [h, a] = item().participants;
+  const unmapped = (schoolName) => ({ ...h, websiteUrl: "https://www.davecampbells.com/team/wren-something", schoolName });
+  for (const name of ["Wren", "WREN"]) assert.equal(liveRowsFromItems([item({ participants: [unmapped(name), a] })], opts)[0]?.game_key, "2026-11-13|lark|wren", name);
+  for (const name of ["Wrenfield", "Heron", "", undefined]) assert.deepEqual(liveRowsFromItems([item({ participants: [unmapped(name), a] })], opts), [], String(name));
+  // Neither team mapped: nothing.
+  assert.deepEqual(liveRowsFromItems([item()], { ...opts, ours: new Map() }), []);
+});
+
+test("a school name matches our slug exactly or with a town added on either side", () => {
+  assert.ok(sameSchool("Lark", "lark"));
+  assert.ok(sameSchool("Lark", "lark-west"));
+  assert.ok(sameSchool("Lark West", "lark"));
+  assert.ok(!sameSchool("Larkin", "lark"));
+  assert.ok(!sameSchool("", "lark"));
 });
 
 test("merging keeps one row a game: the higher total, then the one with a period", () => {
