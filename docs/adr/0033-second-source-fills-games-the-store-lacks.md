@@ -42,6 +42,9 @@
   The run prints counts only, never a team or a score.
 - **Publishing:** the season's next Results watch commit publishes the store through `publish.mjs`, as it does every
   read. A dry run writes the report and leaves the store alone.
+- **When to run it:** only while no Results watch run is in flight. That commit still lays its own copy of the private
+  `maxpreps-<year>/` folder over the newest private main, which would undo a fill landed during the run. Check after
+  the next run that the filled rows are still there.
 
 ## Consequences
 - 2026 gains the few regular-season games MaxPreps never listed. Like every robot-read score, they show as unconfirmed
@@ -50,4 +53,5 @@
   through `data/corrections`.
 - If the second source's permission is withdrawn, filled rows stay in the store like any other row. Removing them is a
   reviewed commit to the private repo: `notes` marks each one.
-- Tests use invented fixtures only (`dc-fill.test.mjs`).
+- Tests use invented fixtures only (`dc-fill.test.mjs`), including MaxPreps winning on overlap through the store's
+  two reads.
