@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { loadAlignments, slugify } from "@/lib/alignments";
+import { homeDescription } from "@/lib/descriptions";
 import { loadGames } from "@/lib/games";
 import { loadFinals } from "@/lib/champions";
 import { nightTitle } from "@/lib/game-night";
@@ -7,6 +9,7 @@ import { EMPTY, loadIdentities } from "@/lib/identity";
 import { loadRanked, type Ranked } from "@/lib/rankings";
 import { FEW_GAMES, signed } from "@/lib/ratings";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
+import { CURRENT_SEASON } from "@/lib/season";
 import { loadTitleChances } from "@/lib/title-chances";
 import { loadNight } from "@/lib/tonight";
 import { weekHref } from "@/lib/week-review-hrefs";
@@ -16,6 +19,7 @@ import { ChanceList } from "./playoffs/chance-list";
 import { Crest } from "./programs/crest";
 
 export const dynamic = "force-static";
+export const metadata: Metadata = { description: homeDescription(CURRENT_SEASON, ORGS.map((o) => o.label)) };
 
 const TOP = 5; // UIL's two divisions
 const TOP_PRIVATE = 3; // each smaller organization

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { loadBacktest, type Backtest } from "@/lib/backtest";
+import { howRankingsDescription } from "@/lib/descriptions";
 import { BENCHMARK_TEAMS } from "@/lib/schedule-strength";
 import { FEW_GAMES, MOVE_THRESHOLD } from "@/lib/ratings";
 import { loadTrackRecord } from "@/lib/track-record";
@@ -8,7 +9,7 @@ import { PageHeader } from "../../ui";
 import { ScorecardChart } from "./scorecard-chart";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "How the rankings work" };
+export const metadata: Metadata = { title: "How the rankings work", description: howRankingsDescription() };
 
 // Plain-language method note for /rankings (backlog item 8). It must stay true to services/ratings/model.py; the words
 // are rating, projected margin and win probability, never betting terms. No source is named (ADR 0010).

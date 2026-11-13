@@ -15,7 +15,7 @@ export const weekHref = (season: number, week: number, org: Org = ORGS[0]) => or
 export const seasonHref = (season: number, latest: number, org: Org = ORGS[0]) =>
   orgHref(season === latest ? "/results" : `/results/${season}`, org);
 
-export type Where = { org: Org; season: number; week: number };
+export type Where = { org: Org; season: number; week: number; games: number };
 
 /** What a path under /results shows, or undefined when no page has that address. */
 export async function parseResultsPath(path: string[] = []): Promise<Where | undefined> {
@@ -30,7 +30,8 @@ export async function parseResultsPath(path: string[] = []): Promise<Where | und
   if (!seasons.includes(season)) return undefined;
   const weeks = await loadWeeks(season, org);
   const week = parts[1] ? Number(parts[1]) : weeks.at(-1)?.number;
-  return week !== undefined && weeks.some((w) => w.number === week) ? { org, season, week } : undefined;
+  const shown = weeks.find((w) => w.number === week);
+  return shown ? { org, season, week: shown.number, games: shown.games.length } : undefined;
 }
 
 /** Every address that has a page: per organization, its bare address, each older season, and every week of every

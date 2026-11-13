@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { heading, loadAlignments, placeLabel, programFor, slugify, uniquePrograms } from "@/lib/alignments";
 import { finalScore, loadFinals } from "@/lib/champions";
+import { programDescription, rankPhrase } from "@/lib/descriptions";
+import { titlesBySlug } from "@/lib/program-titles";
 import { loadCorrections } from "@/lib/correction-files";
 import { loadAliases, loadLineage, otherNames } from "@/lib/lineage";
 import { activeOrgs } from "@/lib/active-orgs";
@@ -43,7 +45,24 @@ export const generateStaticParams = async () => uniquePrograms(await loadAlignme
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const school = (await loadAlignments()).find((a) => a.slug === slug);
-  return { title: `${school?.school ?? "Program"}`, alternates: { canonical: `/programs/${slug}` } };
+  // The same record and rank the page's header shows (the latest season's table), and the same title count.
+  const [ranked, seasons, titles] = await Promise.all([loadRanked(), ratingSeasons(), titlesBySlug()]);
+  const team = ranked.teams.find((t) => t.school.slug === slug);
+  return {
+    title: `${school?.school ?? "Program"}`,
+    ...(school && {
+      description: programDescription({
+        name: school.school,
+        group: heading(school),
+        place: placeLabel(school) === "Teams" ? "" : placeLabel(school),
+        season: seasons[0],
+        since: seasons.at(-1)!,
+        titles: titles.get(slug) ?? 0,
+        team: team && { record: record(team), rank: rankPhrase(rankLabel(team).text) },
+      }),
+    }),
+    alternates: { canonical: `/programs/${slug}` },
+  };
 }
 
 const NAVY = "#0a2a5e";

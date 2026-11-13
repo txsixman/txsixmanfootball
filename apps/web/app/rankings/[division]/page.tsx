@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { activeOrgs } from "@/lib/active-orgs";
-import { RankingsView, VIEWS } from "../view";
+import { describeRankings, RankingsView, VIEWS } from "../view";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -18,7 +18,11 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { division } = await params;
   const view = views.find((v) => v.slug === division);
-  return { title: `${view?.eyebrow ?? "Rankings"} rankings`, alternates: { canonical: `/rankings/${division}` } };
+  return {
+    title: `${view?.eyebrow ?? "Rankings"} rankings`,
+    ...(view && { description: await describeRankings(view) }),
+    alternates: { canonical: `/rankings/${division}` },
+  };
 }
 
 export default async function DivisionRankingsPage({ params }: Props) {

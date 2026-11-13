@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ORGS } from "@/lib/orgs";
 import { ratingSeasons } from "@/lib/ratings";
 import { rankingWeeks } from "@/lib/week-rankings";
-import { WeekRankings } from "../view";
+import { describeWeekRankings, WeekRankings } from "../view";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -14,7 +14,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ week: string }> }): Promise<Metadata> {
   const { week } = await params;
-  return { title: `UIL rankings after week ${week}`, alternates: { canonical: `/rankings/week/${week}` } };
+  return { title: `UIL rankings after week ${week}`, description: await describeWeekRankings(ORGS[0], week), alternates: { canonical: `/rankings/week/${week}` } };
 }
 
 /** UIL's rankings as they stood at the end of a week of the season under way. */

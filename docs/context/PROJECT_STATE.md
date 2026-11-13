@@ -65,6 +65,11 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 - **Records** `/records` (UIL), `/records/<org>`: most points in a game, most by both teams, biggest upsets (week-before ratings), longest winning runs, unbeaten seasons (2021 on)
 - **State Championships** `/championships` (was `/champions`): every UIL six-man final 1972 to 2025, Division I and II
   since 2006, one division before, most titles
+- **Search Console** (done): the owner set up a domain property, and `https://txsixmanfootball.com/sitemap.xml` was
+  submitted Nov 13, 2026: Google read it, Success, 8,032 pages. Sample, search and offline pages stay `noindex`
+- **Descriptions**: every public page has its own meta description (at most 160 characters), built from its own data in
+  `lib/descriptions.ts` (program: record, rank in its organization or UIL division, state titles; game: teams, date and round, no
+  score or winner; the rest: season, week and organization). `e2e/descriptions.spec.ts` checks one page of each kind
 - **Search** `/search` (Pagefind): program pages and results weeks, indexed after each build; `?q=` links work
 - **Score alerts**: a Follow button on each program page; a browser push alert when Results watch reads a new final
   (no winner named). Stores only the browser's push address and keys and the followed programs
@@ -114,16 +119,13 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 - Round 7 (My teams, Share, Sherman Grayson as one program in TAIAO and TCAF, Friday readiness tests for the CenTex
   alias and the Independent tab) on its PR. Logo round (ADR 0016, all 279 logos) building in a worktree
 
-## Next four steps
+## Next three steps
 1. Past UIL alignments (2024-26 first): UIL's robots.txt disallows `/files/`, where the PDFs live, so a robot may not
    fetch them. Needs the owner to download the 2024-26 six-man PDFs by hand. Loader and reader plumbing waits, unmerged, on
    branch `worktree-agent-a5da57ea8cad69af1` (e1417b1); `app/rankings/view.tsx` must stop throwing on unknown teams first
 2. Check the first scheduled `Results watch` run in this repo (Fri Nov 13, 11:23 UTC, 5:23 AM CST): data-private
    commit first, then this repo's, its rerate (now with `was`), alerts and the Supabase load after it
 3. Watch UIL region chances appear once area games are listed (around Nov 20) and round names as the playoffs advance
-4. Google Search Console: the site opened to search engines once step 2's run was clean (the owner, Nov 11: before the
-   regional rounds, so it is indexed for the playoffs and the December finals). The TXT record on Cloudflare waits for
-   the owner's Google sign-in; then submit `https://txsixmanfootball.com/sitemap.xml`. Sample, search and offline pages stay `noindex`
 
 ## Blockers and open items
 - **Remote:** public repo `txsixman/txsixmanfootball`; commits as `TX Six-Man Football <contact@txsixmanfootball.com>`.

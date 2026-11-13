@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { GROUPS, StandingsView } from "../view";
+import { describeStandings, GROUPS, StandingsView } from "../view";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -15,7 +15,11 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { group } = await params;
   const found = groups.find((g) => g.slug === group);
-  return { title: `${found ? (found.label === "Division II" ? "UIL Division II" : found.label) : ""} standings`, alternates: { canonical: `/standings/${group}` } };
+  return {
+    title: `${found ? (found.label === "Division II" ? "UIL Division II" : found.label) : ""} standings`,
+    ...(found && { description: await describeStandings(found) }),
+    alternates: { canonical: `/standings/${group}` },
+  };
 }
 
 export default async function GroupStandingsPage({ params }: Props) {

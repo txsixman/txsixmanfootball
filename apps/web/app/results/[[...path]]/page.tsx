@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { resultsDescription } from "@/lib/descriptions";
 import { ORGS } from "@/lib/orgs";
 import { cardSize } from "../../page-card";
 import { parseResultsPath, resultPaths } from "../paths";
@@ -18,16 +19,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
   const where = await parseResultsPath(path);
   if (!where) return {};
-  const { org, season, week } = where;
+  const { org, season, week, games } = where;
   const dated = (path ?? []).filter((p) => /^\d+$/.test(p)).length;
   const when = dated === 2 ? `${season} week ${week} ` : dated === 1 ? `${season} ` : "";
   const title = `${org.label} ${when}results`;
   const canonical = `/results${(path ?? []).map((p) => `/${p}`).join("")}`;
+  const description = resultsDescription({ org: org.label, season, week, games, scope: dated === 2 ? "week" : dated === 1 ? "season" : "latest" });
   // UIL's card is the section's own (opengraph-image.tsx beside this folder); each other organization has its own, so
   // its pages never preview with UIL's numbers.
-  if (org === ORGS[0]) return { title, alternates: { canonical } };
+  if (org === ORGS[0]) return { title, description, alternates: { canonical } };
   const card = [{ url: `/results/card/${org.slug}/opengraph-image`, ...cardSize, alt: `${org.label} six-man results, week by week` }];
-  return { title, alternates: { canonical }, openGraph: { images: card }, twitter: { card: "summary_large_image", images: card } };
+  return { title, description, alternates: { canonical }, openGraph: { images: card }, twitter: { card: "summary_large_image", images: card } };
 }
 
 export default async function ResultsPage({ params }: Props) {

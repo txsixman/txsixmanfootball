@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { activeOrgs } from "@/lib/active-orgs";
 import { loadAlignments } from "@/lib/alignments";
+import { rankingsWeekDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { orgHref, type Org } from "@/lib/orgs";
 import { placeTeams } from "@/lib/rankings";
@@ -11,6 +12,12 @@ import { TabNav } from "../../tab-nav";
 import { RankingsHeader, RatingsTable, type Row } from "../table";
 
 const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
+/** The meta description of an organization's rankings after week `week` of the season under way. */
+export async function describeWeekRankings(org: Org, week: string) {
+  const [season] = await ratingSeasons();
+  return rankingsWeekDescription({ label: org.label, season, week: Number(week) });
+}
 
 /** One organization's rankings as they stood at the end of a week of the season under way (ADR 0012: ranks and arrows
  * count that organization's teams only). `/rankings/week/<n>` is UIL, `/rankings/week/<n>/<org>` the others. */

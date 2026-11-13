@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
+import { gameDescription } from "@/lib/descriptions";
 import { fanSignIn } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
-import { bracketGames, findGame, gameIds, gamePreview, longDate, resolveGame } from "@/lib/game-pages";
+import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, playoffLabels, resolveGame } from "@/lib/game-pages";
+import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
 import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
@@ -31,16 +33,23 @@ export const generateStaticParams = async () => (await gameIds()).map((id) => ({
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const found = await findGame(id);
-  const g = found ? undefined : (await bracketGames()).find((x) => x.id === id);
+  // A current-season playoff game's page is the bracket game's, whose result (if played) is `found`: it still has the round.
+  const g = found?.result.id === id ? undefined : (await bracketGames()).find((x) => x.id === id);
   const teams = found ? found.result : g && { away: g.away.name, home: g.home.name };
+  const sample = g !== undefined && demoGames.includes(g);
+  const season = found?.season ?? CURRENT_SEASON;
+  const date = found?.result.date ?? g?.date;
+  // The round, by the label the page itself shows: the bracket game's, or a past season's playoff file.
+  const playoff = sample ? undefined : (g?.league ?? (found && found.season !== CURRENT_SEASON ? (await playoffLabels(found.season)).get(gameKey(found.result.date, found.result.home, found.result.away)) : undefined));
   // This season's games share their own card (card/route.tsx); a past season's game shares the site's card.
   const card = (await hasCard(id)) && { openGraph: { images: [{ url: `/scores/${id}/card`, width: 1200, height: 630, alt: "Game card" }] } };
   // An invented sample game stays out of search (its schools are not real).
   return {
     title: teams ? `${teams.away} at ${teams.home}` : "Game",
+    ...(teams && { description: gameDescription({ away: teams.away, home: teams.home, date: date && mediumDate(date), season, playoff, scheduled: !found && g?.state === "scheduled", sample }) }),
     alternates: { canonical: `/scores/${id}` },
     ...card,
-    ...(g && demoGames.includes(g) && { robots: { index: false } }),
+    ...(sample && { robots: { index: false } }),
   };
 }
 

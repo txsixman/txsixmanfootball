@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { playoffLeagues, playoffSeasons } from "@/lib/brackets";
-import { PlayoffsView, type League } from "../../../view";
+import { describePlayoffs, PlayoffsView, type League } from "../../../view";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -19,7 +19,11 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { season, league } = await params;
-  return { title: `${season} ${league.toUpperCase()} playoffs`, alternates: { canonical: `/playoffs/season/${season}/${league}` } };
+  return {
+    title: `${season} ${league.toUpperCase()} playoffs`,
+    description: await describePlayoffs(league.toUpperCase() as League, Number(season)),
+    alternates: { canonical: `/playoffs/season/${season}/${league}` },
+  };
 }
 
 export default async function SeasonLeaguePlayoffsPage({ params }: Props) {

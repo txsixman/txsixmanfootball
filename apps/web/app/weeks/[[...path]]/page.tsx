@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { resultSeasons } from "@/lib/weeks";
 import { cardSize } from "../../page-card";
 import { parseWeeksPath, weekPaths } from "../paths";
-import { WeekInReview, WeeksIndex } from "../view";
+import { describeWeeks, WeekInReview, WeeksIndex } from "../view";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -23,6 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const card = [{ url: `/weeks/card/${year}/${org.slug}/opengraph-image`, ...cardSize, alt: `${org.label} ${year} six-man season, week by week` }];
   return {
     title: season === undefined ? `${org.label} week in review` : `${org.label} ${season} week ${week} in review`,
+    description: await describeWeeks(org, season === undefined ? undefined : { season, week }),
     openGraph: { images: card },
     twitter: { card: "summary_large_image", images: card },
   };

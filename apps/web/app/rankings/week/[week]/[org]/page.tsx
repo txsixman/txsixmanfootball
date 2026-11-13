@@ -4,7 +4,7 @@ import { orgParams } from "@/lib/active-orgs";
 import { orgBySlug } from "@/lib/orgs";
 import { ratingSeasons } from "@/lib/ratings";
 import { rankingWeeks } from "@/lib/week-rankings";
-import { WeekRankings } from "../../view";
+import { describeWeekRankings, WeekRankings } from "../../view";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -19,7 +19,12 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { week, org } = await params;
-  return { title: `${orgBySlug(org)?.label ?? ""} rankings after week ${week}`, alternates: { canonical: `/rankings/week/${week}/${org}` } };
+  const found = orgBySlug(org);
+  return {
+    title: `${found?.label ?? ""} rankings after week ${week}`,
+    ...(found && { description: await describeWeekRankings(found, week) }),
+    alternates: { canonical: `/rankings/week/${week}/${org}` },
+  };
 }
 
 /** One of the other organizations' rankings as they stood at the end of a week of the season under way. */

@@ -2,12 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { loadAlignments, slugify } from "@/lib/alignments";
 import { type Final, finalScore, loadFinals, loadNoFinal, noFinalSpans, titleCounts } from "@/lib/champions";
+import { championshipsDescription } from "@/lib/descriptions";
 import { EMPTY, type Identity, loadIdentities } from "@/lib/identity";
 import { loadLineage, successorOf } from "@/lib/lineage";
 import { CrestSlot, PageHeader, SectionBar } from "../ui";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "State Championships" };
+export async function generateMetadata(): Promise<Metadata> {
+  const seasons = (await loadFinals()).map((f) => f.season);
+  return {
+    title: "State Championships",
+    description: championshipsDescription({ first: seasons.length ? Math.min(...seasons) : undefined, latest: seasons.length ? Math.max(...seasons) : undefined, games: seasons.length }),
+  };
+}
 
 /** `now`: today's program when the school merged into one (ADR 0003). */
 type Linker = (name: string) => { href?: string; identity: Identity; now?: string };

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { GROUPS, StandingsView } from "./view";
+import { describeStandings, GROUPS, StandingsView } from "./view";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Standings", alternates: { canonical: "/standings" } };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "Standings", description: await describeStandings(GROUPS[0]), alternates: { canonical: "/standings" } };
+}
 
 export default function StandingsPage() {
   return <StandingsView group={GROUPS[0]} />;

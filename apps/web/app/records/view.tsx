@@ -2,10 +2,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { activeOrgs } from "@/lib/active-orgs";
 import { loadAlignments, programFor } from "@/lib/alignments";
+import { recordsDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { orgHref, type Org } from "@/lib/orgs";
 import { loadRecords } from "@/lib/records";
 import { ratingSeasons } from "@/lib/ratings";
+import { resultSeasons } from "@/lib/weeks";
 import { TabNav } from "../tab-nav";
 import { BoardRow, CrestSlot, PageHeader, SectionBar } from "../ui";
 
@@ -42,6 +44,12 @@ const GameLink = ({ href, label }: { href: string; label: string }) => (
 );
 
 /** One organization's records (ADR 0012): teams and games of the others never appear, except as the other side of a game. */
+/** The meta description of an organization's records page. */
+export async function describeRecords(org: Org) {
+  const seasons = await resultSeasons(org);
+  return recordsDescription({ org: org.label, first: seasons.at(-1), latest: seasons[0] });
+}
+
 export async function RecordsView({ org }: { org: Org }) {
   const [records, alignments, [latest], orgs, identities] = await Promise.all([loadRecords(org), loadAlignments(), ratingSeasons(), activeOrgs(org), loadIdentities()]);
   const team = (name: string) => {

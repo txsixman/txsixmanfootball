@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { orgParams } from "@/lib/active-orgs";
 import { orgBySlug } from "@/lib/orgs";
 import { ratingSeasons } from "@/lib/ratings";
-import { RankingsView, viewOf } from "../../../view";
+import { describeRankings, RankingsView, viewOf } from "../../../view";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -20,7 +20,12 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { season, org } = await params;
-  return { title: `${season} ${orgBySlug(org)?.label ?? ""} rankings`, alternates: { canonical: `/rankings/season/${season}/${org}` } };
+  const found = orgBySlug(org);
+  return {
+    title: `${season} ${found?.label ?? ""} rankings`,
+    ...(found && { description: await describeRankings(viewOf(found), Number(season)) }),
+    alternates: { canonical: `/rankings/season/${season}/${org}` },
+  };
 }
 
 export default async function SeasonOrgRankingsPage({ params }: Props) {

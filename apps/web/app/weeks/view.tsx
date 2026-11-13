@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { activeOrgs } from "@/lib/active-orgs";
 import { loadAlignments, programFor, type Alignment } from "@/lib/alignments";
+import { weekReviewDescription, weeksIndexDescription } from "@/lib/descriptions";
 import { roundPhrase } from "@/lib/games";
 import { projectionText } from "@/lib/projection";
 import { signed } from "@/lib/ratings";
@@ -85,6 +86,16 @@ const Section = ({ id, title, note, children }: { id: string; title: string; not
 const Sub = ({ children }: { children: ReactNode }) => (
   <h3 className="mt-4 border-b-2 border-navy pb-1 font-num text-[16px] font-bold uppercase tracking-wider text-navy">{children}</h3>
 );
+
+/** The meta description of a weeks page: an organization's index, or one of its weeks. */
+export async function describeWeeks(org: Org, week?: { season: number; week: number }) {
+  if (week) {
+    const found = (await reviewedWeeks(week.season, org)).find((w) => w.number === week.week);
+    return weekReviewDescription({ org: org.label, season: week.season, week: week.week, games: found?.games.length ?? 0 });
+  }
+  const seasons = await resultSeasons(org);
+  return weeksIndexDescription({ org: org.label, first: seasons.at(-1), latest: seasons[0] });
+}
 
 /** One week of one organization, reviewed. The page exists only for a week with a game (app/weeks/paths.ts). */
 export async function WeekInReview({ org, season, week }: { org: Org; season: number; week: number }) {

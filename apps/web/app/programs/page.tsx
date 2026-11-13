@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { byDistrict, loadAlignments, placeLabel } from "@/lib/alignments";
+import { byDistrict, loadAlignments, placeLabel, uniquePrograms } from "@/lib/alignments";
+import { programsDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS, orgByLeague } from "@/lib/orgs";
 import { PageHeader } from "../ui";
 import { Finder } from "./finder";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Programs" };
+export async function generateMetadata(): Promise<Metadata> {
+  const programs = uniquePrograms(await loadAlignments()).length;
+  return { title: "Programs", description: programsDescription(programs, ORGS.map((o) => o.label)) };
+}
 
 export default async function Programs() {
   const [alignments, identities] = await Promise.all([loadAlignments(), loadIdentities()]);

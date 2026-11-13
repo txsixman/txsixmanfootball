@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { loadAlignments } from "@/lib/alignments";
+import { playoffsDescription } from "@/lib/descriptions";
 import { bracketHref, bracketLabel, LEAGUES, loadBrackets, playoffLeagues, playoffSeasons } from "@/lib/brackets";
 import { loadIdentities } from "@/lib/identity";
 import { centralClock } from "@/lib/playoff-status";
@@ -15,6 +16,14 @@ const leagueHref = (league: League, season?: number) => {
   const slug = league === "UIL" ? "" : `/${league.toLowerCase()}`;
   return season === undefined ? `/playoffs${slug}` : `/playoffs/season/${season}${slug}`;
 };
+
+/** The meta description of one league's playoffs: the latest season, or a past `season`. */
+export async function describePlayoffs(league: League, season?: number) {
+  const seasons = await playoffSeasons();
+  const year = season ?? seasons[0];
+  const brackets = (await loadBrackets(year)).filter((b) => b.league === league).length;
+  return playoffsDescription({ league, season: year, brackets, past: year !== seasons[0] });
+}
 
 /** One league's playoff brackets for a season (the latest by default), round by round. Robot-read scores are unconfirmed, so no row names a winner (ADR 0004). */
 export async function PlayoffsView({ league, season }: { league: League; season?: number }) {

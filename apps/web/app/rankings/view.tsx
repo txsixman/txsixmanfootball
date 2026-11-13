@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { activeOrgs } from "@/lib/active-orgs";
 import { loadAlignments } from "@/lib/alignments";
+import { rankingsDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
 import { rankedList } from "@/lib/json-ld";
@@ -34,6 +35,12 @@ const hrefOf = (v: View) => (v.slug ? `/rankings/${v.slug}` : "/rankings");
 /** Past seasons have their own page; the latest season is /rankings. The organization is kept when the season changes. */
 export const seasonHref = (season: number, latest: number, org: Org = ORGS[0]) =>
   orgHref(season === latest ? "/rankings" : `/rankings/season/${season}`, org);
+
+/** The meta description of a view of the rankings: the latest season, or a past `season` (the other tabs' words match the page). */
+export async function describeRankings(view: View, season?: number) {
+  const [table, seasons] = await Promise.all([loadRatings(season), ratingSeasons()]);
+  return rankingsDescription({ label: view.eyebrow, season: table.season, games: table.games, past: table.season !== seasons[0] });
+}
 
 /** A past season shows its final table for one organization, with teams placed by the current alignments, which may
  * not be the ones that season was played under; there are no division tabs. Movement arrows are for the season under way. */

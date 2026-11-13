@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { standingsDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS, orgHref } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
@@ -61,6 +62,18 @@ function District({ d, identities }: { d: DistrictStandings; identities: Awaited
       </table>
     </section>
   );
+}
+
+/** The meta description of one standings page. */
+export async function describeStandings(group: Group) {
+  const districts = (await loadStandings(CURRENT_SEASON, { conferences: true })).filter(group.test);
+  return standingsDescription({
+    label: group.org === ORGS[0] ? `UIL ${group.label}` : group.label,
+    season: CURRENT_SEASON,
+    teams: districts.reduce((n, d) => n + d.rows.length, 0),
+    groups: districts.length,
+    districtPlay: districts.every((d) => d.districtPlay),
+  });
 }
 
 export async function StandingsView({ group }: { group: Group }) {

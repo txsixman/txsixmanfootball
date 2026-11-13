@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { heading, slugify } from "@/lib/alignments";
+import { matchupDescription } from "@/lib/descriptions";
 import { loadSeasonResults } from "@/lib/games";
 import { resultSeasons } from "@/lib/weeks";
 import { loadRanked } from "@/lib/rankings";
@@ -8,11 +9,12 @@ import { loadRatings, record } from "@/lib/ratings";
 import { type Meeting, pairKey } from "@/lib/meetings";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS } from "@/lib/orgs";
+import { CURRENT_SEASON } from "@/lib/season";
 import { PageHeader } from "../ui";
 import { Matchup } from "./picker";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Matchup" };
+export const metadata: Metadata = { title: "Matchup", description: matchupDescription(CURRENT_SEASON) };
 
 const orgIndex = (league: string) => ORGS.findIndex((o) => o.league === league);
 

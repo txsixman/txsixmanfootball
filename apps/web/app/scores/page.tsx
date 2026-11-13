@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { loadAlignments, slugify } from "@/lib/alignments";
+import { scoresDescription } from "@/lib/descriptions";
 import { loadGames } from "@/lib/games";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { CURRENT_SEASON } from "@/lib/season";
@@ -9,7 +10,7 @@ import { EmptyState, PageHeader } from "../ui";
 import Board from "./board";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Scores" };
+export const metadata: Metadata = { title: "Scores", description: scoresDescription(CURRENT_SEASON) };
 
 export default async function ScoresPage() {
   const games = await loadGames(await loadAlignments());
