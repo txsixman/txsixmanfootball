@@ -23,10 +23,23 @@ jobs:
       - uses: actions/checkout@v7
       - name: No pull-request workflow can reach the private data token (.github/scripts/token-guard.sh)
         run: bash .github/scripts/token-guard.sh
+      # Every workflow, and the shell in every run: block (shellcheck, which the runner image carries). actionlint is a
+      # pinned release checked against its published sha256; keep ACTIONLINT the same as scripts/check.sh.
+      - name: Workflow lint (actionlint with shellcheck)
+        env:
+          ACTIONLINT: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          command -v shellcheck >/dev/null || { echo "shellcheck is missing from the runner image"; exit 1; }
+          tgz="$RUNNER_TEMP/actionlint.tar.gz"
+          curl -fsSL -o "$tgz" "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT/actionlint_${ACTIONLINT}_linux_amd64.tar.gz"
+          echo "$ACTIONLINT_SHA256  $tgz" | sha256sum -c -
+          tar -xzf "$tgz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -no-color
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Site freshness and post-deploy smoke verdicts (.github/scripts)
+      - name: Site freshness, post-deploy smoke and results commit (.github/scripts)
         run: node --test .github/scripts/*.test.mjs
       - name: Migrations and every seed on a throwaway database
         run: npm ci --prefix packages/db && npm --prefix packages/db test
@@ -245,7 +258,8 @@ jobs:
         env:
           LHCI_PAGES: ${{ matrix.pages }}
         run: |
-          export CHROME_PATH="$(node -e 'console.log(require("@playwright/test").chromium.executablePath())')"
+          CHROME_PATH="$(node -e 'console.log(require("@playwright/test").chromium.executablePath())')"
+          export CHROME_PATH
           npx --yes @lhci/cli@0.16.0 autorun --config=lighthouserc.cjs
       - name: Lighthouse numbers in the run summary
         if: always() && steps.wait.outputs.site == 'true'

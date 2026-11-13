@@ -74,6 +74,8 @@ jobs:
           PRIVATE_DATA: ${{ github.workspace }}/private
         run: |
           node packages/db/load.mjs > "$RUNNER_TEMP/load.json"
+          # The ${...} below are JavaScript template literals, for node, not the shell.
+          # shellcheck disable=SC2016
           node -e '
             const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
             const games = r.games.map((g) => `${g.file}: ${g.inserted} new, ${g.updated} updated, ${g.unchanged} unchanged, ${g.flags} flagged`);

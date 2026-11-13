@@ -16,6 +16,7 @@ quick=false
 # Keep these versions the same as ci.yml.
 KNIP=knip@6.45.1
 RUFF=ruff@0.17.4
+ACTIONLINT=1.7.12
 
 passed=()
 failed=()
@@ -45,15 +46,27 @@ need() {
 }
 
 same_as_ci() {
-  grep -q "$KNIP" .github/workflows/ci.yml && grep -q "$RUFF" .github/workflows/ci.yml && return 0
-  echo "scripts/check.sh pins $KNIP and $RUFF, but ci.yml uses other versions; make them match"
+  grep -q "$KNIP" .github/workflows/ci.yml && grep -q "$RUFF" .github/workflows/ci.yml && grep -q "ACTIONLINT: $ACTIONLINT" .github/workflows/ci.yml && return 0
+  echo "scripts/check.sh pins $KNIP, $RUFF and actionlint $ACTIONLINT, but ci.yml uses other versions; make them match"
   return 1
 }
 run "Tool versions match ci.yml" same_as_ci
 
 # The `data` job.
 run "Token guard" bash .github/scripts/token-guard.sh
-run "Site freshness and post-deploy smoke verdicts" sh -c 'node --test .github/scripts/*.test.mjs'
+if need actionlint "Workflow lint (actionlint with shellcheck)" && need shellcheck "Workflow lint (actionlint with shellcheck)"; then
+  actionlint_same() {
+    local here
+    here="$(actionlint -version | head -1)"
+    if [ "$here" != "$ACTIONLINT" ]; then
+      echo "actionlint here is $here; CI pins $ACTIONLINT (https://github.com/rhysd/actionlint/releases)"
+      return 1
+    fi
+    actionlint -no-color
+  }
+  run "Workflow lint (actionlint with shellcheck)" actionlint_same
+fi
+run "Site freshness, post-deploy smoke and results commit" sh -c 'node --test .github/scripts/*.test.mjs'
 if $quick; then
   skipped+=("Migrations and seeds on a throwaway database (--quick)")
 else

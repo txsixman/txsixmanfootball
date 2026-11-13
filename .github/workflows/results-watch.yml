@@ -104,9 +104,12 @@ jobs:
           cache-dependency-glob: services/ratings/uv.lock
       - name: Season
         id: season
+        env:
+          SEASON: ${{ inputs.season }} # an input goes through the environment, never into the script's text
         run: |
-          season="${{ inputs.season }}"
+          season="$SEASON"
           [ -n "$season" ] || season=$(( $(date -u +%-m) >= 7 ? $(date -u +%Y) : $(date -u +%Y) - 1 ))
+          [[ "$season" =~ ^20[0-9][0-9]$ ]] || { echo "season must be a year like 2026, not: $season"; exit 1; }
           echo "year=$season" >> "$GITHUB_OUTPUT"
       - name: Reader checks
         run: node --test tools/league-watch/maxpreps.test.mjs
@@ -155,68 +158,11 @@ jobs:
           # must not hold back every final on a Friday night. The last step fails the job from this file, after the push.
           INTEGRITY: report
           INTEGRITY_REPORT: ${{ runner.temp }}/integrity-failures.txt
-        run: |
-          year=${{ steps.season.outputs.year }}
-          dir="maxpreps-$year"
-          cp -r "private/$dir" "$RUNNER_TEMP/read"
-          for repo in private .; do
-            git -C "$repo" config user.name "github-actions[bot]"
-            git -C "$repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          done
-          message="Results and ratings from MaxPreps, $(date -u +%Y-%m-%d)"
-          # 1. The private repo: this read's captures laid on its newest main. Only this workflow writes them.
-          for try in 1 2 3 4; do
-            [ "$try" -le 3 ] || exit 1
-            git -C private fetch -q origin main
-            git -C private reset -q --hard origin/main
-            rm -rf "private/$dir" && cp -r "$RUNNER_TEMP/read" "private/$dir"
-            if [ -z "$(git -C private status --porcelain -- "$dir")" ]; then
-              echo "Private repo: no new captures." >> "$GITHUB_STEP_SUMMARY"
-              break
-            fi
-            if [ "$WRITE" != true ]; then
-              echo "Private repo: new captures, not pushed (not live, no \`write\` input)." >> "$GITHUB_STEP_SUMMARY"
-              break
-            fi
-            git -C private add "$dir"
-            git -C private commit -q -m "$message"
-            git -C private push -q origin HEAD:main && break
-            echo "data-private main moved; try $try again"
-          done
-          # 2. This repo: the facts published from the private files and rerated, on the newest main. It runs even when
-          # the private repo had nothing new, so a run whose public push failed is repaired here, with nothing lost.
-          # Another commit (CI's ratings table, a hand capture) may land meanwhile, so up to three tries.
-          for try in 1 2 3; do
-            git fetch -q origin main
-            git reset -q --hard origin/main
-            node tools/league-watch/publish.mjs "private/$dir" "data/seed/$dir"
-            uv run --directory services/ratings python run.py --season "$year"
-            if git diff --quiet -- data && [ -z "$(git ls-files --others --exclude-standard data)" ]; then
-              echo "No new results." >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            # Zod checks on every file the site reads: a bad row fails the run here and never reaches main. Then the
-            # cross-file checks (a program twice on one date, a playoff game missing from games.csv, a bracket team that
-            # lost its last round...), in report mode: written to INTEGRITY_REPORT and the summary, the push goes ahead,
-            # and the last step fails the job. The checks' packages install only when there is something new to check
-            # (most game-day ticks have nothing).
-            [ -d apps/web/node_modules ] || npm ci --prefix apps/web --no-audit --no-fund
-            : > "$INTEGRITY_REPORT"
-            node apps/web/scripts/check-data.mjs
-            if [ "$WRITE" != true ]; then
-              { echo "New results, not pushed (not live, no \`write\` input):"; git diff --stat -- data; } >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            git add "data/seed/$dir" data/ratings
-            git commit -q -m "$message"
-            if git push -q origin HEAD:main; then
-              echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-              head -3 "private/$dir/coverage.txt" >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            echo "main moved; try $try again"
-          done
-          exit 1
+          YEAR: ${{ steps.season.outputs.year }}
+        # .github/scripts/commit-results.sh: the private repo first, then this one, each on its newest main, with retries;
+        # publish, rerate, the data checks (Zod blocks, cross-file reports) and the summary lines. Tested against local
+        # bare repos (commit-results.test.mjs).
+        run: .github/scripts/commit-results.sh "$YEAR"
       # After the push: a cross-file failure the commit step reported (not blocking) fails the job, so the owner is emailed.
       # The jobs below run on the pushed commit all the same (their `if` reads the sha, not this job's result).
       - name: Cross-file data checks (reported above, after the push)

@@ -118,6 +118,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   hold back the finals), and the job fails after the push; Zod failures still block. Fix a hard failure with a correction or an alias, never by
   editing robot output; one the source cannot settle goes in `data/integrity-exceptions.json` with its reason (an
   exception that matches nothing fails, so remove it once fixed). `node --test apps/web/scripts/*.test.mjs`: its tests and the build scripts' tests
+- `actionlint` (1.7.12, with `shellcheck` on PATH): every workflow and the shell in its `run:` blocks; CI's `data`
+  job and `scripts/check.sh` run it (keep the pin the same in both). Put a long `run:` block in `.github/scripts/` with
+  a test, as `commit-results.sh` (Results watch's commit, tested against local bare repos) is
 - `(cd apps/web && npx --yes knip@6.45.1)`: unused files, exports and dependencies (a CI check; unexport, don't ignore)
 - `uvx ruff@0.17.4 check && uvx ruff@0.17.4 format --check`: Python lint and format (`ruff.toml`, a CI check)
 - `npm --prefix apps/web run stories` (Ladle, :61000): components in every state, invented schools only;
