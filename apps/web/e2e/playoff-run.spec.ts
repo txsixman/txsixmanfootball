@@ -89,13 +89,13 @@ test("a bracket game not yet played shows its projected margin and win probabili
 test("the league page links each bracket to its own page, and a past season's page does not", async ({ page }) => {
   await page.goto("/playoffs");
   for (const name of ["UIL Division I", "UIL Division II"]) {
-    await expect(page.getByRole("region", { name, exact: true }).getByRole("link", { name: /bracket page: current round first/ })).toHaveAttribute(
+    await expect(page.getByRole("region", { name, exact: true }).getByRole("link", { name: /bracket, latest round first/ })).toHaveAttribute(
       "href",
       name === "UIL Division I" ? "/playoffs/bracket/uil-division-i" : "/playoffs/bracket/uil-division-ii",
     );
   }
   await page.goto("/playoffs/season/2025");
-  await expect(page.getByRole("link", { name: /bracket page/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /bracket, latest round first/ })).toHaveCount(0);
   expect((await page.goto("/playoffs/bracket/no-such-bracket"))?.status()).toBe(404);
 });
 
