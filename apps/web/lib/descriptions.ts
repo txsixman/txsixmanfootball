@@ -186,3 +186,26 @@ export function gameDescription({ away, home, date, season, playoff, scheduled, 
       : ["Each team's record going in and their earlier meetings.", "Their earlier meetings."],
   );
 }
+
+type SeriesFacts = {
+  first: string;
+  second: string;
+  /** Games the two programs played in the seasons read. */
+  games: number;
+  /** The first season read. */
+  since: number;
+  /** At least one of the games was a playoff game. */
+  playoff: boolean;
+  /** Both teams are rated, so the page projects a game between them. */
+  projection: boolean;
+};
+
+/** A series page (two programs' games since 2021): how many meetings, and what the page lists. No score and no winner. */
+export function seriesDescription({ first, second, games, since, playoff, projection }: SeriesFacts) {
+  const teams = `${first} vs ${second}`;
+  const what = playoff ? "Every score and playoff game" : "Every score";
+  return fit(
+    [`${teams} six-man football: ${count(games, "meeting")} since ${since}.`, `${teams}: ${count(games, "meeting")} since ${since}.`, `${teams}.`],
+    projection ? [`${what}, and a projection if they met now.`, `${what}.`] : `${what}.`,
+  );
+}

@@ -101,3 +101,12 @@ test("an empty week or season reads plainly", () => {
   assert.equal(d.recordsDescription({ org: "Independent", first: 2026, latest: 2026 }).slice(0, 44), "Independent six-man records for 2026: most p");
   assert.equal(d.championshipsDescription({ games: 0 }), "Every UIL six-man state championship game. Division I and Division II since 2006, and the programs with the most state titles.");
 });
+
+test("a series: meetings since 2021, what the page lists, no score and no winner, and it fits with long names", () => {
+  const facts = { first: "Aldine", second: "Brookfield", games: 7, since: 2021, playoff: true, projection: true };
+  assert.equal(clean(d.seriesDescription(facts)), "Aldine vs Brookfield six-man football: 7 meetings since 2021. Every score and playoff game, and a projection if they met now.");
+  assert.equal(clean(d.seriesDescription({ ...facts, playoff: false })), "Aldine vs Brookfield six-man football: 7 meetings since 2021. Every score, and a projection if they met now.");
+  assert.equal(clean(d.seriesDescription({ ...facts, projection: false, games: 3 })), "Aldine vs Brookfield six-man football: 3 meetings since 2021. Every score and playoff game.");
+  const long = clean(d.seriesDescription({ ...facts, first: LONG, second: "Another Very Long Academy Name (Christian) Homeschool Association" }));
+  assert.ok(long.startsWith("Tyler Heat"), long);
+});

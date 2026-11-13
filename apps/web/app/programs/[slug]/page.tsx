@@ -23,6 +23,8 @@ import { seasonRows, type Row } from "@/lib/program-games";
 import { embedSnippet } from "@/lib/embed-html";
 import { ratingSeries, type Rivalry } from "@/lib/program-history";
 import { programHistory } from "@/lib/program-seasons";
+import { seriesHref } from "@/lib/series";
+import { seriesPartners } from "@/lib/series-data";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest } from "../crest";
 import { PathToFinal } from "../path-to-final";
@@ -159,6 +161,8 @@ export default async function ProgramPage({ params }: Props) {
   // season's table (lib/program-seasons.ts); a season with nothing on record keeps its row, with dashes.
   const seasons = await ratingSeasons();
   const { entries, opponents } = await programHistory(school, seasons);
+  // The opponents this program has a series page with (lib/series-data.ts): their games count links to it.
+  const partners = (await seriesPartners()).get(slug);
   const current = await loadRatings(seasons[0]);
   // How hard the record was, measured against this organization's top teams (lib/schedule-strength.ts), and the game each
   // week that went furthest from its projection (lib/why-moved.ts).
@@ -213,6 +217,29 @@ export default async function ProgramPage({ params }: Props) {
     );
   };
 
+  /** "7 games", a link to the pair's series page when it has one (three or more games, lib/series.ts). Not prefetched: a reader
+   * scanning the list may open none of them. `lean`: the "All opponents" list styles its links once, on the list, and names
+   * each by its row, so a link there is only its address (about 40 rows a page). */
+  const gamesLink = (r: Rivalry, lean = false) => {
+    const text = `${r.games} ${r.games === 1 ? "game" : "games"}`;
+    if (!partners?.has(slugify(r.opponent))) return text;
+    const href = seriesHref(slug, slugify(r.opponent));
+    return lean ? (
+      <Link href={href} prefetch={false}>
+        {text}
+      </Link>
+    ) : (
+      <Link
+        href={href}
+        prefetch={false}
+        aria-label={`${text}, series with ${r.opponent}`}
+        className="inline-flex min-h-11 items-center font-semibold text-navy underline underline-offset-2 hover:text-ink"
+      >
+        {text}
+      </Link>
+    );
+  };
+
   /** One of the most played: name, games and the latest meeting, and this school's record against it, with the crest slot the game rows have. */
   const OpponentRow = ({ r }: { r: Rivalry }) => (
     <li className="flex min-h-14 items-center gap-3 border-b border-line px-3">
@@ -221,7 +248,10 @@ export default async function ProgramPage({ params }: Props) {
           {opponentCrest(r.opponent)}
           {opponentLink(r.opponent)}
         </span>
-        <span className="block pl-12 text-[13px] text-muted">{`${r.games} games · last ${r.last.date.slice(0, 4)}, ${r.last.forfeit ? "forfeit" : `${r.last.us}-${r.last.them}`}`}</span>
+        <span className="flex min-h-11 items-center gap-1 pl-12 text-[13px] text-muted">
+          {gamesLink(r)}
+          {` · last ${r.last.date.slice(0, 4)}, ${r.last.forfeit ? "forfeit" : `${r.last.us}-${r.last.them}`}`}
+        </span>
       </span>
       <span className="font-num text-[22px] font-bold tabular-nums text-ink">{record(r)}</span>
     </li>
@@ -543,11 +573,11 @@ export default async function ProgramPage({ params }: Props) {
               <details className="px-3 pb-1">
                 <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">All opponents ({opponents.length})</summary>
                 {/* Every opponent in the leanest markup (about 40 rows a page): the row's look is set once, here, on the list. */}
-                <ul className="-mx-3 border-t border-line [&>li]:flex [&>li]:min-h-11 [&>li]:items-center [&>li]:gap-3 [&>li]:border-b [&>li]:border-line [&>li]:px-3 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_a:hover]:text-navy [&_a:hover]:underline [&>li>span]:flex [&>li>span]:min-w-0 [&>li>span]:flex-1 [&>li>span]:items-center [&>li>span]:text-[15px] [&>li>span]:text-ink [&>li>small]:text-[13px] [&>li>small]:text-muted [&>li>b]:font-num [&>li>b]:text-[19px] [&>li>b]:tabular-nums [&>li>b]:text-ink">
+                <ul className="-mx-3 border-t border-line [&>li]:flex [&>li]:min-h-11 [&>li]:items-center [&>li]:gap-3 [&>li]:border-b [&>li]:border-line [&>li]:px-3 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_a:hover]:text-navy [&_a:hover]:underline [&>li>span]:flex [&>li>span]:min-w-0 [&>li>span]:flex-1 [&>li>span]:items-center [&>li>span]:text-[15px] [&>li>span]:text-ink [&>li>small]:text-[13px] [&>li>small]:text-muted [&>li>small_a]:font-semibold [&>li>small_a]:text-navy [&>li>small_a]:underline [&>li>b]:font-num [&>li>b]:text-[19px] [&>li>b]:tabular-nums [&>li>b]:text-ink">
                   {opponents.map((r) => (
                     <li key={r.opponent}>
                       <span>{opponentCrest(r.opponent)}{opponentLink(r.opponent)}</span>
-                      <small>{`${r.games} ${r.games === 1 ? "game" : "games"} · last ${r.last.date.slice(0, 4)}`}</small>
+                      <small>{gamesLink(r, true)}{` · last ${r.last.date.slice(0, 4)}`}</small>
                       <b>{record(r)}</b>
                     </li>
                   ))}

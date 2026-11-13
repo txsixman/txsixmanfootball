@@ -19,6 +19,7 @@ test("the sitemap leaves out the sample games and lists the week, bracket and to
   for (const p of ["/weeks", "/scores/tonight"]) expect(paths, p).toContain(p);
   expect(paths.some((p) => p.startsWith("/weeks/")), "a week page").toBe(true);
   expect(paths.some((p) => p.startsWith("/playoffs/bracket/")), "a bracket page").toBe(true);
+  expect(paths.some((p) => /^\/series\/[a-z0-9-]+\/[a-z0-9-]+$/.test(p)), "a series page").toBe(true);
   expect(paths.some((p) => /^\/(embed|account|admin|sign-in|forums|privacy|terms)(\/|$)/.test(p)), "embeds and fan pages stay out").toBe(false);
 });
 

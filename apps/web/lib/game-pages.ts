@@ -212,3 +212,8 @@ export async function resolveGame(id: string) {
   const g: Game = own ? resultAsGame(own, detail!) : bracket!;
   return { g, found, own, sample, detail, neutral: own !== undefined && detail?.playoff !== undefined };
 }
+
+/** Every game between two programs (slugs in `pairKey` order), all seasons read, oldest first: what the series pages are made of. Shared: never mutate it. */
+export async function gamePairs(): Promise<ReadonlyMap<string, Entry[]>> {
+  return (await index()).pairs;
+}

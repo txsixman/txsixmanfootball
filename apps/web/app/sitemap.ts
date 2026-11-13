@@ -12,6 +12,7 @@ import { generateStaticParams as rankingWeekOrgs } from "./rankings/week/[week]/
 import { generateStaticParams as recordOrgs } from "./records/[org]/page";
 import { generateStaticParams as results } from "./results/[[...path]]/page";
 import { generateStaticParams as games } from "./scores/[id]/page";
+import { generateStaticParams as series } from "./series/[first]/[second]/page";
 import { generateStaticParams as standings } from "./standings/[group]/page";
 import { generateStaticParams as brackets } from "./playoffs/bracket/[slug]/page";
 import { generateStaticParams as weeks } from "./weeks/[[...path]]/page";
@@ -41,6 +42,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(await recordOrgs()).map((p) => `records/${p.org}`),
     ...(await brackets()).map((p) => `playoffs/bracket/${p.slug}`),
     ...(await weeks()).map((p) => ["weeks", ...(p.path ?? [])].join("/")),
+    ...(await series()).map((p) => `series/${p.first}/${p.second}`),
     ...(await games()).filter((p) => !SAMPLE_GAMES.has(p.id)).map((p) => `scores/${p.id}`),
   ];
   return [...new Set(paths)].map((p) => ({ url: p ? `${SITE_URL}/${p}` : SITE_URL }));
