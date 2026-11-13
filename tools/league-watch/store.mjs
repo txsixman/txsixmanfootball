@@ -8,6 +8,8 @@
 //   only ever grows. A read that shows the stored score again drops the proposal.
 // - an unscored row (a game not yet played) is dropped when a page of one of its teams was read and no longer lists it:
 //   a postponed game is listed again under its new date. A row whose teams' pages were not read stays.
+// - a 0-0 "final" without a forfeit (a placeholder or a cancelled game, never a result) is no score, stored or read: it is
+//   written blank and counts as a game not yet played (DECISIONS.md, Nov 13, 2026).
 // A stored score that must go (a game that was not six-man, a wrong team) goes through data/corrections or a reviewed
 // commit to the private repo, never a read.
 
@@ -35,6 +37,9 @@ export function parseCsv(text, file = "csv") {
 /** One game in either file: its date and both teams, in either order (lib/games.ts gameKey). */
 export const rowKey = (r) => [r.game_date, ...[slugify(r.home), slugify(r.away)].sort()].join("|");
 const scored = (r) => r.home_score !== "" && r.away_score !== "";
+const zeroZero = (r) => r.home_score === "0" && r.away_score === "0" && r.end_reason !== "forfeit";
+/** A 0-0 non-forfeit row with its score blank, as the reader writes a game not yet played. */
+const unscoreZeroZero = (r) => (zeroZero(r) ? { ...r, home_score: "", away_score: "", end_reason: "" } : r);
 /** The fresh row's scores in the stored row's home and away order. */
 function scoresAs(stored, fresh) {
   const same = slugify(stored.home) === slugify(fresh.home);
@@ -60,7 +65,9 @@ export function mergeStored({ file, stored, fresh, pending, readTeam, now }) {
   if (s.header && f.header && s.header !== f.header) throw new Error(`${file}: the stored header ${s.header} is not this read's ${f.header}`);
   const header = s.header || f.header;
   const cols = s.cols.length ? s.cols : f.cols;
-  const counts = { added: 0, filled: 0, same: 0, proposed: 0, changed: 0, keptUnlisted: 0, keptBlank: 0, droppedUnplayed: 0 };
+  const counts = { added: 0, filled: 0, same: 0, proposed: 0, changed: 0, keptUnlisted: 0, keptBlank: 0, droppedUnplayed: 0, blankedZeroZero: 0 };
+  s.rows = s.rows.map((r) => (zeroZero(r) ? (counts.blankedZeroZero++, unscoreZeroZero(r)) : r));
+  f.rows = f.rows.map(unscoreZeroZero);
   const proposals = new Map(pending.filter((p) => p.file === file).map((p) => [p.key, p]));
   const nextPending = new Map(proposals);
   const changes = [];
@@ -146,5 +153,5 @@ export const changeLines = (changes, fileExists) =>
 
 /** One line for coverage.txt and the run summary: counts only, never a team or a source. */
 export function countsLine(file, c) {
-  return `${file}: ${c.added} added, ${c.filled} scores filled, ${c.same} unchanged, ${c.changed} changed after two reads, ${c.proposed} proposed changes waiting for a second read, ${c.keptUnlisted} kept that this read did not list, ${c.keptBlank} kept that this read showed with no score, ${c.droppedUnplayed} unplayed games no longer listed (dropped).`;
+  return `${file}: ${c.added} added, ${c.filled} scores filled, ${c.same} unchanged, ${c.changed} changed after two reads, ${c.proposed} proposed changes waiting for a second read, ${c.keptUnlisted} kept that this read did not list, ${c.keptBlank} kept that this read showed with no score, ${c.droppedUnplayed} unplayed games no longer listed (dropped), ${c.blankedZeroZero} stored 0-0 non-forfeit "finals" written blank.`;
 }

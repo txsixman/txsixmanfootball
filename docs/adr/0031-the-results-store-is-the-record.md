@@ -18,7 +18,9 @@ rules stand.
    - drop an unplayed game that a page it read no longer lists (a postponed game comes back under its new date).
 
    It never deletes or blanks a stored score. A stored score that must go (a game that was not six-man, a wrong team)
-   goes through `data/corrections` or a reviewed commit to the private repo, never a read.
+   goes through `data/corrections` or a reviewed commit to the private repo, never a read. One exception: a 0-0
+   "final" without a forfeit is not a score (a placeholder or a cancelled game; DECISIONS.md, Nov 13, 2026), so the
+   merge writes it blank, as a game not yet played, and counts it in the run summary.
 2. **Corrections are kept, not lost.**
    - A stored final changes only when the source shows the same different score on two full reads in a row.
    - The first read records the proposal in `pending-scores.csv`. The second applies it and appends a line to
