@@ -151,6 +151,9 @@ export function parseSchedule(html, { onUnnamed } = {}) {
     }
     const home = teams.find((t) => t.homeAway === 0) ?? teams[0];
     const away = teams.find((t) => t !== home);
+    // A 0-0 "result" is a placeholder or a cancelled game, never a score (a forfeit is written 1-0 or 2-0): the game stays
+    // unplayed, so it is in no rating, record or streak (DECISIONS.md, Nov 13, 2026).
+    if (c[C.hasResult] === true && home.score === 0 && away.score === 0) home.score = away.score = null;
     games.push({
       id: String(c[0][0][T.contestId] ?? `${date}-${home.url}-${away.url}`),
       date,

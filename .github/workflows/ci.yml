@@ -146,7 +146,7 @@ jobs:
 
   web-pages:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35  # up to 25 waiting for web-build (wait-for-build.mjs), then the tests
     permissions:
       contents: read
       actions: read # wait-for-build.mjs reads this run's jobs and artifacts
@@ -210,7 +210,7 @@ jobs:
   # site's own install (and Vercel's).
   lighthouse:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35  # up to 25 waiting for web-build (wait-for-build.mjs), then the tests
     permissions:
       contents: read
       actions: read # wait-for-build.mjs
