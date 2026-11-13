@@ -80,6 +80,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   project's logs, advisors and settings are dashboard-only (the owner, Nov 11, 2026: the org stays where it is). Never
   run `supabase login` or `supabase link` for this project. `supabase.yml` also runs every Monday, because a free
   project pauses after 7 days without activity
+- `scripts/check.sh` (`--quick` skips the throwaway database and the stories build): every CI check that needs no
+  build, in one command, with a pass/fail summary; run it before pushing. The commands it runs are listed below
 - `uv run --directory services/ratings pytest -q`: ratings tests
 - `uv run --directory services/ratings python run.py --simulate`: compare models on simulated seasons
 - `uv run --directory services/ratings python run.py --season 2026`: rate every game file of a season into `data/ratings`
