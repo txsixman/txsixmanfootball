@@ -583,4 +583,21 @@ function due() {
   console.log(tonightsGames(readFileSync(file, "utf8"), gameNight()).length);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--due") ? due() : process.argv.includes("--canary") ? canary() : process.argv.includes("--tonight") ? tonight() : main());
+/** A read writes its captures under RESULTS. In CI that must be the private data repo: without PRIVATE_DATA they would land
+ * in data/seed, and a robot commit could publish them (ADR 0029). A local run without it still writes to data/seed. */
+export function requirePrivateData(env = process.env) {
+  if (env.CI === "true" && !env.PRIVATE_DATA) {
+    throw new Error("PRIVATE_DATA is not set: in CI a read writes its captures (source pages, teams.csv, outside.csv, coverage.txt) only to the private data repo's checkout, so set PRIVATE_DATA to it (ADR 0029).");
+  }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const mode = process.argv.includes("--due") ? due : process.argv.includes("--canary") ? canary : process.argv.includes("--tonight") ? tonight : main;
+  try {
+    if (mode === main || mode === tonight) requirePrivateData(); // --due and --canary write no capture
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
+  await mode();
+}

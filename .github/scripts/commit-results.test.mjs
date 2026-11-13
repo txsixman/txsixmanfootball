@@ -209,3 +209,15 @@ test("the finals cross-check's report goes in the private commit, alone or with 
   assert.match(remoteFile(t, "private", `${DIR}/games.csv`), /Kress,Spur/);
   assert.equal(git(t.root, "--git-dir", path.join(t.root, "public.git"), "ls-tree", "-r", "--name-only", "main").includes("davecampbells"), false);
 });
+
+test("only games.csv and playoffs.csv are staged: a stray capture in the public folder is never pushed", () => {
+  const t = setup();
+  newCapture(t);
+  // A capture written outside the private repo (PRIVATE_DATA lost): untracked, in the folder the commit stages from.
+  write(path.join(t.work, "data/seed", DIR, "teams.csv"), "slug,source\nlark,https://example.invalid/lark\n");
+  const r = run(t);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(t.log, "utf8"), "private\npublic\n");
+  const pushed = git(t.root, "--git-dir", path.join(t.root, "public.git"), "ls-tree", "-r", "--name-only", "main", `data/seed/${DIR}`);
+  assert.deepEqual(pushed.split("\n"), [`data/seed/${DIR}/games.csv`]);
+});
