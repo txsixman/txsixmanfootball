@@ -124,11 +124,12 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   `docs/licenses.md` (web-push is MPL-2.0, used unmodified and only in GitHub Actions)
 
 ## In progress
-- A second live-score source (ADR 0025, read with its owner's written permission, which the owner confirmed Nov 13) on
-  its PR; off until the repo variable `SECOND_LIVE` is `true`. Program season pages (Round N) on their PR.
+- Program season pages (Round N) on their PR.
 - Landed Nov 12 to 13: go-public (search engines), Round A (JSON-LD, share cards, canonical links, breadcrumbs), Rounds F,
   G and H (embeddable scoreboard, sitemap, 404 page), J (descriptions), K (series pages), L (game pages link the series),
-  M (dated game titles), and the game-day clock (ADR 0024).
+  M (dated game titles), the game-day clock (ADR 0024), and a second live-score source (ADR 0025, read with its owner's
+  written permission, which the owner confirmed Nov 13; `tools/league-watch/davecampbells.mjs`, on since Nov 13 by the
+  repo variable `SECOND_LIVE`, 9 of 28 bracket games matched in its first check). Check its first night's summary lines.
 
 ## Next three steps
 1. Past UIL alignments (2024-26 first): UIL's robots.txt disallows `/files/`, where the PDFs live, so a robot may not
