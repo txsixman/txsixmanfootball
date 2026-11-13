@@ -31,6 +31,21 @@ test("a stored final survives a read where the source shows no score, or does no
   assert.deepEqual(m.changes, []);
 });
 
+test("a stored or read 0-0 with no forfeit is no score: written blank, then filled by a real score; a tie and a 0-0 forfeit stay", () => {
+  const forfeit = ["I", "season", "2026-10-02", "Far Hill", "Low Creek", "false", "0", "0", "forfeit", "", "https://example.test/f", ""].join(",");
+  const stored = csv(row("2026-10-23", "Cedar Gap", "Salt Fork", "0", "0"), row("2026-10-30", "Dry Wash", "Mesa Verde", "7", "7"), forfeit);
+  // Nothing read: the stored 0-0 is written blank at once, as a game not yet played.
+  const m = merge(stored, csv());
+  assert.deepEqual([scoreOf(m.text, "Cedar Gap").home_score, scoreOf(m.text, "Cedar Gap").end_reason], ["", ""]);
+  assert.equal(scoreOf(m.text, "Dry Wash").home_score, "7");
+  assert.equal(scoreOf(m.text, "Far Hill").end_reason, "forfeit");
+  assert.equal(m.counts.blankedZeroZero, 1);
+  assert.match(countsLine("games.csv", m.counts), /1 stored 0-0 non-forfeit "finals" written blank\.$/);
+  // A read that still shows 0-0 adds no score; a real score later fills it at once.
+  assert.equal(scoreOf(merge(m.text, csv(row("2026-10-23", "Cedar Gap", "Salt Fork", "0", "0"))).text, "Cedar Gap").home_score, "");
+  assert.equal(scoreOf(merge(m.text, csv(row("2026-10-23", "Cedar Gap", "Salt Fork", "34", "28"))).text, "Cedar Gap").home_score, "34");
+});
+
 test("an empty score is filled at once; an unplayed game gone from a page that was read is dropped", () => {
   const stored = csv(row("2026-11-13", "Cedar Gap", "Salt Fork"), row("2026-11-13", "Dry Wash", "Mesa Verde"), row("2026-11-13", "Far Hill", "Low Creek"));
   // Cedar Gap's final is in; Dry Wash's game was moved (gone from its page, which was read); Far Hill's pages were not read.

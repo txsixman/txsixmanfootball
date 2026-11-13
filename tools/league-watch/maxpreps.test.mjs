@@ -162,6 +162,16 @@ test("a game listed twice is one game; twice with different scores, it is left o
   assert.equal(odd.conflicts.length, 1);
 });
 
+test("a game with the same school on both sides is never written, and is named", async () => {
+  const { dedupe } = await import("./maxpreps.mjs");
+  const side = (city, score) => ({ slug: "community-christian", name: "Community Christian", city, score });
+  const self = { id: "c9", date: "2019-08-30", played: true, bracket: null, home: side("Mineral Wells", 81), away: side("Orange", 75) };
+  const real = { id: "c1", date: "2019-08-30", played: true, bracket: null, home: { slug: "jayton", score: 40 }, away: { slug: "guthrie", score: 20 } };
+  const out = dedupe([self, real]);
+  assert.deepEqual(out.kept.map((g) => g.id), ["c1"]);
+  assert.deepEqual(out.selfGames, ["2019-08-30 Community Christian (Mineral Wells) vs Community Christian (Orange), both matched to community-christian"]);
+});
+
 test("a game against a school outside our alignments is kept for the ratings, once, never a placeholder opponent", () => {
   const side = (slug, url, score, home = false) => ({ slug, url, name: url.split("/")[5], score, home });
   const g = (id, ours, theirs, date = "2025-09-05") => ({ id, date, home: ours, away: theirs, played: true, gameUrl: `https://example.test/${id}`, source: "s" });
