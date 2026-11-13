@@ -50,6 +50,12 @@ export async function PlayoffsView({ league, season }: { league: League; season?
       <PageHeader id="playoffs" eyebrow={`${year} season · ${brackets.length} ${brackets.length === 1 ? "bracket" : "brackets"}`} title="Playoffs" />
       {seasons.length > 1 && <TabNav label="Season" tabs={seasonTabs} current={seasonTabs[seasons.indexOf(year)].href} />}
       <TabNav label="League" tabs={leagues.map((l) => ({ href: leagueHref(l, past ? year : undefined), label: l }))} current={leagueHref(league, past ? year : undefined)} />
+      {!past && (
+        <Link href="/playoffs/this-round" className="mt-3 flex min-h-11 items-center justify-between border-2 border-navy px-3 font-num text-[17px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
+          This round in every bracket
+          <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+        </Link>
+      )}
       {brackets.map((b) => {
         const id = `bracket-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
         const roundId = (round: string) => `${id}-${round}`;
