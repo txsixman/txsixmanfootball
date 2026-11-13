@@ -27,7 +27,8 @@ const cardIds = memo<void, string[]>(async () => {
   return ids.filter((_, i) => keep[i]);
 });
 
-// Next builds this route's static params from the game page's ids and this list (one "card" image, or none).
+// Next builds this route's static params from the segment layout's ids (layout.tsx) and this list (one "card" image,
+// or none).
 export async function generateImageMetadata({ params }: { params: { id: string } | Promise<{ id: string }> }) {
   const { id } = await params;
   return (await cardIds()).includes(id) ? [{ id: "card", size, alt: "Game card", contentType: "image/png" }] : [];

@@ -4,7 +4,7 @@ import { loadAlignments } from "@/lib/alignments";
 import { fanSignIn } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
-import { bracketGames, findGame, gameIds, gamePreview, longDate, resolveGame } from "@/lib/game-pages";
+import { bracketGames, findGame, gamePreview, longDate, resolveGame } from "@/lib/game-pages";
 import { gameJsonLd } from "@/lib/json-ld";
 import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
@@ -23,9 +23,7 @@ import { VerifyBar } from "../parts";
 
 type Props = { params: Promise<{ id: string }> };
 
-export const dynamicParams = false;
-
-export const generateStaticParams = async () => (await gameIds()).map((id) => ({ id }));
+// The game ids and dynamicParams are in layout.tsx, so the share card gets them too.
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
