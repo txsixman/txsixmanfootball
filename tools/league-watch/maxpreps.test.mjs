@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, centralDate, COLUMNS, gameNight, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, centralDate, COLUMNS, gameNight, inProgressShape, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -208,6 +208,13 @@ test("every Friday-night run reads Friday's games, the midnight one and a late s
   assert.equal(gameNight(new Date("2026-11-14T12:00:00Z")), "2026-11-14"); // 6 AM Saturday Central: Saturday's games
 });
 
+// ADR 0019: runs on any game day (a Thursday or Saturday too, afternoons included) read that day's games, not the UTC date's.
+test("Thursday, Saturday and afternoon runs read that game day's games", () => {
+  assert.equal(gameNight(new Date("2026-11-14T19:00:00Z")), "2026-11-14"); // 1 PM Saturday Central
+  for (const utc of ["2026-11-13T01:00:00Z", "2026-11-13T05:30:00Z", "2026-11-13T06:00:00Z"]) assert.equal(gameNight(new Date(utc)), "2026-11-12", utc);
+  for (const utc of ["2026-11-15T01:00:00Z", "2026-11-15T05:30:00Z", "2026-11-15T06:00:00Z"]) assert.equal(gameNight(new Date(utc)), "2026-11-14", utc);
+});
+
 test("a night read fills tonight's finals into the bracket and the games file, and changes nothing else", () => {
   const bySlug = new Map([
     ["cedar-gap", { school: "Cedar Gap", division: "I" }],
@@ -250,4 +257,16 @@ test("a night read fills tonight's finals into the bracket and the games file, a
   assert.equal(again.filled, 0);
   assert.equal(again.games, once.games);
   assert.equal(again.playoffs, once.playoffs);
+});
+
+test("a game under way is logged by its fields only, never names or links", () => {
+  const team = (name, home, score) => { const t = []; t[5] = null; t[6] = score; t[11] = home; t[13] = `https://www.maxpreps.com/tx/x/${name}/football/`; t[14] = name; t[15] = "Town"; return t; };
+  const contest = (start, result, a, b) => { const c = [[team("Alpha", 0, a), team("Beta", 1, b)]]; c[3] = false; c[4] = result; c[11] = start; c[12] = "Q3"; c[18] = "https://www.maxpreps.com/games/x"; return c; };
+  const html = page([contest("2026-11-13T19:00:00", false, 28, 14), contest("2026-11-13T19:00:00", true, 40, 20), contest("2026-11-14T19:00:00", false, 7, 0), contest("2026-11-13T19:00:00", false, null, null)]);
+  const shapes = inProgressShape(html, "2026-11-13");
+  assert.equal(shapes.length, 1);
+  assert.match(shapes[0], /4=false/);
+  assert.match(shapes[0], /12=Q3/);
+  assert.match(shapes[0], /6=28/);
+  assert.doesNotMatch(shapes[0], /Alpha|Beta|Town|maxpreps/);
 });
