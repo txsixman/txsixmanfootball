@@ -13,10 +13,14 @@
 // game in <report>/finals-check.csv (with the feed's team ids in <report>/team-ids.json), in the private data repo
 // only. The run summary gets counts, never a team or a score.
 //
+// Seasons (ADR 0032), run by hand, to the private data repo only: `--seasons` lists the feed's seasons,
+// `--history <year> --private <private repo>` writes a season's six-man games to <private>/davecampbells-history-<year>/games.csv,
+// and `--team <year> <their slug>` shows one team's game count and statuses. On Nov 13, 2026 only 2026 had games.
+//
 // Problems that do not fail the step (it runs with continue-on-error) are named in the file OPS_REASONS, when set, for
 // the workflow's notify job to post to the robot-alert issue (ADR 0028): a refusal (403 or 429), no season id from
 // August on, and no agreeing final among 10 or more checked games of past nights.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { centralDate, gameNight, slugify, tonightsGames } from "./maxpreps.mjs";
@@ -469,4 +473,227 @@ async function live() {
   summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.length} under way.`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(process.argv.includes("--finals") ? finals : live);
+// ---- Past seasons (ADR 0032: the same permission, which the owner confirmed covers past seasons) ----
+//   node tools/league-watch/davecampbells.mjs --seasons
+// lists the feed's seasons (year, id, sport, school type).
+//   node tools/league-watch/davecampbells.mjs --history <year> --private <private data repo>
+// reads the finished games of every mapped team (davecampbells-teams.json) in the feed's high school football season of
+// <year>, and writes the six-man games among them to <private>/davecampbells-history-<year>/games.csv: date, both programs, the
+// scores and the forfeit flags. Never a ranking, poll, spread or the `winner` field. It writes nothing to this repo.
+
+/** The private per-season file's columns: the facts the merge needs, our program slugs, no source. */
+export const HISTORY_COLUMNS = ["game_date", "home", "away", "home_score", "away_score", "home_forfeit", "away_forfeit"];
+export const HISTORY_FILE = "games.csv";
+
+/** The feed's high school (boys) football season ids by year, from its season list. */
+export function footballSeasons(data) {
+  const ids = new Map();
+  for (const s of Array.isArray(data) ? data : []) {
+    if (s?.sportName === "Football" && s?.gender === "BOYS" && s?.schoolTypeName === "High School" && Number.isInteger(s?.year) && typeof s?.seasonId === "string") {
+      if (!ids.has(s.year)) ids.set(s.year, s.seasonId);
+    }
+  }
+  return ids;
+}
+
+/** Every finished game of a team in a season, all pages. A page that repeats or a page count past 20 stops it (logged). */
+export async function allFinishedGames(client, seasonId, id, warn = console.warn) {
+  const status = encodeURIComponent(FINAL_STATUSES.join(","));
+  const base = `/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&status=${status}&sort=NEWEST&size=100`;
+  const items = [];
+  let data = await client.getData(base);
+  for (let pages = 1; ; pages++) {
+    if (!Array.isArray(data?.items)) {
+      if (data != null) warn(`game list without items: ${shapeOf(data)}`);
+      return items;
+    }
+    items.push(...data.items);
+    const [page, total] = [data.page, data.totalPages];
+    if (!Number.isInteger(page) || !Number.isInteger(total) || page + 1 >= total || (page === 0 && total === 1)) return items;
+    if (pages >= 20) {
+      warn(`game list past 20 pages: stopped`);
+      return items;
+    }
+    const next = await client.getData(`${base}&page=${page + 1}`);
+    if (next?.page === page) {
+      warn(`game list page ${page + 1} answered as page ${page}: stopped`);
+      return items;
+    }
+    data = next;
+  }
+}
+
+/**
+ * Our programs, for opponents the map does not name: every program slug in the published seasons and the lineage
+ * table, with the program each old name became and the season it changed.
+ */
+export function knownPrograms(seedDir) {
+  const slugs = new Set();
+  const renamed = new Map(); // successor slug -> [{ from: predecessor slug, season }]
+  for (const dir of existsSync(seedDir) ? readdirSync(seedDir) : []) {
+    if (!/^maxpreps-\d{4}$/.test(dir)) continue;
+    for (const f of ["games.csv", "playoffs.csv"]) {
+      const file = path.join(seedDir, dir, f);
+      if (!existsSync(file)) continue;
+      for (const r of csvRows(readFileSync(file, "utf8"))) for (const n of [r.home, r.away]) if (n) slugs.add(slugify(n));
+    }
+  }
+  const lineage = path.join(seedDir, "lineage", "programs.csv");
+  if (existsSync(lineage)) {
+    for (const line of readFileSync(lineage, "utf8").trimEnd().split("\n").slice(1)) {
+      const [pred, succ, , season] = line.split(",");
+      if (!pred || !succ || !/^\d{4}$/.test(season)) continue;
+      const [p, s] = [slugify(pred), slugify(succ)];
+      slugs.add(p).add(s);
+      renamed.set(s, [...(renamed.get(s) ?? []), { from: p, season: Number(season) }]);
+    }
+  }
+  return { slugs, renamed };
+}
+
+/** A program's name in `season`: the old one when the lineage table says it changed later. */
+export function asOf(slug, season, renamed) {
+  const later = (renamed.get(slug) ?? []).filter((r) => r.season > season).sort((a, b) => a.season - b.season);
+  return later.length ? asOf(later[0].from, season, renamed) : slug;
+}
+
+/**
+ * One of our programs by the feed's school name: the only known slug that is the same school, or null. When our slug
+ * adds a town to the feed's name ("community-christian-mineral-wells" for "Community Christian"), the town must be in
+ * the feed's own team slug too, so a same-named school elsewhere is never taken for ours.
+ */
+export function programByName(schoolName, slugs, theirSlug = "") {
+  const name = slugify(String(schoolName ?? ""));
+  const theirs = new Set(String(theirSlug ?? "").split("-"));
+  // The words our slug adds, less the ones that name a kind of school rather than a place.
+  const town = (s) => (s.startsWith(`${name}-`) ? s.slice(name.length + 1).split("-").filter((w) => !SCHOOL_WORDS.has(w)) : []);
+  const hits = [...slugs].filter((s) => sameSchool(schoolName, s) && town(s).every((w) => theirs.has(w)));
+  return hits.length === 1 ? hits[0] : null;
+}
+
+/** Words our program slugs add to a school's name that say what kind of school it is, not where. */
+const SCHOOL_WORDS = new Set(["school", "schools", "high", "hs", "academy", "charter", "christian", "classical", "prep", "preparatory", "the", "of", "and", "isd", "cisd"]);
+
+const flag = (b) => (b === true ? "true" : "false");
+const cell = (n) => (score(n) === null ? "" : String(n));
+
+/**
+ * The season's six-man games among `items` (any teams' finished games, repeats allowed): one row a game (date and both
+ * programs), oldest first. A team is ours by the map, else by its school name among `slugs`; a game with a team that is
+ * neither (an 11-man opponent, a school we do not carry) is counted in `skipped`, never written. Only finished games and
+ * forfeits; scores outside 0 to 200 are left blank.
+ */
+export function historyRows(items, { ours, slugs, renamed, season }) {
+  const rows = new Map();
+  const skipped = { notFinished: 0, notOurs: 0, noDate: 0, forfeitUnflagged: 0 };
+  for (const item of items) {
+    if (!isFinal(item) && !isForfeit(item)) {
+      skipped.notFinished++;
+      continue;
+    }
+    const kickoff = new Date(item?.scheduledKickoff ?? NaN);
+    if (Number.isNaN(kickoff.getTime())) {
+      skipped.noDate++;
+      continue;
+    }
+    const parts = Array.isArray(item.participants) ? item.participants : [];
+    const [h, a] = ["HOME", "AWAY"].map((t) => parts.find((p) => p?.participantType === t));
+    const program = (p) => p && (ours.get(teamSlugOf(p.websiteUrl)) ?? programByName(p.schoolName, slugs, teamSlugOf(p.websiteUrl)));
+    const [hs, as] = [program(h), program(a)].map((s) => s && asOf(s, season, renamed));
+    if (!hs || !as || hs === as) {
+      skipped.notOurs++;
+      continue;
+    }
+    const date = centralDate(kickoff);
+    const key = gameKey(date, hs, as);
+    if (rows.has(key)) continue;
+    // A forfeit names its side: a forfeit status with neither side flagged is not written (counted).
+    if (isForfeit(item) && h.forfeited !== true && a.forfeited !== true) {
+      skipped.forfeitUnflagged++;
+      continue;
+    }
+    // A final of 0-0 is the feed's placeholder, not a result: no score (a forfeit keeps what it says).
+    let [hScore, aScore] = [cell(h.score ?? item.summary?.homeScore), cell(a.score ?? item.summary?.awayScore)];
+    if (hScore === "0" && aScore === "0" && !isForfeit(item)) [hScore, aScore] = ["", ""];
+    rows.set(key, {
+      game_date: date,
+      home: hs,
+      away: as,
+      home_score: hScore,
+      away_score: aScore,
+      home_forfeit: flag(h.forfeited === true),
+      away_forfeit: flag(a.forfeited === true),
+    });
+  }
+  const list = [...rows.values()].sort((x, y) => x.game_date.localeCompare(y.game_date) || x.home.localeCompare(y.home));
+  return { rows: list, skipped };
+}
+
+export const historyCsv = (rows) => [HISTORY_COLUMNS.join(","), ...rows.map((r) => HISTORY_COLUMNS.map((c) => r[c]).join(","))].join("\n").concat("\n");
+
+/** `--seasons`: the feed's season list, one line a season (year, id, sport, gender, school type). */
+async function seasons() {
+  const data = await createClient().getData("/api/public/seasons");
+  if (!Array.isArray(data)) return console.log(`/api/public/seasons: ${data == null ? "no data" : shapeOf(data, 3)}`);
+  for (const s of data) console.log([s.year, s.seasonId, s.sportName, s.gender, s.schoolTypeName, s.isCurrent ? "current" : ""].join(" | "));
+}
+
+/** `--history <year> --private <dir>`: one season's six-man games from the feed, to the private repo. */
+async function history() {
+  const arg = (f) => (process.argv.includes(f) ? process.argv[process.argv.indexOf(f) + 1] : null);
+  const year = Number(arg("--history"));
+  const root = arg("--private");
+  if (!Number.isInteger(year) || year < 1938 || !root) throw new Error("usage: davecampbells.mjs --history <year> --private <private data repo>");
+  const client = createClient();
+  const seasonId = footballSeasons(await client.getData("/api/public/seasons")).get(year);
+  if (!seasonId) return console.log(`${year}: the feed lists no high school football season`);
+  const { theirs, ours } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
+  const { slugs, renamed } = knownPrograms(path.join(path.dirname(TEAMS_FILE), "..", "..", "data", "seed"));
+  const items = [];
+  let teams = 0;
+  let shown = false;
+  for (const theirSlug of new Set(theirs.values())) {
+    const id = await teamId(client, theirSlug, seasonId);
+    if (!id) continue;
+    teams++;
+    const games = await allFinishedGames(client, seasonId, id);
+    // The first game's field names, once, so a changed answer is one look away (names only, never values).
+    if (!shown && games.length) {
+      shown = true;
+      console.log(`game fields: ${shapeOf(games[0], 2)}`);
+    }
+    items.push(...games);
+  }
+  const { rows, skipped } = historyRows(items, { ours, slugs, renamed, season: year });
+  const dir = path.join(root, `davecampbells-history-${year}`);
+  if (rows.length) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, HISTORY_FILE), historyCsv(rows));
+  }
+  console.log(`${year}: ${teams} of ${theirs.size} teams found, ${items.length} finished games read, ${rows.length} six-man games written` +
+    ` (skipped: ${skipped.notOurs} with a team not ours, ${skipped.notFinished} not finished, ${skipped.noDate} with no date, ${skipped.forfeitUnflagged} forfeits naming no side)`);
+}
+
+/** `--team <year> <their slug>`: one team's game list in a season, with no status filter: how many games and which
+ * statuses, so a season that reads nothing is one look away. Counts and status names only. */
+async function team() {
+  const i = process.argv.indexOf("--team");
+  const [year, theirSlug] = [Number(process.argv[i + 1]), process.argv[i + 2]];
+  if (!Number.isInteger(year) || !theirSlug) throw new Error("usage: davecampbells.mjs --team <year> <their team slug>");
+  const client = createClient();
+  const seasonId = footballSeasons(await client.getData("/api/public/seasons")).get(year);
+  const t = seasonId && (await client.getData(`/api/public/teams/${encodeURIComponent(theirSlug)}?seasonId=${encodeURIComponent(seasonId)}`));
+  if (!t?.teamId) return console.log(`${year} ${theirSlug}: no season or team id`);
+  const current = await client.getData(`/api/public/teams/${encodeURIComponent(theirSlug)}`);
+  console.log(`team id the same as with no season: ${current?.teamId === t.teamId}; previousSeasonRecords: ${shapeOf(t.previousSeasonRecords, 2)}`);
+  const by = (k, v) => `&${k}=${encodeURIComponent(v)}`;
+  for (const q of [by("teamId", t.teamId), by("schoolId", t.schoolId), ""]) {
+    const data = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}${q}`);
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const statuses = [...new Set(items.map((x) => x?.status ?? x?.summary?.status))].join(", ");
+    console.log(`query "${q.split("=")[0] || "season only"}": ${items.length} items, total ${data?.totalElements}, pages ${data?.totalPages}, page ${data?.page}, size ${data?.size}, statuses: ${statuses}`);
+  }
+}
+
+const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team };
+if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(Object.entries(MODES).find(([f]) => process.argv.includes(f))?.[1] ?? live);

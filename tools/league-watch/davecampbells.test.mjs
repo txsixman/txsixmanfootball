@@ -1,10 +1,10 @@
 // Invented fixtures only: no test calls the feed.
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
+import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
 
@@ -339,4 +339,121 @@ test("problems for the robot-alert issue: a season id owed from August, no agree
   raise("second-source-no-season", file);
   assert.equal(readFileSync(file, "utf8"), "second-source-refused\nsecond-source-no-season\n");
   raise("x", undefined);
+});
+
+// ---- Past seasons (ADR 0032) ----
+
+test("the season list gives high school boys football ids by year, nothing else", () => {
+  const ids = footballSeasons([
+    { year: 2019, seasonId: "s-2019", sportName: "Football", gender: "BOYS", schoolTypeName: "High School" },
+    { year: 2019, seasonId: "s-jv", sportName: "JV Football", gender: "BOYS", schoolTypeName: "High School" },
+    { year: 2019, seasonId: "s-college", sportName: "Football", gender: "BOYS", schoolTypeName: "College" },
+    { year: 2019, seasonId: "s-ball", sportName: "Baseball", gender: "BOYS", schoolTypeName: "High School" },
+  ]);
+  assert.deepEqual([...ids], [[2019, "s-2019"]]);
+  assert.equal(footballSeasons(null).size, 0);
+});
+
+test("a team's finished games are read page by page, and a repeated page stops the read", async () => {
+  const pages = [
+    { items: [{ n: 1 }], page: 0, totalPages: 2 },
+    { items: [{ n: 2 }], page: 1, totalPages: 2 },
+  ];
+  const asked = [];
+  const client = { getData: async (p) => (asked.push(p), pages.shift()) };
+  assert.deepEqual(await allFinishedGames(client, "s1", "t1"), [{ n: 1 }, { n: 2 }]);
+  assert.equal(asked.length, 2);
+  assert.match(asked[1], /&page=1$/);
+  const warned = [];
+  const stuck = { getData: async () => ({ items: [{ n: 1 }], page: 0, totalPages: 3 }) };
+  assert.deepEqual(await allFinishedGames(stuck, "s1", "t1", (w) => warned.push(w)), [{ n: 1 }]);
+  assert.match(warned[0], /answered as page 0/);
+});
+
+const past = (over = {}) => ({
+  scheduledKickoff: "2019-09-07T00:30:00Z", // 7:30 PM Central on Sep 6
+  status: "Final",
+  pointSpread: -7,
+  winner: "HOME",
+  rank: 3,
+  participants: [
+    { participantType: "HOME", websiteUrl: "https://www.davecampbells.com/team/wren-wrens", schoolName: "Wren", score: 52 },
+    { participantType: "AWAY", websiteUrl: "https://www.davecampbells.com/team/finch-finches", schoolName: "Finch", score: 6 },
+  ],
+  ...over,
+});
+const pastOurs = new Map([["wren-wrens", "wren"]]);
+const slugs = new Set(["wren", "finch", "old-finch", "lark-west"]);
+
+test("a past final is one row a game: date, our two programs, scores and forfeit flags, and no other field", () => {
+  const { rows, skipped } = historyRows([past(), past()], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.deepEqual(rows, [{ game_date: "2019-09-06", home: "wren", away: "finch", home_score: "52", away_score: "6", home_forfeit: "false", away_forfeit: "false" }]);
+  assert.deepEqual(Object.keys(rows[0]), HISTORY_COLUMNS);
+  assert.equal(skipped.notOurs, 0);
+  assert.equal(historyCsv(rows), "game_date,home,away,home_score,away_score,home_forfeit,away_forfeit\n2019-09-06,wren,finch,52,6,false,false\n");
+});
+
+test("a team neither mapped nor one of ours by name is skipped and counted, as is an unfinished game", () => {
+  const eleven = past({ participants: [past().participants[0], { participantType: "AWAY", websiteUrl: "x/team/big-city-bulldogs", schoolName: "Big City", score: 40 }] });
+  const { rows, skipped } = historyRows([eleven, past({ status: "Scheduled" })], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.deepEqual(rows, []);
+  assert.deepEqual(skipped, { notFinished: 1, notOurs: 1, noDate: 0, forfeitUnflagged: 0 });
+});
+
+test("an old name: a program renamed after the season is written under the name it had then", () => {
+  const renamed = new Map([["finch", [{ from: "old-finch", season: 2021 }]]]);
+  assert.equal(asOf("finch", 2019, renamed), "old-finch");
+  assert.equal(asOf("finch", 2021, renamed), "finch");
+  const { rows } = historyRows([past()], { ours: pastOurs, slugs, renamed, season: 2019 });
+  assert.equal(rows[0].away, "old-finch");
+});
+
+test("a school name that could be two of our programs is not guessed", () => {
+  assert.equal(programByName("Lark", new Set(["lark-west", "lark-east"])), null);
+  assert.equal(programByName("Lark", new Set(["lark-west", "wren"]), "west-lark-owls"), "lark-west");
+});
+
+test("a same-named school in another town is not ours: our slug's town must be in the feed's team slug", () => {
+  const ours = new Set(["community-christian-mineral-wells", "wren"]);
+  assert.equal(programByName("Community Christian", ours, "orange-community-christian-lions"), null);
+  assert.equal(programByName("Community Christian", ours, "mineral-wells-community-christian-warriors"), "community-christian-mineral-wells");
+  assert.equal(programByName("Wren", ours, "wren-wrens"), "wren");
+  // Words that say what kind of school, not where, need not be in the feed's slug.
+  assert.equal(programByName("Finch Charter", new Set(["finch-charter-school", "wren"]), "finch-charter-falcons"), "finch-charter-school");
+});
+
+test("a forfeit keeps its side's flag; one naming no side is not written", () => {
+  const [h, a] = past().participants;
+  const flagged = past({ status: "Forfeit", participants: [h, { ...a, forfeited: true, score: 0 }] });
+  const unflagged = past({ scheduledKickoff: "2019-09-14T00:30:00Z", status: "Forfeit" });
+  const { rows, skipped } = historyRows([flagged, unflagged], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].away_forfeit, "true");
+  assert.equal(skipped.forfeitUnflagged, 1);
+});
+
+test("known programs come from the published seasons and the lineage table", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "dc-known-"));
+  mkdirSync(path.join(dir, "maxpreps-2021"));
+  mkdirSync(path.join(dir, "lineage"));
+  writeFileSync(path.join(dir, "maxpreps-2021", "games.csv"), "division,round,game_date,home,away\nI,season,2021-09-03,Wren,Lark West\n");
+  writeFileSync(path.join(dir, "lineage", "programs.csv"), "predecessor,successor,event,season,source_url,notes\nOld Finch,Finch,consolidation,2021,https://example.org,invented\n");
+  const { slugs: found, renamed } = knownPrograms(dir);
+  assert.deepEqual([...found].sort(), ["finch", "lark-west", "old-finch", "wren"]);
+  assert.deepEqual(renamed.get("finch"), [{ from: "old-finch", season: 2021 }]);
+});
+
+test("a 0-0 final is the feed's placeholder: written with no score", () => {
+  const [h, a] = past().participants;
+  const blank = past({ participants: [{ ...h, score: 0 }, { ...a, score: 0 }] });
+  const { rows } = historyRows([blank], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.equal(rows[0].home_score, "");
+  assert.equal(rows[0].away_score, "");
+});
+
+test("scores follow the feed's own home and away sides, whichever side is mapped", () => {
+  const [h, a] = past().participants;
+  const swapped = past({ participants: [{ ...a, participantType: "HOME" }, { ...h, participantType: "AWAY" }] });
+  const { rows } = historyRows([swapped], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.deepEqual([rows[0].home, rows[0].away, rows[0].home_score, rows[0].away_score], ["finch", "wren", "6", "52"]);
 });

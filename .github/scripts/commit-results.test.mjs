@@ -210,6 +210,24 @@ test("the finals cross-check's report goes in the private commit, alone or with 
   assert.equal(git(t.root, "--git-dir", path.join(t.root, "public.git"), "ls-tree", "-r", "--name-only", "main").includes("davecampbells"), false);
 });
 
+test("the finals report goes by name: a file someone else keeps in davecampbells-<season>/ is never put back to an older copy", () => {
+  const t = setup();
+  const kept = `davecampbells-${YEAR}/history-summary.txt`;
+  write(path.join(t.work, "private", `davecampbells-${YEAR}`, "finals-check.csv"), "game_date,home,away,verdict\n2026-11-12,lark,wren,agree\n");
+  // Another clone lands a file in the same folder after this run's read started.
+  const elsewhere = path.join(t.root, "elsewhere");
+  git(t.root, "clone", "-q", path.join(t.root, "private.git"), elsewhere);
+  write(path.join(elsewhere, kept), "counts only\n");
+  git(elsewhere, "add", ".");
+  git(elsewhere, "commit", "-q", "-m", "someone else's file");
+  git(elsewhere, "push", "-q", "origin", "HEAD:main");
+  const r = run(t);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(remoteFile(t, "private", kept), "counts only");
+  assert.match(remoteFile(t, "private", `davecampbells-${YEAR}/finals-check.csv`), /lark,wren,agree/);
+  assert.deepEqual(remoteLog(t, "private").slice(0, 2), [remoteLog(t, "private")[0], "someone else's file"]);
+});
+
 test("only games.csv and playoffs.csv are staged: a stray capture in the public folder is never pushed", () => {
   const t = setup();
   newCapture(t);

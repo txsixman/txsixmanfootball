@@ -2,8 +2,9 @@
 # Results watch's commit (results-watch.yml): this read's captures to the private data repo first, then the facts
 # published from them and rerated to this repo, each on its newest main, with retries. Run from this repo's root, the
 # private repo checked out at ./private, after the MaxPreps read wrote its captures there. The finals cross-check's report
-# (ADR 0026), when a run wrote one, is the private repo's `davecampbells-<season>/` and goes in the same private commit;
-# it never reaches this repo.
+# (ADR 0026), when a run wrote one, is two files in the private repo's `davecampbells-<season>/` (finals-check.csv,
+# team-ids.json); they go in the same private commit by name, never the folder, so a file someone else keeps there is
+# never put back to an older copy (ADR 0032). They never reach this repo.
 #
 #   .github/scripts/commit-results.sh <season>
 #
@@ -16,15 +17,16 @@ set -euo pipefail
 
 year="${1:?usage: commit-results.sh <season>}"
 dir="maxpreps-$year"
-# The private folders this run wrote: the reader's captures, and the finals cross-check's report when there is one.
-private_dirs=("$dir")
-[ ! -d "private/davecampbells-$year" ] || private_dirs+=("davecampbells-$year")
+# What this run wrote to the private repo: the reader's captures (its whole folder), and the finals cross-check's two
+# files by name when there are any.
+private_paths=("$dir")
+for f in finals-check.csv team-ids.json; do [ ! -f "private/davecampbells-$year/$f" ] || private_paths+=("davecampbells-$year/$f"); done
 summary="${GITHUB_STEP_SUMMARY:-/dev/null}"
 output="${GITHUB_OUTPUT:-/dev/null}"
 read="${RUNNER_TEMP:?RUNNER_TEMP is needed}/read"
 
 rm -rf "$read" && mkdir -p "$read"
-for d in "${private_dirs[@]}"; do cp -r "private/$d" "$read/$d"; done
+for p in "${private_paths[@]}"; do mkdir -p "$(dirname "$read/$p")" && cp -r "private/$p" "$read/$p"; done
 for repo in private .; do
   git -C "$repo" config user.name "github-actions[bot]"
   git -C "$repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -36,8 +38,8 @@ for try in 1 2 3 4; do
   [ "$try" -le 3 ] || exit 1
   git -C private fetch -q origin main
   git -C private reset -q --hard origin/main
-  for d in "${private_dirs[@]}"; do rm -rf "private/${d:?}" && cp -r "$read/$d" "private/$d"; done
-  if [ -z "$(git -C private status --porcelain -- "${private_dirs[@]}")" ]; then
+  for p in "${private_paths[@]}"; do rm -rf "private/${p:?}" && mkdir -p "$(dirname "private/$p")" && cp -r "$read/$p" "private/$p"; done
+  if [ -z "$(git -C private status --porcelain -- "${private_paths[@]}")" ]; then
     echo "Private repo: no new captures." >> "$summary"
     break
   fi
@@ -45,7 +47,7 @@ for try in 1 2 3 4; do
     echo "Private repo: new captures, not pushed (not live, no \`write\` input)." >> "$summary"
     break
   fi
-  git -C private add -- "${private_dirs[@]}"
+  git -C private add -- "${private_paths[@]}"
   git -C private commit -q -m "$message"
   git -C private push -q origin HEAD:main && break
   echo "data-private main moved; try $try again"
