@@ -60,7 +60,9 @@ jobs:
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci --prefix apps/web
       - run: npm --prefix apps/web run typecheck
-      - name: Zod checks on every seed and robot-read file, and their tests
+      # The fan and account route tests (scripts/fan-routes.test.mjs) run the handlers on the real migrations in PGlite.
+      - run: npm ci --prefix packages/db
+      - name: Zod checks on every seed and robot-read file, the fan and account routes, and their tests
         run: node --test apps/web/scripts/*.test.mjs
       - name: Knip (unused files, exports and dependencies in apps/web; knip.json)
         working-directory: apps/web

@@ -72,7 +72,8 @@ fi
 # The `web-checks` job.
 run "Site packages" install apps/web
 run "Typecheck" npm --prefix apps/web run typecheck
-run "Data checks and build-script tests" sh -c 'node --test apps/web/scripts/*.test.mjs'
+run "Database package (PGlite, for the route tests)" install packages/db
+run "Data checks, route tests and build-script tests" sh -c 'node --test apps/web/scripts/*.test.mjs'
 run "Knip" sh -c "cd apps/web && npx --yes $KNIP --no-progress"
 if $quick; then
   skipped+=("Stories build (--quick)")
