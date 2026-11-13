@@ -3,6 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import { heading, loadAlignments, type Alignment } from "./alignments";
 import { parseCsv } from "./data-schemas";
+import { memo } from "./memo";
 import { type BracketGame, loadPlayoffGames, type PlayoffGame } from "./games";
 import { project } from "./projection";
 import { loadRatings, type RatingsTable } from "./ratings";
@@ -167,14 +168,14 @@ export function parseTemplate(csv: string): BracketTemplate {
   return out;
 }
 
-/** The template, or an empty one when the file has not been written. Read once per process. */
-export const loadBracketTemplate = (): Promise<BracketTemplate> => (template ??= readTemplate());
-let template: Promise<BracketTemplate> | undefined;
 const readTemplate = () =>
   readFile(path.join(process.cwd(), "../../data/seed", TEMPLATE_FILE), "utf8").then(parseTemplate, (e: NodeJS.ErrnoException) => {
     if (e.code === "ENOENT") return new Map() as BracketTemplate;
     throw e;
   });
+
+/** The template, or an empty one when the file has not been written. Read once per process: never mutate it. */
+export const loadBracketTemplate = memo<void, BracketTemplate>(readTemplate);
 
 /** Title chances for one bracket of a season's playoff games; regions and semifinal pairings apply to UIL only (ADR 0012). */
 export function bracketTitleChances(t: RatingsTable, alignments: Alignment[], template: BracketTemplate, name: string, games: PlayoffGame[]) {
