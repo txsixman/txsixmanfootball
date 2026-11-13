@@ -1,6 +1,7 @@
 // Waits for this run's web-build job (ci.yml), so the page-test shards and Lighthouse can set up (container, npm ci)
 // while the site builds instead of after. Writes site=true when the build uploaded its artifact, site=false when it
-// passed without one (a docs-only change), and fails if the build failed, was cancelled or took over 10 minutes.
+// passed without one (a docs-only change), and fails if the build failed, was cancelled or had not finished after 25
+// minutes (a queued build on a busy free-plan runner pool counts: page jobs failed that way on Nov 13, 2026).
 // One API call every 10 s (the token's limit is 1,000 calls an hour per repository).
 import { appendFileSync } from "node:fs";
 
@@ -15,7 +16,7 @@ async function get(path) {
   return res.json();
 }
 
-const deadline = Date.now() + 10 * 60_000;
+const deadline = Date.now() + 25 * 60_000;
 let errors = 0;
 while (Date.now() < deadline) {
   try {
@@ -42,5 +43,5 @@ while (Date.now() < deadline) {
   errors = 0;
   await new Promise((resolve) => setTimeout(resolve, 10_000));
 }
-console.error("web-build did not finish within 10 minutes.");
+console.error("web-build did not finish within 25 minutes.");
 process.exit(1);
