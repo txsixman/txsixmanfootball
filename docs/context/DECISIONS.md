@@ -51,3 +51,7 @@ Not in an ADR:
   TAIAO's robot-read row and the results robot use, so the slug matches; if TAIAO's spelling changes, change the TCAF row
   with it. The database keeps one team-season (first league in the file) and every league in `team_season_league`
   (migration 0009). A league change between seasons needs nothing new: each season's file says its league (Nov 11, 2026).
+- **A 0-0 "final" is no score.** MaxPreps sometimes posts 0-0 with a result for a placeholder or a cancelled game; the
+  results reader treats it as unplayed (no rating, record or streak), as the second source's reader does. A real tie
+  (7-7) stands, and a forfeit is still written 1-0 or 2-0. Before this, 0 to 4 such rows a season (2016 to 2026) were
+  read as finals (Nov 13, 2026).

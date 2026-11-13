@@ -8,6 +8,9 @@ import { slugify } from "./seed.mjs";
 const COLUMNS = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes";
 const REQUIRED = ["division", "round", "game_date", "home", "away", "source_url"];
 
+/** 0-0 with no forfeit: a placeholder or a cancelled game, never a result (a forfeit is written 1-0 or 2-0). */
+const isZeroZero = (home, away, endReason) => String(home) === "0" && String(away) === "0" && endReason !== "forfeit";
+
 export function parseGames(text) {
   const names = COLUMNS.split(",");
   const [header, ...lines] = text.trim().split("\n");
@@ -55,7 +58,8 @@ export async function seedGames(db, rows, { season, retrievedOn, reason }) {
 
     const result = { inserted: 0, updated: 0, unchanged: 0, flags: [] };
     for (const r of rows) {
-      const played = r.home_score !== "";
+      // A 0-0 "final" is no score (DECISIONS.md, Nov 13, 2026): it loads as a game not yet played.
+      const played = r.home_score !== "" && !isZeroZero(r.home_score, r.away_score, r.end_reason);
       const home = played ? Number(r.home_score) : null;
       const away = played ? Number(r.away_score) : null;
       const params = [
@@ -116,6 +120,15 @@ export async function seedGames(db, rows, { season, retrievedOn, reason }) {
         stored.set(key, { id, status: params[0], end_reason: params[1], end_period: params[2], home_score: home, away_score: away, neutral: params[5], game_date: r.game_date, url: r.source_url });
         result.inserted += 1;
       }
+    }
+
+    // A 0-0 final stored by an earlier load (before that rule) is blanked, whether or not this file still lists it:
+    // the reader leaves such a game out of games.csv, so nothing else would ever clear it. Counted as updated.
+    for (const g of stored.values()) {
+      if (g.status !== "final" || !isZeroZero(g.home_score, g.away_score, g.end_reason)) continue;
+      await tx.query("update game set status = 'scheduled', end_reason = null, end_period = null, home_score = null, away_score = null where id = $1", [g.id]);
+      Object.assign(g, { status: "scheduled", end_reason: null, end_period: null, home_score: null, away_score: null });
+      result.updated += 1;
     }
 
     await tx.query("insert into audit_log (entity, reason, after) values ('game_import', $1, $2)", [
