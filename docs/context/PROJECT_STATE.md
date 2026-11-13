@@ -38,7 +38,13 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   the bracket game's page (`<season>-<round>-<away>-at-<home>`) and its result's `href` points there, never a second page.
   Teams (crest, program link), score (a forfeit shows the word), unconfirmed, the week-before projection and how far the
   result was from it, each team's record (and rating, with a projection) going in, earlier meetings 2021 on (each its own
-  page), Share. Results rows, program schedules, "Why the rating moved", Records and a ranking's best win and worst loss link to it
+  page), Share. Results rows, program schedules, "Why the rating moved", Records and a ranking's best win and worst loss link to it.
+  Each title carries the date ("Away at Home, Nov 13, 2026"), so the same pair's meetings never share a title; a pair
+  with a series page gets "Every <away> and <home> game since 2021"; this season's games have their own share card
+  (`app/scores/[id]/card/route.tsx`, a route handler with its own static params), a past season's game the site's card
+- **Getting found** (live since Nov 13): open to search engines (robots, a sitemap of the public pages with no sample
+  games, `app/sitemap.ts`), canonical links, breadcrumbs, structured data (`lib/json-ld.ts`), a meta description per page
+  (below), and a 404 and an error page of the site's own (noindex, a plain search form, the main sections)
 - **Playoffs** `/playoffs` (UIL), `/playoffs/tapps`, `/taiao`, `/tcaf`: each 2026 bracket round by round
   (`lib/brackets.ts`), earlier games in the order of the later games they feed, projections for unplayed games; no
   winner named. Title chances (`lib/title-chances.ts`): UIL region chances once a region's bracket closes (data only, no
@@ -118,20 +124,26 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   `docs/licenses.md` (web-push is MPL-2.0, used unmodified and only in GitHub Actions)
 
 ## In progress
-- Round 7 (My teams, Share, Sherman Grayson as one program in TAIAO and TCAF, Friday readiness tests for the CenTex
-  alias and the Independent tab) on its PR. Logo round (ADR 0016, all 279 logos) building in a worktree
+- A second live-score source (ADR 0025, read with its owner's written permission, which the owner confirmed Nov 13) on
+  its PR; off until the repo variable `SECOND_LIVE` is `true`. Program season pages (Round N) on their PR.
+- Landed Nov 12 to 13: go-public (search engines), Round A (JSON-LD, share cards, canonical links, breadcrumbs), Rounds F,
+  G and H (embeddable scoreboard, sitemap, 404 page), J (descriptions), K (series pages), L (game pages link the series),
+  M (dated game titles), and the game-day clock (ADR 0024).
 
 ## Next three steps
 1. Past UIL alignments (2024-26 first): UIL's robots.txt disallows `/files/`, where the PDFs live, so a robot may not
    fetch them. Needs the owner to download the 2024-26 six-man PDFs by hand. Loader and reader plumbing waits, unmerged, on
    branch `worktree-agent-a5da57ea8cad69af1` (e1417b1); `app/rankings/view.tsx` must stop throwing on unknown teams first
-2. Check the first scheduled `Results watch` run in this repo (Fri Nov 13, 11:23 UTC, 5:23 AM CST): data-private
-   commit first, then this repo's, its rerate (now with `was`), alerts and the Supabase load after it
+2. Game-night reads: GitHub's `schedule` never fires in this repo, so reads come only by dispatch: a loop on the
+   owner's Mac (`gh workflow run results-watch.yml -f tonight=true` every 10 minutes) and the game-day clock
+   (`gameday-clock.yml`, ADR 0024, started by hand each season). Check tonight's runs: finals commit (data-private
+   first), live rows reach `live_score`, and the first in-progress summary sets `PERIOD_INDEX` in `maxpreps.mjs`
 3. Watch UIL region chances appear once area games are listed (around Nov 20) and round names as the playoffs advance
 
 ## Blockers and open items
 - **Remote:** public repo `txsixman/txsixmanfootball`; commits as `TX Six-Man Football <contact@txsixmanfootball.com>`.
-  Push with `GH_TOKEN="$(gh auth token)" git push`. Supabase is reached with `pg`. Raw captures: private
+  Work goes on a branch with a draft PR; a PR lands only by a fast-forward push of its green head (`git push origin
+  <sha>:main`), never `gh pr merge`, a rebase or a force-push. Supabase is reached with `pg`. Raw captures: private
   `txsixman/data-private` (ADR 0017); set `PRIVATE_DATA` to a checkout of it to rate or load exactly as main does.
 - **Cut-over done Thu Nov 12, 2026 (evening):** the old private repo's Results watch, League watch and Supabase
   workflows are disabled, `LIVE` is `true` here, and Vercel builds from this repo. Proofs before it: CI, League watch,
