@@ -85,7 +85,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
       - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: services/ratings/uv.lock
       - name: Season
         id: season
         run: |
@@ -97,11 +102,10 @@ jobs:
       - name: Read MaxPreps schedule pages
         # Any schedule but the morning one is a playoff-night run.
         run: node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} ${{ (inputs.tonight || (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0')) && '--tonight' || '' }}
-      - name: Rate the season
-        run: uv run --directory services/ratings python run.py --season ${{ steps.season.outputs.year }}
-      - name: Install the site's data checks (Zod)
-        run: npm ci --prefix apps/web
+      # The ratings model's own tests use only its sample games, and CI ran them on the main this checks out. A game-day
+      # tick (every 10 minutes) skips them so a new score publishes sooner; the morning read and a dispatch still run them.
       - name: Ratings model checks
+        if: github.event_name != 'schedule' || github.event.schedule == '23 11 * 8-12,1 5,6,0'
         run: uv run --directory services/ratings pytest -q
       - name: Commit, the private repo first, then this one
         id: commit
@@ -147,7 +151,9 @@ jobs:
               echo "No new results." >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-            # Zod checks on every file the site reads: a bad row fails the run here and never reaches main.
+            # Zod checks on every file the site reads: a bad row fails the run here and never reaches main. The checks'
+            # packages install only when there is something new to check (most game-day ticks have nothing).
+            [ -d apps/web/node_modules ] || npm ci --prefix apps/web --no-audit --no-fund
             node apps/web/scripts/check-data.mjs
             if [ "$WRITE" != true ]; then
               { echo "New results, not pushed (not live, no \`write\` input):"; git diff --stat -- data; } >> "$GITHUB_STEP_SUMMARY"
