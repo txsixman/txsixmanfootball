@@ -21,8 +21,10 @@ export type Identity = {
   mascot: string | null;
   colors: { name: string; hex: string }[];
   /** aspect is width over height; wide wordmarks need a wider box. light: a white mark that needs a dark tile (the measured `light`, unless the data says `tile`).
-   * `small`: a copy fitting 288x96 (twice a 48px crest's height up to aspect 3) for crests drawn at 48px or less (the SVG itself when the logo is an SVG). */
-  logo: { src: string; small: string; aspect: number; light: boolean } | null;
+   * `small`: a WebP copy fitting 288x96 (twice a 48px crest's height up to aspect 3) for crests drawn at 48px or less; `tiny`: one
+   * fitting 192x64 for crests drawn at 24px or less, most lists; `large`: one fitting 780x180 for the program page header
+   * (tools/school-identity/fetch-logos.mjs makes them, ADR 0022; the SVG itself when the logo is an SVG). `src` is the stored file. */
+  logo: { src: string; small: string; tiny: string; large: string; aspect: number; light: boolean } | null;
   theme: Theme;
 };
 
@@ -52,6 +54,13 @@ function themeFor(hexes: string[]): Theme {
   return { bg, fg, stripe };
 }
 
+/** The copies crests draw (ADR 0022): a PNG's WebP copies, or the SVG itself. */
+const copies = (file: string) => {
+  const webp = file.replace(/\.png$/, ".webp");
+  const svg = `/logos/${file}`;
+  return file.endsWith(".png") ? { small: `/logos/small/${webp}`, tiny: `/logos/tiny/${webp}`, large: `/logos/large/${webp}` } : { small: svg, tiny: svg, large: svg };
+};
+
 /** Shared across pages: never mutate it. */
 export const loadIdentities = memo<void, Map<string, Identity>>(async () => {
   const [identity, table] = await Promise.all([
@@ -75,7 +84,7 @@ export const loadIdentities = memo<void, Map<string, Identity>>(async () => {
     map.set(slug, {
       mascot: s.mascot,
       colors,
-      logo: s.logo?.file && !removed.has(slug) ? { src: `/logos/${s.logo.file}`, small: s.logo.file.endsWith(".png") ? `/logos/small/${s.logo.file}` : `/logos/${s.logo.file}`, aspect: s.logo.aspect ?? 1, light: s.logo.tile ? s.logo.tile === "dark" : Boolean(s.logo.light) }
+      logo: s.logo?.file && !removed.has(slug) ? { src: `/logos/${s.logo.file}`, ...copies(s.logo.file), aspect: s.logo.aspect ?? 1, light: s.logo.tile ? s.logo.tile === "dark" : Boolean(s.logo.light) }
           : null,
       theme: themeFor(colors.map((c) => c.hex)),
     });

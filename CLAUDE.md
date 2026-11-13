@@ -17,6 +17,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `packages/db/seed.mjs`, `games.mjs`, `champions.mjs`, `lineage.mjs`: alignment, game, state-final and lineage importers (safe to re-run, audited); `load.mjs` applies new
   migrations and every seed file to Supabase, then removes any program no alignment file lists that has no game, final or
   lineage row (each removal in `audit_log`); `supabase-ca.crt` is Supabase's public root certificate
+- `packages/db/live.mjs`: writes the file `maxpreps.mjs --live-out` made into `live_score` in one transaction (upsert, delete
+  what is not in it, delete rows over 6 hours old); run by `results-watch.yml` right after the read (ADR 0021)
 - `packages/core/six-man.mjs`: score checks from plan Appendix B (soft flags)
 - `services/ratings/`: censored-margin model (a season starts from last season and from each league's level; win chance is
   calibrated, `model.py`), Elo baseline, simulated-season comparison; `rows.py`: the one rule for what counts as a rated game
@@ -32,8 +34,11 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   (the school's own site for Community Christian and CenTex Chargers; `maxpreps-aliases.json` maps their MaxPreps pages)
 - `data/seed/tapps-2026-28/`: written by `tools/league-watch/tapps.mjs`, never by hand (ADR 0005)
 - `tools/league-watch/`: robot readers. `tapps.mjs` and `taiao.mjs` (alignments, weekly via `league-watch.yml`); `maxpreps.mjs` (game
-  results, Fri to Sun mornings Aug to Jan, plus every 30 minutes on playoff Friday nights (`--tonight`, ADR 0015), via `results-watch.yml`, which also rerates and commits to `main`; `--season 2025`
-  reads a past season's pages)
+  results, Fri to Sun mornings Aug to Jan, plus every 10 minutes noon to midnight on playoff game days (`--tonight`, ADRs 0015 and 0019), via `results-watch.yml`, which also rerates and commits to `main`; `--season 2025`
+  reads a past season's pages). A night read also writes the games under way (`--live-out`, ADR 0021) for `packages/db/live.mjs`,
+  which replaces the rows of the `live_score` table (migration 0016); the site reads it in the browser through the
+  public function `live_scores()` (`apps/web/lib/live-scores.ts`, `app/scores/live-score.tsx`; the Supabase URL and key
+  are `lib/supabase-public.ts`, shared with push). Never committed, never a rebuild; "Unconfirmed", no winner
 - `data/seed/maxpreps-<season>/`: `games.csv` (played games) and `playoffs.csv` (bracket games with league, division and
   round, for `/scores`), the facts only (ADR 0017): no `source_url` or `notes`. Published by
   `tools/league-watch/publish.mjs` from the reader's own folder, never by hand
@@ -47,6 +52,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - The repo variable `LIVE` (true from cut-over): until then no schedule writes, and alerts, the hosted database and the
   ratings-table commit do nothing. Proofs by hand: Results watch with `write` pushes both repos, an After merge
   run rates and commits the table, and a Supabase run (dispatched itself, not called) loads the hosted database
+- Site freshness (`site-freshness.yml`, hourly Nov–Dec, else every 6 hours, LIVE only): fails, so GitHub emails the
+  owner, when production's `/build.json` commit has lacked a data commit on main for over 30 minutes; Results watch's
+  `deployed` job reports "Deployed" or "Not yet" after each push (`.github/scripts/site-freshness.mjs`)
 - `data/seed/uil-champions/`: written by `tools/history/uil-champions.mjs` from UIL's own final archive, never by
   hand: `six-man.csv` (every six-man state final since 1972) and `six-man-no-final.csv` (1941 to 1971, no state final).
   UIL's town-plus-school spellings map to current names in `tools/history/uil-aliases.json`. Rerun after each December final: `UIL_CACHE=$TMPDIR/uil NODE_USE_ENV_PROXY=1 node tools/history/uil-champions.mjs`
@@ -57,8 +65,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `tools/school-identity/`: `merge.mjs` fills gaps from research batches, `wikipedia.mjs` fills colors and mascots
   from infoboxes, `fetch-logos.mjs` downloads logos (outside a sandbox; `--refresh` all, `--rebuild` from the originals,
   `--only slug,slug`), keeps each untouched original in `data/seed/schools/logo-originals/` and stores the tidied
-  copy (fits 1200x320, plus a 288x96 copy in `small/`) in `apps/web/public/logos/`; `measure.mjs` is its tidy and
-  light-mark rules; `audit-logos.mjs` lists logos that look wrong; `contact-sheet.mjs` draws every logo on white and navy
+  copy (fits 1200x320) in `apps/web/public/logos/`, plus the WebP copies crests draw (`tiny/`, `small/`,
+  `large/`, ADR 0022); `measure.mjs` is its tidy and light-mark rules; `audit-logos.mjs` lists logos that look
+  wrong; `contact-sheet.mjs` draws every logo on white and navy
 - `apps/web`: Next.js site (Vercel, Root Directory `apps/web`); `lib/score-display.ts` holds the winner and
   verification rules (ADR 0004); `lib/demo-games.ts` is invented schools only
 - `tools/push/`: score alerts (web-push), sent by `results-watch.yml` after it pushes new finals; subscriptions in
@@ -80,6 +89,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   project's logs, advisors and settings are dashboard-only (the owner, Nov 11, 2026: the org stays where it is). Never
   run `supabase login` or `supabase link` for this project. `supabase.yml` also runs every Monday, because a free
   project pauses after 7 days without activity
+- `scripts/check.sh` (`--quick` skips the throwaway database and the stories build): every CI check that needs no
+  build, in one command, with a pass/fail summary; run it before pushing. The commands it runs are listed below
 - `uv run --directory services/ratings pytest -q`: ratings tests
 - `uv run --directory services/ratings python run.py --simulate`: compare models on simulated seasons
 - `uv run --directory services/ratings python run.py --season 2026`: rate every game file of a season into `data/ratings`
@@ -100,8 +111,13 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   `data/` changed (the project's Ignored Build Step). Never `vercel env pull` or `vercel deploy` from a laptop:
   pushes to `main` deploy, branches get protected previews. `vercel link` writes a short-lived OIDC token to
   `.env.local`; delete it, the site uses none
-- `node apps/web/scripts/check-data.mjs`: Zod check of every seed and robot-read file (`lib/data-schemas.ts`); the
-  robots run it before they commit. `node --test apps/web/scripts/*.test.mjs`: its tests and the build scripts' tests
+- `node apps/web/scripts/check-data.mjs`: Zod check of every seed and robot-read file (`lib/data-schemas.ts`), then
+  the cross-file checks (`scripts/data-integrity.mjs`: hard ones fail, on the current season; soft ones warn in the
+  run summary); the robots run it before they commit. Results watch runs the cross-file checks with
+  `INTEGRITY=report`: a failure goes to the run summary, the results are pushed anyway (one bad source row must not
+  hold back the finals), and the job fails after the push; Zod failures still block. Fix a hard failure with a correction or an alias, never by
+  editing robot output; one the source cannot settle goes in `data/integrity-exceptions.json` with its reason (an
+  exception that matches nothing fails, so remove it once fixed). `node --test apps/web/scripts/*.test.mjs`: its tests and the build scripts' tests
 - `(cd apps/web && npx --yes knip@6.45.1)`: unused files, exports and dependencies (a CI check; unexport, don't ignore)
 - `uvx ruff@0.17.4 check && uvx ruff@0.17.4 format --check`: Python lint and format (`ruff.toml`, a CI check)
 - `npm --prefix apps/web run stories` (Ladle, :61000): components in every state, invented schools only;

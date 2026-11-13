@@ -56,6 +56,12 @@ body {
 @utility btn {
   @apply inline-flex min-h-11 items-center justify-center border-2 border-navy px-4 font-bold text-navy hover:bg-panel;
 }
+/* A school's name as a link inside a line of text (a schedule row: "at Ira"). At least 44 by 44, with the name left exactly
+   where it was: a short name ("Ira", 18px) gets a target that runs on to its right. Never padding on both sides: a
+   long name at the edge of a row would push the page wider than a phone (scores.spec.ts's program pages, Nov 13). */
+@utility name-link {
+  @apply inline-flex min-h-11 min-w-11 items-center hover:text-navy hover:underline;
+}
 @utility btn-red {
   @apply inline-flex min-h-11 items-center justify-center border-2 border-red bg-red px-4 font-bold text-white hover:brightness-110;
 }

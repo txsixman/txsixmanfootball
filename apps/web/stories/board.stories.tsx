@@ -27,7 +27,7 @@ const crests: Record<string, Identity> = Object.fromEntries(
     {
       mascot: team.mascot,
       colors: [],
-      logo: team.name === "Cedar Gap" ? { src: mark, small: mark, aspect: 1, light: false } : null,
+      logo: team.name === "Cedar Gap" ? { src: mark, small: mark, tiny: mark, large: mark, aspect: 1, light: false } : null,
       theme: { bg: team.color, fg: "#ffffff", stripe: null },
     },
   ]),

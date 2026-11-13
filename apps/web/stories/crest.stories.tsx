@@ -26,9 +26,9 @@ const Row = ({ identity, maxAspect }: { identity: Identity; maxAspect?: number }
 );
 
 export const MissingLogo = () => <Row identity={school(null)} />;
-export const DarkLogo = () => <Row identity={school({ src: mark(100, "#7a1f2b", "CG"), small: mark(100, "#7a1f2b", "CG"), aspect: 1, light: false })} />;
-export const LightLogo = () => <Row identity={school({ src: mark(100, "#ffffff", "CG"), small: mark(100, "#ffffff", "CG"), aspect: 1, light: true })} />;
+export const DarkLogo = () => <Row identity={school({ src: mark(100, "#7a1f2b", "CG"), small: mark(100, "#7a1f2b", "CG"), tiny: mark(100, "#7a1f2b", "CG"), large: mark(100, "#7a1f2b", "CG"), aspect: 1, light: false })} />;
+export const LightLogo = () => <Row identity={school({ src: mark(100, "#ffffff", "CG"), small: mark(100, "#ffffff", "CG"), tiny: mark(100, "#ffffff", "CG"), large: mark(100, "#ffffff", "CG"), aspect: 1, light: true })} />;
 export const WideLogo = () => (
-  <Row identity={school({ src: mark(380, "#7a1f2b", "CEDAR GAP"), small: mark(380, "#7a1f2b", "CEDAR GAP"), aspect: 3.8, light: false })} maxAspect={4.8} />
+  <Row identity={school({ src: mark(380, "#7a1f2b", "CEDAR GAP"), small: mark(380, "#7a1f2b", "CEDAR GAP"), tiny: mark(380, "#7a1f2b", "CEDAR GAP"), large: mark(380, "#7a1f2b", "CEDAR GAP"), aspect: 3.8, light: false })} maxAspect={4.8} />
 );
-export const TooWideLogo = () => <Row identity={school({ src: mark(380, "#7a1f2b", "CEDAR GAP"), small: mark(380, "#7a1f2b", "CEDAR GAP"), aspect: 3.8, light: false })} />;
+export const TooWideLogo = () => <Row identity={school({ src: mark(380, "#7a1f2b", "CEDAR GAP"), small: mark(380, "#7a1f2b", "CEDAR GAP"), tiny: mark(380, "#7a1f2b", "CEDAR GAP"), large: mark(380, "#7a1f2b", "CEDAR GAP"), aspect: 3.8, light: false })} />;

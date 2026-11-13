@@ -50,14 +50,16 @@ export function project(table: RatingsTable, home: string, away: string, neutral
     : { favorite: away, margin: -margin, winProbability: 1 - p };
 }
 
+/** A chance as a percent: never 100% or 0%. */
+export const chanceText = (p: number) => (p > 0.99 ? ">99%" : p < 0.01 ? "<1%" : `${Math.round(p * 100)}%`);
+
 /** The two halves of the text: "Jayton by 12" and "74% win probability". A margin past 45 reads "by 45+", since the
  * game would end there; one that rounds to 0 reads "by less than 1", never a margin the win probability contradicts. */
 export function projectionParts({ favorite, margin, winProbability }: Projection): { margin: string; chance: string } {
   const by = margin >= 45 ? "45+" : margin < 0.5 ? "less than 1" : String(Math.round(margin));
   // ">99%" is earned: in the walk-forward backtest (2022 to 2026) the favorite won 99.6% of the 695 games the calibrated
   // chance put at 99% or more (data/ratings/backtest.json, calibration.bands_calibrated). Nothing is ever shown as 100%.
-  const pct = winProbability > 0.99 ? ">99%" : `${Math.round(winProbability * 100)}%`;
-  return { margin: `${favorite} by ${by}`, chance: `${pct} win probability` };
+  return { margin: `${favorite} by ${by}`, chance: `${chanceText(winProbability)} win probability` };
 }
 
 /** "Jayton by 12 · 74% win probability". */

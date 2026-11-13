@@ -1,13 +1,17 @@
 // Checks every seed and robot-read file the site reads against lib/data-schemas.ts (Zod), the same checks the site's
 // loaders run at build time. The robot workflows run it after they write and before they commit, so a bad row fails
-// the run and never reaches main; CI runs it on every push. Prints one line a file; exits 1 if any file is bad.
+// the run and never reaches main; CI runs it on every push. Prints one line a file; exits 1 if any file is bad. Then the
+// cross-file checks (data-integrity.mjs): hard ones fail the run too, soft ones print and go to the step summary.
 //   node apps/web/scripts/check-data.mjs [repo root]
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildCorrections } from "../lib/corrections.ts";
+import { applyToGame, buildCorrections } from "../lib/corrections.ts";
 import * as s from "../lib/data-schemas.ts";
+import { CURRENT_SEASON } from "../lib/season.ts";
+import { slugify } from "../lib/slug.ts";
+import { applyExceptions, checkSeason, gameKey } from "./data-integrity.mjs";
 
 const root = path.resolve(process.argv[2] ?? path.join(import.meta.dirname, "../../.."));
 const seed = (...p) => path.join("data/seed", ...p);
@@ -92,6 +96,45 @@ export function checkAll() {
   return results;
 }
 
+/** Hand-captured playoff games (lib/games.ts CAPTURES): a robot row for a game captured by hand is left out there too. */
+const CAPTURES = [{ file: seed("uil-2026-28/playoffs-2026.csv"), league: "UIL", season: CURRENT_SEASON }];
+const EXCEPTIONS = "data/integrity-exceptions.json";
+
+/**
+ * The cross-file checks (data-integrity.mjs) on every season, with the corrections applied as the site applies them.
+ * Run after checkAll passed, on the same files. `failures`: hard problems (current season) not excused by
+ * data/integrity-exceptions.json; `warnings`: everything soft, and history; `excused`: the known ones, still shown.
+ */
+export function checkIntegrity(today = new Date().toISOString().slice(0, 10)) {
+  const read = (file, columns, schema) => (existsSync(path.join(root, file)) ? s.parseCsv(file, readFileSync(path.join(root, file), "utf8"), columns, schema).map(({ row }) => row) : []);
+  const fixes = buildCorrections(read(CORRECTIONS.programs, s.PROGRAM_MERGE_COLUMNS, s.ProgramMergeRow), read(CORRECTIONS.games, s.GAME_CORRECTION_COLUMNS, s.GameCorrectionRow));
+  const fixed = (rows) => rows.flatMap((r) => applyToGame(fixes, r)?.row ?? []);
+  const alignments = readdirSync(path.join(root, "data/seed"))
+    .filter((d) => existsSync(path.join(root, seed(d, "alignments.csv"))))
+    .flatMap((d) => read(seed(d, "alignments.csv"), s.ALIGNMENT_COLUMNS, s.AlignmentRow));
+  const programs = new Set(alignments.map((a) => slugify(a.school)));
+
+  const hard = [];
+  const warnings = [];
+  const seasons = readdirSync(path.join(root, "data/seed")).flatMap((d) => /^maxpreps-(\d{4})$/.exec(d)?.[1] ?? []).map(Number).sort();
+  for (const season of seasons) {
+    const games = fixed(read(seed(`maxpreps-${season}`, "games.csv"), s.RESULT_COLUMNS, s.PlayedGameRow));
+    const captured = CAPTURES.filter((c) => c.season === season).flatMap((c) => fixed(read(c.file, s.GAME_COLUMNS, s.PlayoffRow)).map((r) => ({ ...r, league: c.league })));
+    const seen = new Set(captured.map(gameKey));
+    const robot = fixed(read(seed(`maxpreps-${season}`, "playoffs.csv"), ["league", ...s.RESULT_COLUMNS], s.RobotPlayoffRow)).filter((r) => !seen.has(gameKey(r)));
+    const current = season === CURRENT_SEASON;
+    const out = checkSeason({ season, current, games, playoffs: [...captured, ...robot], programs: current ? programs : undefined, today });
+    hard.push(...out.hard);
+    warnings.push(...out.soft);
+  }
+  const exceptions = existsSync(path.join(root, EXCEPTIONS)) ? JSON.parse(readFileSync(path.join(root, EXCEPTIONS), "utf8")) : [];
+  // No source column: this repo names no source (ADR 0010); the private data repo keeps the game's pages.
+  const bad = exceptions.filter((e) => !(typeof e?.key === "string" && typeof e.reason === "string" && e.reason.length > 20 && /^\d{4}-\d{2}-\d{2}$/.test(e.reviewed ?? "")));
+  const { failures, excused } = applyExceptions(hard, exceptions.filter((e) => !bad.includes(e)));
+  for (const e of bad) failures.push(`${EXCEPTIONS}: an exception needs a key, a reason and a reviewed date: ${JSON.stringify(e).slice(0, 120)}`);
+  return { failures, warnings, excused };
+}
+
 /**
  * Every stored logo has its untouched original on disk, byte for byte what was downloaded (its sha256), and every
  * edited logo (`edit` note) has the stored file it describes (ADR 0016).
@@ -117,5 +160,40 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const r of results) console.log(`${r.ok ? "ok  " : "BAD "} ${r.file}: ${r.note}`);
   const bad = results.filter((r) => !r.ok).length;
   console.log(bad ? `${bad} file(s) failed the data checks.` : `All ${results.length} data files pass.`);
-  process.exit(bad ? 1 : 0);
+  if (bad) process.exit(1);
+  // The cross-file checks need every file to parse, so they run only after the checks above pass.
+  process.exit(reportIntegrity(checkIntegrity(), process.env));
+}
+
+/**
+ * Prints the cross-file results, adds them to the run summary, and gives the exit code. INTEGRITY=report (Results watch,
+ * during the playoffs): a hard failure still prints and goes to the summary, and to the file INTEGRITY_REPORT names,
+ * but exits 0, so one bad source row never holds back every final on a Friday night; the workflow fails the job from
+ * that file after its push, so the owner is still emailed. Anything else: a hard failure exits 1 (CI, check.sh).
+ * The Zod checks above never take this path: a malformed row always blocks.
+ */
+export function reportIntegrity({ failures, warnings, excused }, env = {}, log = console.log) {
+  const report = env.INTEGRITY === "report";
+  for (const f of failures) log(`BAD  integrity: ${f}`);
+  for (const e of excused) log(`known integrity: ${e}`);
+  for (const w of warnings) log(`warn integrity: ${w}`);
+  log(
+    failures.length
+      ? `${failures.length} cross-file check(s) failed${report ? " (report mode: not blocking; the job fails after its push)" : "."}`
+      : `Cross-file checks pass (${excused.length} known, ${warnings.length} warning(s)).`,
+  );
+  if (env.GITHUB_STEP_SUMMARY && (failures.length || warnings.length || excused.length)) {
+    const list = (title, items) => (items.length ? `\n**${title}**\n\n${items.map((i) => `- ${i}`).join("\n")}\n` : "");
+    const failed = report ? "Failed (reported; pushed anyway, the job fails at the end)" : "Failed";
+    appendFileSync(env.GITHUB_STEP_SUMMARY, `### Data checks\n${list(failed, failures)}${list("Known (data/integrity-exceptions.json)", excused)}${list("Warnings", warnings)}\n`);
+  }
+  if (report && failures.length) {
+    if (!env.INTEGRITY_REPORT) {
+      log("INTEGRITY=report needs INTEGRITY_REPORT (a file the workflow fails on after its push); blocking instead.");
+      return 1;
+    }
+    appendFileSync(env.INTEGRITY_REPORT, failures.map((f) => `${f}\n`).join(""));
+    return 0;
+  }
+  return failures.length ? 1 : 0;
 }

@@ -1,8 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import { mkdirSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { demoGames } from "../lib/demo-games";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test);
 
 // Accessibility and phone-use fixes from the pages audit (Group 3 items 2 to 8, Group 4 item 5), the forfeit wording on
 // the game page, the latest-season redirects and the program page's section order.

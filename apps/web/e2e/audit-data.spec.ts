@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import path from "node:path";
 import type { Alignment } from "../lib/alignments";
 import { loadFinals, titleCounts } from "../lib/champions";
@@ -7,6 +8,9 @@ import { parseCsv, PlayoffRow, GAME_COLUMNS } from "../lib/data-schemas";
 import { projectionParts, projectionText } from "../lib/projection";
 import { signed } from "../lib/signed";
 import { slugify } from "../lib/slug";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test);
 
 // Data and lib fixes from the pages audit: sources stay out of the browser (ADR 0010), one season constant, the same
 // round names on every page, titles counted by program, district records without playoff games, honest rounding.

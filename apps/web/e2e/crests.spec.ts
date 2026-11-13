@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test);
 
 // Every team name beside a school's crest (ADR 0006, ADR 0016): the logo when it is at most 1.6 times wider than tall,
 // else the school's initials badge. The expectation comes from data/seed/schools/identity.json, so a new logo that is
@@ -88,5 +92,5 @@ test("program page: big crest takes a wide logo; schedule, most played and distr
 
   // The big crest (program page) draws logos up to 4.8 wide: Community Christian's is 4.36.
   await page.goto("/programs/community-christian", { waitUntil: "networkidle" });
-  await expect(page.locator("header img[src='/logos/community-christian.png']")).toBeVisible();
+  await expect(page.locator("header img[src='/logos/large/community-christian.webp']")).toBeVisible();
 });

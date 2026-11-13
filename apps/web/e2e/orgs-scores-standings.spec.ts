@@ -1,8 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { CENTEX, ORG_TABS } from "./independent";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test);
 
 // ADR 0012: each organization stands alone on Scores, Standings, Programs and the Matchup pickers.
 
@@ -120,7 +124,7 @@ test("the programs finder groups schools by organization, never one mixed list",
     await expect(page.locator(`#org-${org}`).getByRole("link", { name: /Grayson Christian/ })).toHaveAttribute("href", "/programs/sherman-grayson-christian-school");
   }
   await page.goto("/programs/sherman-grayson-christian-school");
-  await expect(page.locator("main img").first()).toHaveAttribute("src", "/logos/sherman-grayson-christian-school.png");
+  await expect(page.locator("main img").first()).toHaveAttribute("src", "/logos/large/sherman-grayson-christian-school.webp");
   await expect(page.locator("main")).toContainText("Savoy");
   expect((await page.goto("/programs/grayson-christian"))?.status()).toBe(404);
 });

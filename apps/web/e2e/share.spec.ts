@@ -1,6 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import { demoGames } from "../lib/demo-games";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test);
 
 // The Share button on program pages and game pages: the share sheet when the browser has one, else copy the link.
 

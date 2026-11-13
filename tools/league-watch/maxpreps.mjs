@@ -5,9 +5,16 @@
 //   node tools/league-watch/maxpreps.mjs [--season 2027]
 // writes maxpreps-<season>/games.csv, teams.csv (every team page found, the next run's seeds) and coverage.txt in
 // $PRIVATE_DATA (the private data repo; data/seed without it). tools/league-watch/publish.mjs copies the facts here.
+//   node tools/league-watch/maxpreps.mjs --due data/seed/maxpreps-2026/playoffs.csv
+// prints how many bracket games of tonight have no score yet (results-watch.yml reads only when it is not 0).
+//   node tools/league-watch/maxpreps.mjs --canary
+// reads one seed team's schedule page and fails if MaxPreps changed its shape (maxpreps-canary.yml, before game nights).
 //   node tools/league-watch/maxpreps.mjs --tonight
-// (playoff Friday nights, ADR 0015) reads only the pages of teams whose bracket game today has no score yet, one page a
+// (playoff game days, ADRs 0015 and 0019) reads only the pages of teams whose bracket game today has no score yet, one page a
 // game, and fills those finals into playoffs.csv and games.csv; every other row and file is left as it was.
+//   node tools/league-watch/maxpreps.mjs --tonight --live-out <file>
+// also writes the games of tonight that show a score but no final yet (live scores, ADR 0021) to <file> as JSON, for
+// packages/db/live.mjs; the repo's files never change for a live score.
 // The season defaults to the one under way: August to January belongs to the year it started. A past season is read
 // from the same team pages with the season segment in the path (--season 2025 reads .../football/25-26/schedule/).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -66,6 +73,19 @@ export const slugify = (name) => name.toLowerCase().replace(/'/g, "").replace(/[
 // contest[18] the game page. Narrative text (contest[29]) is never read.
 const T = { result: 5, score: 6, homeAway: 11, url: 13, name: 14, city: 15, state: 16, contestId: 26 };
 const C = { deleted: 3, hasResult: 4, start: 11, gameUrl: 18 };
+// The contest index that holds the period of a game under way ("Q3", 3, "Half" ...). NOT KNOWN: nobody has seen a real
+// in-progress page yet. Each tonight run's summary lists the fields of such a contest (inProgressShape, "contest 4=false
+// 12=...") from which to read the index; set it here then (and add the mapping in `periodText`). Until it is a number the
+// period of a live game is null and pages show the score alone. Never guess it.
+export const PERIOD_INDEX = null;
+
+/** A live game's period as short plain text, from the contest array, or null (no index set, nothing there, or not short text). */
+export function periodText(contest, index = PERIOD_INDEX) {
+  if (index === null) return null;
+  const v = contest[index];
+  const text = typeof v === "number" ? `Q${v}` : typeof v === "string" ? v.trim() : "";
+  return /^[A-Za-z0-9 ]{1,12}$/.test(text) ? text : null;
+}
 
 /** A team's page without any schedule path: past-season pages link their teams as .../football/25-26/schedule/. */
 export const teamPage = (url) => url.replace(/(?:\d{2}-\d{2}\/)?schedule\/$/, "");
@@ -108,6 +128,9 @@ export function parseSchedule(html) {
       home,
       away,
       played: c[C.hasResult] === true && home.score !== null && away.score !== null,
+      // Both teams have a score but the game has no result yet: it is under way (ADR 0021). `played` is unchanged.
+      live: c[C.hasResult] !== true && home.score !== null && away.score !== null,
+      period: periodText(c),
       bracket: brackets.get(String(c[0][0][T.contestId])) ?? null,
       gameUrl: typeof c[C.gameUrl] === "string" ? c[C.gameUrl] : null,
     });
@@ -392,7 +415,7 @@ async function main() {
 export const centralDate = (now = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(now);
 
 /** The game night a run belongs to: until 6 AM Central it is still the night before, so the midnight run (and a run
- * GitHub starts late) reads Friday's games, not Saturday's. */
+ * GitHub starts late) reads that night's games (Thursday's, Friday's or Saturday's), not the next day's. */
 export const gameNight = (now = new Date()) => centralDate(new Date(now.getTime() - 6 * 3600_000));
 
 const parseRows = (text) => {
@@ -441,29 +464,123 @@ export function mergeTonight({ playoffsText, gamesText, finals, bySlug }) {
   };
 }
 
+/**
+ * The games under way tonight, as the rows live.mjs writes (ADR 0021): games of `date` that parseSchedule marked live, whose
+ * two teams are in our alignments (slugs set) and that are one of tonight's still-unscored bracket games (`due`). One row
+ * a game, the key the site uses (`gameKey` in lib/games.ts: date, then both slugs sorted). Scores outside 0 to 200 are
+ * skipped, never written; so is a 0-0 with no period (while PERIOD_INDEX is null that is every 0-0): a game not yet
+ * started may list 0-0, and "Live 0-0" before kickoff would be wrong. A 0-0 shows once its period is known.
+ */
+export function liveRows(games, date, due, readAt = new Date()) {
+  const dueKeys = new Set(due.map((r) => pairKey(r.game_date, r.home, r.away)));
+  const rows = new Map();
+  for (const g of games) {
+    if (!g.live || g.date !== date || !g.home.slug || !g.away.slug) continue;
+    const key = pairKey(g.date, g.home.slug, g.away.slug);
+    if (!dueKeys.has(key) || rows.has(key)) continue;
+    if (![g.home.score, g.away.score].every((n) => Number.isInteger(n) && n >= 0 && n <= 200)) continue;
+    if (g.home.score === 0 && g.away.score === 0 && !g.period) continue;
+    rows.set(key, { game_key: key, home: g.home.slug, away: g.away.slug, home_score: g.home.score, away_score: g.away.score, period: g.period ?? null, read_at: readAt.toISOString() });
+  }
+  return [...rows.values()].sort((a, b) => a.game_key.localeCompare(b.game_key));
+}
+
+/**
+ * How a page shows a game under way: contests of `date` with a score but no result yet, as their numeric and boolean
+ * fields and short strings ("4=false 7=3 ..."), the teams' numeric and boolean fields after. Logged only, to learn where
+ * the period and status live before live scores are built (ADR 0019). Never names, links, places or narrative.
+ */
+export function inProgressShape(html, date) {
+  const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  const contests = (m && JSON.parse(m[1])?.props?.pageProps?.contests) || [];
+  const scalar = (v) => typeof v === "number" || typeof v === "boolean";
+  const fields = (arr, ok) => arr.flatMap((v, i) => (ok(v, i) ? [`${i}=${v}`] : [])).join(" ");
+  return contests
+    .filter((c) => Array.isArray(c?.[0]) && String(c[C.start] ?? "").startsWith(date) && c[C.hasResult] !== true && c[0].some((t) => typeof t?.[T.score] === "number"))
+    .map((c) => [
+      `contest ${fields(c, (v, i) => i > 0 && i !== 29 && (scalar(v) || (typeof v === "string" && v.length <= 24 && !v.includes("/"))))}`,
+      ...c[0].map((t, n) => `team ${n} ${fields(Array.isArray(t) ? t : [], scalar)}`),
+    ].join(" | "));
+}
+
 async function tonight() {
   const date = gameNight();
   const [playoffsFile, gamesFile] = ["playoffs.csv", "games.csv"].map((f) => path.join(OUT, f));
   const due = tonightsGames(readFileSync(playoffsFile, "utf8"), date);
-  if (!due.length) return console.log(`No bracket game without a score on ${date}: nothing read.`);
+  const liveOut = process.argv.includes("--live-out") ? process.argv[process.argv.indexOf("--live-out") + 1] : null;
+  if (process.argv.includes("--live-out") && (!liveOut || liveOut.startsWith("--"))) throw new Error("--live-out needs a file");
+  if (!due.length) {
+    // Nothing is due, so nothing is live: an empty list clears any live row the database still holds.
+    if (liveOut) writeFileSync(liveOut, "[]\n");
+    return console.log(`No bracket game without a score on ${date}: nothing read.`);
+  }
   const bySlug = loadAlignments();
   const pageOf = new Map(readFileSync(path.join(OUT, "teams.csv"), "utf8").trim().split("\n").slice(1).map((l) => l.split(",")));
   // One page a game: either team's schedule lists it.
   const urls = [...new Set(due.map((r) => pageOf.get(slugify(r.home)) ?? pageOf.get(slugify(r.away))).filter(Boolean))];
   const finals = [];
+  const live = [];
+  const underway = [];
   for (const [i, teamUrl] of urls.entries()) {
     const page = await fetchSchedule(teamUrl);
+    if (page) underway.push(...inProgressShape(page.html, date));
     for (const g of page ? parseSchedule(page.html) : []) {
-      if (g.date !== date || !g.played) continue;
+      if (g.date !== date || !(g.played || g.live)) continue;
       for (const t of [g.home, g.away]) t.slug = match(t, bySlug);
-      if (g.home.slug && g.away.slug) finals.push(g);
+      if (g.home.slug && g.away.slug) (g.played ? finals : live).push(g);
     }
     if (i < urls.length - 1 && !page?.cached) await sleep(DELAY_MS);
   }
   const merged = mergeTonight({ playoffsText: readFileSync(playoffsFile, "utf8"), gamesText: readFileSync(gamesFile, "utf8"), finals, bySlug });
   writeFileSync(playoffsFile, merged.playoffs);
   writeFileSync(gamesFile, merged.games);
-  console.log(`${date}: ${due.length} bracket games without a score, ${urls.length} pages read, ${merged.filled} finals filled in.`);
+  // Games that went final in this very read are no longer live (a bracket row now has their score).
+  const stillDue = tonightsGames(merged.playoffs, date);
+  const liveNow = liveRows(live, date, stillDue);
+  if (liveOut) writeFileSync(liveOut, `${JSON.stringify(liveNow, null, 2)}\n`);
+  console.log(`${date}: ${due.length} bracket games without a score, ${urls.length} pages read, ${merged.filled} finals filled in, ${liveNow.length} under way.`);
+  const note = underway.length
+    ? [`Games showing a score before the final (${underway.length}):`, ...new Set(underway)].join("\n")
+    : "No game on these pages showed a score before its final.";
+  console.log(note);
+  if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${note.replaceAll("\n", "  \n")}\n`, { flag: "a" });
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--tonight") ? tonight() : main());
+/**
+ * What is wrong with one schedule page's games, for the canary: nothing (an empty list) on a healthy page. Once the
+ * season is a month old, a seed team must have played games with both scores; every game falls inside the season.
+ */
+export function canaryProblems(games, season, today = new Date()) {
+  const problems = [];
+  if (games.length === 0) return ["no games on the page"];
+  const start = `${season}-08-01`;
+  const end = `${season + 1}-01-31`;
+  const outside = games.filter((g) => g.date < start || g.date > end);
+  if (outside.length) problems.push(`${outside.length} game(s) dated outside the season (${outside[0].date})`);
+  const monthIn = new Date(`${season}-09-15T00:00:00Z`);
+  if (today >= monthIn && !games.some((g) => g.played)) problems.push("no played game with both scores after mid-September");
+  if (games.some((g) => !g.home.name || !g.away.name)) problems.push("a game without both team names");
+  return problems;
+}
+
+/** `--canary`: one seed page, read and checked. Exits 1, so the workflow fails and its owner is emailed, on any problem. */
+async function canary() {
+  const page = await fetchSchedule(SEEDS[0]);
+  if (!page) throw new Error(`${scheduleUrl(SEEDS[0], SEASON)}: no page (404 or redirect)`);
+  const games = parseSchedule(page.html); // throws on a page shape this reader does not know
+  const problems = canaryProblems(games, SEASON);
+  const note = problems.length
+    ? [`MaxPreps canary: ${problems.length} problem(s) on ${page.url}`, ...problems].join("\n")
+    : `MaxPreps canary: ${games.length} games, ${games.filter((g) => g.played).length} played, shape as expected.`;
+  console.log(note);
+  if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${note.replaceAll("\n", "  \n")}\n`, { flag: "a" });
+  if (problems.length) process.exitCode = 1;
+}
+
+/** `--due <playoffs.csv>`: how many bracket games of tonight have no score yet. The workflow reads only when it is not 0. */
+function due() {
+  const file = process.argv[process.argv.indexOf("--due") + 1];
+  console.log(tonightsGames(readFileSync(file, "utf8"), gameNight()).length);
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--due") ? due() : process.argv.includes("--canary") ? canary() : process.argv.includes("--tonight") ? tonight() : main());

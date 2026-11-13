@@ -1,8 +1,8 @@
-import { type Alignment, loadAlignments, programsFor } from "@/lib/alignments";
-import { memo } from "@/lib/memo";
-import { orgByLeague, orgHref, type Org } from "@/lib/orgs";
-import { placeRows, rangeText } from "@/lib/rank-range";
-import { loadRatings, type RatingRow } from "@/lib/ratings";
+import { type Alignment, loadAlignments, programsFor } from "./alignments";
+import { memo } from "./memo";
+import { orgByLeague, orgHref, type Org } from "./orgs";
+import { placeRows, rangeText } from "./rank-range";
+import { loadRatings, type RatingRow } from "./ratings";
 
 // The rankings, for pages that need one team's place. One rating scale underneath, but a rank is a place within ONE
 // organization (ADR 0012): `inOrg` among its organization's teams, `inDivision` among UIL six-man Division I or II.

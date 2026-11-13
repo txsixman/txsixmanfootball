@@ -1,5 +1,6 @@
 import type { Game } from "./demo-games";
 import type { SeasonResult } from "./games";
+import { isForfeit } from "./score-display";
 
 /** One game of a school's season: a robot-read result or a playoff game, each with its own page (a playoff game also has a projection until played). */
 export type Row = { id: string; date: string; status: string; home: boolean; opponent: string; score: string | null; note?: string; href: string };
@@ -9,8 +10,9 @@ const dateLabel = (iso: string) => {
   return `${d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })} ${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
 };
 
-/** A robot-read result from `school`'s side. A forfeit shows the word, never the 1-0 or 2-0 (ADR 0004). */
-export function fromResult(school: string, r: SeasonResult): Row {
+/** A robot-read result from `school`'s side. A forfeit shows the word, never the 1-0 or 2-0 (ADR 0004). `note`: for a playoff
+ * game, its bracket and round; it names no winner. */
+export function fromResult(school: string, r: SeasonResult, note?: string): Row {
   const home = r.home === school;
   return {
     id: r.id,
@@ -19,6 +21,7 @@ export function fromResult(school: string, r: SeasonResult): Row {
     home,
     opponent: home ? r.away : r.home,
     href: r.href,
+    ...(note ? { note } : {}),
     score: r.forfeit ? "Forfeit" : home ? `${r.homeScore}-${r.awayScore}` : `${r.awayScore}-${r.homeScore}`,
   };
 }
@@ -46,7 +49,7 @@ export function seasonRows(school: string, allGames: Game[], seasonResults: Seas
         status: g.date ? dateLabel(g.date) : g.status,
         home,
         opponent: (home ? g.away : g.home).name,
-        score: us == null ? null : `${us}-${them}`,
+        score: us == null ? null : isForfeit(g) ? "Forfeit" : `${us}-${them}`, // a forfeit shows the word, never 1-0 (ADR 0004)
         note: g.state === "scheduled" && g.projected ? `Projected: ${g.projected}` : g.league,
         href: `/scores/${g.id}`,
       };

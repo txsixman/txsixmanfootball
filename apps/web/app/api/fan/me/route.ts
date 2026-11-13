@@ -12,7 +12,10 @@ export async function GET(request: NextRequest) {
   const headers = { "Cache-Control": "no-store, private" };
   if ("response" in found) {
     const error = ((await found.response.json()) as { error: string }).error;
-    return NextResponse.json(error === "profile_required" ? { signedIn: true, profile: false } : { signedIn: false }, { headers });
+    if (error === "profile_required") return NextResponse.json({ signedIn: true, profile: false }, { headers });
+    if (error === "sign_in_required") return NextResponse.json({ signedIn: false }, { headers });
+    // The database could not be asked: say so (as /api/me does), never "signed out". The page still shows no form.
+    return NextResponse.json({ error: "unavailable" }, { status: 503, headers });
   }
   const { displayName, established, muted, banned } = found.fan;
   return NextResponse.json({ signedIn: true, profile: true, displayName, established, canPost: !muted && !banned, muted, banned }, { headers });

@@ -1,11 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { demoGames } from "../lib/demo-games";
 import { normalCdf, project, projectionText } from "../lib/projection";
 import { chancesFor } from "../lib/title-chances";
 import { movement } from "../lib/ratings";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test, false);
 
 const SHOTS = path.join(__dirname, ".results", "shots");
 
@@ -357,6 +361,11 @@ test("the site can be added to a phone's home screen", async ({ request }) => {
     const res = await request.get(icon.src);
     expect(res.status(), icon.src).toBe(200);
     expect(res.headers()["content-type"]).toBe("image/png");
+  // The copies crests draw (ADR 0022) are under the same rule.
+  const copy = await request.get("/logos/tiny/boys-ranch.webp");
+  expect(copy.status()).toBe(200);
+  expect(copy.headers()["content-security-policy"]).toContain("sandbox");
+  expect(copy.headers()["content-type"]).toBe("image/webp");
   }
 });
 
@@ -493,7 +502,8 @@ test("results list every game week by week, both seasons, naming no winner and n
   // A forfeit (recorded 1-0) shows the word, never the score (ADR 0004).
   await page.goto("/programs/avalon");
   await expect(page.getByText("Forfeit").first()).toBeVisible();
-  await expect(page.getByText(/\b(0-1|1-0)\b/)).toHaveCount(0);
+  // In the game lists: a record against an opponent ("1-0" after one game) is not a score.
+  await expect(page.locator("section[aria-labelledby=games], section[aria-labelledby=seasons]").getByText(/\b(0-1|1-0)\b/)).toHaveCount(0);
   await page.goto("/results/2025/1");
   const first = page.locator("main li").first();
   await expect(first.getByRole("link")).toHaveCount(3); // the two teams, and the game page

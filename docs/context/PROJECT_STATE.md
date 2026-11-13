@@ -68,6 +68,12 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 - **Search** `/search` (Pagefind): program pages and results weeks, indexed after each build; `?q=` links work
 - **Score alerts**: a Follow button on each program page; a browser push alert when Results watch reads a new final
   (no winner named). Stores only the browser's push address and keys and the followed programs
+- **Live scores** (ADR 0021): on a game page and on `/scores`, a game with no final that the game-day read sees under way shows
+  "Live · <period> · <away>–<home> · Unconfirmed", the teams with their scores and when it was read (Central); no winner or
+  leader. Read in the browser through the public function `live_scores()` every 60 s (the project's public URL and key,
+  `lib/supabase-public.ts`, shared with push; no sign-in setting involved); a 0-0 with no period is never shown. **The period is not shown yet:** `PERIOD_INDEX` in
+  `maxpreps.mjs` is null until a night run's summary (`inProgressShape`) shows which contest field holds it; no real
+  in-progress page has been seen
 - **Share** button on program and game pages: the phone's share sheet, else copies the link (`app/share-button.tsx`)
 - Installable to a phone's home screen (manifest, generated icon), and works offline for visited pages (Serwist:
   pages network first, cached ones served for 30 minutes at most); share cards per program (`opengraph-image.tsx`)
@@ -78,7 +84,7 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 
 ## Data and pipeline
 - Alignments: UIL 2026-28 (157), TAPPS 2026-28 (68, weekly robot), TAIAO (46, weekly robot), TCAF (9, by hand), Independent (1: CenTex Chargers, by hand)
-- Results: `tools/league-watch/maxpreps.mjs` (ADR 0008) via `results-watch.yml`, Fri to Sun Aug to Jan, and every 30 minutes 7 PM to midnight Central on playoff Friday nights (`--tonight`: only tonight's unscored bracket games, ADR 0015); rerates and
+- Results: `tools/league-watch/maxpreps.mjs` (ADR 0008) via `results-watch.yml`, Fri to Sun Aug to Jan, and every 10 minutes noon to midnight Central on any November or December day with a bracket game still unscored (`--tonight`: only those games, ADRs 0015 and 0019; it also sends the games under way to the hosted database's `live_score` table, ADR 0021, with no commit); rerates and
   commits the private repo `txsixman/data-private` first (full captures), then the facts to `main` here (ADR 0017,
   `publish.mjs`). 276 of 279 schools reached. Past seasons via `--season <year>` (season-segment pages): 2025 1,230
   games, 2024 1,195, 2023 1,090, 2022 1,076, 2021 970; coverage falls with age (237 of 279 in 2021) because only
@@ -89,7 +95,7 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   hand in `data/seed/lineage/programs.csv` (TEA's consolidation list): 49 of 52 finalists reach a current program
   (O'Brien became Knox City, 1976; the other three, Jarrell, Marathon and Christoval, are still independent districts that no longer play
   six-man, so no lineage)
-- **Supabase** (`vhgnaihnyjdnaaergtcl`): migrations 0001 to 0009 (0009: `team_season_league`, every league that lists a team that season), loaded after every push to `main` (`main.yml`) with live RLS and
+- **Supabase** (`vhgnaihnyjdnaaergtcl`): migrations 0001 to 0016 (0009: `team_season_league`, every league that lists a team that season; 0016: `live_score` and `live_scores()`, ADR 0021), loaded after every push to `main` (`main.yml`) with live RLS and
   API-role checks (`.github/workflows/supabase.yml`, with `PRIVATE_DATA`); unchanged games are skipped, ~5 min. The site does not read the database yet
 - **CI** on every push: database, league readers, history, school identity, ratings, typecheck, 98 page tests (phone
   and desktop, axe) on a production build, inside Playwright's container image
@@ -109,8 +115,8 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 1. Past UIL alignments (2024-26 first): UIL's robots.txt disallows `/files/`, where the PDFs live, so a robot may not
    fetch them. Needs the owner to download the 2024-26 six-man PDFs by hand. Loader and reader plumbing waits, unmerged, on
    branch `worktree-agent-a5da57ea8cad69af1` (e1417b1); `app/rankings/view.tsx` must stop throwing on unknown teams first
-2. Check the first scheduled `Results watch` run (Fri Nov 13, 6:23 AM Central), its rerate (now with `was`) and the
-   Supabase load after it
+2. Check the first scheduled `Results watch` run in this repo (Fri Nov 13, 11:23 UTC, 5:23 AM CST): data-private
+   commit first, then this repo's, its rerate (now with `was`), alerts and the Supabase load after it
 3. Watch UIL region chances appear once area games are listed (around Nov 20) and round names as the playoffs advance
 4. Google Search Console: the site opened to search engines once step 2's run was clean (the owner, Nov 11: before the
    regional rounds, so it is indexed for the playoffs and the December finals). The TXT record on Cloudflare waits for
@@ -120,9 +126,9 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 - **Remote:** public repo `txsixman/txsixmanfootball`; commits as `TX Six-Man Football <contact@txsixmanfootball.com>`.
   Push with `GH_TOKEN="$(gh auth token)" git push`. Supabase is reached with `pg`. Raw captures: private
   `txsixman/data-private` (ADR 0017); set `PRIVATE_DATA` to a checkout of it to rate or load exactly as main does.
-- **Cut-over** (Fri Nov 13 night if the dispatch proofs pass by ~3 PM Central, else Sat Nov 14): set the repo variable
-  `LIVE` to `true` here, disable the old repo's schedules, point Vercel at this repo. Until `LIVE`, no schedule, alert,
-  hosted-database load or ratings-table commit runs here. Open PRs from the old repo are re-created here after.
+- **Cut-over done Thu Nov 12, 2026 (evening):** the old private repo's Results watch, League watch and Supabase
+  workflows are disabled, `LIVE` is `true` here, and Vercel builds from this repo. Proofs before it: CI, League watch,
+  Results watch (data-private commit, then this repo's) and the ratings table, all by hand. The old repo is history.
 - **Never read SixManFootball.com** (robots.txt blocks Claude; partnership hard lines). Build from first principles.
 - **Accepted risks (ADRs 0008, 0014):** MaxPreps terms of use; the domain's closeness to the incumbent's name; no
   attorney review. Optional: reset the Supabase password (it appeared in a transcript), then Keychain and the secret

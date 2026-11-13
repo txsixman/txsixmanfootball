@@ -14,11 +14,20 @@ import { isLightOnClear, tidy } from "./measure.mjs";
 const ROOT = new URL("../../", import.meta.url);
 export const IDENTITY = new URL("data/seed/schools/identity.json", ROOT);
 export const LOGOS = new URL("apps/web/public/logos/", ROOT);
-/** Small copies of the raster logos for lists, where a crest is drawn at 48px high or less (2x for sharp screens). */
+/** The copies the site draws of each raster logo (ADR 0022), as `<slug>.webp` (copyName), each sized for a 3x phone:
+ * TINY for crests 24px high or less (most lists: the 20px mark inside a 24px crest), SMALL for 25 to 48px, LARGE for the
+ * program page's header crest (up to 72px high, 260px wide). app/programs/crest.tsx picks one. The stored file is the
+ * source they are made from. */
 export const SMALL = new URL("small/", LOGOS);
+export const TINY = new URL("tiny/", LOGOS);
+export const LARGE = new URL("large/", LOGOS);
 /** The untouched download of every logo, kept next to the edited file but outside apps/web/public, so never served (ADR 0016). */
 export const ORIGINALS = new URL("data/seed/schools/logo-originals/", ROOT);
 export const SMALL_BOX = { width: 288, height: 96 };
+export const TINY_BOX = { width: 192, height: 64 };
+export const LARGE_BOX = { width: 780, height: 180 };
+export const COPIES = [[SMALL, SMALL_BOX], [TINY, TINY_BOX], [LARGE, LARGE_BOX]];
+const COPY_DIRS = COPIES.map(([dir]) => dir);
 /** A stored raster fits inside this box: wide wordmarks keep at least ~160px of height where the source allows. */
 export const STORED_BOX = { width: 1200, height: 320 };
 const USER_AGENT = "Project80x40-logo-fetch/1.0";
@@ -160,8 +169,25 @@ export async function buildStored(sharp, bytes, ext, { crop, keepBackground } = 
   return { stored, ext: "png", width, height, edit: notes.length ? `${notes.join("; ")}.` : undefined };
 }
 
-/** The small copy for lists, made from the stored file. */
-const smallCopy = (stored) => sharp(stored).resize(SMALL_BOX.width, SMALL_BOX.height, { fit: "inside", withoutEnlargement: true }).png({ palette: true }).toBuffer();
+/** A copy's file name: the stored PNG's, as WebP. */
+export const copyName = (file) => file.replace(/\.png$/, ".webp");
+/** A copy for a crest, made from the stored file: shrunk into the box with its colors reduced to a palette, as
+ * the stored file's are, then saved as lossless WebP, the same pixels as that palette PNG in about an eighth fewer bytes. */
+export async function smallCopy(sharp, stored, box) {
+  const palette = await sharp(stored).resize(box.width, box.height, { fit: "inside", withoutEnlargement: true }).png({ palette: true }).toBuffer();
+  return sharp(palette).webp({ lossless: true, effort: 6 }).toBuffer();
+}
+/** Every copy of a stored raster; returns how many were written (only missing ones unless `all`). */
+export async function writeCopies(sharp, file, stored, all = true) {
+  let made = 0;
+  for (const [dir, box] of COPIES) {
+    const url = new URL(copyName(file), dir);
+    if (!all && existsSync(url)) continue;
+    writeFileSync(url, await smallCopy(sharp, stored, box));
+    made += 1;
+  }
+  return made;
+}
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function download(school, today) {
@@ -189,7 +215,7 @@ async function main() {
   const only = onlyArg > 0 ? new Set(process.argv[onlyArg + 1].split(",")) : null;
   const data = JSON.parse(readFileSync(IDENTITY, "utf8"));
   const removed = new Set(data.removed ?? []);
-  for (const dir of [LOGOS, ORIGINALS, SMALL]) mkdirSync(dir, { recursive: true });
+  for (const dir of [LOGOS, ORIGINALS, ...COPY_DIRS]) mkdirSync(dir, { recursive: true });
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" }); // the project keeps Central dates
   const tally = { fetched: 0, rebuilt: 0, kept: 0, skipped: 0, refused: [] };
   let small = 0;
@@ -198,7 +224,10 @@ async function main() {
     if (only && !only.has(slug)) continue;
     const logo = school.logo;
     if (removed.has(slug) || !logo) {
-      if (logo?.file) for (const dir of [LOGOS, SMALL]) rmSync(new URL(logo.file, dir), { force: true });
+      if (logo?.file) {
+        rmSync(new URL(logo.file, LOGOS), { force: true });
+        for (const dir of COPY_DIRS) rmSync(new URL(copyName(logo.file), dir), { force: true });
+      }
       if (logo?.original) rmSync(new URL(logo.original, ORIGINALS), { force: true });
       if (logo) for (const key of ["file", "original", "edit", "aspect", "light"]) delete logo[key];
       tally.skipped += 1;
@@ -219,15 +248,12 @@ async function main() {
       const original = `${slug}.${ext}`;
       for (const e of ["png", "jpg", "gif", "webp", "svg"]) {
         rmSync(new URL(`${slug}.${e}`, LOGOS), { force: true });
-        rmSync(new URL(`${slug}.${e}`, SMALL), { force: true });
+        for (const dir of COPY_DIRS) rmSync(new URL(`${slug}.${e}`, dir), { force: true });
         if (`${slug}.${e}` !== original) rmSync(new URL(`${slug}.${e}`, ORIGINALS), { force: true });
       }
       writeFileSync(new URL(original, ORIGINALS), bytes);
       writeFileSync(new URL(file, LOGOS), built.stored);
-      if (built.ext === "png") {
-        writeFileSync(new URL(file, SMALL), await smallCopy(built.stored));
-        small += 1;
-      }
+      if (built.ext === "png") small += await writeCopies(sharp, file, built.stored);
       // aspect and light are measured on the stored file, after trimming (an SVG keeps its recorded aspect)
       const aspect = built.width ? round2(built.width / built.height) : logo.aspect ?? 1;
       const light = await isLightOnClear(sharp, built.stored);
@@ -240,12 +266,11 @@ async function main() {
     }
   }
 
-  // A small copy for any stored raster that has none yet.
+  // The copies of any stored raster that has none yet.
   for (const [slug, school] of Object.entries(data.schools)) {
     const file = school.logo?.file;
-    if (!file?.endsWith(".png") || removed.has(slug) || existsSync(new URL(file, SMALL)) || !existsSync(new URL(file, LOGOS))) continue;
-    writeFileSync(new URL(file, SMALL), await smallCopy(readFileSync(new URL(file, LOGOS))));
-    small += 1;
+    if (!file?.endsWith(".png") || removed.has(slug) || !existsSync(new URL(file, LOGOS))) continue;
+    small += await writeCopies(sharp, file, readFileSync(new URL(file, LOGOS)), false);
   }
 
   writeFileSync(IDENTITY, `${JSON.stringify(data, null, 2)}\n`);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { pageTotal } from "@/lib/posts/total";
 import { send, useMe } from "../posts/client";
 import { Composer, PostItem, WhyNotForm, canPost, type Post } from "../posts/post-parts";
 
@@ -23,7 +24,7 @@ export function Comments({ gameKey }: { gameKey: string }) {
         if (!r.ok) throw new Error("failed");
         const data = (await r.json()) as { comments: Post[]; total: number };
         setPosts((old) => (offset === 0 ? data.comments : [...old, ...data.comments]));
-        setTotal(data.total);
+        setTotal((known) => pageTotal(known, offset, data));
         setState("ready");
       } catch {
         setState("failed");

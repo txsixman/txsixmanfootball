@@ -14,6 +14,8 @@ export type Game = {
   id: string;
   /** ISO date, for captured games. */
   date?: string;
+  /** The bracket round token ("bi-district", "semifinal", ...) of a captured playoff game; the invented sample games have none. */
+  round?: string;
   league: string;
   home: Team;
   away: Team;
