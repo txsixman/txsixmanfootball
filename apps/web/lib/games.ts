@@ -180,8 +180,9 @@ export function roundPhrase(round: string, league: string): string {
   return `the ${round} round`;
 }
 
-/** Each team's last playoff round of a season (team name as the season's files spell it) and its league. */
-export async function playoffReach(season: number): Promise<Map<string, { round: string; league: string }>> {
+/** Each team's last playoff round of a season (team name as the season's files spell it) and its league. Shared across
+ * pages: never mutate it. */
+export const playoffReach = memo(async (season: number): Promise<Map<string, { round: string; league: string }>> => {
   const reach = new Map<string, { round: string; league: string }>();
   for (const { r, league } of await playoffRows([season])) {
     for (const team of [r.home, r.away]) {
@@ -190,7 +191,7 @@ export async function playoffReach(season: number): Promise<Map<string, { round:
     }
   }
   return reach;
-}
+});
 
 /** The key two files agree on for one game: date and both teams (spelling and order of the teams do not matter). */
 export const gameKey = (date: string, home: string, away: string) => [date, ...[slugify(home), slugify(away)].sort()].join("|");
