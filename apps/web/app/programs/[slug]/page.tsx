@@ -262,6 +262,7 @@ export default async function ProgramPage({ params }: Props) {
               </dl>
               <Link
                 href={`/matchup?a=${slug}`}
+                prefetch={false} // /matchup is force-static: prefetching it sends about 92 KB the reader may never open
                 className="mt-1 flex min-h-11 items-center gap-1 border-t border-current/30 text-[15px] font-semibold underline underline-offset-2"
               >
                 Compare with another team
