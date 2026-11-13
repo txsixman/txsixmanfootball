@@ -81,6 +81,7 @@ test("every other page kind fits, names its organization and season, and differs
         d.recordsDescription({ org, first: 2021, latest: season }),
         d.weeksIndexDescription({ org, first: 2021, latest: season }),
         d.weekReviewDescription({ org, season, week: 12, games: 148 }),
+        d.seasonDescription({ season, games: 1210, orgs: [org], past: season < 2026 }),
         ...["latest", "season", "week"].map((scope) => d.resultsDescription({ org, season, week: 10, games: 27, scope })),
       );
     }
@@ -88,6 +89,7 @@ test("every other page kind fits, names its organization and season, and differs
   all.push(
     d.homeDescription(2026, ["UIL", "TAPPS", "TAIAO", "TCAF", "Independent"]), d.scoresDescription(2026), d.matchupDescription(2026), d.howRankingsDescription(),
     d.programsDescription(280, ["UIL", "TAPPS", "TAIAO", "TCAF", "Independent"]), d.championshipsDescription({ first: 1972, latest: 2025, games: 74 }),
+    d.seasonsIndexDescription({ first: 2021, latest: 2026 }),
   );
   all.forEach(clean);
   assert.equal(new Set(all).size, all.length, "two descriptions alike");
@@ -109,4 +111,19 @@ test("a series: meetings since 2021, what the page lists, no score and no winner
   assert.equal(clean(d.seriesDescription({ ...facts, projection: false, games: 3 })), "Aldine vs Brookfield six-man football: 3 meetings since 2021. Every score and playoff game.");
   const long = clean(d.seriesDescription({ ...facts, first: LONG, second: "Another Very Long Academy Name (Christian) Homeschool Association" }));
   assert.ok(long.startsWith("Tyler Heat"), long);
+});
+
+test("a season hub: games read, the organizations, and what the page holds; past and current read differently", () => {
+  const orgs = ["UIL", "TAPPS", "TAIAO", "TCAF"];
+  assert.equal(
+    clean(d.seasonDescription({ season: 2025, games: 1230, orgs, past: true })),
+    "2025 Texas six-man football season: 1,230 games across UIL, TAPPS, TAIAO and TCAF. State finals, final rankings, team leaders and every week of results.",
+  );
+  assert.equal(
+    clean(d.seasonDescription({ season: 2026, games: 1227, orgs, past: false })),
+    "2026 Texas six-man football season: 1,227 games across UIL, TAPPS, TAIAO and TCAF. Rankings so far, team leaders and every week of results.",
+  );
+  assert.match(clean(d.seasonDescription({ season: 2026, games: 1, orgs: ["Independent"], past: false })), /: 1 game across Independent\./);
+  assert.equal(clean(d.seasonsIndexDescription({ first: 2021, latest: 2026 })), "Every Texas six-man football season on this site, 2021 to 2026. Each season's state finals, rankings, team leaders and week-by-week results.");
+  assert.equal(clean(d.seasonsIndexDescription({})), "Every Texas six-man football season on this site. Each season's state finals, rankings, team leaders and week-by-week results.");
 });

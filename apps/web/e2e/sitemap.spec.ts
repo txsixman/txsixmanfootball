@@ -16,7 +16,7 @@ test("the sitemap leaves out the sample games and lists the week, bracket and to
   const paths = await sitemapPaths(request);
   expect(paths.filter((p) => /^\/scores\/g\d+$/.test(p)), "sample games").toEqual([]);
   expect(paths.some((p) => /^\/scores\/[^/]+$/.test(p) && p !== "/scores/tonight"), "real game pages").toBe(true);
-  for (const p of ["/weeks", "/scores/tonight"]) expect(paths, p).toContain(p);
+  for (const p of ["/weeks", "/scores/tonight", "/seasons", "/seasons/2021", "/seasons/2025", "/seasons/2026"]) expect(paths, p).toContain(p);
   expect(paths.some((p) => p.startsWith("/weeks/")), "a week page").toBe(true);
   expect(paths.some((p) => p.startsWith("/playoffs/bracket/")), "a bracket page").toBe(true);
   expect(paths.some((p) => /^\/series\/[a-z0-9-]+\/[a-z0-9-]+$/.test(p)), "a series page").toBe(true);

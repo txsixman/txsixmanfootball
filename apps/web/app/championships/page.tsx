@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { loadAlignments, slugify } from "@/lib/alignments";
+import { loadAlignments } from "@/lib/alignments";
 import { type Final, finalScore, loadFinals, loadNoFinal, noFinalSpans, titleCounts } from "@/lib/champions";
 import { championshipsDescription } from "@/lib/descriptions";
-import { EMPTY, type Identity, loadIdentities } from "@/lib/identity";
+import { finalLinker, type Linker } from "@/lib/final-linker";
+import { loadIdentities } from "@/lib/identity";
 import { loadLineage, successorOf } from "@/lib/lineage";
 import { CrestSlot, PageHeader, SectionBar } from "../ui";
 
@@ -15,9 +16,6 @@ export async function generateMetadata(): Promise<Metadata> {
     description: championshipsDescription({ first: seasons.length ? Math.min(...seasons) : undefined, latest: seasons.length ? Math.max(...seasons) : undefined, games: seasons.length }),
   };
 }
-
-/** `now`: today's program when the school merged into one (ADR 0003). */
-type Linker = (name: string) => { href?: string; identity: Identity; now?: string };
 
 function Team({ name, link, crest = true }: { name: string; link: Linker; crest?: boolean }) {
   const { href, identity, now } = link(name);
@@ -95,15 +93,8 @@ export default async function ChampionshipsPage() {
   const [finals, noFinal, alignments, identities, lineage] = await Promise.all([
     loadFinals(), loadNoFinal(), loadAlignments(), loadIdentities(), loadLineage(),
   ]);
-  const slugs = new Set(alignments.map((a) => a.slug));
   const successors = successorOf(lineage);
-  const link: Linker = (name) => {
-    const slug = slugify(name);
-    if (slugs.has(slug)) return { href: `/programs/${slug}`, identity: identities.get(slug) ?? EMPTY };
-    const now = successors.get(slug);
-    // A merged school keeps its own name and a plain badge; the link goes to the program it became.
-    return now && slugs.has(slugify(now)) ? { href: `/programs/${slugify(now)}`, identity: EMPTY, now } : { identity: EMPTY };
-  };
+  const link = finalLinker(alignments, identities, successors);
   const brackets = [
     { id: "division-1", title: "Division I", finals: finals.filter((f) => f.division === "I") },
     { id: "division-2", title: "Division II", finals: finals.filter((f) => f.division === "II") },

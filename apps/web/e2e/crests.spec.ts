@@ -70,6 +70,11 @@ test("playoffs bracket: crests match the data", async ({ page }) => {
   await expectCrestsMatchData(page, "/playoffs");
 });
 
+test("season hub: a crest beside each ranked team, leader and champion", async ({ page }) => {
+  const rows = await expectCrestsMatchData(page, "/seasons/2025");
+  expect(rows.some((r) => r.img)).toBe(true);
+});
+
 test("records: a crest beside each team", async ({ page }) => {
   const rows = await expectCrestsMatchData(page, "/records");
   expect(rows.some((r) => r.img)).toBe(true);
