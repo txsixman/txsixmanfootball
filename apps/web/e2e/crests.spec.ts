@@ -92,5 +92,5 @@ test("program page: big crest takes a wide logo; schedule, most played and distr
 
   // The big crest (program page) draws logos up to 4.8 wide: Community Christian's is 4.36.
   await page.goto("/programs/community-christian", { waitUntil: "networkidle" });
-  await expect(page.locator("header img[src='/logos/community-christian.png']")).toBeVisible();
+  await expect(page.locator("header img[src='/logos/large/community-christian.webp']")).toBeVisible();
 });

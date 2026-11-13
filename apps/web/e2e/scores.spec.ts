@@ -361,6 +361,11 @@ test("the site can be added to a phone's home screen", async ({ request }) => {
     const res = await request.get(icon.src);
     expect(res.status(), icon.src).toBe(200);
     expect(res.headers()["content-type"]).toBe("image/png");
+  // The copies crests draw (ADR 0022) are under the same rule.
+  const copy = await request.get("/logos/tiny/boys-ranch.webp");
+  expect(copy.status()).toBe(200);
+  expect(copy.headers()["content-security-policy"]).toContain("sandbox");
+  expect(copy.headers()["content-type"]).toBe("image/webp");
   }
 });
 

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { audit } from "../../../tools/school-identity/audit-logos.mjs";
-import { buildStored, IDENTITY, LOGOS, ORIGINALS, STORED_BOX } from "../../../tools/school-identity/fetch-logos.mjs";
+import { buildStored, IDENTITY, LOGOS, ORIGINALS, LARGE_BOX, SMALL_BOX, smallCopy, STORED_BOX, TINY_BOX } from "../../../tools/school-identity/fetch-logos.mjs";
 import { isLightOnClear, measure } from "../../../tools/school-identity/measure.mjs";
 
 const sharp = createRequire(import.meta.url)("sharp");
@@ -51,6 +51,26 @@ test("a wide wordmark keeps its height up to the cap, and a small source is neve
   const tiny = await sharp({ create: { width: 90, height: 60, channels: 4, background: "#102060" } }).png().toBuffer();
   const small = await buildStored(sharp, tiny, "png", { keepBackground: true });
   assert.deepEqual([small.width, small.height], [90, 60]);
+});
+
+test("a copy for small crests is the palette PNG's visible pixels exactly, as WebP inside its box; a small source is never enlarged", async () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200"><rect width="600" height="200" fill="#0000"/><circle cx="100" cy="100" r="90" fill="#c01020"/><rect x="250" y="40" width="300" height="120" fill="#102060" opacity="0.6"/></svg>`;
+  const stored = await sharp(Buffer.from(svg)).png().toBuffer();
+  for (const box of [TINY_BOX, SMALL_BOX, LARGE_BOX]) {
+    const copy = await smallCopy(sharp, stored, box);
+    const meta = await sharp(copy).metadata();
+    assert.equal(meta.format, "webp");
+    assert.deepEqual([meta.width, meta.height], [box.height * 3, box.height]);
+    const pixels = (b) => sharp(b).ensureAlpha().raw().toBuffer();
+    const [want, got] = await Promise.all([pixels(await sharp(stored).resize(box.width, box.height, { fit: "inside" }).png({ palette: true }).toBuffer()), pixels(copy)]);
+    for (let i = 0; i < want.length; i += 4) {
+      // A fully clear pixel's color is never seen, and lossless WebP may change it.
+      if (want[i + 3] === 0 && got[i + 3] === 0) continue;
+      assert.deepEqual([...got.subarray(i, i + 4)], [...want.subarray(i, i + 4)], `pixel ${i / 4}`);
+    }
+  }
+  const little = await sharp({ create: { width: 40, height: 30, channels: 4, background: "#102060" } }).png().toBuffer();
+  assert.deepEqual(await sharp(await smallCopy(sharp, little, TINY_BOX)).metadata().then((m) => [m.width, m.height]), [40, 30]);
 });
 
 test("a white mark on a clear background is light; a colored or dark one is not", async () => {
