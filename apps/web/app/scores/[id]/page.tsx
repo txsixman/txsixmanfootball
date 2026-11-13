@@ -11,6 +11,8 @@ import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
 import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
+import { loadWeeks } from "@/lib/weeks";
+import { weekHref as resultsWeekHref } from "../../results/paths";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
 import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
@@ -130,7 +132,16 @@ export default async function GamePage({ params }: Props) {
   const fan = fanSignIn();
   const live = g.state === "live";
   const winner = winnerOf(g);
-  const back = sample ? { href: "/scores/sample", name: "Scoreboard" } : own ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, name: own.season === CURRENT_SEASON ? "Results" : `${own.season} results` } : { href: "/scores", name: "Scoreboard" };
+  // Back to where the game is listed: a season game's own results week (the season's week numbers, ADR 0012), a playoff
+  // or sample game's scoreboard.
+  const week = own && g.date ? (await loadWeeks(own.season)).findLast((w) => w.monday <= g.date!) : undefined;
+  const back = sample
+    ? { href: "/scores/sample", name: "Scoreboard" }
+    : own && week
+      ? { href: resultsWeekHref(own.season, week.number, orgOfLabel(g.league)), name: own.season === CURRENT_SEASON ? `Week ${week.number} results` : `${own.season} week ${week.number}` }
+      : own
+        ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, name: own.season === CURRENT_SEASON ? "Results" : `${own.season} results` }
+        : { href: "/scores", name: "Scoreboard" };
   const places = [
     [g.away.name, detail?.places.away],
     [g.home.name, detail?.places.home],
