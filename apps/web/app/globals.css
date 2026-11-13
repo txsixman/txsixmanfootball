@@ -56,6 +56,12 @@ body {
 @utility btn {
   @apply inline-flex min-h-11 items-center justify-center border-2 border-navy px-4 font-bold text-navy hover:bg-panel;
 }
+/* A school's name as a link inside a line of text (a schedule row: "at Ira"). 44px tall, and 16px wider on each side than
+   the name, with the name left exactly where it was: a short name ("Ira", 18px) is still a 44px-wide target, and a tap
+   just beside it opens that school rather than the row's game page under it. */
+@utility name-link {
+  @apply -mx-4 inline-flex min-h-11 items-center px-4 hover:text-navy hover:underline;
+}
 @utility btn-red {
   @apply inline-flex min-h-11 items-center justify-center border-2 border-red bg-red px-4 font-bold text-white hover:brightness-110;
 }
