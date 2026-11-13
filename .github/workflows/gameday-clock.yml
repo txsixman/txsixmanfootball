@@ -1,0 +1,65 @@
+# The game-day clock (ADR 0024). GitHub's `schedule` events have never fired in this repo, so Results watch's game-day
+# cron lines start nothing. This starts its `tonight` read every 10 minutes (:03, :13 ...), 18:00 to 06:10 UTC in
+# November and December, from GitHub itself, so the reads need no one's computer. A tick is skipped when a read is
+# already queued or running, when GitHub's schedule started one in the last 12 minutes, or when any read started in the
+# last 8 (the Mac's loop, a run by hand); Results watch's `due` job makes a tick with no game left a short check.
+# One run keeps the clock about 5.5 hours, then starts the next and exits (the 6-hour job limit); the chain stops by
+# itself after December or when every bracket has a scored final. Start it by hand once a season (Actions > Game-day
+# clock > Run workflow); `dry_run` proves it without starting anything. A failed dispatch fails the run, so GitHub emails
+# the owner; the run hands on once as a retry, and a retry that fails too ends the chain.
+# The workflow's own token, no secrets: a dispatch made with it starts a run (GitHub's stated exception for
+# workflow_dispatch). Free on a public repo's standard runners; a run spends nearly all its time asleep.
+name: Game-day clock
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Log what each tick would do, start nothing (no read, no next clock run)"
+        type: boolean
+        default: false
+      minutes:
+        description: "How long this run keeps the clock before starting the next (1 to 340)"
+        required: false
+        default: "330"
+      retry:
+        description: "Set by the clock: this run follows one whose dispatch failed"
+        type: boolean
+        default: false
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: gameday-clock
+  cancel-in-progress: false
+
+jobs:
+  clock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts
+            data/seed
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Clock checks
+        run: node --test .github/scripts/gameday-clock.test.mjs
+      - name: Game-day clock
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # Inputs go through the environment, never into the script's text.
+          MINUTES: ${{ inputs.minutes }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          RETRY: ${{ inputs.retry }}
+        run: |
+          [[ "$MINUTES" =~ ^[0-9]{1,3}$ ]] || { echo "minutes must be a whole number, not: $MINUTES"; exit 1; }
+          flags=(--minutes "$MINUTES")
+          [ "$DRY_RUN" != true ] || flags+=(--dry-run)
+          [ "$RETRY" != true ] || flags+=(--retry)
+          node .github/scripts/gameday-clock.mjs "${flags[@]}"

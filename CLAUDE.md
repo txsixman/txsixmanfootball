@@ -34,7 +34,7 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   (the school's own site for Community Christian and CenTex Chargers; `maxpreps-aliases.json` maps their MaxPreps pages)
 - `data/seed/tapps-2026-28/`: written by `tools/league-watch/tapps.mjs`, never by hand (ADR 0005)
 - `tools/league-watch/`: robot readers. `tapps.mjs` and `taiao.mjs` (alignments, weekly via `league-watch.yml`); `maxpreps.mjs` (game
-  results, Fri to Sun mornings Aug to Jan, plus every 10 minutes noon to midnight on playoff game days (`--tonight`, ADRs 0015 and 0019), via `results-watch.yml`, which also rerates and commits to `main`; `--season 2025`
+  results, Fri to Sun mornings Aug to Jan, plus every 10 minutes noon to midnight on playoff game days (`--tonight`, ADRs 0015 and 0019; started by `gameday-clock.yml`, ADR 0024, since GitHub's schedules never fire here), via `results-watch.yml`, which also rerates and commits to `main`; `--season 2025`
   reads a past season's pages). A night read also writes the games under way (`--live-out`, ADR 0021) for `packages/db/live.mjs`,
   which replaces the rows of the `live_score` table (migration 0016); the site reads it in the browser through the
   public function `live_scores()` (`apps/web/lib/live-scores.ts`, `app/scores/live-score.tsx`; the Supabase URL and key
