@@ -151,8 +151,13 @@ export default async function ProgramPage({ params }: Props) {
   // This program's own finals, and those of the schools that merged into it (ADR 0003), marked "as <old name>".
   const lineage = await loadLineage();
   const names = new Set([slug, ...lineage.filter((l) => slugify(l.successor) === slug).map((l) => slugify(l.predecessor))]);
-  const aka = otherNames(slug, lineage, await loadAliases(), (await loadCorrections()).merges);
-  const finals = (await loadFinals())
+  const allFinals = await loadFinals();
+  const aka = otherNames(slug, lineage, await loadAliases(), {
+    merges: (await loadCorrections()).merges,
+    finals: allFinals,
+    programs: new Set(all.map((a) => a.slug)),
+  });
+  const finals = allFinals
     .filter((f) => names.has(slugify(f.champion)) || names.has(slugify(f.runnerUp)))
     .sort((a, b) => b.season - a.season);
   const titles = finals.filter((f) => names.has(slugify(f.champion))).length;
@@ -639,8 +644,14 @@ export default async function ProgramPage({ params }: Props) {
           <Section id="other-names" title="Other names" accent={accent}>
             <ul>
               {aka.map((n) => (
-                <li key={n.name} className="flex min-h-11 flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2 text-[15px] text-ink">
-                  <b>{n.name}</b>
+                <li key={`${n.name}-${n.note}`} className="flex min-h-11 flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2 text-[15px] text-ink">
+                  {n.slug ? (
+                    <Link href={`/programs/${n.slug}`} className="font-bold text-navy hover:underline">
+                      {n.name}
+                    </Link>
+                  ) : (
+                    <b>{n.name}</b>
+                  )}
                   <span className="text-[14px] text-muted">{n.note}</span>
                 </li>
               ))}
