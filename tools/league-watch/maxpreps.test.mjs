@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, centralDate, COLUMNS, gameNight, inProgressShape, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, gameNight, inProgressShape, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -269,4 +269,16 @@ test("a game under way is logged by its fields only, never names or links", () =
   assert.match(shapes[0], /12=Q3/);
   assert.match(shapes[0], /6=28/);
   assert.doesNotMatch(shapes[0], /Alpha|Beta|Town|maxpreps/);
+});
+
+test("canaryProblems: a healthy page has none; an empty, misdated or unplayed page is named", () => {
+  const g = (date, played, home = "Alpha", away = "Beta") => ({ date, played, home: { name: home }, away: { name: away } });
+  const nov = new Date("2026-11-13T12:00:00Z");
+  assert.deepEqual(canaryProblems([g("2026-08-28", true), g("2026-11-13", false)], 2026, nov), []);
+  assert.deepEqual(canaryProblems([], 2026, nov), ["no games on the page"]);
+  assert.match(canaryProblems([g("2025-09-01", true)], 2026, nov)[0], /outside the season \(2025-09-01\)/);
+  assert.deepEqual(canaryProblems([g("2026-09-05", false)], 2026, nov), ["no played game with both scores after mid-September"]);
+  // Before mid-September a page with no played game yet is fine.
+  assert.deepEqual(canaryProblems([g("2026-08-28", false)], 2026, new Date("2026-08-20T12:00:00Z")), []);
+  assert.deepEqual(canaryProblems([g("2026-09-05", true, "")], 2026, nov), ["a game without both team names"]);
 });
