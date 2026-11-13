@@ -56,12 +56,18 @@ const SEEDS = ["https://www.maxpreps.com/tx/odonnell/odonnell-eagles/football/"]
 // outside our alignments is still read.
 export const ALIASES = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "maxpreps-aliases.json"), "utf8"));
 
-/** Our slug for a MaxPreps team, or null: an alias, then its name ("Jayton"), then city and name ("Lenorah Grady"). */
+/** Our schools whose MaxPreps page an alias names: each matches its own page only, never another school's page by name. */
+const pinnedOf = (aliases) => new Set(Object.values(aliases).flat().map(slugify));
+let PINNED; // built on first use: slugify is declared below
+
+/** Our slug for a MaxPreps team, or null: an alias, then its name ("Jayton"), then city and name ("Lenorah Grady"). A
+ * name that belongs to a pinned school is not matched by name (Community Christian in Orange is not ours in Mineral Wells). */
 export function match(team, bySlug, aliases = ALIASES) {
   if (team.state !== "TX") return null;
   const alias = [aliases[team.url]].flat()[0];
-  const tries = [alias, team.name, `${team.city} ${team.name}`].filter(Boolean).map(slugify);
-  return tries.find((s) => bySlug.has(s)) ?? null;
+  const pinned = aliases === ALIASES ? (PINNED ??= pinnedOf(ALIASES)) : pinnedOf(aliases);
+  const byName = [team.name, `${team.city} ${team.name}`].map(slugify).filter((s) => !pinned.has(s));
+  return [...(alias ? [slugify(alias)] : []), ...byName].find((s) => bySlug.has(s)) ?? null;
 }
 export const COLUMNS = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes";
 

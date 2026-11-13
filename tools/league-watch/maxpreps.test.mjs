@@ -80,6 +80,15 @@ test("matches on an alias, the name, or city and name, in Texas only", () => {
   assert.equal(match(t("Grady", "X", "g"), bySlug, { g: ["Lenorah Grady", "Jayton"] }), "lenorah-grady"); // listed twice: first wins
 });
 
+test("a school whose page an alias names matches that page only, never a namesake elsewhere", () => {
+  const bySlug = new Map([["community-christian", {}], ["jayton", {}]]);
+  const aliases = { "mw/": "Community Christian" };
+  const t = (name, city, url) => ({ name, city, url, state: "TX" });
+  assert.equal(match(t("Community Christian", "Mineral Wells", "mw/"), bySlug, aliases), "community-christian");
+  assert.equal(match(t("Community Christian", "Orange", "orange/"), bySlug, aliases), null);
+  assert.equal(match(t("Jayton", "Jayton", "j/"), bySlug, aliases), "jayton"); // a school with no alias still matches by name
+});
+
 test("maps MaxPreps playoff brackets to our leagues, and skips the rest", () => {
   assert.deepEqual(bracketOf("2026 UIL Texas Football State Championships ", "2026 Football 6-Man 1A D2 "), { league: "UIL", division: "II" });
   assert.deepEqual(bracketOf("TAPPS 2026 High School Football Playoff", "TAPPS 6 Man III Large School"), { league: "TAPPS", division: "III Large School" });

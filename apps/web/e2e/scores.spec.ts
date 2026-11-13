@@ -7,6 +7,9 @@ import { demoGames } from "../lib/demo-games";
 import { normalCdf, project, projectionText } from "../lib/projection";
 import { chancesFor } from "../lib/title-chances";
 import { movement } from "../lib/ratings";
+import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season";
+
+const SEASONS = CURRENT_SEASON - FIRST_SEASON + 1; // seasons on file, FIRST_SEASON to now
 
 // No live-score request reaches the network (e2e/live-route.ts).
 noLiveScores(test, false);
@@ -474,10 +477,10 @@ test("a program page lists each season: record, place and the last playoff round
   await expect(trend.getByRole("img", { name: /^Rank in its organization from #\d+ in the week ending .+ to #\d+ in the week ending .+; best #\d+\.$/ })).toBeVisible();
   expect(await trend.locator("tbody tr").count()).toBeGreaterThanOrEqual(3);
   const seasons = page.getByRole("region", { name: "Season by season" });
-  await expect(seasons.getByRole("listitem")).toHaveCount(6);
+  await expect(seasons.getByRole("listitem")).toHaveCount(SEASONS);
   const last = seasons.getByRole("listitem").filter({ has: page.getByRole("link", { name: "2025 rankings" }) });
   await expect(last).toContainText("Playoffs: reached the state final");
-  await expect(seasons.getByText(/^\d+-\d+(-\d+)? from 2021 to 2026 · playoffs in \d of 6 seasons$/)).toBeVisible();
+  await expect(seasons.getByText(new RegExp(`^\\d+-\\d+(-\\d+)? from ${FIRST_SEASON} to ${CURRENT_SEASON} · playoffs in \\d of ${SEASONS} seasons$`))).toBeVisible();
   const rivals = page.getByRole("region", { name: "Most played" }).getByRole("listitem");
   expect(await rivals.count()).toBeGreaterThan(0);
   await expect(rivals.first()).toContainText(/\d+ games · last 20\d\d, \d+-\d+/);

@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { EMBED_HEIGHT } from "../lib/embed-html";
+import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season";
 import { noLiveScores } from "./live-route";
 
 // A program's history, 2021 on: every season in one table (dashes where the data has nothing), a rating line, the record
@@ -30,10 +31,10 @@ async function open(page: Page, slug: string) {
 const seasons = (page: Page) => page.getByRole("region", { name: "Season by season" });
 const season = (page: Page, year: number) => seasons(page).getByRole("listitem").filter({ has: page.getByText(String(year), { exact: true }).first() }).first();
 
-test("every season 2021 to 2026 has a row: record, place, final rating and the last playoff round played", async ({ page }) => {
+test(`every season ${FIRST_SEASON} to ${CURRENT_SEASON} has a row: record, place, final rating and the last playoff round played`, async ({ page }) => {
   await open(page, "jayton");
   const items = seasons(page).getByRole("listitem");
-  await expect(items).toHaveCount(6);
+  await expect(items).toHaveCount(CURRENT_SEASON - FIRST_SEASON + 1);
   for (const year of [2025, 2024, 2023, 2022, 2021]) {
     const row = season(page, year);
     await expect(row).toContainText(/\d+-\d+(-\d+)?/);
@@ -44,7 +45,7 @@ test("every season 2021 to 2026 has a row: record, place, final rating and the l
   await expect(season(page, 2024)).toContainText("Playoffs: reached the state final");
   await expect(season(page, 2022)).toContainText(/Playoffs: reached the area round/);
   await expect(season(page, 2021)).toContainText("Playoffs: reached the regional round");
-  await expect(seasons(page).getByText(/^\d+-\d+(-\d+)? from 2021 to 2026 · playoffs in \d of 6 seasons$/)).toBeVisible();
+  await expect(seasons(page).getByText(new RegExp(`^\\d+-\\d+(-\\d+)? from ${FIRST_SEASON} to ${CURRENT_SEASON} · playoffs in \\d of ${CURRENT_SEASON - FIRST_SEASON + 1} seasons$`))).toBeVisible();
   // The season's rankings are one link in each row.
   await expect(season(page, 2023).getByRole("link", { name: "2023 rankings" })).toHaveAttribute("href", "/rankings/season/2023");
 });

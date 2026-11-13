@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { CURRENT_SEASON } from "../lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season";
 import { noLiveScores } from "./live-route";
 
 // A program's season (/programs/<slug>/<season>, 2021 on): the record, rank and last playoff round the program page's season
@@ -154,7 +154,7 @@ test("the share card is the program's own: no image route of its own, the same c
 test("season navigation: the program's other seasons, the program page and the season's rankings", async ({ page }) => {
   await open(page, "/programs/jayton/2025");
   const nav = page.getByRole("navigation", { name: "Jayton seasons" });
-  await expect(nav.getByRole("link").filter({ hasText: /^\d{4}$/ })).toHaveText(["2026", "2024", "2023", "2022", "2021"]);
+  await expect(nav.getByRole("link").filter({ hasText: /^\d{4}$/ })).toHaveText(Array.from({ length: CURRENT_SEASON - FIRST_SEASON + 1 }, (_, i) => String(CURRENT_SEASON - i)).filter((y) => y !== "2025"));
   await expect(nav.getByRole("link", { name: "2024" })).toHaveAttribute("href", "/programs/jayton/2024");
   await expect(nav.getByRole("link", { name: /^Jayton program page/ })).toHaveAttribute("href", "/programs/jayton");
   await expect(nav.getByRole("link", { name: "2025 UIL rankings" })).toHaveAttribute("href", "/rankings/season/2025");

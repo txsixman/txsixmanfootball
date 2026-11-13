@@ -155,7 +155,7 @@ export default async function ProgramPage({ params }: Props) {
     .filter((f) => names.has(slugify(f.champion)) || names.has(slugify(f.runnerUp)))
     .sort((a, b) => b.season - a.season);
   const titles = finals.filter((f) => names.has(slugify(f.champion))).length;
-  // Season by season, 2021 on: record, final rating, place within its organization and the last playoff round played, from each
+  // Season by season, FIRST_SEASON on: record, final rating, place within its organization and the last playoff round played, from each
   // season's table (lib/program-seasons.ts); a season with nothing on record keeps its row, with dashes.
   const seasons = await ratingSeasons();
   const { entries, opponents } = await programHistory(school, seasons);
