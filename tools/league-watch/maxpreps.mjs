@@ -7,6 +7,8 @@
 // $PRIVATE_DATA (the private data repo; data/seed without it). tools/league-watch/publish.mjs copies the facts here.
 //   node tools/league-watch/maxpreps.mjs --due data/seed/maxpreps-2026/playoffs.csv
 // prints how many bracket games of tonight have no score yet (results-watch.yml reads only when it is not 0).
+//   node tools/league-watch/maxpreps.mjs --canary
+// reads one seed team's schedule page and fails if MaxPreps changed its shape (maxpreps-canary.yml, before game nights).
 //   node tools/league-watch/maxpreps.mjs --tonight
 // (playoff game days, ADRs 0015 and 0019) reads only the pages of teams whose bracket game today has no score yet, one page a
 // game, and fills those finals into playoffs.csv and games.csv; every other row and file is left as it was.
@@ -493,10 +495,41 @@ async function tonight() {
   if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${note.replaceAll("\n", "  \n")}\n`, { flag: "a" });
 }
 
+/**
+ * What is wrong with one schedule page's games, for the canary: nothing (an empty list) on a healthy page. Once the
+ * season is a month old, a seed team must have played games with both scores; every game falls inside the season.
+ */
+export function canaryProblems(games, season, today = new Date()) {
+  const problems = [];
+  if (games.length === 0) return ["no games on the page"];
+  const start = `${season}-08-01`;
+  const end = `${season + 1}-01-31`;
+  const outside = games.filter((g) => g.date < start || g.date > end);
+  if (outside.length) problems.push(`${outside.length} game(s) dated outside the season (${outside[0].date})`);
+  const monthIn = new Date(`${season}-09-15T00:00:00Z`);
+  if (today >= monthIn && !games.some((g) => g.played)) problems.push("no played game with both scores after mid-September");
+  if (games.some((g) => !g.home.name || !g.away.name)) problems.push("a game without both team names");
+  return problems;
+}
+
+/** `--canary`: one seed page, read and checked. Exits 1, so the workflow fails and its owner is emailed, on any problem. */
+async function canary() {
+  const page = await fetchSchedule(SEEDS[0]);
+  if (!page) throw new Error(`${scheduleUrl(SEEDS[0], SEASON)}: no page (404 or redirect)`);
+  const games = parseSchedule(page.html); // throws on a page shape this reader does not know
+  const problems = canaryProblems(games, SEASON);
+  const note = problems.length
+    ? [`MaxPreps canary: ${problems.length} problem(s) on ${page.url}`, ...problems].join("\n")
+    : `MaxPreps canary: ${games.length} games, ${games.filter((g) => g.played).length} played, shape as expected.`;
+  console.log(note);
+  if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `\n${note.replaceAll("\n", "  \n")}\n`, { flag: "a" });
+  if (problems.length) process.exitCode = 1;
+}
+
 /** `--due <playoffs.csv>`: how many bracket games of tonight have no score yet. The workflow reads only when it is not 0. */
 function due() {
   const file = process.argv[process.argv.indexOf("--due") + 1];
   console.log(tonightsGames(readFileSync(file, "utf8"), gameNight()).length);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--due") ? due() : process.argv.includes("--tonight") ? tonight() : main());
+if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--due") ? due() : process.argv.includes("--canary") ? canary() : process.argv.includes("--tonight") ? tonight() : main());
