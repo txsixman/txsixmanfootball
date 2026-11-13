@@ -33,7 +33,7 @@ const SECTIONS: { id: string; title: string; body: string[] }[] = [
     title: "Games played and games rated",
     body: [
       "Under each team on the rankings, and on its program page, are two numbers: the games it has played this season, and how many of them are rated. A rating rests on the rated games only.",
-      "A game is played but not rated when it is a forfeit, a 0-0 game that nobody played, or a game listed twice. Those say nothing about how strong a team is. The difference between the two numbers is how many games were left out.",
+      "A game is played but not rated when it is a forfeit or a game listed twice. Those say nothing about how strong a team is. The difference between the two numbers is how many games were left out. A 0-0 \"final\" that is not a forfeit is no score at all: it counts as a game not yet played.",
       "A rating also rests on some games against schools that are not listed on this site, when that school played at least two listed teams. A program page counts those separately. On a past week's rankings, both numbers count only the games through that Sunday.",
     ],
   },
