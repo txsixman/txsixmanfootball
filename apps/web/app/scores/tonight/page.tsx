@@ -10,7 +10,7 @@ import TonightBoard from "./board";
 // part read in the browser (app/scores/live-score.tsx).
 export const dynamic = "force-static";
 export const metadata: Metadata = {
-  title: "Tonight | Texas six-man football",
+  title: "Tonight's games",
   description: "Every Texas six-man game of the night, by organization and round, with live scores while they are played.",
 };
 
