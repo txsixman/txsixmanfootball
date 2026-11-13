@@ -3,8 +3,9 @@
 # captures (each game's source page, coverage, outside games) live in the private repo txsixman/data-private; this repo
 # gets the facts the site shows (tools/league-watch/publish.mjs). The private repo is committed first, then this one,
 # and every run republishes from the private files, so a run whose public push failed is repaired by the next. A commit
-# made with the workflow's token does not start CI, so this job runs the same checks first. A failed read fails the job
-# and GitHub emails the repo owner.
+# made with the workflow's token does not start CI, so this job runs the same checks first. A failed read fails the job,
+# and the notify job posts it to the robot-alert issue, which emails the owner (ADR 0027): a run the game-day clock
+# started is the github-actions bot's, and GitHub emails no one about those.
 # A night read also sends the scores of games still under way to the hosted database (live_score, ADR 0021): no commit and
 # no rebuild, the site reads them in the browser. Only finals are committed.
 # Before cut-over (repo variable LIVE not true) the schedules do nothing, a dispatch reads and checks but pushes only
@@ -251,3 +252,25 @@ jobs:
     if: ${{ !cancelled() && (needs.maxpreps.result == 'success' || needs.maxpreps.outputs.sha != '') }}
     uses: ./.github/workflows/supabase.yml
     secrets: inherit
+
+  # A failed or cancelled job (a timeout counts) is posted to the one open robot-alert issue (ADR 0027). `deployed` is
+  # report-only and left out. The cross-file check that fails `maxpreps` after its push lands here too.
+  notify:
+    needs: [due, maxpreps, alerts, supabase]
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Post the failure to the robot-alert issue
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/ops-alert.mjs

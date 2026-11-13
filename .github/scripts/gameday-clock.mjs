@@ -1,16 +1,19 @@
 // The game-day clock (ADR 0024): starts Results watch's game-day read (`tonight`) every 10 minutes of a playoff game
 // night, from GitHub itself, because GitHub's `schedule` events have never fired in this repo. One run of
-// gameday-clock.yml loops for up to about 5.5 hours, then starts the next run and exits, so the clock keeps going
-// within the 6-hour job limit. Through GitHub's API with the workflow's own token (actions: write); nothing else.
+// gameday-clock.yml loops for up to about 5.5 hours, within the 6-hour job limit. It queues the next run first (ADR
+// 0027): the next run waits under `concurrency: gameday-clock` and starts however this one ends (done, failed, timed
+// out, cancelled, its runner lost), so the chain never stops quietly. Through GitHub's API with the workflow's own
+// token (actions: write); every call times out after 30 seconds.
 // A dispatch made with that token starts a run: workflow_dispatch is GitHub's stated exception to the rule that the
 // token's events start no workflows.
 //
 //   node .github/scripts/gameday-clock.mjs [--minutes 330] [--dry-run] [--retry]
 //
-// --minutes  how long this run keeps the clock before handing on (1 to 340)
+// --minutes  how long this run keeps the clock (1 to 340)
 // --dry-run  decides and logs every tick, but starts nothing: no read, no next clock run
-// --retry    this run was started after a run whose dispatch failed; if this one fails too, it hands on to no one
-// Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/name), GITHUB_STEP_SUMMARY (optional), PLAYOFFS (default: the season's
+// --retry    this run was started after a failed run; if this one fails too, it cancels the queued next run, and the
+//            chain stops (the failure is posted to the robot-alert issue, ADR 0027)
+// Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/name), GITHUB_RUN_ID, GITHUB_STEP_SUMMARY (optional), PLAYOFFS (default: the season's
 // data/seed/maxpreps-<season>/playoffs.csv).
 
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
@@ -85,18 +88,32 @@ export function decide(now, runs) {
 }
 
 /** GitHub's REST API with the workflow's token. A dispatch answers 204; anything else is a failure. */
-export function github({ token, repo, fetchImpl = fetch }) {
-  const base = `https://api.github.com/repos/${repo}/actions/workflows`;
+/** A hung call must not hang the clock until its job times out: every call gives up after this long. */
+export const CALL_TIMEOUT_MS = 30_000;
+
+export function github({ token, repo, selfId, fetchImpl = fetch }) {
+  const base = `https://api.github.com/repos/${repo}/actions`;
   const headers = { authorization: `Bearer ${token}`, accept: "application/vnd.github+json", "x-github-api-version": "2022-11-28" };
+  const call = (url, init = {}) => fetchImpl(url, { headers, ...init, signal: AbortSignal.timeout(CALL_TIMEOUT_MS) });
+  const listRuns = async (workflow) => {
+    const res = await call(`${base}/workflows/${workflow}/runs?per_page=30`);
+    if (!res.ok) throw new Error(`listing ${workflow} runs: HTTP ${res.status}`);
+    return (await res.json()).workflow_runs ?? [];
+  };
   return {
-    async runs() {
-      const res = await fetchImpl(`${base}/${READ_WORKFLOW}/runs?per_page=30`, { headers });
-      if (!res.ok) throw new Error(`listing ${READ_WORKFLOW} runs: HTTP ${res.status}`);
-      return (await res.json()).workflow_runs ?? [];
-    },
+    runs: () => listRuns(READ_WORKFLOW),
     async dispatch(workflow, inputs) {
-      const res = await fetchImpl(`${base}/${workflow}/dispatches`, { method: "POST", headers, body: JSON.stringify({ ref: "main", inputs }) });
+      const res = await call(`${base}/workflows/${workflow}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs }) });
       if (res.status !== 204) throw new Error(`starting ${workflow}: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    },
+    /** Cancel every clock run still waiting to start (not this one): the chain stops when this run ends. */
+    async cancelQueued() {
+      const waiting = (await listRuns(CLOCK_WORKFLOW)).filter((r) => r.status !== "completed" && r.status !== "in_progress" && String(r.id) !== String(selfId));
+      for (const r of waiting) {
+        const res = await call(`${base}/runs/${r.id}/cancel`, { method: "POST" });
+        if (res.status !== 202 && res.status !== 409) throw new Error(`cancelling clock run ${r.id}: HTTP ${res.status}`);
+      }
+      return waiting.length;
     },
   };
 }
@@ -117,6 +134,17 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
     return { failed: false, handedOn: false, ticks: 0 };
   }
   if (playoffsText == null) log(`No playoffs.csv for the ${seasonOf(start)} season yet: the clock runs by the date alone.`);
+  // The next run first: it waits (concurrency: gameday-clock) and starts however this one ends.
+  if (dryRun) log(`Dry run: no next clock run queued.`);
+  else {
+    try {
+      await api.dispatch(CLOCK_WORKFLOW, { minutes: String(minutes), retry: "false" });
+      log(`Queued the next clock run; it starts when this one ends, however it ends.`);
+    } catch (e) {
+      log(`FAILED to queue the next clock run: ${e.message}. The clock stops when this run ends; start it again by hand.`);
+      return { failed: true, handedOn: false, ticks: 0 };
+    }
+  }
   let failed = false;
   let ticks = 0;
   let wasOutside = false;
@@ -149,27 +177,21 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
     if (!(outside && wasOutside)) log(`${stamp} UTC: ${dryRun && verdict.dispatch ? "would have started the game-day read (dry run)" : verdict.line}`);
     wasOutside = outside;
   }
-  // Hand on: the next clock run waits on this one (concurrency: gameday-clock) and starts as this one ends.
-  const end = clock();
-  if (dryRun) {
-    log(`Dry run: no next clock run started.`);
-    return { failed, handedOn: false, ticks };
-  }
-  if (!seasonMonth(end)) {
-    log(`December is over: the clock stops here and starts no next run.`);
-    return { failed, handedOn: false, ticks };
-  }
-  if (failed && retry) {
-    log(`This run followed a failed one and failed too: no next clock run. Start the clock again by hand once it is fixed.`);
-    return { failed, handedOn: false, ticks };
-  }
+  if (dryRun || !failed) return { failed, handedOn: !dryRun, ticks };
+  // A failure: the queued run becomes a retry (a newer queued run replaces the older one), and a retry that fails
+  // too stops the chain rather than fail every 10 minutes all night.
   try {
-    await api.dispatch(CLOCK_WORKFLOW, { minutes: String(minutes), retry: String(failed) });
-    log(`Started the next clock run${failed ? " (a retry: if it fails too, the chain stops)" : ""}.`);
+    if (retry) {
+      const n = await api.cancelQueued();
+      log(`This run followed a failed one and failed too: cancelled ${n} queued clock run(s); the chain stops. Start it again by hand once it is fixed.`);
+      return { failed, handedOn: false, ticks };
+    }
+    await api.dispatch(CLOCK_WORKFLOW, { minutes: String(minutes), retry: "true" });
+    log(`Queued the next clock run as a retry: if it fails too, the chain stops.`);
     return { failed, handedOn: true, ticks };
   } catch (e) {
-    log(`FAILED to start the next clock run: ${e.message}. The clock has stopped; start it again by hand.`);
-    return { failed: true, handedOn: false, ticks };
+    log(`FAILED after a failure: ${e.message}. The clock run queued at the start still starts.`);
+    return { failed, handedOn: true, ticks };
   }
 }
 
@@ -182,7 +204,7 @@ function args(argv) {
 
 async function main() {
   const { minutes, dryRun, retry } = args(process.argv);
-  const { GITHUB_TOKEN: token, GITHUB_REPOSITORY: repo, GITHUB_STEP_SUMMARY: summary } = process.env;
+  const { GITHUB_TOKEN: token, GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: selfId, GITHUB_STEP_SUMMARY: summary } = process.env;
   if (!token || !repo) throw new Error("GITHUB_TOKEN and GITHUB_REPOSITORY must be set");
   const file = process.env.PLAYOFFS || `data/seed/maxpreps-${seasonOf(Date.now())}/playoffs.csv`;
   const log = (line) => {
@@ -197,11 +219,11 @@ async function main() {
     playoffsText: existsSync(file) ? readFileSync(file, "utf8") : null,
     clock: Date.now,
     sleep: (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms))),
-    api: github({ token, repo }),
+    api: github({ token, repo, selfId }),
     log,
   });
-  log(`${result.ticks} ticks; ${result.failed ? "FAILED" : "ok"}; ${result.handedOn ? "next clock run started" : "no next clock run"}.`);
-  // A failure fails the job, so GitHub emails the owner; the next run (if handed on) already has the clock.
+  log(`${result.ticks} ticks; ${result.failed ? "FAILED" : "ok"}; ${result.handedOn ? "the next clock run is queued" : "no next clock run"}.`);
+  // A failure fails the job; the workflow's notify job posts it to the robot-alert issue (ADR 0027).
   if (result.failed) process.exitCode = 1;
 }
 

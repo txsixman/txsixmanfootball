@@ -3,10 +3,13 @@
 # November and December, from GitHub itself, so the reads need no one's computer. A tick is skipped when a read is
 # already queued or running, when GitHub's schedule started one in the last 12 minutes, or when any read started in the
 # last 8 (the Mac's loop, a run by hand); Results watch's `due` job makes a tick with no game left a short check.
-# One run keeps the clock about 5.5 hours, then starts the next and exits (the 6-hour job limit); the chain stops by
-# itself after December or when every bracket has a scored final. Start it by hand once a season (Actions > Game-day
-# clock > Run workflow); `dry_run` proves it without starting anything. A failed dispatch fails the run, so GitHub emails
-# the owner; the run hands on once as a retry, and a retry that fails too ends the chain.
+# One run keeps the clock about 5.5 hours (the 6-hour job limit). It queues the next run first (ADR 0027), which waits on
+# this one and starts however it ends: done, failed, timed out, cancelled or its runner lost. The chain stops by itself
+# after December or when every bracket has a scored final; to stop it by hand, cancel the queued run, then the running
+# one. Start it by hand once a season (Actions > Game-day clock > Run workflow); `dry_run` proves it without starting
+# anything. A failure fails the run, and the notify job posts it to the robot-alert issue, which emails the owner (a run
+# the clock started is the github-actions bot's, and GitHub emails no one about those). After a failure the queued run
+# is a retry; a retry that fails too cancels the queued run, and the chain stops.
 # The workflow's own token, no secrets: a dispatch made with it starts a run (GitHub's stated exception for
 # workflow_dispatch). Free on a public repo's standard runners; a run spends nearly all its time asleep.
 name: Game-day clock
@@ -19,11 +22,11 @@ on:
         type: boolean
         default: false
       minutes:
-        description: "How long this run keeps the clock before starting the next (1 to 340)"
+        description: "How long this run keeps the clock (1 to 340)"
         required: false
         default: "330"
       retry:
-        description: "Set by the clock: this run follows one whose dispatch failed"
+        description: "Set by the clock: this run follows a failed one"
         type: boolean
         default: false
 
@@ -63,3 +66,24 @@ jobs:
           [ "$DRY_RUN" != true ] || flags+=(--dry-run)
           [ "$RETRY" != true ] || flags+=(--retry)
           node .github/scripts/gameday-clock.mjs "${flags[@]}"
+
+  # A failed or cancelled clock (a timeout counts) is posted to the one open robot-alert issue (ADR 0027).
+  notify:
+    needs: clock
+    if: ${{ always() && (needs.clock.result == 'failure' || needs.clock.result == 'cancelled') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Post the failure to the robot-alert issue
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/ops-alert.mjs
