@@ -8,7 +8,7 @@ import type { Identity } from "@/lib/identity"; // the type only: lib/identity.t
 import { liveView, type LiveRow } from "@/lib/live-scores";
 import { ORGS } from "@/lib/orgs";
 import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
-import { CrestSlot, EmptyState, PageHeader } from "../ui";
+import { CrestSlot, EmptyState, PageHeader, UnconfirmedMark } from "../ui";
 import { LiveLine, useLiveScores } from "./live-score";
 import { ForfeitMark, VerifyBar, scoreClass } from "./parts";
 
@@ -49,6 +49,16 @@ function StatusCell({ g }: { g: Game }) {
 
 function Notes({ g }: { g: Game }) {
   const items: ReactNode[] = [];
+  // An unconfirmed score is marked once, in the row, by the same mark as every other page. A full-width red bar under
+  // each of a Friday's twenty-odd games read as an alarm; the disputed bar stays (VerifyBar).
+  if (g.verification === "unconfirmed") {
+    items.push(
+      <span key="v" className="flex items-center gap-1.5">
+        <UnconfirmedMark />
+        {g.sources && <span className="text-muted">{g.sources}</span>}
+      </span>,
+    );
+  }
   if (isForfeit(g)) {
     items.push(<span key="f" className="font-bold text-ink">Forfeit. Not a played score.</span>);
   } else if (g.endReason && g.state === "final") {
@@ -117,12 +127,7 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
 function Row({ g, crests, liveRows }: { g: Game; crests?: Crests; liveRows: LiveRow[] }) {
   // A game with no final yet may be under way (ADR 0021); one with a final never shows a live row.
   const live = g.state === "scheduled" ? liveView(liveRows, { date: g.date, home: g.home.name, away: g.away.name }) : null;
-  const edge =
-    g.verification === "disputed"
-      ? "border-l-[6px] border-red"
-      : g.verification === "unconfirmed"
-        ? "border-l-[6px] border-dashed border-red"
-        : "border-l-[6px] border-transparent";
+  const edge = g.verification === "disputed" ? "border-l-[6px] border-red" : "border-l-[6px] border-transparent";
   return (
     <li data-game={g.id} className="border-b border-line">
       <Link href={`/scores/${g.id}`} className="block hover:bg-panel focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-navy active:bg-panel">
@@ -135,7 +140,7 @@ function Row({ g, crests, liveRows }: { g: Game; crests?: Crests; liveRows: Live
             {live && <LiveLine live={live} className="mt-0.5" />}
           </div>
         </div>
-        <VerifyBar g={g} />
+        {g.verification === "disputed" && <VerifyBar g={g} />}
       </Link>
     </li>
   );
@@ -262,7 +267,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
           <dt className="font-bold text-ink">Check</dt>
           <dd>A confirmed final.</dd>
           <dt className="font-bold text-ink">Unconfirmed</dt>
-          <dd>Dashed score. Not confirmed yet, and it may change.</dd>
+          <dd>Boxed word, dashed score. Not confirmed yet, and it may change.</dd>
           <dt className="font-bold text-ink">Disputed</dt>
           <dd>Wavy score. Reports disagree, so no winner is marked.</dd>
           <dt className="font-bold text-ink">Forfeit</dt>

@@ -29,7 +29,9 @@ export default async function TonightPage() {
               : undefined
           }
         />
-        <p className="mt-2 text-[13px] text-muted">Page updated {updated}</p>
+        <p className="mt-2 text-[13px] text-muted">
+          Finals as of {updated}. A game under way shows its live score, read every minute.
+        </p>
       </header>
       {night.count ? (
         <TonightBoard night={night} />

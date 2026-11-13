@@ -314,7 +314,11 @@ test("the 2026 playoffs crown no one and name no source (ADR 0004, ADR 0009)", a
   await page.goto("/scores");
   await expect(page.getByText(/UIL DI · Bi-district/).first()).toBeVisible();
   await page.getByRole("group", { name: "Show games from" }).getByRole("button", { name: "TAPPS" }).click(); // robot-read, so unconfirmed
-  await expect(page.getByText(/^Unconfirmed\s*Score may change\.$/).first()).toBeAttached(); // played, unconfirmed: no winner
+  // Played, unconfirmed: the row's own mark, no full-width bar, and no winner.
+  const row = page.locator("li[data-game]").filter({ hasText: "Unconfirmed" }).first();
+  await expect(row).toBeAttached();
+  await expect(row.locator("p.border-dashed")).toHaveCount(0);
+  await expect(row.getByText("winner")).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText(/maxpreps|bracket\./i);
 });
 

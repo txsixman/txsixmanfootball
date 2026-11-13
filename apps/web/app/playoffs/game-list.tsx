@@ -4,15 +4,10 @@ import type { BracketRow } from "@/lib/brackets";
 import { EMPTY, type loadIdentities } from "@/lib/identity";
 import { gameStatus } from "@/lib/playoff-status";
 import { projectionParts } from "@/lib/projection";
-import { CrestSlot } from "../ui";
+import { CrestSlot, UnconfirmedMark } from "../ui";
 
 const day = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
-
-/** The mark on a score the site cannot vouch for (ADR 0004): bordered, so it reads on a phone in the sun. */
-export const UnconfirmedMark = () => (
-  <span className="inline-block border-2 border-ink px-1.5 text-[13px] font-bold uppercase leading-5 tracking-wide text-ink">Unconfirmed</span>
-);
 
 /** The games of one round: away team first, a big score, the date and site, a status line and the projection for a game not yet played.
  * No row names a winner from an unconfirmed score (ADR 0004); `today` is a Central-time date (lib/playoff-status.ts).

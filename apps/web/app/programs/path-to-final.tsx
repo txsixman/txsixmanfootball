@@ -8,7 +8,7 @@ import { centralClock, gameStatus } from "@/lib/playoff-status";
 import { chanceText, projectionParts } from "@/lib/projection";
 import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
-import { UnconfirmedMark } from "../playoffs/game-list";
+import { UnconfirmedMark } from "../ui";
 import { CrestSlot } from "../ui";
 
 /**

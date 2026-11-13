@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
+import { nightOrder } from "../lib/night-order";
 import { LIVE_SCORES_URL, noLiveScores } from "./live-route";
 
 // Game night: the preview on a game not yet played (/scores/<id>) and the Tonight scoreboard (/scores/tonight). No request
@@ -185,7 +186,7 @@ test.describe("Tonight", () => {
     const { tonight } = await fixtures();
     await checkPage(page, "/scores/tonight");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tonight");
-    await expect(page.getByText(/^Page updated .*\d{1,2}:\d{2} (AM|PM) CT$/)).toBeVisible();
+    await expect(page.getByText(/^Finals as of .*\d{1,2}:\d{2} (AM|PM) CT\. A game under way shows its live score, read every minute\.$/)).toBeVisible();
     if (tonight.count === 0) {
       await expect(page.getByText(/No games are listed for/)).toBeVisible();
       await expect(page.getByRole("link", { name: "See every playoff game" })).toHaveAttribute("href", "/scores");
@@ -198,19 +199,20 @@ test.describe("Tonight", () => {
       const section = sections.nth(i);
       await expect(section.getByRole("heading", { level: 2 })).toHaveText(org.label);
       await expect(section.getByRole("heading", { level: 3 })).toHaveText(org.rounds.map((r) => r.label));
-      const ids = org.rounds.flatMap((r) => r.games.map((g) => g.id));
+      // No live score here (noLiveScores), so each round lists its games not yet scored first, then its finals.
+      const ids = org.rounds.flatMap((r) => nightOrder(r.games, () => false).map((g) => g.id));
       expect(await section.locator("li[data-game]").evaluateAll((li) => li.map((x) => x.getAttribute("data-game")))).toEqual(ids);
       for (const g of org.rounds.flatMap((r) => r.games)) {
         const row = section.locator(`li[data-game="${g.id}"]`);
         await expect(row.getByRole("link")).toHaveAttribute("href", g.href);
         await expect(row).toContainText(`${g.away} at ${g.home}`);
-        if (g.state === "later") await expect(row).toContainText("Tonight, no score yet");
+        if (g.state === "later") await expect(row).toContainText("No score yet");
         if (g.state === "forfeit") {
           await expect(row).toContainText("Forfeit");
           await expect(row).not.toContainText(/\b[0-2]\s*,\s|\b[0-2]–[0-2]\b/);
         }
         if (g.state === "final" && g.unconfirmed) {
-          await expect(row).toContainText("Final · Unconfirmed");
+          await expect(row).toContainText(/Final\s*Unconfirmed/);
           await expect(row).toContainText(`${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}`);
         }
       }
