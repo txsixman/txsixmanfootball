@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, gameNight, inProgressShape, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -36,10 +36,33 @@ test("reads home, away, score and date; skips deleted games", () => {
   assert.equal(later.played, false);
 });
 
+test("a 0-0 result is no score: the game is not played and not written as a final; a 7-7 tie is a result", () => {
+  const final = (hs, as) => contest({ teams: [team({ name: "Cedar Gap", homeAway: 0, score: hs }), team({ name: "Salt Fork", homeAway: 1, score: as })], start: "2026-10-23T19:00:00", hasResult: true });
+  const [blank] = parseSchedule(page([final(0, 0)]));
+  assert.deepEqual([blank.played, blank.live, blank.home.score, blank.away.score], [false, false, null, null]);
+  const bySlug = new Map([["cedar-gap", { school: "Cedar Gap", division: "II" }], ["salt-fork", { school: "Salt Fork", division: "II" }]]);
+  for (const t of [blank.home, blank.away]) t.slug = match(t, bySlug, {});
+  assert.equal(toCsv([blank], bySlug), `${COLUMNS}\n`);
+  const [tie] = parseSchedule(page([final(7, 7)]));
+  assert.deepEqual([tie.played, tie.home.score, tie.away.score], [true, 7, 7]);
+});
+
 test("fails loudly when the page shape changes", () => {
   assert.throws(() => parseSchedule("<html></html>"), /no __NEXT_DATA__/);
   assert.throws(() => parseSchedule(page([contest({ teams: [team({ name: "A", homeAway: 0 })], start: "2026-09-01" })])), /exactly two teams/);
   assert.throws(() => parseSchedule(page([contest({ teams: [team({ name: "A", homeAway: 0 }), team({ name: "B", homeAway: 1 })], start: null })])), /without a date/);
+});
+
+test("a played game against a team no longer listed: a new shape now, skipped and counted for a past season", () => {
+  const gone = team({ name: "Gone", homeAway: 1, score: 6, contestId: "c9" });
+  gone[14] = null;
+  gone[13] = null;
+  const html = page([played, contest({ teams: [team({ name: "Cedar Gap", homeAway: 0, score: 40, contestId: "c9" }), gone], start: "2019-09-06T19:30:00", hasResult: true })]);
+  assert.throws(() => parseSchedule(html), /team without a name or page/);
+  const skipped = [];
+  const games = parseSchedule(html, { onUnnamed: (date) => skipped.push(date) });
+  assert.deepEqual(games.map((g) => g.home.name), ["Salt Fork"]);
+  assert.deepEqual(skipped, ["2019-09-06"]);
 });
 
 test("writes played games only, with our school names and the game page as source", () => {
@@ -345,6 +368,27 @@ test("live rows: tonight's still-unscored bracket games only, our slugs, the sit
   // The key is the one lib/games.ts gameKey builds from the same date and names.
   const siteKey = (date, a, b) => [date, ...[slugify(a), slugify(b)].sort()].join("|");
   assert.equal(rows[0].game_key, siteKey("2026-11-13", "Salt Fork", "Cedar Gap"));
+});
+
+test("a past season's 11-man games: the page's own division says which football, and six-man wins a disagreement", () => {
+  const page = (name) => `<script>{"stateDivisionName":"${name}"}</script>`;
+  assert.equal(footballOf(page("Division 1A 6 Man 2")).kind, "6");
+  assert.equal(footballOf(page("Division TAPPS II 6 Man")).kind, "6");
+  assert.equal(footballOf(page("Division 6 Man")).kind, "6");
+  for (const name of ["Division 2A-2", "Division 5A", "Division TAPPS III", "Division TAPPS IV", "Division TCAF 11", "Division TCAL 11"]) {
+    assert.equal(footballOf(page(name)).kind, "11", name);
+  }
+  for (const name of ["", "Division TAIAO 1", "Division TCAF 1", "Division TCAL II"]) assert.equal(footballOf(page(name)).kind, null, name);
+  assert.equal(footballOf("<html>no division</html>").kind, null);
+
+  const football = new Map([["a", { kind: "11" }], ["b", { kind: "11" }], ["s", { kind: "6" }], ["u", { kind: null }]]);
+  const game = (home, away) => ({ home: { url: home }, away: { url: away } });
+  assert.equal(isElevenMan(game("a", "b"), football), true);
+  assert.equal(isElevenMan(game("a", "u"), football), true);
+  assert.equal(isElevenMan(game("a", "not-read"), football), true);
+  assert.equal(isElevenMan(game("a", "s"), football), false); // a six-man school plays six-man
+  assert.equal(isElevenMan(game("s", "u"), football), false);
+  assert.equal(isElevenMan(game("u", "not-read"), football), false);
 });
 
 test("in CI a read refuses to run without PRIVATE_DATA, naming it; a local run and a CI run with it go ahead", () => {

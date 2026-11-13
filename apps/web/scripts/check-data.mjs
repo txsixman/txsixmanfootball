@@ -9,7 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { applyToGame, buildCorrections } from "../lib/corrections.ts";
 import * as s from "../lib/data-schemas.ts";
-import { CURRENT_SEASON } from "../lib/season.ts";
+import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season.ts";
 import { slugify } from "../lib/slug.ts";
 import { applyExceptions, checkSeason, gameKey } from "./data-integrity.mjs";
 
@@ -93,6 +93,7 @@ export function checkAll() {
     if (unknown.length) results.push({ file: seed("schools/identity.json"), ok: false, note: `colors not in colors.json: ${unknown.join(", ")}` });
   }
   if (identity) results.push(checkLogoFiles(identity));
+  results.push(checkFirstSeason());
   results.push(...checkMaxprepsFolders(path.join(root, "data/seed")));
   return results;
 }
@@ -117,6 +118,18 @@ export function checkMaxprepsFolders(seedDir) {
     }
   }
   return results;
+}
+
+/** lib/season.ts FIRST_SEASON ("since <year>" on pages, the admin console's seasons) is the oldest season on file. */
+function checkFirstSeason() {
+  const years = (dir, re) => readdirSync(path.join(root, dir)).flatMap((f) => re.exec(f)?.[1] ?? []).map(Number);
+  const oldest = { "data/seed/maxpreps-<year>": Math.min(...years("data/seed", /^maxpreps-(\d{4})$/)), "data/ratings/<year>.json": Math.min(...years("data/ratings", /^(\d{4})\.json$/)) };
+  const off = Object.entries(oldest).filter(([, y]) => y !== FIRST_SEASON);
+  return {
+    file: "apps/web/lib/season.ts",
+    ok: off.length === 0,
+    note: off.length ? `FIRST_SEASON is ${FIRST_SEASON}, but the oldest ${off.map(([d, y]) => `${d} is ${y}`).join(" and ")}` : `FIRST_SEASON ${FIRST_SEASON} is the oldest season on file`,
+  };
 }
 
 /** Hand-captured playoff games (lib/games.ts CAPTURES): a robot row for a game captured by hand is left out there too. */

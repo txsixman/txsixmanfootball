@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { FIRST_SEASON } from "../lib/season";
 import path from "node:path";
 import { LIVE_SCORES_URL, noLiveScores } from "./live-route";
 
@@ -110,8 +111,8 @@ test("a game not yet played has a preview: both teams, the projection, head-to-h
   if (g.projected) await expect(box).toContainText(g.projected);
   await expect(page.getByRole("region", { name: "Game details" })).toContainText(g.projected ?? "");
 
-  // Head-to-head since 2021: each earlier meeting links to its own game page; scores as stored, away first.
-  const h2h = box.getByRole("region", { name: "Head-to-head since 2021" });
+  // Head-to-head since FIRST_SEASON: each earlier meeting links to its own game page; scores as stored, away first.
+  const h2h = box.getByRole("region", { name: `Head-to-head since ${FIRST_SEASON}` });
   const links = h2h.getByRole("link");
   await expect(links).toHaveCount(detail.meetings.list.length);
   expect(await links.evaluateAll((a) => a.map((x) => x.getAttribute("href")))).toEqual(detail.meetings.list.map((m) => m.result.href));
@@ -149,8 +150,8 @@ test("the preview says so plainly when two teams have no head-to-head or no comm
   test.skip(!noMeetings && !noCommon, "every unplayed game has both");
   if (noMeetings) {
     await page.goto(`/scores/${noMeetings.game.id}`);
-    const h2h = page.getByRole("region", { name: "Head-to-head since 2021" });
-    await expect(h2h).toContainText("No earlier game between these two on record since 2021.");
+    const h2h = page.getByRole("region", { name: `Head-to-head since ${FIRST_SEASON}` });
+    await expect(h2h).toContainText(`No earlier game between these two on record since ${FIRST_SEASON}.`);
     await expect(h2h.getByRole("listitem")).toHaveCount(0);
   }
   if (noCommon) {

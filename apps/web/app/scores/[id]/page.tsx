@@ -10,7 +10,7 @@ import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, pla
 import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
 import { orgOfLabel } from "@/lib/orgs";
-import { CURRENT_SEASON } from "@/lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
 import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
@@ -214,7 +214,7 @@ export default async function GamePage({ params }: Props) {
           {series && (
             <p className="px-3 pt-2">
               <Link href={series} prefetch={false} className="inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-red">
-                Every {g.away.name} and {g.home.name} game since 2021
+                Every {g.away.name} and {g.home.name} game since {FIRST_SEASON}
               </Link>
             </p>
           )}

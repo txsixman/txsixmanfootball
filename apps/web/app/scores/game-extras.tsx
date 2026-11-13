@@ -5,6 +5,7 @@ import type { SeasonResult } from "@/lib/games";
 import { projectionParts } from "@/lib/projection";
 import { signed } from "@/lib/signed";
 import { MIN_SURPRISE, surpriseOf } from "@/lib/why-moved";
+import { FIRST_SEASON } from "@/lib/season";
 
 // What a game page adds to the score for a robot-read game, on its own page and on a current-season playoff game's page.
 // Words are rating, projected margin and win probability (never spreads, lines or odds), and nothing here names a
@@ -106,12 +107,12 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
   );
 }
 
-/** Earlier games of the two programs, 2021 on, each on its own page. Away team first, like every results list. */
+/** Earlier games of the two programs, FIRST_SEASON on, each on its own page. Away team first, like every results list. */
 export function MeetingsSection({ detail }: { detail: GameDetail }) {
   return (
     <Section id="meetings" title="Earlier meetings">
       {detail.meetings.total === 0 ? (
-        <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since 2021.</p>
+        <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since {FIRST_SEASON}.</p>
       ) : (
         <MeetingsList detail={detail} />
       )}

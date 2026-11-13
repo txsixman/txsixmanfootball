@@ -31,6 +31,7 @@
 | [0028](../adr/0028-stuck-reads-and-second-source-problems-are-posted.md) | A read waiting over 60 minutes or running over 90 counts as stuck: the clock starts a new read and posts `read-stuck`; the second source's quiet problems (403/429, no season id from August, 10+ checked games with none agreeing) are posted to the same issue with fixed text, each at most once every 12 hours. Adds to ADRs 0024–0027 | Proposed Nov 13, 2026 |
 | [0029](../adr/0029-public-robot-folders-hold-the-facts-only.md) | A public `data/seed/maxpreps-<year>` folder holds `games.csv` and `playoffs.csv` only, checked by `check-data.mjs` on every PR and robot commit; Results watch stages those two files by name; in CI a capture-writing read and the season's table refuse to run without `PRIVATE_DATA`. Adds to ADR 0017 | Proposed Nov 13, 2026 |
 | [0030](../adr/0030-game-day-reads-catch-up-on-earlier-nights.md) | Game-day reads and the `due` gate include the unscored bracket games of the last 3 game nights, not only tonight's; live scores stay tonight's; the clock adds a daytime catch-up tick at 15:03 UTC. Amends ADRs 0015, 0019, 0024 | Proposed Nov 13, 2026 |
+| [0031](../adr/0031-the-results-store-is-the-record.md) | The private results store is the record: reads merge into it, never delete or blank a stored score; a changed final lands after two reads in a row and is logged in `score-changes.csv`; finished seasons are read once (`season.json`, `--reread`); the season's games reach the hosted database in the same run; reads target only what is missing, with a Monday full audit. Amends ADRs 0008, 0017, 0021 | Proposed Nov 13, 2026 |
 | [0032](../adr/0032-second-source-past-seasons.md) | Past seasons from the second source: its feed lists seasons 2018–2026 but has games only for 2026, so it cannot backfill. `davecampbells.mjs --seasons`, `--history <year>` and `--team` (diagnostic), run by hand, write a season's six-man games to the private repo only. For the fill step that comes next: MaxPreps wins, the feed only adds games the store lacks, disagreements go to a private report, and filled rows publish through `publish.mjs`'s columns. The owner confirmed the permission covers past seasons. Adds to ADRs 0025 and 0026 | Proposed Nov 13, 2026 |
 
 Not in an ADR:
@@ -52,3 +53,7 @@ Not in an ADR:
   TAIAO's robot-read row and the results robot use, so the slug matches; if TAIAO's spelling changes, change the TCAF row
   with it. The database keeps one team-season (first league in the file) and every league in `team_season_league`
   (migration 0009). A league change between seasons needs nothing new: each season's file says its league (Nov 11, 2026).
+- **A 0-0 "final" is no score.** MaxPreps sometimes posts 0-0 with a result for a placeholder or a cancelled game; the
+  results reader treats it as unplayed (no rating, record or streak), as the second source's reader does. A real tie
+  (7-7) stands, and a forfeit is still written 1-0 or 2-0. Before this, 0 to 4 such rows a season (2016 to 2026) were
+  read as finals (Nov 13, 2026).
