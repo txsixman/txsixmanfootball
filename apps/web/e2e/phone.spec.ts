@@ -67,7 +67,7 @@ for (const width of [375, 390]) {
     test.use({ viewport: { width, height: 812 } });
 
     test("game-night pages: no sideways scroll, every target 44px", async ({ page }) => {
-      const pages = ["/", "/scores", "/playoffs", "/rankings", "/programs/jayton"];
+      const pages = ["/", "/scores", "/scores/tonight", "/playoffs", "/rankings", "/programs/jayton"];
       // A played game, a playoff game page and a bracket, as the site links them today.
       pages.push(await firstLink(page, "/programs/jayton", /^\/scores\/\d{4}-\d{2}-\d{2}-/));
       pages.push(await firstLink(page, "/scores", /^\/scores\/\d{4}-[a-z]/));
