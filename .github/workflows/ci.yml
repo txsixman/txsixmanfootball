@@ -158,14 +158,14 @@ jobs:
       # A download stalled for 3 minutes once (Nov 12): two minutes, then one more try.
       - id: get
         if: steps.wait.outputs.site == 'true'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         timeout-minutes: 2
         continue-on-error: true
         with:
           name: web-build
           path: ${{ runner.temp }}
       - if: steps.wait.outputs.site == 'true' && steps.get.outcome != 'success'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         timeout-minutes: 3
         with:
           name: web-build
@@ -218,14 +218,14 @@ jobs:
       # A download stalled for 3 minutes once (Nov 12): two minutes, then one more try.
       - id: get
         if: steps.wait.outputs.site == 'true'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         timeout-minutes: 2
         continue-on-error: true
         with:
           name: web-build
           path: ${{ runner.temp }}
       - if: steps.wait.outputs.site == 'true' && steps.get.outcome != 'success'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         timeout-minutes: 3
         with:
           name: web-build
