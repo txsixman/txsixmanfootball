@@ -27,11 +27,11 @@
  },
  "report": {
   "forfeits": 15,
-  "no_contests": 2,
+  "no_contests": 0,
   "duplicates": 0,
   "ties": 2,
   "outside_games": 339,
-  "outside_games_left_out": 27,
+  "outside_games_left_out": 25,
   "hidden_teams": 52
  },
  "teams": [
