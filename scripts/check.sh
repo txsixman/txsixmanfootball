@@ -53,7 +53,7 @@ run "Tool versions match ci.yml" same_as_ci
 
 # The `data` job.
 run "Token guard" bash .github/scripts/token-guard.sh
-run "Site freshness verdict" sh -c 'node --test .github/scripts/*.test.mjs'
+run "Site freshness and post-deploy smoke verdicts" sh -c 'node --test .github/scripts/*.test.mjs'
 if $quick; then
   skipped+=("Migrations and seeds on a throwaway database (--quick)")
 else
