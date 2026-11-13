@@ -92,6 +92,24 @@ export function periodText(contest, index = PERIOD_INDEX) {
 export const teamPage = (url) => url.replace(/(?:\d{2}-\d{2}\/)?schedule\/$/, "");
 
 /**
+ * Which football the team played that season by its page: "6", "11", or null when the page does not say. MaxPreps names the
+ * team's division once per page ("stateDivisionName"): "Division 1A 6 Man 2", "Division TAPPS II 6 Man" are six-man;
+ * "Division 2A-2", "Division 5A", "Division TAPPS III", "Division TCAF 11" are 11-man; blank, TAIAO, "TCAF 1" and
+ * "TCAL II" say neither. Many schools on today's six-man lists played 11-man in earlier seasons, sometimes each other.
+ */
+export function footballOf(html) {
+  const name = html.match(/"stateDivisionName":"([^"]*)"/)?.[1] ?? "";
+  if (/\b6 ?-?Man\b/i.test(name)) return { kind: "6", name };
+  return /\b[2-6]A\b|\bTAPPS\b|\b11\b/.test(name) ? { kind: "11", name } : { kind: null, name };
+}
+
+/** An 11-man game: one team's page says 11-man that season and neither says six-man (a six-man school plays six-man). */
+export const isElevenMan = (g, football) => {
+  const kinds = [football.get(g.home.url)?.kind, football.get(g.away.url)?.kind];
+  return kinds.includes("11") && !kinds.includes("6");
+};
+
+/**
  * Games on one schedule page. Throws if the page no longer has the shape this reader knows. A past season's page may list
  * a played game against a team MaxPreps has since removed (no name or page): with `onUnnamed`, such a game is skipped and
  * reported to it instead of throwing; without it (the season under way), it throws as a new shape.
@@ -355,12 +373,15 @@ async function main() {
   // A past season (read with --season) skips a played game whose other team MaxPreps no longer lists, and counts it.
   let unnamed = 0;
   const past = SEASON < DEFAULT_SEASON ? { onUnnamed: () => unnamed++ } : {};
+  // A past season also leaves out 11-man games (footballOf, isElevenMan).
+  const football = new Map(); // team page -> what its page says it played that season
 
   while (queue.length) {
     const teamUrl = queue.shift();
     const page = await fetchSchedule(teamUrl);
     pages++;
     if (page) readPages.add(teamUrl);
+    if (page && SEASON < DEFAULT_SEASON) football.set(teamPage(page.url), footballOf(page.html));
     if (page) {
       for (const g of parseSchedule(page.html, past)) {
         if (g.date < SEASON_START || g.date > SEASON_END) continue;
@@ -390,10 +411,20 @@ async function main() {
   }
 
   // A school whose alias page was read but has no games this season most likely fielded no team (or MaxPreps has none).
+  // 11-man games are not six-man results: drop them, and list a school left with no six-man game as 11-man that season.
+  const elevenGames = [...games.values()].filter((g) => g.played && isElevenMan(g, football)).length;
+  for (const [id, g] of games) if (isElevenMan(g, football)) games.delete(id);
+  for (const [id, g] of outsideGames) if (isElevenMan(g, football)) outsideGames.delete(id);
+  const slugOfPage = new Map([...teamPages].map(([slug, url]) => [url, slug]));
+  const namesOf = (url) => [ALIASES[url] ?? slugOfPage.get(url) ?? []].flat().map(slugify);
+  const sixManPages = new Set([...games.values(), ...outsideGames.values()].flatMap((g) => [g.home.url, g.away.url]));
+  const elevenPages = [...football].filter(([url, f]) => f.kind === "11" && !sixManPages.has(url));
+  const elevenSlugs = new Set(elevenPages.flatMap(([url]) => namesOf(url)));
+  for (const s of elevenSlugs) reached.delete(s);
   const readNames = new Set([...readPages].flatMap((url) => [ALIASES[url] ?? []].flat().map(slugify)));
   const missing = [...bySlug.entries()]
     .filter(([slug]) => !reached.has(slug))
-    .map(([slug, r]) => `${r.league} ${r.division}: ${r.school}${readNames.has(slug) ? ` (MaxPreps page read: no ${SEASON} games)` : ""}`);
+    .map(([slug, r]) => `${r.league} ${r.division}: ${r.school}${elevenSlugs.has(slug) ? " (11-man this season)" : readNames.has(slug) ? ` (MaxPreps page read: no ${SEASON} games)` : ""}`);
   mkdirSync(OUT, { recursive: true });
   const { kept, conflicts } = dedupe([...games.values()]);
   writeFileSync(path.join(OUT, "games.csv"), toCsv(kept, bySlug));
@@ -410,6 +441,7 @@ async function main() {
       `Season ${SEASON}, read ${new Date().toISOString().slice(0, 10)} from ${pages} MaxPreps schedule pages (ADR 0008).`,
       `${kept.filter((g) => g.played).length} played games between schools in our alignments.`,
       `${outsideRows.count} played games against opponents outside them, in outside.csv (the ratings' hidden teams; ${outsideRows.conflicts} listed twice with different scores, left out).`,
+      ...(elevenGames ? [`${elevenGames} played 11-man games between schools in our alignments left out (and their games against others). Schools with no six-man game this season, their page's division: ${elevenPages.map(([url, f]) => `${namesOf(url)[0] ?? url} (${f.name})`).sort().join("; ")}.`] : []),
       ...(unnamed ? [`${unnamed} played game sides skipped: the other team is no longer listed on MaxPreps (no name or page).`] : []),
       `${reached.size} of ${bySlug.size} schools reached. Not reached (${missing.length}):`,
       ...missing.sort(),
