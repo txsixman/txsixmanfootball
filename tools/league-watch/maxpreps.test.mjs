@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, gameNight, inProgressShape, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, gameNight, inProgressShape, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -335,4 +335,11 @@ test("live rows: tonight's still-unscored bracket games only, our slugs, the sit
   // The key is the one lib/games.ts gameKey builds from the same date and names.
   const siteKey = (date, a, b) => [date, ...[slugify(a), slugify(b)].sort()].join("|");
   assert.equal(rows[0].game_key, siteKey("2026-11-13", "Salt Fork", "Cedar Gap"));
+});
+
+test("in CI a read refuses to run without PRIVATE_DATA, naming it; a local run and a CI run with it go ahead", () => {
+  assert.throws(() => requirePrivateData({ CI: "true" }), /PRIVATE_DATA is not set/);
+  assert.throws(() => requirePrivateData({ CI: "true", PRIVATE_DATA: "" }), /PRIVATE_DATA/);
+  assert.doesNotThrow(() => requirePrivateData({ CI: "true", PRIVATE_DATA: "/w/private" }));
+  assert.doesNotThrow(() => requirePrivateData({}));
 });
