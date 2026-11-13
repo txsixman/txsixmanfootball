@@ -37,6 +37,10 @@ on:
         description: "Push the results to both repos before the repo is live (a proof run; no alerts, no database)"
         type: boolean
         default: false
+      reread:
+        description: "Read a season stored and marked complete again (ADR 0031); with season, e.g. 2019"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -117,16 +121,20 @@ jobs:
           [[ "$season" =~ ^20[0-9][0-9]$ ]] || { echo "season must be a year like 2026, not: $season"; exit 1; }
           echo "year=$season" >> "$GITHUB_OUTPUT"
       - name: Reader checks
-        run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/davecampbells.test.mjs
+        run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/store.test.mjs tools/league-watch/davecampbells.test.mjs
       - name: Read MaxPreps schedule pages
         env:
           # Any schedule but the morning one is a playoff-night run.
           TONIGHT: ${{ (inputs.tonight || (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0')) && 'true' || 'false' }}
+          # A season stored and marked complete is read again only on this input (ADR 0031).
+          REREAD: ${{ inputs.reread == true && 'true' || 'false' }}
         run: |
           # A night read also writes the games under way (live scores, ADR 0021) to a file outside the repo and the
           # private captures; the next step sends it to the database. A live score never commits and never rebuilds the site.
           if [ "$TONIGHT" = true ]; then
             node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} --tonight --live-out "$RUNNER_TEMP/live.json"
+          elif [ "$REREAD" = true ]; then
+            node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} --reread
           else
             node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }}
           fi
@@ -192,6 +200,27 @@ jobs:
         # publish, rerate, the data checks (Zod blocks, cross-file reports) and the summary lines. Tested against local
         # bare repos (commit-results.test.mjs).
         run: .github/scripts/commit-results.sh "$YEAR"
+      # ADR 0031: the season's games go to the hosted database in the same run, from the private store just committed (the
+      # same upsert as the full load: a game whose stored row says the same thing is left alone, and none is deleted). The
+      # full load (supabase.yml) still runs on Mondays for alignments, lineage and migrations. A failure here is reported and
+      # never undoes the commit.
+      - name: Games to the hosted database
+        if: ${{ vars.LIVE == 'true' && steps.commit.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          PGHOST: aws-0-us-east-1.pooler.supabase.com
+          PGUSER: postgres.vhgnaihnyjdnaaergtcl
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PGSSLROOTCERT: packages/db/supabase-ca.crt
+          YEAR: ${{ steps.season.outputs.year }}
+        run: |
+          if [ -z "$PGPASSWORD" ]; then
+            echo "Games to the database: the SUPABASE_DB_PASSWORD secret is not set, so nothing was sent." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npm ci --omit=dev --prefix packages/db
+          result=$(node packages/db/load.mjs --games "$YEAR")
+          echo "Games to the database: $result" >> "$GITHUB_STEP_SUMMARY"
       # After the push: a cross-file failure the commit step reported (not blocking) fails the job, so the owner is emailed.
       # The jobs below run on the pushed commit all the same (their `if` reads the sha, not this job's result).
       - name: Cross-file data checks (reported above, after the push)

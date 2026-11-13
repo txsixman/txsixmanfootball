@@ -5,6 +5,8 @@
 //   node tools/league-watch/maxpreps.mjs [--season 2027]
 // writes maxpreps-<season>/games.csv, teams.csv (every team page found, the next run's seeds) and coverage.txt in
 // $PRIVATE_DATA (the private data repo; data/seed without it). tools/league-watch/publish.mjs copies the facts here.
+// A read merges into the stored files and never deletes or blanks a stored score (store.mjs, ADR 0031); a past season read
+// in full is marked complete (season.json) and not read again without --reread.
 //   node tools/league-watch/maxpreps.mjs --due data/seed/maxpreps-2026/playoffs.csv
 // prints how many bracket games of tonight have no score yet (results-watch.yml reads only when it is not 0).
 //   node tools/league-watch/maxpreps.mjs --canary
@@ -17,9 +19,10 @@
 // packages/db/live.mjs; the repo's files never change for a live score.
 // The season defaults to the one under way: August to January belongs to the year it started. A past season is read
 // from the same team pages with the season segment in the path (--season 2025 reads .../football/25-26/schedule/).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { CHANGES_FILE, changeLines, countsLine, mergeStored, parseCsv, PENDING_FILE, pendingCsv, readPending } from "./store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argSeason = process.argv.indexOf("--season");
@@ -356,7 +359,28 @@ export function toCsv(games, bySlug) {
   return [COLUMNS, ...rows].join("\n") + "\n";
 }
 
+/** A season stored and marked complete (ADR 0031) is never read again, except with --reread (a manual workflow input). */
+export const SEASON_FILE = "season.json";
+export function seasonComplete(dir) {
+  const file = path.join(dir, SEASON_FILE);
+  return existsSync(file) && JSON.parse(readFileSync(file, "utf8")).complete === true;
+}
+
+/** Outside games (outside.csv) the store keeps when a read no longer lists them: no stored score is lost (ADR 0031). */
+export function keepOutside(storedText, freshText) {
+  const lines = (text) => (text.trim() ? text.trimEnd().split("\n") : []);
+  const [header, ...fresh] = lines(freshText);
+  const key = (l) => l.split(",").slice(0, 3).map((c, i) => (i ? slugify(c) : c)).join("|"); // date, team, opponent
+  const have = new Set(fresh.map(key));
+  const kept = lines(storedText).slice(1).filter((l) => !have.has(key(l)));
+  const rows = [...fresh, ...kept].sort();
+  return { csv: [header ?? OUTSIDE_COLUMNS, ...rows].join("\n") + "\n", kept: kept.length };
+}
+
 async function main() {
+  if (seasonComplete(OUT) && !process.argv.includes("--reread")) {
+    return console.log(`Season ${SEASON} is stored and marked complete (${path.join(OUT, SEASON_FILE)}): nothing read. To read it again, pass --reread.`);
+  }
   const bySlug = loadAlignments();
   // Team pages are the same every season, so a season with no teams.csv of its own starts from a neighbour's.
   const known = [OUT, ...[SEASON - 1, SEASON + 1].map((y) => path.join(RESULTS, `maxpreps-${y}`))].map((d) => path.join(d, "teams.csv")).find(existsSync);
@@ -427,10 +451,29 @@ async function main() {
     .map(([slug, r]) => `${r.league} ${r.division}: ${r.school}${elevenSlugs.has(slug) ? " (11-man this season)" : readNames.has(slug) ? ` (MaxPreps page read: no ${SEASON} games)` : ""}`);
   mkdirSync(OUT, { recursive: true });
   const { kept, conflicts } = dedupe([...games.values()]);
-  writeFileSync(path.join(OUT, "games.csv"), toCsv(kept, bySlug));
-  writeFileSync(path.join(OUT, "playoffs.csv"), playoffsCsv(kept.filter((g) => g.bracket), bySlug));
+  // The store is the record (ADR 0031): this read merges into the stored files and never deletes or blanks a score.
+  const now = new Date().toISOString();
+  const readTeam = (name) => readPages.has(teamPages.get(slugify(name)));
+  const stored = (name) => (existsSync(path.join(OUT, name)) ? readFileSync(path.join(OUT, name), "utf8") : "");
+  let pending = readPending(stored(PENDING_FILE));
+  const changes = [];
+  const storeLines = [];
+  const counted = {};
+  for (const [name, fresh] of [["games.csv", toCsv(kept, bySlug)], ["playoffs.csv", playoffsCsv(kept.filter((g) => g.bracket), bySlug)]]) {
+    const m = mergeStored({ file: name, stored: stored(name), fresh, pending, readTeam, now });
+    writeFileSync(path.join(OUT, name), m.text);
+    pending = m.pending;
+    changes.push(...m.changes);
+    counted[name] = m.text;
+    storeLines.push(countsLine(name, m.counts));
+  }
+  writeFileSync(path.join(OUT, PENDING_FILE), pendingCsv(pending));
+  if (changes.length) appendFileSync(path.join(OUT, CHANGES_FILE), changeLines(changes, existsSync(path.join(OUT, CHANGES_FILE))));
   const outsideRows = outsideCsv([...outsideGames.values()], bySlug);
-  writeFileSync(path.join(OUT, "outside.csv"), outsideRows.csv);
+  const outsideStore = keepOutside(stored("outside.csv"), outsideRows.csv);
+  writeFileSync(path.join(OUT, "outside.csv"), outsideStore.csv);
+  storeLines.push(`outside.csv: ${outsideStore.kept} games kept that this read did not list.`);
+  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### Results store (season ${SEASON})\n\n${storeLines.map((l) => `- ${l}`).join("\n")}\n`);
   writeFileSync(
     path.join(OUT, "teams.csv"),
     ["slug,maxpreps_url", ...[...teamPages.entries()].sort().map(([slug, url]) => `${slug},${url}`)].join("\n") + "\n",
@@ -439,7 +482,8 @@ async function main() {
     path.join(OUT, "coverage.txt"),
     [
       `Season ${SEASON}, read ${new Date().toISOString().slice(0, 10)} from ${pages} MaxPreps schedule pages (ADR 0008).`,
-      `${kept.filter((g) => g.played).length} played games between schools in our alignments.`,
+      `${kept.filter((g) => g.played).length} played games between schools in our alignments on this read; ${parseCsv(counted["games.csv"]).rows.length} in the store.`,
+      ...storeLines,
       `${outsideRows.count} played games against opponents outside them, in outside.csv (the ratings' hidden teams; ${outsideRows.conflicts} listed twice with different scores, left out).`,
       ...(elevenGames ? [`${elevenGames} played 11-man games between schools in our alignments left out (and their games against others). Schools with no six-man game this season, their page's division: ${elevenPages.map(([url, f]) => `${namesOf(url)[0] ?? url} (${f.name})`).sort().join("; ")}.`] : []),
       ...(unnamed ? [`${unnamed} played game sides skipped: the other team is no longer listed on MaxPreps (no name or page).`] : []),
@@ -453,7 +497,10 @@ async function main() {
       ...[...outside.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([n, k]) => `${k}  ${n}`),
     ].join("\n") + "\n",
   );
+  // A past season read in full is finished: stored and marked complete, never read again without --reread.
+  if (SEASON < DEFAULT_SEASON) writeFileSync(path.join(OUT, SEASON_FILE), `${JSON.stringify({ complete: true, read: now.slice(0, 10) }, null, 2)}\n`);
   console.log(`\nWrote ${OUT}/games.csv; ${missing.length} schools not reached (coverage.txt)`);
+  for (const l of storeLines) console.log(l);
 }
 
 /** Today's date where the games are played ("2026-11-13", Central time), whatever the runner's clock zone. */
