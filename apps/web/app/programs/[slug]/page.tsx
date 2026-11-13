@@ -16,14 +16,17 @@ import { whyItMoved } from "@/lib/why-moved";
 import { seasonHref } from "../../rankings/view";
 import { CURRENT_SEASON } from "@/lib/season";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
-import { loadGames, loadSeasonResults, playoffReach, roundPhrase } from "@/lib/games";
-import { fromResult, seasonRows, type Row } from "@/lib/program-games";
+import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
+import { seasonRows, type Row } from "@/lib/program-games";
+import { ratingSeries, type Rivalry } from "@/lib/program-history";
+import { programHistory } from "@/lib/program-seasons";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest } from "../crest";
 import { PathToFinal } from "../path-to-final";
 import { Follow } from "../follow";
 import { ShareButton } from "../../share-button";
 import { RatingChart, ratingPoints } from "../rating-chart";
+import { SeasonRatings } from "../season-ratings";
 import { RankTrend, rankTrend } from "../trend";
 import { CrestSlot, EdgeToEdge } from "../../ui";
 
@@ -53,6 +56,16 @@ function Section({ id, title, accent, children, className = "mt-7" }: { id: stri
       </h2>
       {children}
     </section>
+  );
+}
+
+/** A dash for a figure the data does not have, with words for a screen reader. */
+function Dash({ what }: { what: string }) {
+  return (
+    <>
+      <span aria-hidden="true">&mdash;</span>
+      <span className="sr-only">no {what}</span>
+    </>
   );
 }
 
@@ -116,24 +129,10 @@ export default async function ProgramPage({ params }: Props) {
     .filter((f) => names.has(slugify(f.champion)) || names.has(slugify(f.runnerUp)))
     .sort((a, b) => b.season - a.season);
   const titles = finals.filter((f) => names.has(slugify(f.champion))).length;
-  // Season by season: record, rating and place within its organization from each season's table, and the last playoff round played.
+  // Season by season, 2021 on: record, final rating, place within its organization and the last playoff round played, from each
+  // season's table (lib/program-seasons.ts); a season with nothing on record keeps its row, with dashes.
   const seasons = await ratingSeasons();
-  const history = (
-    await Promise.all(
-      seasons.map(async (season) => {
-        const [table, reach] = await Promise.all([loadRatings(season), playoffReach(season)]);
-        // The place is among the teams of this school's own organization (ADR 0012), by the current alignments.
-        const mine = table.teams.filter((t) => sameOrg.has(slugify(t.team)));
-        const at = mine.findIndex((t) => slugify(t.team) === slug);
-        if (at < 0) return undefined;
-        const playoff = [...reach].find(([team]) => slugify(team) === slug)?.[1];
-        // A past season's games fold under its row; the season under way lists its games below.
-        const played =
-          season === seasons[0] ? [] : (await loadSeasonResults(season)).filter((r) => r.home === school.school || r.away === school.school).map((r) => fromResult(school.school, r));
-        return { season, row: mine[at], place: at + 1, of: mine.length, playoff, played };
-      }),
-    )
-  ).filter((h) => h !== undefined);
+  const { entries, opponents } = await programHistory(school, seasons);
   const current = await loadRatings(seasons[0]);
   // How hard the record was, measured against this organization's top teams (lib/schedule-strength.ts), and the game each
   // week that went furthest from its projection (lib/why-moved.ts).
@@ -141,26 +140,12 @@ export default async function ProgramPage({ params }: Props) {
   const moves = ranked ? await whyItMoved(seasons[0], ranked.team) : [];
   const trend = ranked ? rankTrend(current, ranked.team, sameOrg) : [];
   const ratings = ranked ? ratingPoints(current, ranked.team) : [];
-  const sum = (k: "won" | "lost" | "tied") => history.reduce((n, h) => n + h.row[k], 0);
-  const allTime = { won: sum("won"), lost: sum("lost"), tied: sum("tied"), playoffs: history.filter((h) => h.playoff).length };
-  // Rivalries: the opponents met most often across every season read, with this school's record against each.
-  const meetings = (await Promise.all(seasons.map((season) => loadSeasonResults(season))))
-    .flat()
-    .filter((r) => r.home === school.school || r.away === school.school)
-    .map((r) => {
-      const home = r.home === school.school;
-      const [us, them] = home ? [r.homeScore, r.awayScore] : [r.awayScore, r.homeScore];
-      return { opponent: home ? r.away : r.home, date: r.date, us, them, forfeit: r.forfeit };
-    });
-  const rivals = [...Map.groupBy(meetings, (m) => m.opponent)]
-    .filter(([, games]) => games.length >= 3)
-    .map(([opponent, games]) => {
-      const last = games.reduce((a, b) => (b.date > a.date ? b : a));
-      const count = (test: (g: (typeof games)[number]) => boolean) => games.filter(test).length;
-      return { opponent, games: games.length, won: count((g) => g.us > g.them), lost: count((g) => g.us < g.them), tied: count((g) => g.us === g.them), last };
-    })
-    .sort((a, b) => b.games - a.games || b.last.date.localeCompare(a.last.date))
-    .slice(0, 6);
+  const withRecord = entries.filter((e) => e.line.record);
+  const sum = (k: "won" | "lost" | "tied") => withRecord.reduce((n, e) => n + e.line.record![k], 0);
+  const allTime = { won: sum("won"), lost: sum("lost"), tied: sum("tied"), playoffs: entries.filter((e) => e.line.playoff).length };
+  // Rivalries: the opponents met most often across every season read, with this school's record against each; every other opponent is under "All opponents".
+  const rivals = opponents.filter((o) => o.games >= 3).slice(0, 6);
+  const ratingLine = ratingSeries(entries.map((e) => e.line));
   const group = school.district === "0" ? "Division" : /^\d+$/.test(school.district) ? "District" : school.district;
   // A wide wordmark is drawn smaller, so it never fills the band; the logo itself is untouched (ADR 0006).
   const crestSize = identity.logo && identity.logo.aspect > 2 ? Math.max(49, Math.min(72, Math.floor(260 / identity.logo.aspect))) : 72;
@@ -201,6 +186,20 @@ export default async function ProgramPage({ params }: Props) {
       </li>
     );
   };
+
+  /** One of the most played: name, games and the latest meeting, and this school's record against it, with the crest slot the game rows have. */
+  const OpponentRow = ({ r }: { r: Rivalry }) => (
+    <li className="flex min-h-14 items-center gap-3 border-b border-line px-3">
+      <span className="min-w-0 flex-1 text-[15px] text-ink">
+        <span className="flex items-center">
+          {opponentCrest(r.opponent)}
+          {opponentLink(r.opponent)}
+        </span>
+        <span className="block pl-12 text-[13px] text-muted">{`${r.games} games · last ${r.last.date.slice(0, 4)}, ${r.last.forfeit ? "forfeit" : `${r.last.us}-${r.last.them}`}`}</span>
+      </span>
+      <span className="font-num text-[22px] font-bold tabular-nums text-ink">{record(r)}</span>
+    </li>
+  );
 
   return (
     <EdgeToEdge>
@@ -263,6 +262,7 @@ export default async function ProgramPage({ params }: Props) {
               </dl>
               <Link
                 href={`/matchup?a=${slug}`}
+                prefetch={false} // /matchup is force-static: prefetching it sends about 92 KB the reader may never open
                 className="mt-1 flex min-h-11 items-center gap-1 border-t border-current/30 text-[15px] font-semibold underline underline-offset-2"
               >
                 Compare with another team
@@ -440,83 +440,98 @@ export default async function ProgramPage({ params }: Props) {
           </Section>
         )}
 
-        {history.length > 0 && (
-          <Section id="seasons" title="Season by season" accent={accent}>
-            {history.length > 1 && (
-              <p className="px-3 pt-2 text-[15px] text-ink">
-                <b className="font-num text-[19px] tabular-nums">{record(allTime)}</b> from {history.at(-1)!.season} to {history[0].season}
-                {allTime.playoffs > 0 && ` · playoffs in ${allTime.playoffs} of ${history.length} seasons`}
-              </p>
-            )}
-            <ul className="mt-1">
-              {history.map((h) => (
-                <li key={h.season} className="border-b border-line">
-                  <div className="grid min-h-14 grid-cols-[3.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
-                    {ranksPage ? (
-                      <Link
-                        href={seasonHref(h.season, seasons[0], org)}
-                        aria-label={`${h.season} rankings`}
-                        className="inline-flex min-h-11 items-center font-num text-[18px] font-bold text-navy underline"
-                      >
-                        {h.season}
-                      </Link>
-                    ) : (
-                      <span className="inline-flex min-h-11 items-center font-num text-[18px] font-bold text-navy">{h.season}</span>
-                    )}
-                    <span className="min-w-0 text-[15px] leading-5 text-ink">
-                      <b className="font-num text-[20px] tabular-nums">{record(h.row)}</b>
-                      <span className="text-muted">
-                        {" "}· #{h.place} of {h.of} in {org?.label ?? school.league}
-                      </span>
-                      {h.playoff && (
-                        <span className="block text-[14px] font-semibold text-navy">Playoffs: reached {roundPhrase(h.playoff.round, h.playoff.league)}</span>
-                      )}
-                    </span>
-                    <span className="text-right">
-                      <span className="font-num text-[19px] font-bold tabular-nums text-ink">{signed(h.row.rating)}</span>
-                      <span className="block text-[13px] font-bold uppercase leading-3 tracking-wider text-muted">rating</span>
-                    </span>
-                  </div>
-                  {h.played.length > 0 && (
-                    <details className="px-3 pb-2">
-                      <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">
-                        {h.season} games ({h.played.length})
-                      </summary>
-                      <ul className="border-t border-line">
-                        {h.played.map((r) => (
-                          <GameRow key={r.id} r={r} big={false} />
-                        ))}
-                      </ul>
-                      <p className="pt-1 text-[13px] text-muted">Season scores, not confirmed here.</p>
-                    </details>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </Section>
-        )}
-
-        {rivals.length > 0 && (
-          <Section id="rivals" title="Most played" accent={accent}>
-            <p className="px-3 pt-2 text-[13px] text-muted">
-              Record against each since {history.at(-1)?.season ?? seasons.at(-1)}, from scores not confirmed here.
+        <Section id="seasons" title="Season by season" accent={accent}>
+          {withRecord.length > 1 && (
+            <p className="px-3 pt-2 text-[15px] text-ink">
+              <b className="font-num text-[19px] tabular-nums">{record(allTime)}</b> from {withRecord.at(-1)!.line.season} to {withRecord[0].line.season}
+              {allTime.playoffs > 0 && ` · playoffs in ${allTime.playoffs} of ${withRecord.length} seasons`}
             </p>
-            <ul>
-              {rivals.map((r) => (
-                <li key={r.opponent} className="flex min-h-14 items-center gap-3 border-b border-line px-3">
-                  <span className="min-w-0 flex-1 text-[15px] text-ink">
-                    <span className="flex items-center">
-                      {opponentCrest(r.opponent)}
-                      {opponentLink(r.opponent)}
+          )}
+          {ratingLine.filter((p) => p.rating != null).length >= 2 && <SeasonRatings points={ratingLine} />}
+          <ul className="mt-1">
+            {entries.map(({ line, played }) => (
+              <li key={line.season} className="border-b border-line">
+                <div className="grid min-h-14 grid-cols-[3.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
+                  {ranksPage ? (
+                    <Link
+                      href={seasonHref(line.season, seasons[0], org)}
+                      aria-label={`${line.season} rankings`}
+                      className="inline-flex min-h-11 items-center font-num text-[18px] font-bold text-navy underline"
+                    >
+                      {line.season}
+                    </Link>
+                  ) : (
+                    <span className="inline-flex min-h-11 items-center font-num text-[18px] font-bold text-navy">{line.season}</span>
+                  )}
+                  <span className="min-w-0 text-[15px] leading-5 text-ink">
+                    {line.record ? <b className="font-num text-[20px] tabular-nums">{record(line.record)}</b> : <Dash what="record" />}
+                    <span className="text-muted">
+                      {" "}
+                      {line.rank != null
+                        ? `· #${line.rank} of ${line.of} in ${org?.label ?? school.league}`
+                        : line.rating != null
+                          ? `· Not ranked: fewer than ${FEW_GAMES} games`
+                          : line.record
+                            ? "· No rating"
+                            : "No games on record"}
                     </span>
-                    <span className="block pl-12 text-[13px] text-muted">
-                      {r.games} games · last {r.last.date.slice(0, 4)}, {r.last.forfeit ? "forfeit" : `${r.last.us}-${r.last.them}`}
-                    </span>
+                    {line.playoff && (
+                      <span className="block text-[14px] font-semibold text-navy">Playoffs: reached {roundPhrase(line.playoff.round, line.playoff.league)}</span>
+                    )}
                   </span>
-                  <span className="font-num text-[22px] font-bold tabular-nums text-ink">{record(r)}</span>
-                </li>
-              ))}
-            </ul>
+                  <span className="text-right">
+                    <span className="font-num text-[19px] font-bold tabular-nums text-ink">{line.rating != null ? signed(line.rating) : <Dash what="rating" />}</span>
+                    <span className="block text-[13px] font-bold uppercase leading-3 tracking-wider text-muted">rating</span>
+                  </span>
+                </div>
+                {played.length > 0 && (
+                  <details className="px-3 pb-2">
+                    <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">
+                      {line.season} games ({played.length})
+                    </summary>
+                    <ul className="border-t border-line">
+                      {played.map((r) => (
+                        <GameRow key={r.id} r={r} big={false} />
+                      ))}
+                    </ul>
+                    <p className="pt-1 text-[13px] text-muted">Season scores, not confirmed here. Playoff games name their round.</p>
+                  </details>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="px-3 pt-2 text-[13px] text-muted">
+            Final rating and place of each season, among {org?.label ?? school.league} teams as today&rsquo;s alignments place them. A dash means the data has nothing for that season.
+          </p>
+        </Section>
+
+        {opponents.length > 0 && (
+          <Section id="rivals" title={rivals.length ? "Most played" : "Opponents"} accent={accent}>
+            <p className="px-3 pt-2 text-[13px] text-muted">
+              Record against each since {withRecord.at(-1)?.line.season ?? seasons.at(-1)}, from scores not confirmed here. A forfeit counts as a win or a loss.
+            </p>
+            {rivals.length > 0 && (
+              <ul>
+                {rivals.map((r) => (
+                  <OpponentRow key={r.opponent} r={r} />
+                ))}
+              </ul>
+            )}
+            {opponents.length > rivals.length && (
+              <details className="px-3 pb-1">
+                <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">All opponents ({opponents.length})</summary>
+                {/* Every opponent in the leanest markup (about 40 rows a page): the row's look is set once, here, on the list. */}
+                <ul className="-mx-3 border-t border-line [&>li]:flex [&>li]:min-h-11 [&>li]:items-center [&>li]:gap-3 [&>li]:border-b [&>li]:border-line [&>li]:px-3 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_a:hover]:text-navy [&_a:hover]:underline [&>li>span]:flex [&>li>span]:min-w-0 [&>li>span]:flex-1 [&>li>span]:items-center [&>li>span]:text-[15px] [&>li>span]:text-ink [&>li>small]:text-[13px] [&>li>small]:text-muted [&>li>b]:font-num [&>li>b]:text-[19px] [&>li>b]:tabular-nums [&>li>b]:text-ink">
+                  {opponents.map((r) => (
+                    <li key={r.opponent}>
+                      <span>{opponentCrest(r.opponent)}{opponentLink(r.opponent)}</span>
+                      <small>{`${r.games} ${r.games === 1 ? "game" : "games"} · last ${r.last.date.slice(0, 4)}`}</small>
+                      <b>{record(r)}</b>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </Section>
         )}
 

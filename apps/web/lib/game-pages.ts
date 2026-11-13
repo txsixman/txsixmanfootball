@@ -59,8 +59,9 @@ export async function resultPageIds(): Promise<string[]> {
 
 const ratingRows = memo(async (season: number) => new Map((await loadRatings(season)).teams.map((t) => [slugify(t.team), t])));
 
-/** Playoff rounds of a past season (the season's playoff file), to say a game was one. The current season's playoff games have bracket pages instead. */
-const pastPlayoffs = memo(async (season: number) =>
+/** Playoff rounds of a season (the season's playoff file), to say a game was one: "TAPPS Division II · Quarterfinal", by `gameKey`.
+ * A game page uses it for past seasons (the current season's playoff games have bracket pages instead); a program page tags its history rows with it. */
+export const playoffLabels = memo(async (season: number) =>
   new Map((await loadPlayoffGames(await loadAlignments(), season)).map((g) => [gameKey(g.date, g.home, g.away), `${g.bracket} · ${roundLabel(g.round, g.league)}`])),
 );
 
@@ -119,7 +120,7 @@ export async function gameDetail({ season, date, home, away, id }: { season: num
     ...(projection ? { projection } : {}),
     going: { home: going(home), away: going(away) },
     meetings: { total: earlier.length, list: earlier.slice(0, MEETINGS_SHOWN) },
-    ...(!current ? { playoff: (await pastPlayoffs(season)).get(gameKey(date, home, away)) } : {}),
+    ...(!current ? { playoff: (await playoffLabels(season)).get(gameKey(date, home, away)) } : {}),
     places: { home: place(home), away: place(away) },
     districtGame,
   };

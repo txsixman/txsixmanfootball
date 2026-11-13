@@ -502,7 +502,8 @@ test("results list every game week by week, both seasons, naming no winner and n
   // A forfeit (recorded 1-0) shows the word, never the score (ADR 0004).
   await page.goto("/programs/avalon");
   await expect(page.getByText("Forfeit").first()).toBeVisible();
-  await expect(page.getByText(/\b(0-1|1-0)\b/)).toHaveCount(0);
+  // In the game lists: a record against an opponent ("1-0" after one game) is not a score.
+  await expect(page.locator("section[aria-labelledby=games], section[aria-labelledby=seasons]").getByText(/\b(0-1|1-0)\b/)).toHaveCount(0);
   await page.goto("/results/2025/1");
   const first = page.locator("main li").first();
   await expect(first.getByRole("link")).toHaveCount(3); // the two teams, and the game page

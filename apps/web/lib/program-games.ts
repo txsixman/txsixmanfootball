@@ -10,8 +10,9 @@ const dateLabel = (iso: string) => {
   return `${d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })} ${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
 };
 
-/** A robot-read result from `school`'s side. A forfeit shows the word, never the 1-0 or 2-0 (ADR 0004). */
-export function fromResult(school: string, r: SeasonResult): Row {
+/** A robot-read result from `school`'s side. A forfeit shows the word, never the 1-0 or 2-0 (ADR 0004). `note`: for a playoff
+ * game, its bracket and round; it names no winner. */
+export function fromResult(school: string, r: SeasonResult, note?: string): Row {
   const home = r.home === school;
   return {
     id: r.id,
@@ -20,6 +21,7 @@ export function fromResult(school: string, r: SeasonResult): Row {
     home,
     opponent: home ? r.away : r.home,
     href: r.href,
+    ...(note ? { note } : {}),
     score: r.forfeit ? "Forfeit" : home ? `${r.homeScore}-${r.awayScore}` : `${r.awayScore}-${r.homeScore}`,
   };
 }
