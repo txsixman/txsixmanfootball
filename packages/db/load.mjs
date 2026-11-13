@@ -208,6 +208,9 @@ const ANON_FUNCTIONS = [
   "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)",
 ];
 
+// The one table the API roles may read directly (migration 0016, ADR 0021): SELECT through this one policy, no other right.
+const PUBLIC_READ = { table: "live_score", policy: "live_score_read" };
+
 /** Schemas the project owns and the API could reach. */
 const OWNED_SCHEMAS = ["public", "ops"];
 
@@ -251,7 +254,8 @@ export async function purgeUnfinishedSignups(db, { days = 7 } = {}) {
  * route: a direct grant, a column grant, or a grant to PUBLIC, which has_*_privilege counts as the role's own. The only
  * thing they may do is call a function: ANON_FUNCTIONS (the push sign-up pair, 0008, and the public reads) for both, SIGNED_IN_FUNCTIONS for signed-in users
  * (is_admin and record_admin_audit from 0010, the fan profile functions from 0011, the follow functions from 0012). No policy is expected anywhere: with
- * no table rights a policy would only be an unreviewed way in.
+ * no table rights a policy would only be an unreviewed way in. The one exception is PUBLIC_READ (live scores): SELECT
+ * on that table and its one policy are expected; any other right on it, or any other policy, is still reported.
  */
 export async function checkLive(db) {
   const problems = [];
@@ -276,7 +280,8 @@ export async function checkLive(db) {
     [OWNED_SCHEMAS],
   );
   for (const t of tables.rows) {
-    if (t.rights) problems.push(`${t.grantee} holds ${t.rights} on ${t.schema}.${t.name}`);
+    const expected = t.schema === "public" && t.name === PUBLIC_READ.table && t.rights === "SELECT";
+    if (t.rights && !expected) problems.push(`${t.grantee} holds ${t.rights} on ${t.schema}.${t.name}`);
     if (t.column_rights) problems.push(`${t.grantee} holds column ${t.column_rights} on ${t.schema}.${t.name}`);
   }
   // Sequences: no USAGE, SELECT or UPDATE. (An INSERT through a function runs as the function's owner.)
@@ -316,12 +321,12 @@ export async function checkLive(db) {
   for (const f of unpinned.rows) problems.push(`${f.name} is security definer with no search_path`);
   // Policies: none expected anywhere.
   const policies = await db.query(`select tablename, policyname from pg_policies where schemaname = any($1) order by 1, 2`, [OWNED_SCHEMAS]);
-  for (const p of policies.rows) problems.push(`unexpected policy ${p.policyname} on public.${p.tablename}`);
+  for (const p of policies.rows) if (!(p.tablename === PUBLIC_READ.table && p.policyname === PUBLIC_READ.policy)) problems.push(`unexpected policy ${p.policyname} on public.${p.tablename}`);
   return problems;
 }
 
 /** node-postgres behind the same transaction/query/exec shape as PGlite, which the importers are written against. */
-function adapt(client) {
+export function adapt(client) {
   const db = {
     query: (sql, params) => client.query(sql, params),
     exec: (sql) => client.query(sql),

@@ -1,0 +1,140 @@
+import { expect, test, type Page } from "@playwright/test";
+import path from "node:path";
+
+// Live scores during a game (ADR 0021): the page reads the public live_score table in the browser, so every request to
+// Supabase here is answered from a fixture. The service worker is blocked: it would otherwise fetch outside page.route.
+// The site must be built (or served by `next dev`) with NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY set,
+// as CI does (ci.yml); without them the feature renders nothing, so these tests skip.
+test.use({ serviceWorkers: "block" });
+test.skip(!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "needs NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY");
+
+const NO_WINNER_OR_BETTING = /\b(wins?|won|winner|winning|leads?|leading|leader|ahead|beat|beats|defeated|victory|spread|odds|line|lines|favorite|favourite|underdog|bet|bets|betting)\b/i;
+const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "GET, OPTIONS" };
+
+/** The loaders read ../../data from the working directory; the tests run from the repo root. */
+async function inWeb<T>(run: () => Promise<T>): Promise<T> {
+  const was = process.cwd();
+  process.chdir(path.join(__dirname, ".."));
+  try {
+    return await run();
+  } finally {
+    process.chdir(was);
+  }
+}
+
+type Fixture = { id: string; date: string; home: string; away: string; org: string; key: string; homeSlug: string; awaySlug: string };
+let cached: Promise<{ scheduled: Fixture; final: Fixture }> | undefined;
+const fixtures = () =>
+  (cached ??= inWeb(async () => {
+    const { loadAlignments } = await import("../lib/alignments");
+    const { loadGames } = await import("../lib/games");
+    const { liveKey } = await import("../lib/live-scores");
+    const { ORGS } = await import("../lib/orgs");
+    const { slugify } = await import("../lib/slug");
+    const games = await loadGames(await loadAlignments());
+    const fixture = (g: (typeof games)[number]): Fixture => ({
+      id: g.id, date: g.date!, home: g.home.name, away: g.away.name,
+      org: ORGS.find((o) => g.league === o.league || g.league.startsWith(`${o.league} `))!.label,
+      key: liveKey(g.date!, g.home.name, g.away.name), homeSlug: slugify(g.home.name), awaySlug: slugify(g.away.name),
+    });
+    const scheduled = games.find((g) => g.state === "scheduled" && g.date);
+    const final = games.find((g) => g.state === "final" && g.date);
+    if (!scheduled || !final) throw new Error("no scheduled and final bracket game to test with");
+    return { scheduled: fixture(scheduled), final: fixture(final) };
+  }));
+
+const liveRow = (f: Fixture, over: Record<string, unknown> = {}) => ({
+  game_key: f.key, home: f.homeSlug, away: f.awaySlug, home_score: 28, away_score: 14, period: "Q3", read_at: new Date().toISOString(), ...over,
+});
+
+/** Answers the live_score request with whatever `current.rows` holds, and keeps what the page sent. */
+async function serveLive(page: Page, current: { rows: unknown; status?: number }) {
+  const seen: { url: string; headers: Record<string, string> }[] = [];
+  await page.route(/\/rest\/v1\/live_score/, (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
+    seen.push({ url: request.url(), headers: request.headers() });
+    return route.fulfill({ status: current.status ?? 200, headers: CORS, contentType: "application/json", body: JSON.stringify(current.rows) });
+  });
+  return seen;
+}
+
+async function openBoard(page: Page, f: Fixture) {
+  await page.goto("/scores", { waitUntil: "networkidle" });
+  const tab = page.getByRole("button", { name: f.org, exact: true });
+  if (await tab.count()) await tab.click();
+  return page.locator(`li[data-game="${f.id}"]`);
+}
+
+test("a game under way shows its live line on the game page and the board: Live, period, score, Unconfirmed, no winner", async ({ page }) => {
+  const { scheduled: f } = await fixtures();
+  const seen = await serveLive(page, { rows: [liveRow(f)] });
+
+  await page.goto(`/scores/${f.id}`);
+  const line = page.locator("[data-live-score]");
+  // Scores in the order the page lists the teams (away first): away 14, home 28.
+  await expect(line.getByText("Live · Q3 · 14–28 · Unconfirmed")).toBeVisible();
+  await expect(line).toContainText(`${f.away} 14, ${f.home} 28`);
+  await expect(line).toContainText(/checked \d{1,2}:\d{2} (AM|PM) CT/);
+  expect((await line.innerText()).replace(f.away, "").replace(f.home, "")).not.toMatch(NO_WINNER_OR_BETTING);
+  // The public key goes in both headers, and nothing else is asked for.
+  expect(seen[0].url).toContain("/rest/v1/live_score?select=game_key,home,away,home_score,away_score,period,read_at");
+  expect(seen[0].headers.apikey).toBe(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  expect(seen[0].headers.authorization).toBe(`Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`);
+  // The page still names nobody: no winner mark anywhere on it.
+  await expect(page.locator("body")).not.toContainText(/winner/i);
+
+  const row = await openBoard(page, f);
+  await expect(row.locator("[data-live-score]")).toContainText("Live · Q3 · 14–28 · Unconfirmed");
+  expect((await row.innerText()).toLowerCase()).not.toMatch(/\bwinner\b/);
+  await expect(row.locator("[aria-hidden='true']", { hasText: "◀" })).toHaveCount(0);
+});
+
+test("a row with no period reads Live · score · Unconfirmed", async ({ page }) => {
+  const { scheduled: f } = await fixtures();
+  await serveLive(page, { rows: [liveRow(f, { period: null })] });
+  await page.goto(`/scores/${f.id}`);
+  await expect(page.locator("[data-live-score]").getByText("Live · 14–28 · Unconfirmed")).toBeVisible();
+});
+
+test("a game with a final ignores a live row, on its page and on the board", async ({ page }) => {
+  const { final: f } = await fixtures();
+  const seen = await serveLive(page, { rows: [liveRow(f)] });
+  await page.goto(`/scores/${f.id}`, { waitUntil: "networkidle" });
+  await expect(page.locator("[data-live-score]")).toHaveCount(0);
+  const row = await openBoard(page, f);
+  await expect(row).toBeVisible();
+  expect(seen.length).toBeGreaterThan(0); // the board did ask; it just shows nothing for a final
+  await expect(row.locator("[data-live-score]")).toHaveCount(0);
+  await expect(page.locator("[data-live-score]")).toHaveCount(0);
+});
+
+test("nothing extra shows when the request fails, the answer is not a list, or a row is bad", async ({ page }) => {
+  const { scheduled: f } = await fixtures();
+  const current: { rows: unknown; status?: number } = { rows: { message: "no" }, status: 500 };
+  await serveLive(page, current);
+  await page.goto(`/scores/${f.id}`, { waitUntil: "networkidle" });
+  await expect(page.locator("[data-live-score]")).toHaveCount(0);
+  for (const rows of [{ message: "JWT expired" }, [liveRow(f, { home_score: 999 })], [liveRow(f, { period: "<b>" })], [liveRow(f, { read_at: "2020-01-01T00:00:00Z" })]]) {
+    current.rows = rows;
+    current.status = 200;
+    await page.goto(`/scores/${f.id}`, { waitUntil: "networkidle" });
+    await expect(page.locator("[data-live-score]"), JSON.stringify(rows)).toHaveCount(0);
+  }
+});
+
+test("the line refreshes every minute and goes away when the game leaves the table", async ({ page }) => {
+  const { scheduled: f } = await fixtures();
+  await page.clock.install();
+  const current: { rows: unknown[] } = { rows: [] };
+  await serveLive(page, current);
+  await page.goto(`/scores/${f.id}`);
+  const line = page.locator("[data-live-score]");
+  await expect(line).toHaveCount(0);
+  current.rows = [liveRow(f, { home_score: 35, away_score: 14, period: "Q4" })];
+  await page.clock.runFor(61_000);
+  await expect(line.getByText("Live · Q4 · 14–35 · Unconfirmed")).toBeVisible();
+  current.rows = [];
+  await page.clock.runFor(61_000);
+  await expect(line).toHaveCount(0);
+});

@@ -5,6 +5,8 @@
 # and every run republishes from the private files, so a run whose public push failed is repaired by the next. A commit
 # made with the workflow's token does not start CI, so this job runs the same checks first. A failed read fails the job
 # and GitHub emails the repo owner.
+# A night read also sends the scores of games still under way to the hosted database (live_score, ADR 0021): no commit and
+# no rebuild, the site reads them in the browser. Only finals are committed.
 # Before cut-over (repo variable LIVE not true) the schedules do nothing, a dispatch reads and checks but pushes only
 # with the input `write`, and alerts and the hosted database are never touched.
 name: Results watch
@@ -100,8 +102,37 @@ jobs:
       - name: Reader checks
         run: node --test tools/league-watch/maxpreps.test.mjs
       - name: Read MaxPreps schedule pages
-        # Any schedule but the morning one is a playoff-night run.
-        run: node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} ${{ (inputs.tonight || (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0')) && '--tonight' || '' }}
+        env:
+          # Any schedule but the morning one is a playoff-night run.
+          TONIGHT: ${{ (inputs.tonight || (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0')) && 'true' || 'false' }}
+        run: |
+          # A night read also writes the games under way (live scores, ADR 0021) to a file outside the repo and the
+          # private captures; the next step sends it to the database. A live score never commits and never rebuilds the site.
+          if [ "$TONIGHT" = true ]; then
+            node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }} --tonight --live-out "$RUNNER_TEMP/live.json"
+          else
+            node tools/league-watch/maxpreps.mjs --season ${{ steps.season.outputs.year }}
+          fi
+      - name: Live scores to the hosted database
+        # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
+        # stops the finals from being committed below.
+        if: ${{ vars.LIVE == 'true' }}
+        continue-on-error: true
+        env:
+          PGHOST: aws-0-us-east-1.pooler.supabase.com
+          PGUSER: postgres.vhgnaihnyjdnaaergtcl
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PGSSLROOTCERT: packages/db/supabase-ca.crt
+        run: |
+          if [ ! -f "$RUNNER_TEMP/live.json" ]; then
+            echo "Live scores: not a night read, nothing to send." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -z "$PGPASSWORD" ]; then
+            echo "Live scores: the SUPABASE_DB_PASSWORD secret is not set, so nothing was sent." >> "$GITHUB_STEP_SUMMARY"
+          else
+            npm ci --omit=dev --prefix packages/db
+            result=$(node packages/db/live.mjs "$RUNNER_TEMP/live.json")
+            echo "Live scores sent: $result" >> "$GITHUB_STEP_SUMMARY"
+          fi
       # The ratings model's own tests use only its sample games, and CI ran them on the main this checks out. A game-day
       # tick (every 10 minutes) skips them so a new score publishes sooner; the morning read and a dispatch still run them.
       - name: Ratings model checks

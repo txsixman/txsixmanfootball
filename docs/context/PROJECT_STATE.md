@@ -68,6 +68,12 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 - **Search** `/search` (Pagefind): program pages and results weeks, indexed after each build; `?q=` links work
 - **Score alerts**: a Follow button on each program page; a browser push alert when Results watch reads a new final
   (no winner named). Stores only the browser's push address and keys and the followed programs
+- **Live scores** (ADR 0021): on a game page and on `/scores`, a game with no final that the game-day read sees under way shows
+  "Live · <period> · <away>–<home> · Unconfirmed", the teams with their scores and when it was read (Central); no winner or
+  leader. Read in the browser from the public `live_score` table every 60 s (needs `NEXT_PUBLIC_SUPABASE_URL` and
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY` at build); nothing shows without them. **The period is not shown yet:** `PERIOD_INDEX` in
+  `maxpreps.mjs` is null until a night run's summary (`inProgressShape`) shows which contest field holds it; no real
+  in-progress page has been seen
 - **Share** button on program and game pages: the phone's share sheet, else copies the link (`app/share-button.tsx`)
 - Installable to a phone's home screen (manifest, generated icon), and works offline for visited pages (Serwist:
   pages network first, cached ones served for 30 minutes at most); share cards per program (`opengraph-image.tsx`)
@@ -78,7 +84,7 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 
 ## Data and pipeline
 - Alignments: UIL 2026-28 (157), TAPPS 2026-28 (68, weekly robot), TAIAO (46, weekly robot), TCAF (9, by hand), Independent (1: CenTex Chargers, by hand)
-- Results: `tools/league-watch/maxpreps.mjs` (ADR 0008) via `results-watch.yml`, Fri to Sun Aug to Jan, and every 10 minutes noon to midnight Central on any November or December day with a bracket game still unscored (`--tonight`: only those games, ADRs 0015 and 0019); rerates and
+- Results: `tools/league-watch/maxpreps.mjs` (ADR 0008) via `results-watch.yml`, Fri to Sun Aug to Jan, and every 10 minutes noon to midnight Central on any November or December day with a bracket game still unscored (`--tonight`: only those games, ADRs 0015 and 0019; it also sends the games under way to the hosted database's `live_score` table, ADR 0021, with no commit); rerates and
   commits the private repo `txsixman/data-private` first (full captures), then the facts to `main` here (ADR 0017,
   `publish.mjs`). 276 of 279 schools reached. Past seasons via `--season <year>` (season-segment pages): 2025 1,230
   games, 2024 1,195, 2023 1,090, 2022 1,076, 2021 970; coverage falls with age (237 of 279 in 2021) because only
@@ -89,7 +95,7 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   hand in `data/seed/lineage/programs.csv` (TEA's consolidation list): 49 of 52 finalists reach a current program
   (O'Brien became Knox City, 1976; the other three, Jarrell, Marathon and Christoval, are still independent districts that no longer play
   six-man, so no lineage)
-- **Supabase** (`vhgnaihnyjdnaaergtcl`): migrations 0001 to 0009 (0009: `team_season_league`, every league that lists a team that season), loaded after every push to `main` (`main.yml`) with live RLS and
+- **Supabase** (`vhgnaihnyjdnaaergtcl`): migrations 0001 to 0016 (0009: `team_season_league`, every league that lists a team that season; 0016: `live_score`, the one table the API roles may read directly, ADR 0021), loaded after every push to `main` (`main.yml`) with live RLS and
   API-role checks (`.github/workflows/supabase.yml`, with `PRIVATE_DATA`); unchanged games are skipped, ~5 min. The site does not read the database yet
 - **CI** on every push: database, league readers, history, school identity, ratings, typecheck, 98 page tests (phone
   and desktop, axe) on a production build, inside Playwright's container image

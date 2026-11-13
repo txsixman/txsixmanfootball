@@ -4,7 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { checkLive, migrate } from "../load.mjs";
 
 // Supabase hands its API roles rights on every new table by default; after the migrations they must hold none.
-test("Supabase's API roles hold no rights on any table after the migrations", async () => {
+test("Supabase's API roles hold no rights on any table after the migrations, but SELECT on live_score", async () => {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated;
     alter default privileges in schema public grant all on tables to anon, authenticated;
@@ -12,9 +12,13 @@ test("Supabase's API roles hold no rights on any table after the migrations", as
   await migrate(db);
   const { rows } = await db.query(
     `select grantee, table_name, privilege_type from information_schema.role_table_grants
-       where table_schema = 'public' and grantee in ('anon', 'authenticated')`,
+       where table_schema = 'public' and grantee in ('anon', 'authenticated') order by grantee, table_name, privilege_type`,
   );
-  assert.deepEqual(rows, []);
+  // The one table they may read: live scores (0016, ADR 0021), SELECT only.
+  assert.deepEqual(rows, [
+    { grantee: "anon", table_name: "live_score", privilege_type: "SELECT" },
+    { grantee: "authenticated", table_name: "live_score", privilege_type: "SELECT" },
+  ]);
   // A table a later migration adds gets nothing by default either.
   await db.exec("create table later (id int)");
   const later = await db.query("select 1 from information_schema.role_table_grants where table_name = 'later' and grantee = 'anon'");

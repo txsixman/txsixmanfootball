@@ -15,6 +15,7 @@ import { ShareButton } from "../../share-button";
 import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
+import { LiveScore } from "../live-score";
 import { BigLine, Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 
@@ -149,6 +150,9 @@ export default async function GamePage({ params }: Props) {
         </p>
         <ShareButton title={`${g.away.name} at ${g.home.name} | Project 80x40`} className="px-3 pt-1" />
       </header>
+
+      {/* A game with no final yet may be under way: its live score is read in the browser (ADR 0021). */}
+      {!sample && g.date && g.state === "scheduled" && <LiveScore date={g.date} home={g.home.name} away={g.away.name} />}
 
       <section aria-label="Score" className="px-3">
         <BigLine g={g} side="away" program={programOf(g.away)} neutral={neutral} />
