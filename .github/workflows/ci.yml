@@ -46,7 +46,8 @@ jobs:
   # web-build (one production build, shared as an artifact), web-pages (the page tests in shards on that build) and
   # lighthouse (on that build, reported on its own). The `web` job at the end is the one check that says the site
   # passed: it fails unless web-checks, web-build and every shard passed. Keep its name: merging waits on the checks
-  # named `data` and `web`. A change to docs only (docs/**, *.md) builds nothing and runs no page tests; `web` passes.
+  # named `data` and `web`. A change that cannot reach the site (docs, Markdown, tools/, services/, packages/, other
+  # workflows; see web-build's filter) builds nothing and runs no page tests; `web` passes.
   web-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -84,12 +85,21 @@ jobs:
       - uses: dorny/paths-filter@v4
         id: filter
         with:
-          # `site` is true when any changed file is outside docs/ and is not Markdown.
+          # `site` is true when any changed file can change the built site or its page tests: anything but docs,
+          # Markdown, the robots and services (tools/, services/, packages/; their own tests run in `data`, and
+          # web-checks always runs, including the logo tests that import tools/school-identity), ruff.toml, Dependabot's
+          # config and workflows other than this one. data/** and apps/** always count.
           predicate-quantifier: every
           filters: |
             site:
               - '!docs/**'
               - '!**/*.md'
+              - '!tools/**'
+              - '!services/**'
+              - '!packages/**'
+              - '!ruff.toml'
+              - '!.github/dependabot.yml'
+              - '!.github/workflows/!(ci).yml'
       - if: steps.filter.outputs.site == 'true'
         uses: actions/setup-node@v7
         with:
