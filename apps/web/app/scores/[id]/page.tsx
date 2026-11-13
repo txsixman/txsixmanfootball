@@ -10,8 +10,7 @@ import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, pla
 import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
 import { orgOfLabel } from "@/lib/orgs";
-import { firstSeason } from "@/lib/ratings";
-import { CURRENT_SEASON } from "@/lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
 import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
@@ -119,7 +118,7 @@ export default async function GamePage({ params }: Props) {
     detail && g.date && !own && !sample && g.state === "scheduled"
       ? await gamePreview({ season: found?.season ?? CURRENT_SEASON, date: g.date, home: g.home.name, away: g.away.name, org: orgOfLabel(g.league), detail })
       : undefined;
-  const [alignments, identities, since] = await Promise.all([loadAlignments(), loadIdentities(), firstSeason()]);
+  const [alignments, identities] = await Promise.all([loadAlignments(), loadIdentities()]);
   const programOf = (team: Team): Program | undefined => {
     const known = alignments.find((a) => a.school === team.name);
     return known && { slug: known.slug, identity: identities.get(known.slug) ?? EMPTY };
@@ -205,17 +204,17 @@ export default async function GamePage({ params }: Props) {
         <div className="pb-6">
           {found && <ProjectionSection result={found.result} detail={detail} />}
           {preview ? (
-            <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} since={since} />
+            <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} />
           ) : (
             <>
               <GoingInSection away={g.away.name} home={g.home.name} detail={detail} />
-              <MeetingsSection detail={detail} since={since} />
+              <MeetingsSection detail={detail} />
             </>
           )}
           {series && (
             <p className="px-3 pt-2">
               <Link href={series} prefetch={false} className="inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-red">
-                Every {g.away.name} and {g.home.name} game since {since}
+                Every {g.away.name} and {g.home.name} game since {FIRST_SEASON}
               </Link>
             </p>
           )}
