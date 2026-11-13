@@ -1,0 +1,37 @@
+# Is the live site serving the newest data? After cut-over (Nov 12, 2026) production served an old build for about 10
+# hours: Vercel's Ignored Build Step skipped the deploys and nothing said so. This compares the commit production was
+# built from (its /build.json marker) with the newest commit on main that changed data/, and fails, so GitHub emails
+# the repo owner, when production has lacked a data commit for more than 30 minutes (.github/scripts/site-freshness.mjs).
+# Hourly in November and December (playoffs), every 6 hours otherwise. Reads only: the workflow's own token, no secrets.
+name: Site freshness
+
+on:
+  schedule:
+    - cron: "41 * * 11,12 *"
+    - cron: "41 */6 * 1-10 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-freshness
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Before cut-over (repo variable LIVE not true) only a run by hand checks.
+    if: vars.LIVE == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Production against the newest data commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/site-freshness.mjs | tee -a "$GITHUB_STEP_SUMMARY"; exit "${PIPESTATUS[0]}"

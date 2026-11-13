@@ -194,6 +194,29 @@ jobs:
       - name: Send alerts for the new finals
         run: node tools/push/send-finals.mjs --season ${{ needs.maxpreps.outputs.year }} --before HEAD~1
 
+  # Did the new scores reach the live site? Report only: waits up to 5 minutes for production's /build.json to show the
+  # commit just pushed and says "Deployed" or "Not yet" in the run summary; it never fails the run. The hourly Site
+  # freshness check (site-freshness.yml) is the one that fails and emails when a deploy stays missing.
+  deployed:
+    needs: maxpreps
+    if: needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Production has the new results (deployed or not yet)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/site-freshness.mjs --expect "${{ needs.maxpreps.outputs.sha }}" --wait 300 | tee -a "$GITHUB_STEP_SUMMARY"
+
   # New scores go into the hosted database too, once they are committed (supabase.yml does nothing before LIVE).
   supabase:
     needs: maxpreps

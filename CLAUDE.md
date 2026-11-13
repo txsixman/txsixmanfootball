@@ -47,6 +47,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - The repo variable `LIVE` (true from cut-over): until then no schedule writes, and alerts, the hosted database and the
   ratings-table commit do nothing. Proofs by hand: Results watch with `write` pushes both repos, an After merge
   run rates and commits the table, and a Supabase run (dispatched itself, not called) loads the hosted database
+- Site freshness (`site-freshness.yml`, hourly Nov–Dec, else every 6 hours, LIVE only): fails, so GitHub emails the
+  owner, when production's `/build.json` commit has lacked a data commit on main for over 30 minutes; Results watch's
+  `deployed` job reports "Deployed" or "Not yet" after each push (`.github/scripts/site-freshness.mjs`)
 - `data/seed/uil-champions/`: written by `tools/history/uil-champions.mjs` from UIL's own final archive, never by
   hand: `six-man.csv` (every six-man state final since 1972) and `six-man-no-final.csv` (1941 to 1971, no state final).
   UIL's town-plus-school spellings map to current names in `tools/history/uil-aliases.json`. Rerun after each December final: `UIL_CACHE=$TMPDIR/uil NODE_USE_ENV_PROXY=1 node tools/history/uil-champions.mjs`

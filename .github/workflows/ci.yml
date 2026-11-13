@@ -26,6 +26,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      - name: Site freshness verdict (.github/scripts/site-freshness.mjs)
+        run: node --test .github/scripts/*.test.mjs
       - name: Migrations and every seed on a throwaway database
         run: npm ci --prefix packages/db && npm --prefix packages/db test
       - name: League reader checks
