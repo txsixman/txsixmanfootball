@@ -45,5 +45,11 @@ test("robots.txt is honoured", () => {
   assert.equal(robotsAllows("User-agent: *\nDisallow: /home/\n", "/home/tapps-26-28-alignment/"), false);
   assert.equal(robotsAllows("User-agent: Googlebot\nDisallow: /\n", "/home/x/"), true);
   assert.equal(robotsAllows("User-agent: Googlebot\nUser-agent: *\nDisallow: /\n", "/home/x/"), false);
+  // Wildcards and anchors; another agent's name; our own agent's group.
+  assert.equal(robotsAllows("User-agent: *\nDisallow: /*.php$\n", "/admin.php"), false);
+  assert.equal(robotsAllows("User-agent: *\nDisallow: /*.php$\n", "/admin.php/x"), true);
+  assert.equal(robotsAllows("User-agent: *\nDisallow: /posts/\n", "/threads/x/"), true);
+  assert.equal(robotsAllows("User-agent: ClaudeBot\nDisallow: /\n", "/scores/", "TXSixManFootballBot"), true);
+  assert.equal(robotsAllows("User-agent: TXSixManFootballBot\nDisallow: /scores/\n", "/scores/", "TXSixManFootballBot"), false);
   assert.equal(robotsAllows("User-agent: Project80x40-alignment-reader\nDisallow: /\n", "/home/x/"), false);
 });

@@ -9,7 +9,7 @@
 | [0005](../adr/0005-automated-league-pages.md) | A weekly robot may read a league's own public alignment page, as a visitor would | Accepted Nov 10, 2026 |
 | [0006](../adr/0006-school-logos-and-colors.md) | Logos from each school's own site (an exception to permission-first); colors and mascots as cited facts | Accepted Nov 10, 2026 |
 | [0007](../adr/0007-regular-season-capture.md) | Regular-season games by hand, one cited source a row; no robots, no embedded MaxPreps/Hudl schedules | Accepted Nov 10, 2026; hand-entry rule superseded by 0008 |
-| [0008](../adr/0008-game-results-from-other-sites.md) | Game results read from MaxPreps schedule pages (facts only); never SixManFootball.com (blocks Claude) or Dave Campbell's API | Accepted Nov 10, 2026 (the owner) |
+| [0008](../adr/0008-game-results-from-other-sites.md) | Game results read from MaxPreps schedule pages (facts only); never SixManFootball.com (blocks Claude) or Dave Campbell's API | Accepted Nov 10, 2026 (the owner); SixManFootball.com part superseded by 0020 |
 | [0009](../adr/0009-no-source-names-on-pages.md) | Pages do not name where robot-read results come from; the source URL stays in the data | Accepted Nov 10, 2026 (the owner) |
 | [0010](../adr/0010-no-source-labels-on-any-page.md) | No source labels on any page (widens 0009); every source stays in the data | Accepted Nov 10, 2026 (the owner) |
 | [0011](../adr/0011-records-and-multi-source-confirmation.md) | Records may name winners from unconfirmed scores; three or more agreeing sources confirm a score | Accepted Nov 11, 2026 (the owner) |
@@ -21,6 +21,7 @@
 | [0017](../adr/0017-public-repo-private-captures.md) | The code is public; the robot's raw captures (source pages, team lists, outside games, coverage) are in the private `txsixman/data-private`, reached only by push, schedule and dispatch runs | Accepted Nov 12, 2026 (the owner) |
 | [0018](../adr/0018-fan-accounts-and-posts.md) | Fan accounts (13+, email link or Google), follows, forums, game comments and score reports, moderated by code with no queue; supersedes 0014's no-posts and no-minor-accounts lines and 0011's three-source rule for fan reports | Accepted Nov 12, 2026 (the owner) |
 | [0019](../adr/0019-playoff-reads-follow-the-games.md) | Playoff reads (ADR 0015) follow the games: every 10 minutes noon to midnight Central on any November or December day with an unscored bracket game, same rules | Accepted Nov 13, 2026 (the owner) |
+| [0020](../adr/0020-sixmanfootball-scores-with-written-permission.md) | SixManFootball.com is the primary score source (MaxPreps the backup), with its owner's written permission: honest bot name, robots.txt every run, scores only, never for AI training | Accepted Nov 13, 2026 (the owner) |
 
 Not in an ADR:
 - Interviews are cut from the plan (the owner, Nov 10, 2026; see `docs/plan/v1.2-notes.md`).

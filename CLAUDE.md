@@ -124,8 +124,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 
 ## Hard rules
 - **Permission-first data** (ADR 0002): collect facts first-hand, cite secondary sources, use another site's
-  compilation only with permission. Never read SixManFootball.com (its robots.txt blocks Claude by name). Never use
-  CalPreps. **Exception (ADR 0008):** game results (date, teams, score) from MaxPreps team schedule pages only, by
+  compilation only with permission. SixManFootball.com only under ADR 0020 (its owner's written permission): game
+  scores only, by `TXSixManFootballBot` (never a Claude or browser user agent), robots.txt read every run; never read
+  it with Claude's own web tools. Never use CalPreps. **Exception (ADR 0008):** game results (date, teams, score) from MaxPreps team schedule pages only, by
   `tools/league-watch/maxpreps.mjs`; never its APIs, stories, stats, players or logos. Pages never name
   or link any source (ADRs 0009, 0010); every source stays in the data.
   A league's own public alignment page may be read by robot only under ADR 0005 (as a visitor, weekly, robots.txt,

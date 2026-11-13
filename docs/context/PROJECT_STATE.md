@@ -125,7 +125,8 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 - **Cut-over done Thu Nov 12, 2026 (evening):** the old private repo's Results watch, League watch and Supabase
   workflows are disabled, `LIVE` is `true` here, and Vercel builds from this repo. Proofs before it: CI, League watch,
   Results watch (data-private commit, then this repo's) and the ratings table, all by hand. The old repo is history.
-- **Never read SixManFootball.com** (robots.txt blocks Claude; partnership hard lines). Build from first principles.
+- **SixManFootball.com** only under ADR 0020 (its owner's written permission): scores only, by the honestly named
+  score bot, robots.txt every run; never with Claude's own web tools. Partnership hard lines stand.
 - **Accepted risks (ADRs 0008, 0014):** MaxPreps terms of use; the domain's closeness to the incumbent's name; no
   attorney review. Optional: reset the Supabase password (it appeared in a transcript), then Keychain and the secret
   (`CLAUDE.md`).

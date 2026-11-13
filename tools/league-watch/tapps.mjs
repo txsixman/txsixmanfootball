@@ -47,8 +47,12 @@ export function checkTapps(rows) {
   if (problems.length) throw new Error(`TAPPS alignment failed its checks:\n- ${problems.join("\n- ")}`);
 }
 
-/** Disallow rules for "*" or for us. shortcut: prefix match only, no wildcards; upgrade: if TAPPS adds wildcard rules. */
-export function robotsAllows(robots, pagePath) {
+/**
+ * Whether robots.txt lets us read `pagePath`: the Disallow rules of the "*" group and of any group naming our agent
+ * (`agent`, matched as a prefix of the group's name, any case). `*` in a rule matches anything and a final `$` anchors it.
+ * Allow lines are not read, so an Allow inside a disallowed path still counts as disallowed (the careful reading).
+ */
+export function robotsAllows(robots, pagePath, agent = "project80x40") {
   let applies = false;
   let lastWasAgent = false;
   const disallowed = [];
@@ -57,7 +61,7 @@ export function robotsAllows(robots, pagePath) {
     const field = key.trim().toLowerCase();
     const value = rest.join(":").trim();
     if (field === "user-agent") {
-      const ours = value === "*" || value.toLowerCase().startsWith("project80x40");
+      const ours = value === "*" || value.toLowerCase().startsWith(agent.toLowerCase());
       applies = lastWasAgent ? applies || ours : ours;
       lastWasAgent = true;
     } else if (field) {
@@ -65,7 +69,12 @@ export function robotsAllows(robots, pagePath) {
       if (applies && field === "disallow" && value) disallowed.push(value);
     }
   }
-  return !disallowed.some((prefix) => pagePath.startsWith(prefix));
+  const matches = (rule) => {
+    const anchored = rule.endsWith("$");
+    const body = (anchored ? rule.slice(0, -1) : rule).split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*");
+    return new RegExp(`^${body}${anchored ? "$" : ""}`).test(pagePath);
+  };
+  return !disallowed.some(matches);
 }
 
 export const toCsv = (rows) =>
