@@ -88,6 +88,8 @@ jobs:
       # The results commit this run pushed (blank when nothing was new), and its season, for the alerts job.
       sha: ${{ steps.commit.outputs.sha }}
       year: ${{ steps.season.outputs.year }}
+      # Problems the second-source steps named without failing (ADR 0028), for the notify job.
+      ops_reasons: ${{ steps.reasons.outputs.list }}
     steps:
       - uses: actions/checkout@v7
       - name: The private data repo, where the reader reads and writes its captures
@@ -136,6 +138,7 @@ jobs:
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
+          OPS_REASONS: ${{ runner.temp }}/ops-reasons.txt
         run: |
           if [ -f "$RUNNER_TEMP/live.json" ]; then
             node tools/league-watch/davecampbells.mjs --live "data/seed/maxpreps-$SEASON/playoffs.csv" --merge "$RUNNER_TEMP/live.json"
@@ -149,6 +152,7 @@ jobs:
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
+          OPS_REASONS: ${{ runner.temp }}/ops-reasons.txt
         run: node tools/league-watch/davecampbells.mjs --finals "private/maxpreps-$SEASON/playoffs.csv" --report "private/davecampbells-$SEASON"
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
@@ -197,6 +201,15 @@ jobs:
           echo "Cross-file data checks failed; the results were pushed anyway (scripts/check-data.mjs, INTEGRITY=report):"
           cat "$f"
           exit 1
+      # Whatever happened above: the problems the second-source steps named (a refusal, no season id, no agreeing
+      # final), one word each, for the notify job to post (ADR 0028).
+      - name: Problems to post
+        id: reasons
+        if: always()
+        run: |
+          f="$RUNNER_TEMP/ops-reasons.txt"
+          [ -s "$f" ] || exit 0
+          echo "list=$(sort -u "$f" | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
 
   # Push alerts (tools/push/send-finals.mjs, web-push) to everyone following a program with a new final in the commit
   # just pushed. Without the VAPID_PRIVATE_KEY or SUPABASE_DB_PASSWORD secret it says so and sends nothing.
@@ -253,11 +266,12 @@ jobs:
     uses: ./.github/workflows/supabase.yml
     secrets: inherit
 
-  # A failed or cancelled job (a timeout counts) is posted to the one open robot-alert issue (ADR 0027). `deployed` is
-  # report-only and left out. The cross-file check that fails `maxpreps` after its push lands here too.
+  # A failed or cancelled job (a timeout counts) is posted to the one open robot-alert issue (ADR 0027), and so is each
+  # problem the second-source steps named without failing (ADR 0028). `deployed` is report-only and left out. The
+  # cross-file check that fails `maxpreps` after its push lands here too.
   notify:
     needs: [due, maxpreps, alerts, supabase]
-    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.maxpreps.outputs.ops_reasons != '') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -273,4 +287,10 @@ jobs:
       - name: Post the failure to the robot-alert issue
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node .github/scripts/ops-alert.mjs
+          REASONS: ${{ needs.maxpreps.outputs.ops_reasons }}
+        run: |
+          node .github/scripts/ops-alert.mjs
+          for reason in $REASONS; do
+            # Our own fixed words only; ops-alert.mjs refuses any reason it does not know.
+            if [[ "$reason" =~ ^[a-z-]+$ ]]; then node .github/scripts/ops-alert.mjs --reason "$reason"; fi
+          done

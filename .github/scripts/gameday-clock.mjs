@@ -18,6 +18,7 @@
 
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { alert, github as alertApi } from "./ops-alert.mjs";
 
 export const READ_WORKFLOW = "results-watch.yml";
 export const CLOCK_WORKFLOW = "gameday-clock.yml";
@@ -28,6 +29,13 @@ export const TICK_OFFSET = 3;
 export const SCHEDULE_QUIET = 12;
 /** Any other read this recent (the Mac's loop, a run by hand) already covers this tick. */
 export const RECENT_QUIET = 8;
+/** A read still waiting to start after this long is stuck (ADR 0028): it no longer covers a tick. */
+export const STUCK_WAITING = 60;
+/** A read still running after this long is stuck too. Its jobs' limits add up to about 70 minutes. */
+export const STUCK_RUNNING = 90;
+
+/** Is this active read stuck? Waiting (queued, pending, requested, waiting) over 60 minutes, or running over 90. */
+export const isStuck = (r, now) => (now - Date.parse(r.created_at)) / MINUTE > (r.status === "in_progress" ? STUCK_RUNNING : STUCK_WAITING);
 
 /** November and December, by the UTC month, as Results watch's game-day cron lines count them. */
 export const seasonMonth = (now) => [10, 11].includes(new Date(now).getUTCMonth());
@@ -78,8 +86,13 @@ export function seasonDone(playoffsText) {
 export function decide(now, runs) {
   if (!inWindow(now)) return { dispatch: false, line: "outside the game-night hours (18:00 to 06:10 UTC, Nov and Dec): nothing to start" };
   const ago = (r) => (now - Date.parse(r.created_at)) / MINUTE;
-  const active = runs.find((r) => r.status !== "completed");
+  const actives = runs.filter((r) => r.status !== "completed");
+  const active = actives.find((r) => !isStuck(r, now));
   if (active) return { dispatch: false, line: `skipped: a read is ${active.status} (run ${active.id}, ${active.event})` };
+  // Every active read is stuck: start a new one (it waits behind the stuck one, or replaces it if it is the one
+  // waiting) and say so, so the owner is told (ADR 0028).
+  const stuck = actives[0];
+  if (stuck) return { dispatch: true, stuck: true, line: `a read has been ${stuck.status} for ${Math.floor(ago(stuck))} min (run ${stuck.id}): counted as stuck; started a new read` };
   const scheduled = runs.find((r) => r.event === "schedule" && ago(r) < SCHEDULE_QUIET);
   if (scheduled) return { dispatch: false, line: `skipped: GitHub's schedule started a read ${Math.floor(ago(scheduled))} min ago (run ${scheduled.id})` };
   const recent = runs.find((r) => ago(r) < RECENT_QUIET);
@@ -122,7 +135,7 @@ export function github({ token, repo, selfId, fetchImpl = fetch }) {
  * The clock's loop. Everything outside (time, sleep, GitHub, the log) is passed in, so the tests run it on a fake clock.
  * @returns {Promise<{ failed: boolean, handedOn: boolean, ticks: number }>}
  */
-export async function runClock({ minutes, dryRun = false, retry = false, playoffsText, clock, sleep, api, log }) {
+export async function runClock({ minutes, dryRun = false, retry = false, playoffsText, clock, sleep, api, log, notify = async () => {} }) {
   const start = clock();
   const deadline = start + minutes * MINUTE;
   if (!seasonMonth(start)) {
@@ -172,6 +185,13 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
         break;
       }
     }
+    if (verdict.stuck && !dryRun) {
+      try {
+        await notify("read-stuck");
+      } catch (e) {
+        log(`${stamp} UTC: could not post the stuck read to the robot-alert issue: ${e.message}`);
+      }
+    }
     // Outside the hours, only the first quiet tick is logged, not one line every 10 minutes all day.
     const outside = !inWindow(now);
     if (!(outside && wasOutside)) log(`${stamp} UTC: ${dryRun && verdict.dispatch ? "would have started the game-day read (dry run)" : verdict.line}`);
@@ -204,7 +224,7 @@ function args(argv) {
 
 async function main() {
   const { minutes, dryRun, retry } = args(process.argv);
-  const { GITHUB_TOKEN: token, GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: selfId, GITHUB_STEP_SUMMARY: summary } = process.env;
+  const { GITHUB_TOKEN: token, GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: selfId, GITHUB_WORKFLOW: workflow = "Game-day clock", GITHUB_SERVER_URL: server = "https://github.com", GITHUB_STEP_SUMMARY: summary } = process.env;
   if (!token || !repo) throw new Error("GITHUB_TOKEN and GITHUB_REPOSITORY must be set");
   const file = process.env.PLAYOFFS || `data/seed/maxpreps-${seasonOf(Date.now())}/playoffs.csv`;
   const log = (line) => {
@@ -220,6 +240,7 @@ async function main() {
     clock: Date.now,
     sleep: (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms))),
     api: github({ token, repo, selfId }),
+    notify: (reason) => alert({ api: alertApi({ token, repo }), workflow, runUrl: `${server}/${repo}/actions/runs/${selfId}`, runId: selfId, reason, log }),
     log,
   });
   log(`${result.ticks} ticks; ${result.failed ? "FAILED" : "ok"}; ${result.handedOn ? "the next clock run is queued" : "no next clock run"}.`);

@@ -5,7 +5,8 @@
 // detail of a source.
 //
 //   node .github/scripts/ops-alert.mjs                    a run that failed: names its failed jobs and steps (notify jobs)
-//   node .github/scripts/ops-alert.mjs --reason <key>     a named problem (REASONS below), from a step that did not fail
+//   node .github/scripts/ops-alert.mjs --reason <key>     a named problem (REASONS below), from a step that did not fail,
+//                                                         posted at most once every REASON_QUIET_HOURS
 //
 // The same problem (workflow, job and step, or reason) is commented at most once every QUIET_HOURS, so a failure that
 // repeats every 10 minutes all night sends one email, not sixty. Env: GITHUB_TOKEN (issues: write, actions: read),
@@ -18,8 +19,15 @@ export const LABEL = "ops-alert";
 export const TITLE = "Robot alert: a scheduled job needs a look";
 export const QUIET_HOURS = 3;
 const BOT = "github-actions[bot]";
-/** The fixed texts a step may raise without failing. Only these words reach the public issue. */
-export const REASONS = {};
+/** The fixed texts a step may raise without failing (ADR 0028). Only these words reach the public issue. */
+export const REASONS = {
+  "read-stuck": "A Results watch read has waited or run far longer than any read takes; the game-day clock started a new one. Look at the older run.",
+  "second-source-refused": "The second score source refused a read (HTTP 403 or 429), so its reads stopped for this run. If it keeps happening, switch SECOND_LIVE and SECOND_FINALS off.",
+  "second-source-no-agreement": "The finals cross-check found no agreeing final among 10 or more games of past game nights: its matching or the source's answers may have changed. See the private report.",
+  "second-source-no-season": "The second score source has no season id for the season under way, so its reads do nothing until one is added.",
+};
+/** A named problem is a condition, not one run's failure: it is posted at most once every REASON_QUIET_HOURS. */
+export const REASON_QUIET_HOURS = 12;
 
 /** The failed (or cancelled, as a timeout is) jobs of a run and, in each, the steps that failed. Our own names only. */
 export function failures(jobs) {
@@ -44,7 +52,7 @@ export function bodyOf({ workflow, runUrl, failed, reason, key }) {
   const lines = [`**${plain(workflow)}** needs a look: ${runUrl}`, ""];
   if (reason) lines.push(`- ${REASONS[reason]}`);
   for (const f of failed ?? []) lines.push(`- Job \`${plain(f.job)}\` ${f.conclusion === "failure" ? "failed" : "was cancelled (a timeout counts)"}${f.steps.length ? `, at ${f.steps.map((s) => `\`${plain(s)}\``).join(", ")}` : ""}.`);
-  lines.push("", `This issue collects robot alerts (ADR 0027); the same problem is posted at most once every ${QUIET_HOURS} hours. Close it once things are fixed; the next alert opens a new one.`);
+  lines.push("", `This issue collects robot alerts (ADRs 0027 and 0028); the same problem is posted at most once every ${reason ? REASON_QUIET_HOURS : QUIET_HOURS} hours. Close it once things are fixed; the next alert opens a new one.`);
   lines.push(`<!-- ops-alert key=${encodeURIComponent(key)} -->`);
   return lines.join("\n");
 }
@@ -55,9 +63,9 @@ const keyIn = (text) => {
 };
 
 /** Was the same problem posted on this issue (its body or a comment by the bot) within QUIET_HOURS? */
-export function recentlyPosted({ issue, comments }, key, now) {
+export function recentlyPosted({ issue, comments }, key, now, hours = QUIET_HOURS) {
   const posts = [{ body: issue.body, created_at: issue.created_at, user: issue.user }, ...comments];
-  return posts.some((p) => p.user?.login === BOT && keyIn(p.body) === key && now - Date.parse(p.created_at) < QUIET_HOURS * 3_600_000);
+  return posts.some((p) => p.user?.login === BOT && keyIn(p.body) === key && now - Date.parse(p.created_at) < hours * 3_600_000);
 }
 
 /** GitHub's REST API with the workflow's token; every call times out after 30 seconds. */
@@ -98,8 +106,9 @@ export async function alert({ api, workflow, runUrl, runId, reason, now = Date.n
   const body = bodyOf({ workflow, runUrl, failed, reason, key });
   const issue = await api.openIssue();
   if (issue) {
-    if (recentlyPosted({ issue, comments: await api.comments(issue.number) }, key, now)) {
-      log(`Robot alert: the same problem was posted on issue #${issue.number} within ${QUIET_HOURS} hours, not again.`);
+    const hours = reason ? REASON_QUIET_HOURS : QUIET_HOURS;
+    if (recentlyPosted({ issue, comments: await api.comments(issue.number) }, key, now, hours)) {
+      log(`Robot alert: the same problem was posted on issue #${issue.number} within ${hours} hours, not again.`);
       return "quiet";
     }
     await api.comment(issue.number, body);

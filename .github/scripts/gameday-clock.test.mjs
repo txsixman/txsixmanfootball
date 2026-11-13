@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CLOCK_WORKFLOW, decide, github, inWindow, nextTick, READ_WORKFLOW, runClock, seasonDone, seasonOf } from "./gameday-clock.mjs";
+import { CLOCK_WORKFLOW, decide, github, inWindow, isStuck, nextTick, READ_WORKFLOW, runClock, seasonDone, seasonOf } from "./gameday-clock.mjs";
 
 const at = (iso) => Date.parse(iso);
 const run = (id, event, createdIso, status = "completed") => ({ id, event, status, created_at: createdIso });
@@ -194,4 +194,33 @@ test("the API client sends the token, dispatches on main, times out every call, 
   assert.equal(await api.cancelQueued(), 2);
   assert.deepEqual(seen.filter((s) => s.url.endsWith("/cancel")).map((s) => s.url.split("/runs/")[1]), ["2/cancel", "4/cancel"]);
   assert.ok(seen.every((s) => s.init.signal instanceof AbortSignal));
+});
+
+test("a read waiting over 60 minutes, or running over 90, is stuck: the clock starts a new one and posts it once a tick", async () => {
+  const now = at("2026-11-13T21:03:00Z");
+  assert.ok(isStuck(run(1, "workflow_dispatch", "2026-11-13T20:02:00Z", "queued"), now));
+  assert.ok(!isStuck(run(1, "workflow_dispatch", "2026-11-13T20:04:00Z", "pending"), now));
+  assert.ok(!isStuck(run(1, "workflow_dispatch", "2026-11-13T20:02:00Z", "in_progress"), now));
+  assert.ok(isStuck(run(1, "workflow_dispatch", "2026-11-13T19:32:00Z", "in_progress"), now));
+  const v = decide(now, [run(1, "workflow_dispatch", "2026-11-13T19:00:00Z", "queued")]);
+  assert.deepEqual([v.dispatch, v.stuck], [true, true]);
+  assert.match(v.line, /queued for 123 min \(run 1\): counted as stuck/);
+  // A newer read that is not stuck still covers the tick.
+  assert.equal(decide(now, [run(2, "workflow_dispatch", "2026-11-13T21:00:00Z", "pending"), run(1, "workflow_dispatch", "2026-11-13T19:00:00Z", "queued")]).dispatch, false);
+
+  const posted = [];
+  const f = fake({ startIso: "2026-11-13T21:00:00Z", runs: () => [run(1, "workflow_dispatch", "2026-11-13T19:00:00Z", "queued")] });
+  await runClock({ minutes: 15, playoffsText: null, ...f, notify: async (reason) => posted.push(reason) });
+  assert.deepEqual(posted, ["read-stuck", "read-stuck"]);
+  assert.equal(f.calls.filter((c) => c.workflow === READ_WORKFLOW).length, 2);
+  // A failed post is logged, and the clock goes on.
+  const g = fake({ startIso: "2026-11-13T21:00:00Z", runs: () => [run(1, "workflow_dispatch", "2026-11-13T19:00:00Z", "queued")] });
+  const r = await runClock({ minutes: 5, playoffsText: null, ...g, notify: async () => { throw new Error("HTTP 500"); } });
+  assert.equal(r.failed, false);
+  assert.ok(g.lines.some((l) => /could not post the stuck read/.test(l)));
+  // A dry run posts nothing.
+  const d = fake({ startIso: "2026-11-13T21:00:00Z", runs: () => [run(1, "workflow_dispatch", "2026-11-13T19:00:00Z", "queued")] });
+  const none = [];
+  await runClock({ minutes: 5, dryRun: true, playoffsText: null, ...d, notify: async (x) => none.push(x) });
+  assert.deepEqual(none, []);
 });

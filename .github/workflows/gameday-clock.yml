@@ -42,6 +42,10 @@ jobs:
   clock:
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    permissions:
+      actions: write
+      contents: read
+      issues: write # a stuck read is posted to the robot-alert issue (ADR 0028)
     steps:
       - uses: actions/checkout@v7
         with:

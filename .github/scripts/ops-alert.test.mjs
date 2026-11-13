@@ -105,3 +105,21 @@ test("the API client finds the bot's open alert issue by title, labels new ones,
   assert.deepEqual(JSON.parse(seen.at(-1).init.body), { title: TITLE, body: "b", labels: [LABEL] });
   assert.ok(seen.every((s) => s.init.signal instanceof AbortSignal && s.init.headers.authorization === "Bearer t"));
 });
+
+test("a named problem posts its fixed text, at most once every REASON_QUIET_HOURS, and nothing else", async () => {
+  const { REASON_QUIET_HOURS } = await import("./ops-alert.mjs");
+  for (const [k, text] of Object.entries(REASONS)) {
+    assert.match(k, /^[a-z-]+$/);
+    // Fixed words: no score, no school, no address of a source.
+    assert.ok(!/\d+-\d+|https?:|\.com/.test(text), text);
+  }
+  const a = fakeApi();
+  assert.equal(await run(a, { reason: "second-source-refused" }), "opened");
+  assert.match(a.writes[1].open, /refused a read/);
+  assert.doesNotMatch(a.writes[1].open, /Job `/);
+  const key = keyOf({ workflow: "Results watch", reason: "second-source-refused" });
+  const recent = fakeApi({ issue: { ...post("other", 20), number: 7 }, comments: [post(key, REASON_QUIET_HOURS - 1)] });
+  assert.equal(await run(recent, { reason: "second-source-refused" }), "quiet");
+  const old = fakeApi({ issue: { ...post("other", 20), number: 7 }, comments: [post(key, REASON_QUIET_HOURS + 1)] });
+  assert.equal(await run(old, { reason: "second-source-refused" }), "commented");
+});

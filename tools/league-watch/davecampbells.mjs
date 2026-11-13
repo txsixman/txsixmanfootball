@@ -12,7 +12,11 @@
 // compares the bracket finals MaxPreps has scored in the last three game nights with the feed's, and keeps one row a
 // game in <report>/finals-check.csv (with the feed's team ids in <report>/team-ids.json), in the private data repo
 // only. The run summary gets counts, never a team or a score.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+//
+// Problems that do not fail the step (it runs with continue-on-error) are named in the file OPS_REASONS, when set, for
+// the workflow's notify job to post to the robot-alert issue (ADR 0028): a refusal (403 or 429), no season id from
+// August on, and no agreeing final among 10 or more checked games of past nights.
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { centralDate, gameNight, slugify, tonightsGames } from "./maxpreps.mjs";
@@ -363,6 +367,38 @@ export async function checkFinals({ playoffsText, report, ids, date, seasonId, c
 export const finalsSummary = ({ counts, teams, requests, games, left }) =>
   `Finals cross-check: ${games} games to check, ${teams} teams asked (${requests} requests); ${counts.agree} agree, ${counts.disagree} disagree, ${counts["dc-missing"]} no final there yet, ${counts["dc-forfeit"]} forfeits skipped, ${counts.unmatched} unmatched${left ? `, ${left} left for the next run` : ""}.`;
 
+/** Names a problem for the robot-alert issue (ADR 0028); a no-op without OPS_REASONS. */
+export function raise(reason, file = process.env.OPS_REASONS) {
+  if (file) appendFileSync(file, `${reason}\n`);
+}
+
+/** A season id is owed from August on (the season is under way); before that a missing one is not a problem yet. */
+export const seasonIdOwed = (date) => Number(date.slice(5, 7)) >= 8;
+
+/** At least this many checked games of past nights with none agreeing means the cross-check itself is broken. */
+export const NO_AGREEMENT_MIN = 10;
+
+/**
+ * Did the check find no agreeing final among NO_AGREEMENT_MIN or more games of the past game nights in its window?
+ * Checked means agree, disagree or dc-missing: a game the feed was asked about. Tonight's games are left out (their
+ * finals may not be posted yet).
+ */
+export function noAgreement(report, date) {
+  const from = daysBefore(date, NIGHTS);
+  const rows = [...report.values()].filter((r) => r.game_date >= from && r.game_date < date && ["agree", "disagree", "dc-missing"].includes(r.verdict));
+  return rows.length >= NO_AGREEMENT_MIN && !rows.some((r) => r.verdict === "agree");
+}
+
+/** Runs a mode; a refusal from the feed is named for the robot-alert issue before the step fails. */
+async function guarded(mode) {
+  try {
+    await mode();
+  } catch (e) {
+    if (/HTTP (403|429)/.test(e.message)) raise("second-source-refused");
+    throw e;
+  }
+}
+
 async function finals() {
   const arg = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : null);
   const playoffsFile = arg("--finals");
@@ -376,7 +412,10 @@ async function finals() {
   // The season under way: from July on this year's, before July last year's (as the results reader counts it).
   const season = Number(date.slice(0, 4)) - (Number(date.slice(5, 7)) >= 7 ? 0 : 1);
   const seasonId = SEASON_IDS[season];
-  if (!seasonId) return summary(`Finals cross-check: no feed season id for ${season}, nothing read.`);
+  if (!seasonId) {
+    if (seasonIdOwed(date)) raise("second-source-no-season");
+    return summary(`Finals cross-check: no feed season id for ${season}, nothing read.`);
+  }
   const reportPath = path.join(dir, REPORT_FILE);
   const idsPath = path.join(dir, IDS_FILE);
   const report = readReport(existsSync(reportPath) ? readFileSync(reportPath, "utf8") : "");
@@ -389,6 +428,7 @@ async function finals() {
     writeFileSync(idsPath, `${JSON.stringify(Object.fromEntries(Object.entries(result.ids).sort()), null, 2)}\n`);
   }
   summary(finalsSummary(result));
+  if (noAgreement(result.report, date)) raise("second-source-no-agreement");
 }
 
 async function live() {
@@ -402,7 +442,10 @@ async function live() {
     console.log(line);
     if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`, { flag: "a" });
   };
-  if (!seasonId) return summary(`Second live read: no feed season id for ${date.slice(0, 4)}, nothing read.`);
+  if (!seasonId) {
+    if (seasonIdOwed(date)) raise("second-source-no-season");
+    return summary(`Second live read: no feed season id for ${date.slice(0, 4)}, nothing read.`);
+  }
   const due = tonightsGames(readFileSync(playoffsFile, "utf8"), date);
   if (!due.length) return summary("Second live read: no bracket game of tonight is still without a score.");
   const { theirs, ours } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
@@ -426,4 +469,4 @@ async function live() {
   summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.length} under way.`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--finals") ? finals() : live());
+if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(process.argv.includes("--finals") ? finals : live);
