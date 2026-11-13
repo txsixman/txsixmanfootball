@@ -48,6 +48,16 @@ export function inWindow(now) {
   return minutes >= 18 * 60 || minutes <= 6 * 60 + 10;
 }
 
+/** The daytime catch-up (ADR 0030): one tick between 15:00 and 15:09 UTC (9 AM Central), in November and December. Its read
+ * goes on only when a bracket game of the last few game nights is still unscored (results-watch.yml's `due` job), so a
+ * final posted after a night's last read is in before the next evening. The evening one is any tick in the window. */
+export const CATCH_UP_HOUR = 15;
+export function catchUpTick(now) {
+  if (!seasonMonth(now)) return false;
+  const d = new Date(now);
+  return d.getUTCHours() === CATCH_UP_HOUR && d.getUTCMinutes() < 10;
+}
+
 /** The next tick strictly after `now`: the next time whose minute ends in 3, at :00 seconds. */
 export function nextTick(now) {
   const d = new Date(now);
@@ -84,7 +94,7 @@ export function seasonDone(playoffsText) {
  * @returns {{ dispatch: boolean, line: string }}
  */
 export function decide(now, runs) {
-  if (!inWindow(now)) return { dispatch: false, line: "outside the game-night hours (18:00 to 06:10 UTC, Nov and Dec): nothing to start" };
+  if (!inWindow(now) && !catchUpTick(now)) return { dispatch: false, line: "outside the game-night hours (18:00 to 06:10 UTC, Nov and Dec) and the daytime catch-up (15:00 UTC): nothing to start" };
   const ago = (r) => (now - Date.parse(r.created_at)) / MINUTE;
   const actives = runs.filter((r) => r.status !== "completed");
   const active = actives.find((r) => !isStuck(r, now));
@@ -97,7 +107,7 @@ export function decide(now, runs) {
   if (scheduled) return { dispatch: false, line: `skipped: GitHub's schedule started a read ${Math.floor(ago(scheduled))} min ago (run ${scheduled.id})` };
   const recent = runs.find((r) => ago(r) < RECENT_QUIET);
   if (recent) return { dispatch: false, line: `skipped: a read was started ${Math.floor(ago(recent))} min ago (run ${recent.id}, ${recent.event})` };
-  return { dispatch: true, line: "started the game-day read" };
+  return { dispatch: true, line: inWindow(now) ? "started the game-day read" : "started the daytime catch-up read (it reads only if an earlier night's game is unscored)" };
 }
 
 /** GitHub's REST API with the workflow's token. A dispatch answers 204; anything else is a failure. */
@@ -170,7 +180,7 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
     const stamp = new Date(now).toISOString().slice(0, 16).replace("T", " ");
     let verdict;
     try {
-      verdict = inWindow(now) ? decide(now, await api.runs()) : decide(now, []);
+      verdict = inWindow(now) || catchUpTick(now) ? decide(now, await api.runs()) : decide(now, []);
     } catch (e) {
       failed = true;
       log(`${stamp} UTC: FAILED to read Results watch's runs: ${e.message}`);
@@ -193,7 +203,7 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
       }
     }
     // Outside the hours, only the first quiet tick is logged, not one line every 10 minutes all day.
-    const outside = !inWindow(now);
+    const outside = !inWindow(now) && !catchUpTick(now);
     if (!(outside && wasOutside)) log(`${stamp} UTC: ${dryRun && verdict.dispatch ? "would have started the game-day read (dry run)" : verdict.line}`);
     wasOutside = outside;
   }

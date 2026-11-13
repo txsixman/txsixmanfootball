@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CLOCK_WORKFLOW, decide, github, inWindow, isStuck, nextTick, READ_WORKFLOW, runClock, seasonDone, seasonOf } from "./gameday-clock.mjs";
+import { catchUpTick, CLOCK_WORKFLOW, decide, github, inWindow, isStuck, nextTick, READ_WORKFLOW, runClock, seasonDone, seasonOf } from "./gameday-clock.mjs";
 
 const at = (iso) => Date.parse(iso);
 const run = (id, event, createdIso, status = "completed") => ({ id, event, status, created_at: createdIso });
@@ -48,8 +48,20 @@ test("a tick starts the read only when nothing else covers it", () => {
   assert.equal(mac.dispatch, false);
   assert.match(mac.line, /min ago/);
   assert.equal(decide(now, [run(4, "workflow_dispatch", "2026-11-13T19:54:00Z")]).dispatch, true);
-  // Outside the hours, nothing, whatever the runs say.
-  assert.equal(decide(at("2026-11-13T15:03:00Z"), []).dispatch, false);
+  // Outside the hours, nothing, whatever the runs say, but the daytime catch-up tick.
+  assert.equal(decide(at("2026-11-13T12:03:00Z"), []).dispatch, false);
+  assert.equal(decide(at("2026-11-13T15:13:00Z"), []).dispatch, false);
+});
+
+test("the daytime catch-up (ADR 0030): one tick at 15:03 UTC in November and December starts a read, unless one covers it", () => {
+  assert.ok(catchUpTick(at("2026-11-14T15:03:00Z")));
+  for (const t of ["2026-11-14T14:53:00Z", "2026-11-14T15:13:00Z", "2026-10-31T15:03:00Z", "2027-01-02T15:03:00Z"]) assert.ok(!catchUpTick(at(t)), t);
+  const v = decide(at("2026-11-14T15:03:00Z"), []);
+  assert.equal(v.dispatch, true);
+  assert.match(v.line, /catch-up/);
+  assert.equal(decide(at("2026-11-14T15:03:00Z"), [run(5, "workflow_dispatch", "2026-11-14T14:40:00Z", "in_progress")]).dispatch, false);
+  // The evening catch-up is any tick in the window: results-watch's due count includes the earlier nights.
+  assert.equal(decide(at("2026-11-14T20:03:00Z"), []).dispatch, true);
 });
 
 const CSV = "league,division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period";
