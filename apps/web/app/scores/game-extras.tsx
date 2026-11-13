@@ -81,32 +81,39 @@ export function GoingInSection({ away, home, detail }: { away: string; home: str
   );
 }
 
-/** Earlier games of the two programs, 2021 on, each on its own page. Away team first, like every results list. */
-export function MeetingsSection({ detail }: { detail: GameDetail }) {
+/** The list under "Earlier meetings" and the preview's head-to-head: each game on its own page, away team first. */
+export function MeetingsList({ detail }: { detail: GameDetail }) {
   const { total, list } = detail.meetings;
   return (
+    <>
+      <ul>
+        {list.map(({ result: m }: Entry) => (
+          <li key={m.id} className="border-b border-line">
+            <Link href={m.href} className="grid min-h-14 grid-cols-[6.75rem_1fr_auto] items-center gap-x-3 py-1 hover:bg-panel">
+              <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(m.date)}</span>
+              <span className="min-w-0 text-[15px] leading-5 text-ink">
+                {m.away} at {m.home}
+              </span>
+              <span className="font-num text-[19px] font-bold tabular-nums text-ink">{m.forfeit ? "Forfeit" : `${m.awayScore}-${m.homeScore}`}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <p className="pt-1 text-[13px] text-muted">
+        {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first. Scores are not confirmed here and may change.
+      </p>
+    </>
+  );
+}
+
+/** Earlier games of the two programs, 2021 on, each on its own page. Away team first, like every results list. */
+export function MeetingsSection({ detail }: { detail: GameDetail }) {
+  return (
     <Section id="meetings" title="Earlier meetings">
-      {total === 0 ? (
+      {detail.meetings.total === 0 ? (
         <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since 2021.</p>
       ) : (
-        <>
-          <ul>
-            {list.map(({ result: m }: Entry) => (
-              <li key={m.id} className="border-b border-line">
-                <Link href={m.href} className="grid min-h-14 grid-cols-[6.75rem_1fr_auto] items-center gap-x-3 py-1 hover:bg-panel">
-                  <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(m.date)}</span>
-                  <span className="min-w-0 text-[15px] leading-5 text-ink">
-                    {m.away} at {m.home}
-                  </span>
-                  <span className="font-num text-[19px] font-bold tabular-nums text-ink">{m.forfeit ? "Forfeit" : `${m.awayScore}-${m.homeScore}`}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <p className="pt-1 text-[13px] text-muted">
-            {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first. Scores are not confirmed here and may change.
-          </p>
-        </>
+        <MeetingsList detail={detail} />
       )}
     </Section>
   );

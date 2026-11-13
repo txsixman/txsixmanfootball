@@ -2,11 +2,13 @@ import Link from "next/link";
 import { loadAlignments, slugify } from "@/lib/alignments";
 import { loadGames } from "@/lib/games";
 import { loadFinals } from "@/lib/champions";
+import { nightTitle } from "@/lib/game-night";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { loadRanked, type Ranked } from "@/lib/rankings";
 import { FEW_GAMES, signed } from "@/lib/ratings";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
 import { loadTitleChances } from "@/lib/title-chances";
+import { loadNight } from "@/lib/tonight";
 import { MyTeams } from "./my-teams/block";
 import { ChanceList } from "./playoffs/chance-list";
 import { Crest } from "./programs/crest";
@@ -48,8 +50,8 @@ function Top({ title, href, teams, identities }: {
 }
 
 export default async function Home() {
-  const [ranked, finals, identities, alignments, chances] = await Promise.all([
-    loadRanked(), loadFinals(), loadIdentities(), loadAlignments(), loadTitleChances(),
+  const [ranked, finals, identities, alignments, chances, tonight] = await Promise.all([
+    loadRanked(), loadFinals(), loadIdentities(), loadAlignments(), loadTitleChances(), loadNight(),
   ]);
   const current = new Set(alignments.map((a) => a.slug));
   // The closest projected games still to play in each organization: the ones most worth watching.
@@ -77,6 +79,13 @@ export default async function Home() {
       </p>
 
       <MyTeams />
+
+      {/* Linked only when the night has games, decided when the site is built. */}
+      {tonight.count > 0 && (
+        <Link href="/scores/tonight" className="btn mt-4 w-full sm:w-auto">
+          Tonight, {nightTitle(tonight.night)}: {tonight.count} {tonight.count === 1 ? "game" : "games"}
+        </Link>
+      )}
 
       {watch.length > 0 && (
         <section aria-labelledby="watch" className="mt-6">

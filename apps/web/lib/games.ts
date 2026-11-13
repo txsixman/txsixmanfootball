@@ -112,6 +112,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
     return {
       id: playoffGameId(season, r),
       date: r.game_date,
+      round: r.round,
       league: `${heading({ league, division: r.division, region: "1" }).replace("Division ", "D")} · ${roundLabel(r.round, league)}`,
       home,
       away,
