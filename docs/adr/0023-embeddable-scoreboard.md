@@ -31,8 +31,8 @@ framed: every response sent `X-Frame-Options: DENY`.
 - **Framing is allowed on `/embed/...` only.** In `next.config.ts` the shared headers (nosniff, referrer, permissions,
   `X-Robots-Tag`) stay on every route. `X-Frame-Options: DENY` and `Content-Security-Policy: frame-ancestors 'none'` apply
   to every route except those under `/embed/`, by a negative-lookahead source, so a new route is refused framing unless
-  it is under `/embed/`. The embed rule sets its own `X-Robots-Tag: noindex`, kept apart from the site-wide one, which
-  goes when the site is opened to search engines.
+  it is under `/embed/`. The embed rule sets its own `X-Robots-Tag: noindex` on every address, the public one too (where the other
+  pages are indexed), so the embed never competes with the program pages in search.
 - **The page and its crest stay under 30 KB.** The crest is the 288x96 copy; an SVG logo larger than 20 KB (five of the
   eleven) is replaced by the badge in its colors rather than sent. A program with no logo already gets the badge.
 - **The program page shows the iframe as text,** in a "Put this on your site" block: the snippet is escaped text in a

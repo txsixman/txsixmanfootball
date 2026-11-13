@@ -26,6 +26,12 @@ test("the embed has no X-Frame-Options, allows any frame ancestor, is noindex an
   expect(await res.text()).toContain('<meta name="robots" content="noindex">');
 });
 
+test("on the public address the embed stays noindex while a program page is open to search engines", async ({ request }) => {
+  const host = { host: "txsixmanfootball.com" };
+  expect((await request.get(embed("jayton"), { headers: host })).headers()["x-robots-tag"]).toContain("noindex");
+  expect((await request.get("/programs/jayton", { headers: host })).headers()["x-robots-tag"]).toBeUndefined();
+});
+
 for (const url of ["/", "/programs/jayton", "/scores", "/rankings", "/embed", "/embedded"]) {
   test(`${url} still refuses to be framed`, async ({ request }) => {
     const h = (await request.get(url, { failOnStatusCode: false })).headers();

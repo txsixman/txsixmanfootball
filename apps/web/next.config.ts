@@ -2,9 +2,7 @@ import { readdirSync } from "node:fs";
 import path from "node:path";
 import type { NextConfig } from "next";
 
-// noindex until the public brand and the partnership conversation are settled (plan sections 13.1 and 15).
 const headers = [
-  { key: "X-Robots-Tag", value: "noindex, nofollow" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
@@ -50,9 +48,12 @@ const config: NextConfig = {
   async headers() {
     return [
       { source: "/(.*)", headers },
+      // Search engines index the public address only (lib/site.ts); the vercel.app address, previews and a local
+      // server say noindex, so the same pages never show up twice.
+      { source: "/(.*)", missing: [{ type: "host", value: "txsixmanfootball.com" }], headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
       { source: "/((?!embed/).*)", headers: noFraming },
-      // The embeddable scoreboard may be framed by any site; its own Content-Security-Policy comes from the route (app/embed). Its own
-      // noindex stays here, apart from the shared rule, so it outlives the site-wide one when the site opens to search engines.
+      // The embeddable scoreboard may be framed by any site; its own Content-Security-Policy comes from the route (app/embed).
+      // It says noindex on every address, the public one too, so it never competes with the program pages in search.
       { source: "/embed/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex" }] },
       // The service worker is checked for a new version on every visit, so a deploy reaches phones at once.
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },

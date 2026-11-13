@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { SITE_NAME, SITE_URL } from "../lib/site";
 import { brandFont } from "./mark";
 
 // The card a link preview shows for a section page (Playoffs, Results, Records): its name and up to three lines of
@@ -19,8 +20,8 @@ export async function pageCard({ kicker, title, lines }: { kicker: string; title
           ))}
         </div>
         <div style={{ height: 96, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 72px", borderTop: "10px solid #bf1e2e" }}>
-          <div style={{ fontSize: 40, fontWeight: 900 }}>80x40</div>
-          <div style={{ fontSize: 30 }}>Texas six-man football</div>
+          <div style={{ fontSize: 40, fontWeight: 900 }}>{SITE_NAME}</div>
+          <div style={{ fontSize: 30 }}>{SITE_URL.replace("https://", "")}</div>
         </div>
       </div>
     ),

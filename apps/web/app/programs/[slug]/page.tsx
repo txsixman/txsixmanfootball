@@ -26,6 +26,7 @@ import { Crest } from "../crest";
 import { PathToFinal } from "../path-to-final";
 import { Follow } from "../follow";
 import { ShareButton } from "../../share-button";
+import { SITE_NAME } from "@/lib/site";
 import { RatingChart, ratingPoints } from "../rating-chart";
 import { SeasonRatings } from "../season-ratings";
 import { RankTrend, rankTrend } from "../trend";
@@ -39,7 +40,7 @@ export const generateStaticParams = async () => uniquePrograms(await loadAlignme
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const school = (await loadAlignments()).find((a) => a.slug === slug);
-  return { title: `${school?.school ?? "Program"} | Project 80x40` };
+  return { title: `${school?.school ?? "Program"}` };
 }
 
 const NAVY = "#0a2a5e";
@@ -317,7 +318,7 @@ export default async function ProgramPage({ params }: Props) {
         )}
 
         <Follow slug={slug} school={school.school} />
-        <ShareButton title={`${school.school} | Project 80x40`} className="mt-4 px-3" />
+        <ShareButton title={`${school.school} | ${SITE_NAME}`} className="mt-4 px-3" />
 
         {/* A team in this season's playoff bracket: its path, round by round, before the full schedule. */}
         <PathToFinal school={school.school} accent={accent} />

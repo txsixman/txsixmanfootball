@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { org, season, week } = where;
   const dated = (path ?? []).filter((p) => /^\d+$/.test(p)).length;
   const when = dated === 2 ? `${season} week ${week} ` : dated === 1 ? `${season} ` : "";
-  const title = `${org.label} ${when}results | Project 80x40`;
+  const title = `${org.label} ${when}results`;
   // UIL's card is the section's own (opengraph-image.tsx beside this folder); each other organization has its own, so
   // its pages never preview with UIL's numbers.
   if (org === ORGS[0]) return { title };

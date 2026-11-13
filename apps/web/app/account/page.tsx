@@ -12,7 +12,7 @@ import { ImportFollows } from "./import-follows";
 // Your account. Per request, never cached or indexed. It shows the display name and the date joined and nothing else: no
 // email, age, birth year or school appears on this page or anywhere public.
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Your account | Project 80x40", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Your account", robots: { index: false, follow: false } };
 
 const joined = (iso: string) =>
   new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "America/Chicago" }).format(new Date(iso));

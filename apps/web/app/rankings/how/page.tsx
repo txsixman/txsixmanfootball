@@ -8,7 +8,7 @@ import { PageHeader } from "../../ui";
 import { ScorecardChart } from "./scorecard-chart";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "How the rankings work | Project 80x40" };
+export const metadata: Metadata = { title: "How the rankings work" };
 
 // Plain-language method note for /rankings (backlog item 8). It must stay true to services/ratings/model.py; the words
 // are rating, projected margin and win probability, never betting terms. No source is named (ADR 0010).

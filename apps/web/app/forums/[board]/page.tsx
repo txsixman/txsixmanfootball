@@ -15,7 +15,7 @@ type Props = { params: Promise<{ board: string }>; searchParams: Promise<Record<
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const board = boardOf((await params).board);
-  return { title: `${board?.name ?? "Forum"} | Forums | Project 80x40`, robots: { index: false, follow: false } };
+  return { title: `${board?.name ?? "Forum"} | Forums`, robots: { index: false, follow: false } };
 }
 
 export default async function BoardPage({ params, searchParams }: Props) {

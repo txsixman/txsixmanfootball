@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Offline | Project 80x40" };
+export const metadata: Metadata = { title: "Offline", robots: { index: false } };
 
 /** What the service worker (app/sw.ts) shows for a page that is not saved on this phone, or is too old to show. */
 export default function Offline() {

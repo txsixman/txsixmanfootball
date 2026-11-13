@@ -215,7 +215,11 @@ test.describe("Tonight", () => {
         }
       }
     }
-    const text = plain(await page.locator("main").innerText());
+    // A school's own name may hold such a word (Victory Christian Academy-Decatur, Nov 13, 2026): leave the teams out,
+    // longest first.
+    const names = [...new Set(tonight.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games.flatMap((g) => [g.home, g.away]))))]
+      .sort((x, y) => y.length - x.length);
+    const text = names.reduce((t, n) => t.split(n).join(" "), plain(await page.locator("main").innerText()));
     expect(text).not.toMatch(WINNER_WORDS);
     expect(text).not.toMatch(BETTING_OR_SOURCE);
     // A game opens its own page.

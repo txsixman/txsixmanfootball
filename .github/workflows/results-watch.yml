@@ -20,9 +20,9 @@ on:
     # to 06:00 UTC), every day of November and December. The `due` job lets a run read only when a bracket game of
     # that game night has no score yet, so days without games cost one short check. A run reads only those games, one
     # page each; the Central game night comes from maxpreps.mjs (gameNight), never the UTC date.
-    - cron: "*/10 18-23 * 11,12 *"
-    - cron: "*/10 0-5 * 11,12 *"
-    - cron: "0 6 * 11,12 *"
+    - cron: "*/10 18-23 * 11-12 *"
+    - cron: "*/10 0-5 * 11-12 *"
+    - cron: "0 6 * 11-12 *"
   workflow_dispatch:
     inputs:
       season:
@@ -46,7 +46,10 @@ jobs:
   # A game-day run (any schedule but the morning one) goes on only when a bracket game of today's game night has no
   # score yet (ADR 0019). Read from this repo's published playoffs.csv, which carries every bracket row and score.
   due:
-    if: github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0' && vars.LIVE == 'true'
+    # Always runs, so `maxpreps` never depends on a skipped job: a skipped `due` skipped every morning read and dispatch
+    # (Nov 13, 2026). Only a game-day tick counts tonight's games; any other run answers "run". A dispatch with
+    # `tonight` is a game-day tick too: GitHub's schedules never fired in this repo (Nov 2026), so an outside timer
+    # dispatches the game-day reads, and each must cost one short check when nothing is due.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -58,16 +61,24 @@ jobs:
           node-version: 22
       - name: Bracket games of tonight without a score
         id: due
+        env:
+          GAME_DAY_TICK: ${{ (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0') || (github.event_name == 'workflow_dispatch' && inputs.tonight) }}
         run: |
+          if [ "$GAME_DAY_TICK" != true ]; then
+            echo "count=run" >> "$GITHUB_OUTPUT"
+            echo "Not a game-day tick: the read runs." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           season=$(( $(date -u +%-m) >= 7 ? $(date -u +%Y) : $(date -u +%Y) - 1 ))
-          count=$(node tools/league-watch/maxpreps.mjs --due "data/seed/maxpreps-$season/playoffs.csv")
+          # A failed check reads anyway rather than miss a final.
+          count=$(node tools/league-watch/maxpreps.mjs --due "data/seed/maxpreps-$season/playoffs.csv") || count=run
           echo "count=$count" >> "$GITHUB_OUTPUT"
           echo "Bracket games of tonight without a score: $count" >> "$GITHUB_STEP_SUMMARY"
 
   maxpreps:
     needs: due
-    # Morning reads and dispatches skip `due` and always run; a failed check reads anyway rather than miss a final.
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || vars.LIVE == 'true') && needs.due.outputs.count != '0' }}
+    # `due` says "run" for morning reads, dispatches and a failed count; only a game-day tick with nothing due skips.
+    if: ${{ (github.event_name != 'schedule' || vars.LIVE == 'true') && needs.due.outputs.count != '0' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:

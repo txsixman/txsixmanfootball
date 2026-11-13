@@ -13,6 +13,7 @@ import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
 import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
 import { ShareButton } from "../../share-button";
+import { SITE_NAME } from "@/lib/site";
 import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
@@ -37,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const found = await findGame(id);
   const g = found ? undefined : (await bracketGames()).find((x) => x.id === id);
   const teams = found ? found.result : g && { away: g.away.name, home: g.home.name };
-  return { title: teams ? `${teams.away} at ${teams.home} | Project 80x40` : "Game | Project 80x40" };
+  return { title: teams ? `${teams.away} at ${teams.home}` : "Game" };
 }
 
 function Linescore({ g }: { g: Game }) {
@@ -155,7 +156,7 @@ export default async function GamePage({ params }: Props) {
           {g.league}
           {sample && ". Sample game, invented schools."}
         </p>
-        <ShareButton title={`${g.away.name} at ${g.home.name} | Project 80x40`} className="px-3 pt-1" />
+        <ShareButton title={`${g.away.name} at ${g.home.name} | ${SITE_NAME}`} className="px-3 pt-1" />
       </header>
 
       {/* A game with no final yet may be under way: its live score is read in the browser (ADR 0021). */}

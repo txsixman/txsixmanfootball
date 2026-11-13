@@ -13,7 +13,7 @@ export const generateStaticParams = orgParams;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const org = orgBySlug((await params).org);
-  return { title: `${org?.label} records | Project 80x40` };
+  return { title: `${org?.label} records` };
 }
 
 export default async function OrgRecordsPage({ params }: Props) {

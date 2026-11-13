@@ -25,7 +25,7 @@ played two or more of ours stay in the fit as hidden teams (`outside.csv`). Win 
 calibrated on walk-forward predictions (">99%" shown only above 99.5%). Rate the seasons in order, 2021 to 2026, because
 each reads the one before it. Open: the 45-point rule means very large margins are underpredicted, so those chances stay capped.
 
-## The site (`apps/web`, Vercel, unlisted and `noindex` at `txsixmanfootball.com`; `www` and `txsixmanfootballcom.vercel.app` also serve it)
+## The site (`apps/web`, Vercel, open to search engines at `txsixmanfootball.com` (`app/sitemap.ts`, `app/robots.ts`, `lib/site.ts`); `www` redirects there, and `txsixmanfootballcom.vercel.app` and previews send `noindex`)
 - **Organizations never mix (ADR 0012, the owner Nov 11):** UIL, TAPPS, TAIAO, TCAF and Independent each get their own tab, list and
   ranks (`lib/orgs.ts`; Independent has no standings, and an organization's tabs show only once it has a game, `lib/active-orgs.ts`); UIL is each section's default page, the others `<section>/<org>`. No "All", no "Private"
 - **Home**: My teams (programs this browser follows: record, last game, next game with its projection; `app/my-teams/`,
@@ -121,11 +121,9 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 2. Check the first scheduled `Results watch` run in this repo (Fri Nov 13, 11:23 UTC, 5:23 AM CST): data-private
    commit first, then this repo's, its rerate (now with `was`), alerts and the Supabase load after it
 3. Watch UIL region chances appear once area games are listed (around Nov 20) and round names as the playoffs advance
-4. Open the site to search engines once step 2's run is clean (the owner, Nov 11: before the regional rounds, so it is
-   indexed for the playoffs and the December finals): drop `robots` in `app/layout.tsx`, the disallow in
-   `app/robots.ts` and the `X-Robots-Tag` header in `next.config.ts`; add `app/sitemap.ts` (every program, results
-   week and rankings page); a Search Console TXT record on Cloudflare (the owner signs in to Google himself). If the run is
-   not clean, fix it first; the site stays `noindex` until then
+4. Google Search Console: the site opened to search engines once step 2's run was clean (the owner, Nov 11: before the
+   regional rounds, so it is indexed for the playoffs and the December finals). The TXT record on Cloudflare waits for
+   the owner's Google sign-in; then submit `https://txsixmanfootball.com/sitemap.xml`. Sample, search and offline pages stay `noindex`
 
 ## Blockers and open items
 - **Remote:** public repo `txsixman/txsixmanfootball`; commits as `TX Six-Man Football <contact@txsixmanfootball.com>`.
