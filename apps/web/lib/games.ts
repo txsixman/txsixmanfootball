@@ -138,10 +138,12 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
 export type PlayoffGame = {
   league: string; bracket: string; round: string; date: string; home: string; away: string;
   homeScore?: number; awayScore?: number; forfeit: boolean; neutral: boolean;
+  /** A played game whose score only the robot or a correction gave: false, so no row names a winner from it (ADR 0004, ADR 0011). */
+  confirmed: boolean;
 };
 
 export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT_SEASON): Promise<PlayoffGame[]> {
-  return (await playoffRows([season])).map(({ r, league }) => {
+  return (await playoffRows([season])).map(({ r, league, robot, corrected }) => {
     const name = (n: string) => programFor(alignments, n, league)?.school ?? n;
     const played = r.home_score !== "" && r.away_score !== "";
     const [h, a] = [Number(r.home_score), Number(r.away_score)];
@@ -155,6 +157,7 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
       ...(played ? { homeScore: h, awayScore: a } : {}),
       forfeit: r.end_reason === "forfeit" || (played && forfeitScore(h, a)),
       neutral: r.neutral !== "false",
+      confirmed: played && !robot && !corrected,
     };
   });
 }

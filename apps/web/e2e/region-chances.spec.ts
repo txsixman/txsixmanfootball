@@ -125,7 +125,7 @@ test("the bracket template: parsed, checked, and keyed by bracket name", () => {
 
 test("a private league never gets regions, only its own last-four chances", () => {
   const alignments = [{ league: "UIL", division: "I", region: "1", district: "1", school: "R1-1", sourceUrl: "", span: "2026-28", slug: "r1-1" }];
-  const g = (round: string, home: string, away: string) => ({ league: "TAPPS", bracket: "TAPPS Division I", round, date: "2026-11-20", home, away, forfeit: false, neutral: true });
+  const g = (round: string, home: string, away: string) => ({ league: "TAPPS", bracket: "TAPPS Division I", round, date: "2026-11-20", home, away, forfeit: false, neutral: true, confirmed: false });
   const out = bracketTitleChances(table(), alignments, new Map(), "TAPPS Division I", [g("area", "R1-1", "R1-2"), g("area", "R1-3", "R1-4")]);
   expect(out.regions).toEqual([]);
   expect(out.state).toBeUndefined();

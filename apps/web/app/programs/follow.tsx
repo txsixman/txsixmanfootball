@@ -93,7 +93,7 @@ export function Follow({ slug, school }: { slug: string; school: string }) {
         </p>
       ) : (
         <>
-          <Button type="button" variant="outline" onClick={toggle} disabled={state === "busy" || state === "loading"} aria-pressed={on} className="mt-2">
+          <Button type="button" variant="outline" onClick={toggle} disabled={state === "busy" || state === "loading"} aria-pressed={on} className="mt-2 max-w-full whitespace-normal py-1.5 text-left">
             {signedIn ? <Star aria-hidden="true" className={on ? "fill-current" : ""} /> : on ? <BellOff aria-hidden="true" /> : <Bell aria-hidden="true" />}
             {signedIn ? (on ? `Unfollow ${school}` : `Follow ${school}`) : on ? "Stop alerts" : `Alert me to ${school} finals`}
           </Button>
