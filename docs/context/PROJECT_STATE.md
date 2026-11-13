@@ -100,7 +100,7 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 
 ## Data and pipeline
 - Alignments: UIL 2026-28 (157), TAPPS 2026-28 (68, weekly robot), TAIAO (46, weekly robot), TCAF (9, by hand), Independent (1: CenTex Chargers, by hand)
-- Results: `tools/league-watch/maxpreps.mjs` (ADR 0008) via `results-watch.yml`, Fri to Sun Aug to Jan, and every 10 minutes noon to midnight Central on any November or December day with a bracket game still unscored (`--tonight`: only those games, ADRs 0015 and 0019; it also sends the games under way to the hosted database's `live_score` table, ADR 0021, with no commit); rerates and
+- Results: `tools/league-watch/maxpreps.mjs` (ADR 0008) via `results-watch.yml`, Fri to Sun Aug to Jan, and every 10 minutes noon to midnight Central on any November or December day with a bracket game of that night or the 3 game nights before still unscored, plus a 9 AM Central catch-up (`--tonight`: only those games, ADRs 0015, 0019 and 0030; it also sends the games under way to the hosted database's `live_score` table, ADR 0021, with no commit); rerates and
   commits the private repo `txsixman/data-private` first (full captures), then the facts to `main` here (ADR 0017,
   `publish.mjs`). 276 of 279 schools reached. Past seasons via `--season <year>` (season-segment pages): 2025 1,230
   games, 2024 1,195, 2023 1,090, 2022 1,076, 2021 970; coverage falls with age (237 of 279 in 2021) because only
