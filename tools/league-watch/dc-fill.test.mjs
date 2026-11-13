@@ -45,7 +45,14 @@ test("the same pair within 3 days, a game in bracket time, a team not aligned, o
   assert.deepEqual(report.map((r) => r.verdict), ["near-date", "not-aligned", "no-score", "playoff-time"]); // by date
 });
 
-test("a forfeit is 1-0 to the side that did not forfeit; both sides forfeiting is no score", () => {
+test("a forfeit is never filled from the second source alone: it is reported, not added", () => {
+  const { add, report } = plan([dc("2026-09-04", "wren", "lark", "0", "0", { home_forfeit: "true" })]);
+  assert.deepEqual(add, []);
+  assert.equal(report[0].verdict, "forfeit");
+  assert.deepEqual([report[0].dc_home, report[0].dc_away], ["0", "1"]);
+});
+
+test("a forfeit reads as 1-0 to the side that did not forfeit; both sides forfeiting is no score", () => {
   assert.deepEqual(dcScore(dc("d", "a", "b", "0", "0", { home_forfeit: "true" })), ["0", "1"]);
   assert.deepEqual(dcScore(dc("d", "a", "b", "", "", { away_forfeit: "true" })), ["1", "0"]);
   assert.equal(dcScore(dc("d", "a", "b", "", "", { home_forfeit: "true", away_forfeit: "true" })), null);
@@ -71,7 +78,7 @@ test("a fill that would change a stored game fails loudly", () => {
 test("the private report keeps one row a game and the counts name no team", () => {
   const { report } = plan([dc("2026-09-04", "wren", "lark", "44", "20")]);
   assert.equal(reportCsv(report).split("\n")[0], REPORT_COLUMNS.join(","));
-  assert.deepEqual(counts(report), { added: 1, agree: 0, differs: 0, "near-date": 0, "playoff-time": 0, "not-aligned": 0, "no-score": 0 });
+  assert.deepEqual(counts(report), { added: 1, agree: 0, differs: 0, "near-date": 0, "playoff-time": 0, "not-aligned": 0, "no-score": 0, forfeit: 0 });
 });
 
 test("MaxPreps wins on overlap: a filled game whose score MaxPreps later shows is MaxPreps' row after the store's two reads", () => {

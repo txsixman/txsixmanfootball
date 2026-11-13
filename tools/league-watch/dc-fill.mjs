@@ -1,17 +1,17 @@
-// The second source's fill (ADR 0033): adds to a season's store (ADR 0031) the regular-season games the second source has
+// The second source's fill (ADR 0033, ADR 0034): adds to a season's store (ADR 0031) the regular-season games the second source has
 // and MaxPreps does not, and never changes a game the store holds. Run by hand, after a history read (ADR 0032):
 //   node tools/league-watch/dc-fill.mjs <year> --private <private data repo> [--dry-run]
 // reads <private>/davecampbells-history-<year>/games.csv (date, our two program slugs, scores, forfeit flags) and the store's
 // <private>/maxpreps-<year>/games.csv and playoffs.csv, and:
 // - adds a game only when the store has no game of that date and pair, no game of that pair within 3 days either side,
-//   both teams are in this season's alignments, it is dated before the season's first bracket game, and it has a score.
+//   both teams are in this season's alignments, it is dated before the season's first bracket game, it has a score, and
+//   it is not a forfeit: a forfeit is never filled from the second source alone; it waits for MaxPreps or a hand capture (ADR 0034).
 //   It goes through the store's own merge (store.mjs mergeStored), so it lands as an ordinary stored row: later MaxPreps
 //   reads may only propose a different score, which applies after two reads (ADR 0031).
 // - writes one row a second-source game, with the store's score and a verdict, to
 //   <private>/davecampbells-history-<year>/history-check.csv, the private report. Nothing else is written.
 // A filled row is written as the reader writes a regular-season game: the alignment names, the home school's division,
-// round season, neutral false, end_reason unknown. A forfeit is 1-0 to the side that did not forfeit, as MaxPreps records
-// one (apps/web/lib/forfeit.ts). source_url is the second source's team page and notes says where the row came from;
+// round season, neutral false, end_reason unknown. source_url is the second source's team page and notes says where the row came from;
 // publish.mjs drops both, so no page names a source (ADR 0010).
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -26,8 +26,9 @@ export const REPORT_FILE = "history-check.csv";
 export const REPORT_COLUMNS = ["game_date", "home", "away", "dc_home", "dc_away", "store_home", "store_away", "verdict"];
 /** added: filled into the store. agree / differs: the store has the game (its score stands). near-date: the store has
  * the pair within 3 days. playoff-time: on or after the season's first bracket game. not-aligned: a team missing from the
- * season's alignments. no-score: the second source has none (or both sides forfeited). */
-export const VERDICTS = ["added", "agree", "differs", "near-date", "playoff-time", "not-aligned", "no-score"];
+ * season's alignments. no-score: the second source has none (or both sides forfeited). forfeit: the second source says
+ * one side forfeited; a forfeit names a winner, so one source is not enough (it waits for MaxPreps or a hand capture). */
+export const VERDICTS = ["added", "agree", "differs", "near-date", "playoff-time", "not-aligned", "no-score", "forfeit"];
 export const NEAR_DAYS = 3;
 export const SOURCE_ORIGIN = "https://www.davecampbells.com";
 export const NOTE = "second source history read (ADR 0033)";
@@ -66,6 +67,7 @@ export function planFill({ dcRows, storedGames, storedPlayoffs, alignments, team
       verdict = !score || line.store_home === "" ? "no-score" : line.store_home === score[0] && line.store_away === score[1] ? "agree" : "differs";
     } else if ((datesByPair.get(pairOf(r.home, r.away)) ?? []).some((d) => days(d, r.game_date) <= NEAR_DAYS)) verdict = "near-date";
     else if (!score) verdict = "no-score";
+    else if (r.home_forfeit === "true" || r.away_forfeit === "true") verdict = "forfeit";
     else if (r.game_date >= firstBracket) verdict = "playoff-time";
     else if (!alignments.has(r.home) || !alignments.has(r.away)) verdict = "not-aligned";
     else {
