@@ -42,6 +42,18 @@ test("fails loudly when the page shape changes", () => {
   assert.throws(() => parseSchedule(page([contest({ teams: [team({ name: "A", homeAway: 0 }), team({ name: "B", homeAway: 1 })], start: null })])), /without a date/);
 });
 
+test("a played game against a team no longer listed: a new shape now, skipped and counted for a past season", () => {
+  const gone = team({ name: "Gone", homeAway: 1, score: 6, contestId: "c9" });
+  gone[14] = null;
+  gone[13] = null;
+  const html = page([played, contest({ teams: [team({ name: "Cedar Gap", homeAway: 0, score: 40, contestId: "c9" }), gone], start: "2019-09-06T19:30:00", hasResult: true })]);
+  assert.throws(() => parseSchedule(html), /team without a name or page/);
+  const skipped = [];
+  const games = parseSchedule(html, { onUnnamed: (date) => skipped.push(date) });
+  assert.deepEqual(games.map((g) => g.home.name), ["Salt Fork"]);
+  assert.deepEqual(skipped, ["2019-09-06"]);
+});
+
 test("writes played games only, with our school names and the game page as source", () => {
   const bySlug = new Map([
     ["cedar-gap", { school: "Cedar Gap", division: "I" }],

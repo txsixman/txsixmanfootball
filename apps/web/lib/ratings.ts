@@ -58,6 +58,9 @@ export const ratingSeasons = memo<void, number[]>(async () =>
   (await readdir(DIR())).filter((f) => /^\d{4}\.json$/.test(f)).map((f) => Number(f.slice(0, 4))).sort((a, b) => b - a),
 );
 
+/** The oldest season with a ratings table: where "since <year>" on a page starts. */
+export const firstSeason = async () => (await ratingSeasons()).at(-1)!;
+
 /** A season's table; the latest season when none is named. Shared across pages: never mutate it. */
 export async function loadRatings(season?: number): Promise<RatingsTable & { season: number; file: string }> {
   return readTable(season ?? (await ratingSeasons())[0]);

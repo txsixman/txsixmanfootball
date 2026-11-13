@@ -106,12 +106,12 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
   );
 }
 
-/** Earlier games of the two programs, 2021 on, each on its own page. Away team first, like every results list. */
-export function MeetingsSection({ detail }: { detail: GameDetail }) {
+/** Earlier games of the two programs, `since` (the oldest season read) on, each on its own page. Away team first, like every results list. */
+export function MeetingsSection({ detail, since }: { detail: GameDetail; since: number }) {
   return (
     <Section id="meetings" title="Earlier meetings">
       {detail.meetings.total === 0 ? (
-        <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since 2021.</p>
+        <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since {since}.</p>
       ) : (
         <MeetingsList detail={detail} />
       )}

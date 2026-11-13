@@ -61,7 +61,7 @@ function Team({ side, programs }: { side: PreviewSide; programs: Programs }) {
 }
 
 /** `projected` is the game's own projection text ("Jayton by 12 · 74% win probability"), undefined when a team is unrated. */
-export function GamePreviewSection({ preview, detail, projected, programs }: { preview: GamePreview; detail: GameDetail; projected?: string; programs: Programs }) {
+export function GamePreviewSection({ preview, detail, projected, programs, since }: { preview: GamePreview; detail: GameDetail; projected?: string; programs: Programs; since: number }) {
   const { away, home, common } = preview;
   const { total } = detail.meetings;
   return (
@@ -82,9 +82,9 @@ export function GamePreviewSection({ preview, detail, projected, programs }: { p
         </p>
       )}
 
-      <Part id="head-to-head" title="Head-to-head since 2021">
+      <Part id="head-to-head" title={`Head-to-head since ${since}`}>
         {total === 0 ? (
-          <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since 2021.</p>
+          <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since {since}.</p>
         ) : (
           <MeetingsList detail={detail} />
         )}

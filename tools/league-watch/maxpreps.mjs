@@ -24,8 +24,9 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argSeason = process.argv.indexOf("--season");
 const today = new Date();
-export const SEASON = argSeason > 0 ? Number(process.argv[argSeason + 1])
-  : today.getUTCMonth() >= 6 ? today.getUTCFullYear() : today.getUTCFullYear() - 1;
+/** The season under way: August to January belongs to the year it started. */
+const DEFAULT_SEASON = today.getUTCMonth() >= 6 ? today.getUTCFullYear() : today.getUTCFullYear() - 1;
+export const SEASON = argSeason > 0 ? Number(process.argv[argSeason + 1]) : DEFAULT_SEASON;
 // The reader's folders (games with their source pages, teams.csv, outside.csv, coverage.txt) live in the private data
 // repo, checked out at PRIVATE_DATA (results-watch.yml); publish.mjs copies the facts into data/seed afterwards.
 const RESULTS = process.env.PRIVATE_DATA ? path.resolve(process.env.PRIVATE_DATA) : path.join(ROOT, "data/seed");
@@ -90,8 +91,12 @@ export function periodText(contest, index = PERIOD_INDEX) {
 /** A team's page without any schedule path: past-season pages link their teams as .../football/25-26/schedule/. */
 export const teamPage = (url) => url.replace(/(?:\d{2}-\d{2}\/)?schedule\/$/, "");
 
-/** Games on one schedule page. Throws if the page no longer has the shape this reader knows. */
-export function parseSchedule(html) {
+/**
+ * Games on one schedule page. Throws if the page no longer has the shape this reader knows. A past season's page may list
+ * a played game against a team MaxPreps has since removed (no name or page): with `onUnnamed`, such a game is skipped and
+ * reported to it instead of throwing; without it (the season under way), it throws as a new shape.
+ */
+export function parseSchedule(html, { onUnnamed } = {}) {
   const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
   if (!m) throw new Error("no __NEXT_DATA__ on the page");
   const props = JSON.parse(m[1])?.props?.pageProps;
@@ -118,6 +123,10 @@ export function parseSchedule(html) {
     if (teams.some((t) => !t.name || !t.url)) {
       // An opponent not yet named (an open date, a "TBA") with no result is not a game; a played one is a new shape.
       if (c[C.hasResult] !== true) continue;
+      if (onUnnamed) {
+        onUnnamed(date);
+        continue;
+      }
       throw new Error("a played game with a team without a name or page");
     }
     const home = teams.find((t) => t.homeAway === 0) ?? teams[0];
@@ -343,6 +352,9 @@ async function main() {
   const outside = new Map(); // opponents not in our alignments, with how many games
   const outsideGames = new Map(); // played games of one of our schools against one that is not, for the ratings
   let pages = 0;
+  // A past season (read with --season) skips a played game whose other team MaxPreps no longer lists, and counts it.
+  let unnamed = 0;
+  const past = SEASON < DEFAULT_SEASON ? { onUnnamed: () => unnamed++ } : {};
 
   while (queue.length) {
     const teamUrl = queue.shift();
@@ -350,7 +362,7 @@ async function main() {
     pages++;
     if (page) readPages.add(teamUrl);
     if (page) {
-      for (const g of parseSchedule(page.html)) {
+      for (const g of parseSchedule(page.html, past)) {
         if (g.date < SEASON_START || g.date > SEASON_END) continue;
         for (const t of [g.home, g.away]) {
           t.slug = match(t, bySlug);
@@ -398,6 +410,7 @@ async function main() {
       `Season ${SEASON}, read ${new Date().toISOString().slice(0, 10)} from ${pages} MaxPreps schedule pages (ADR 0008).`,
       `${kept.filter((g) => g.played).length} played games between schools in our alignments.`,
       `${outsideRows.count} played games against opponents outside them, in outside.csv (the ratings' hidden teams; ${outsideRows.conflicts} listed twice with different scores, left out).`,
+      ...(unnamed ? [`${unnamed} played game sides skipped: the other team is no longer listed on MaxPreps (no name or page).`] : []),
       `${reached.size} of ${bySlug.size} schools reached. Not reached (${missing.length}):`,
       ...missing.sort(),
       "",
