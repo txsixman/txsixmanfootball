@@ -1,8 +1,10 @@
 // Invented fixtures only: no test calls the feed.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
-import { checkFinals, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
+import { checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
 
@@ -316,4 +318,25 @@ test("a game with no mapped team, or a team the feed has no id for, is unmatched
   assert.equal(r.counts.unmatched, 2);
   // Kite costs no request; Lark costs one (its id), and no games request without an id.
   assert.deepEqual(feed.asked, ["/api/public/teams/lark-owls?seasonId=s1"]);
+});
+
+test("problems for the robot-alert issue: a season id owed from August, no agreement among 10 or more past games", () => {
+  assert.equal(seasonIdOwed("2027-07-31"), false);
+  assert.equal(seasonIdOwed("2027-08-01"), true);
+  assert.equal(seasonIdOwed("2027-12-05"), true);
+  const rows = (n, verdict, date = "2026-11-12") =>
+    Array.from({ length: n }, (_, i) => ({ game_date: date, home: `h${i}${verdict}${date}`, away: `a${i}`, verdict }));
+  const rep = (...lists) => new Map(lists.flat().map((r) => [`${r.game_date}|${r.home}|${r.away}`, r]));
+  assert.equal(noAgreement(rep(rows(NO_AGREEMENT_MIN, "dc-missing")), "2026-11-13"), true);
+  assert.equal(noAgreement(rep(rows(NO_AGREEMENT_MIN - 1, "disagree")), "2026-11-13"), false, "too few");
+  assert.equal(noAgreement(rep(rows(NO_AGREEMENT_MIN, "disagree"), rows(1, "agree")), "2026-11-13"), false);
+  assert.equal(noAgreement(rep(rows(NO_AGREEMENT_MIN, "unmatched")), "2026-11-13"), false, "unmatched is not checked");
+  assert.equal(noAgreement(rep(rows(NO_AGREEMENT_MIN, "dc-missing", "2026-11-13")), "2026-11-13"), false, "tonight is left out");
+  assert.equal(noAgreement(rep(rows(NO_AGREEMENT_MIN, "dc-missing", "2026-11-01")), "2026-11-13"), false, "older than the window");
+  // raise writes one word a line to the file, and nothing without one.
+  const file = path.join(mkdtempSync(path.join(tmpdir(), "reasons-")), "r.txt");
+  raise("second-source-refused", file);
+  raise("second-source-no-season", file);
+  assert.equal(readFileSync(file, "utf8"), "second-source-refused\nsecond-source-no-season\n");
+  raise("x", undefined);
 });

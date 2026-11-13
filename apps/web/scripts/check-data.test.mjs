@@ -3,7 +3,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import * as s from "../lib/data-schemas.ts";
-import { checkAll } from "./check-data.mjs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { checkAll, checkMaxprepsFolders } from "./check-data.mjs";
 
 // Robot-read games as this repo holds them: the facts, no source column (data-schemas.ts RESULT_COLUMNS).
 const HEADER = s.RESULT_COLUMNS.join(",");
@@ -80,4 +83,19 @@ test("the aliases file maps spellings to names; a non-string value fails", () =>
 test("every data file in the repo passes", () => {
   const bad = checkAll().filter((r) => !r.ok);
   assert.deepEqual(bad, []);
+});
+
+test("a robot-read folder holds games.csv and playoffs.csv only; a capture or an oddly named folder fails", () => {
+  const seedDir = mkdtempSync(path.join(tmpdir(), "seed-"));
+  const put = (f) => {
+    mkdirSync(path.dirname(path.join(seedDir, f)), { recursive: true });
+    writeFileSync(path.join(seedDir, f), "x\n");
+  };
+  for (const f of ["maxpreps-2019/games.csv", "maxpreps-2019/playoffs.csv", "maxpreps-2019/.DS_Store", "maxpreps-2020/games.csv", "uil-2026-28/alignments.csv"]) put(f);
+  assert.deepEqual(checkMaxprepsFolders(seedDir), []);
+  for (const f of ["maxpreps-2020/teams.csv", "maxpreps-2020/pages/a.html", "maxpreps-2020-old/coverage.txt"]) put(f);
+  const bad = checkMaxprepsFolders(seedDir);
+  assert.deepEqual(bad.map((r) => [r.file, r.ok]), [["data/seed/maxpreps-2020", false], ["data/seed/maxpreps-2020-old", false]]);
+  assert.match(bad[0].note, /only games\.csv and playoffs\.csv.*: pages, teams\.csv$/);
+  assert.match(bad[1].note, /maxpreps-<year>/);
 });

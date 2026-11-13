@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames  } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -368,4 +368,11 @@ test("a past season's 11-man games: the page's own division says which football,
   assert.equal(isElevenMan(game("a", "s"), football), false); // a six-man school plays six-man
   assert.equal(isElevenMan(game("s", "u"), football), false);
   assert.equal(isElevenMan(game("u", "not-read"), football), false);
+});
+
+test("in CI a read refuses to run without PRIVATE_DATA, naming it; a local run and a CI run with it go ahead", () => {
+  assert.throws(() => requirePrivateData({ CI: "true" }), /PRIVATE_DATA is not set/);
+  assert.throws(() => requirePrivateData({ CI: "true", PRIVATE_DATA: "" }), /PRIVATE_DATA/);
+  assert.doesNotThrow(() => requirePrivateData({ CI: "true", PRIVATE_DATA: "/w/private" }));
+  assert.doesNotThrow(() => requirePrivateData({}));
 });
