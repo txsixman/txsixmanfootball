@@ -61,8 +61,9 @@ export default async function Home() {
   ]);
   const current = new Set(alignments.map((a) => a.slug));
   // The closest projected games still to play in each organization: the ones most worth watching.
+  // A game dated before tonight with no score yet is waiting on its score, not still to play: it is left out.
   const upcoming = (await loadGames(alignments))
-    .filter((g) => g.state === "scheduled" && g.projectedMargin != null)
+    .filter((g) => g.state === "scheduled" && g.projectedMargin != null && !(g.date && g.date < tonight.night))
     .sort((a, b) => a.projectedMargin! - b.projectedMargin!);
   const watch = ORGS.map((org) => ({ org, games: upcoming.filter((g) => orgOfGame(g.league) === org).slice(0, WATCH) })).filter((w) => w.games.length);
   // Ranks counted inside the list shown: teams arrive best first.
@@ -103,7 +104,7 @@ export default async function Home() {
       {watch.length > 0 && (
         <section aria-labelledby="watch" className="mt-6">
           <h2 id="watch" className="section-title">Games to watch</h2>
-          <p className="section-note">The closest playoff games still to play in each organization, by projected margin. The percentage is the favorite&rsquo;s win probability.</p>
+          <p className="section-note">The closest playoff games still to play in each organization, by projected margin, with the projected team&rsquo;s chance to win.</p>
           {watch.map(({ org, games }) => (
             <section key={org.slug} aria-labelledby={`watch-${org.slug}`} className="mt-3">
               <h3 id={`watch-${org.slug}`} className="sub-title">{org.label}</h3>
