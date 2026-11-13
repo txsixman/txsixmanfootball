@@ -59,19 +59,19 @@ function Scorecard({ scorecard }: { scorecard: Backtest["scorecard"] }) {
       <h2 id="scorecard" className="font-num text-[24px] font-bold uppercase tracking-wide text-navy">Said versus happened</h2>
       <p className="mt-1 text-[15px] text-ink">
         Every week of 2022 to 2026 was predicted from only the games before it. Across {total.toLocaleString("en-US")} games the ratings gave the
-        favorite {pct(said)} on average, and the favorite won {pct(happened)}. If the ratings are honest those two numbers match, in every season, in the
+        projected team {pct(said)} on average, and the projected team won {pct(happened)}. If the ratings are honest those two numbers match, in every season, in the
         playoffs as in the regular season, and in every organization:
       </p>
       <ScorecardChart series={series} />
       <div className="mt-3 overflow-x-auto" role="region" aria-label="Said versus happened, by group of games" tabIndex={0}>
         <table className="w-full text-left text-[15px] text-ink">
-          <caption className="sr-only">The favorite&rsquo;s chance the ratings gave, against how often the favorite won, by season, by regular season and playoffs, and by organization</caption>
+          <caption className="sr-only">The projected team&rsquo;s chance the ratings gave, against how often the projected team won, by season, by regular season and playoffs, and by organization</caption>
           <thead>
             <tr className="border-b-2 border-navy text-[13px] uppercase tracking-wide text-muted">
               <th scope="col" className="py-2 pr-2 font-bold">Group</th>
               <th scope="col" className="py-2 pr-2 text-right font-bold">Games</th>
               <th scope="col" className="py-2 pr-2 text-right font-bold">Ratings said</th>
-              <th scope="col" className="py-2 text-right font-bold">Favorite won</th>
+              <th scope="col" className="py-2 text-right font-bold">Projected team won</th>
             </tr>
           </thead>
           {GROUPS.map(({ key, title }) => (
@@ -94,9 +94,9 @@ function Scorecard({ scorecard }: { scorecard: Backtest["scorecard"] }) {
       {GROUPS.map(({ key, title }) => (
         <details key={key} className="mt-3 border-t border-line">
           <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-navy">{title}, by band</summary>
-          <div className="overflow-x-auto" role="region" aria-label={`${title}, by band of the favorite's chance`} tabIndex={0}>
+          <div className="overflow-x-auto" role="region" aria-label={`${title}, by band of the projected team's chance`} tabIndex={0}>
             <table className="w-full text-left text-[14px] text-ink">
-              <caption className="sr-only">Share of favorites that won, with the number of games, by band of the favorite&rsquo;s chance, {title.toLowerCase()}</caption>
+              <caption className="sr-only">Share of projected teams that won, with the number of games, by band of the projected team&rsquo;s chance, {title.toLowerCase()}</caption>
               <thead>
                 <tr className="border-b-2 border-navy text-[13px] uppercase tracking-wide text-muted">
                   <th scope="col" className="py-2 pr-2 font-bold">Chance said</th>
@@ -223,17 +223,17 @@ export default async function HowPage() {
         <h2 id="track" className="font-num text-[24px] font-bold uppercase tracking-wide text-navy">How well it picks games</h2>
         <p className="mt-1 text-[15px] text-ink">
           Before each game from {track.seasons.at(-1)} to {track.seasons[0]}, both teams&rsquo; ratings from the week before gave a
-          favorite and a win probability. Across {track.games.toLocaleString("en-US")} games, the favorite won{" "}
-          {pct(track.favoriteWon / track.games)} of the time. When the ratings say 70%, the favorite should win about 7 games in 10:
+          projected team and a win probability. Across {track.games.toLocaleString("en-US")} games, the projected team won{" "}
+          {pct(track.favoriteWon / track.games)} of the time. When the ratings say 70%, the projected team should win about 7 games in 10:
         </p>
         <table className="mt-3 w-full text-left text-[15px] text-ink">
-          <caption className="sr-only">How often the favorite won, by its win probability before the game, next to the average win probability the ratings gave</caption>
+          <caption className="sr-only">How often the projected team won, by its win probability before the game, next to the average win probability the ratings gave</caption>
           <thead>
             <tr className="border-b-2 border-navy text-[13px] uppercase tracking-wide text-muted">
               <th scope="col" className="py-2 pr-2 font-bold">Win probability</th>
               <th scope="col" className="py-2 pr-2 text-right font-bold">Games</th>
               <th scope="col" className="py-2 pr-2 text-right font-bold">Ratings said</th>
-              <th scope="col" className="py-2 text-right font-bold">Favorite won</th>
+              <th scope="col" className="py-2 text-right font-bold">Projected team won</th>
             </tr>
           </thead>
           <tbody>

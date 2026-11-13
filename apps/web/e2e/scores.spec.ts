@@ -4,6 +4,7 @@ import { noLiveScores } from "./live-route";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { demoGames } from "../lib/demo-games";
+import { gameNight, isNight } from "../lib/game-night";
 import { normalCdf, project, projectionText } from "../lib/projection";
 import { chancesFor } from "../lib/title-chances";
 import { movement } from "../lib/ratings";
@@ -209,6 +210,10 @@ test("the home page lists the closest games still to play, each organization on 
     const margins = await games.evaluateAll((items) => items.map((li) => Number(/ by (\d+)/.exec(li.textContent ?? "")?.[1])));
     expect(margins).toEqual([...margins].sort((a, b) => a - b));
   }
+  // A game dated before tonight with no score yet is waiting on its score, not still to play: it is never listed.
+  const night = isNight(process.env.GAME_NIGHT) ? process.env.GAME_NIGHT : gameNight();
+  const dates = (await watch.getByRole("listitem").getByRole("link").evaluateAll((as) => as.map((a) => /\/scores\/(\d{4}-\d{2}-\d{2})/.exec(a.getAttribute("href") ?? "")?.[1] ?? ""))).filter(Boolean);
+  for (const d of dates) expect(d >= night, `${d} is before tonight (${night})`).toBe(true);
   await watch.getByRole("listitem").first().getByRole("link").click();
   await expect(page).toHaveURL(/\/scores\/2026-/);
 });
