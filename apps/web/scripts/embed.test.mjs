@@ -89,3 +89,10 @@ test("the snippet is the iframe a school pastes: the address, an escaped title, 
     `<iframe src="https://txsixmanfootball.com/embed/programs/jayton" title="Jay &quot;ton&quot; &amp; Co scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>`,
   );
 });
+
+test("a next game dated before tonight is headed as waiting on its score, never as still to play", () => {
+  assert.match(renderEmbed(view()), /<h2 id="n">Next game<\/h2>/);
+  const waiting = renderEmbed(view({ nextWaiting: true }));
+  assert.match(waiting, /<h2 id="n">Score not in yet<\/h2>/);
+  assert.ok(!waiting.includes("Next game"));
+});
