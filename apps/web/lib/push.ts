@@ -1,9 +1,10 @@
 // Browser push alerts for a followed program's finals (migration 0008, tools/push/send-finals.mjs). Public values only:
 // the VAPID public key (its private half is a secret in the owner's Keychain and the repo's VAPID_PRIVATE_KEY), and
-// Supabase's URL and publishable key, which by design can do nothing here but call push_follow and push_unfollow.
+// Supabase's URL and publishable key (lib/supabase-public.ts), which by design can do nothing here but call push_follow and
+// push_unfollow.
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-public";
+
 const VAPID_PUBLIC_KEY = "BIYcYxqLhhCfvjinOizccPGyBIaaIZBCZoeaRwJ9dHWXa5lRz6IXFnEUErvbb40xntsAtCPvE6R0a8zZ0_YRX_Q";
-const SUPABASE_URL = "https://vhgnaihnyjdnaaergtcl.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_GIhfSzjOF1v-ldynK7inNQ_3NYbMVa0"; // gitleaks:allow (a publishable key: browsers get it by design; row-level security guards the data)
 
 /** The programs this browser follows, kept on the device (the database will not tell an anonymous caller). */
 const STORE = "followed-programs";

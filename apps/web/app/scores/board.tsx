@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files
+import { liveView, type LiveRow } from "@/lib/live-scores";
 import { ORGS } from "@/lib/orgs";
 import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
 import { CrestSlot, EmptyState, PageHeader } from "../ui";
+import { LiveLine, useLiveScores } from "./live-score";
 import { ForfeitMark, VerifyBar, scoreClass } from "./parts";
 
 function StatusCell({ g }: { g: Game }) {
@@ -112,7 +114,9 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
   );
 }
 
-function Row({ g, crests }: { g: Game; crests?: Crests }) {
+function Row({ g, crests, liveRows }: { g: Game; crests?: Crests; liveRows: LiveRow[] }) {
+  // A game with no final yet may be under way (ADR 0021); one with a final never shows a live row.
+  const live = g.state === "scheduled" ? liveView(liveRows, { date: g.date, home: g.home.name, away: g.away.name }) : null;
   const edge =
     g.verification === "disputed"
       ? "border-l-[6px] border-red"
@@ -128,6 +132,7 @@ function Row({ g, crests }: { g: Game; crests?: Crests }) {
             <TeamLine g={g} side="away" crests={crests} />
             <TeamLine g={g} side="home" crests={crests} />
             <Notes g={g} />
+            {live && <LiveLine live={live} className="mt-0.5" />}
           </div>
         </div>
         <VerifyBar g={g} />
@@ -136,7 +141,7 @@ function Row({ g, crests }: { g: Game; crests?: Crests }) {
   );
 }
 
-function Section({ id, title, live, games, crests }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests }) {
+function Section({ id, title, live, games, crests, liveRows }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; liveRows: LiveRow[] }) {
   if (!games.length) return null;
   const leagues = [...new Set(games.map((g) => g.league))];
   return (
@@ -151,7 +156,7 @@ function Section({ id, title, live, games, crests }: { id: string; title: string
           </h3>
           <ul>
             {games.filter((g) => g.league === league).map((g) => (
-              <Row key={g.id} g={g} crests={crests} />
+              <Row key={g.id} g={g} crests={crests} liveRows={liveRows} />
             ))}
           </ul>
         </div>
@@ -165,6 +170,8 @@ const orgOf = (g: Game) => ORGS.find((o) => g.league === o.league || g.league.st
 
 export default function Board({ games, eyebrow, title, crests }: { games: Game[]; eyebrow: string; title: string; crests?: Crests }) {
   const [query, setQuery] = useState("");
+  // Only a game with a date and no final can be under way; a board of invented sample games or finals asks for nothing.
+  const liveRows = useLiveScores(games.some((g) => g.date && g.state === "scheduled"));
   // One button per organization that has games, in the site's order (UIL first, the default). Never an "All".
   const orgs = ORGS.filter((o) => games.some((g) => orgOf(g) === o));
   const [chosen, setChosen] = useState("");
@@ -232,9 +239,9 @@ export default function Board({ games, eyebrow, title, crests }: { games: Game[]
         )}
       </nav>
 
-      <Section id="live" title="Live now" live games={live} crests={crests} />
-      <Section id="final" title="Final" games={final} crests={crests} />
-      <Section id="later" title="Later" games={later} crests={crests} />
+      <Section id="live" title="Live now" live games={live} crests={crests} liveRows={liveRows} />
+      <Section id="final" title="Final" games={final} crests={crests} liveRows={liveRows} />
+      <Section id="later" title="Later" games={later} crests={crests} liveRows={liveRows} />
       {!shown.length && (
         <div className="px-3 pb-6">
           <EmptyState>{q ? <>No team matches &ldquo;{query.trim()}&rdquo;.</> : "No games in this organization yet."}</EmptyState>

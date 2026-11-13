@@ -1,8 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { CENTEX, ORG_TABS } from "./independent";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test);
 
 // ADR 0012: each organization stands alone on Scores, Standings, Programs and the Matchup pickers.
 

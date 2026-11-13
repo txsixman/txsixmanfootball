@@ -1,11 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { noLiveScores } from "./live-route";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { CURRENT_SEASON } from "../lib/season";
 import { placeRows } from "../lib/rank-range";
 import { MOVE_THRESHOLD, movement, type RatingRow } from "../lib/ratings";
 import { meetingScore, scheduleStats } from "../lib/schedule-strength";
+
+// No live-score request reaches the network (e2e/live-route.ts).
+noLiveScores(test);
 
 // The ratings round's rankings pages: rating and rank ranges, tiers, NR, honest arrows, record strength, schedule, best win
 // and worst loss, why a rating moved, and the scorecard on /rankings/how.

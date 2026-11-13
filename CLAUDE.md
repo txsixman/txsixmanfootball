@@ -17,6 +17,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `packages/db/seed.mjs`, `games.mjs`, `champions.mjs`, `lineage.mjs`: alignment, game, state-final and lineage importers (safe to re-run, audited); `load.mjs` applies new
   migrations and every seed file to Supabase, then removes any program no alignment file lists that has no game, final or
   lineage row (each removal in `audit_log`); `supabase-ca.crt` is Supabase's public root certificate
+- `packages/db/live.mjs`: writes the file `maxpreps.mjs --live-out` made into `live_score` in one transaction (upsert, delete
+  what is not in it, delete rows over 6 hours old); run by `results-watch.yml` right after the read (ADR 0021)
 - `packages/core/six-man.mjs`: score checks from plan Appendix B (soft flags)
 - `services/ratings/`: censored-margin model (a season starts from last season and from each league's level; win chance is
   calibrated, `model.py`), Elo baseline, simulated-season comparison; `rows.py`: the one rule for what counts as a rated game
@@ -33,7 +35,10 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `data/seed/tapps-2026-28/`: written by `tools/league-watch/tapps.mjs`, never by hand (ADR 0005)
 - `tools/league-watch/`: robot readers. `tapps.mjs` and `taiao.mjs` (alignments, weekly via `league-watch.yml`); `maxpreps.mjs` (game
   results, Fri to Sun mornings Aug to Jan, plus every 10 minutes noon to midnight on playoff game days (`--tonight`, ADRs 0015 and 0019), via `results-watch.yml`, which also rerates and commits to `main`; `--season 2025`
-  reads a past season's pages)
+  reads a past season's pages). A night read also writes the games under way (`--live-out`, ADR 0021) for `packages/db/live.mjs`,
+  which replaces the rows of the `live_score` table (migration 0016); the site reads it in the browser through the
+  public function `live_scores()` (`apps/web/lib/live-scores.ts`, `app/scores/live-score.tsx`; the Supabase URL and key
+  are `lib/supabase-public.ts`, shared with push). Never committed, never a rebuild; "Unconfirmed", no winner
 - `data/seed/maxpreps-<season>/`: `games.csv` (played games) and `playoffs.csv` (bracket games with league, division and
   round, for `/scores`), the facts only (ADR 0017): no `source_url` or `notes`. Published by
   `tools/league-watch/publish.mjs` from the reader's own folder, never by hand
