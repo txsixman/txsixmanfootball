@@ -36,6 +36,17 @@ test("reads home, away, score and date; skips deleted games", () => {
   assert.equal(later.played, false);
 });
 
+test("a 0-0 result is no score: the game is not played and not written as a final; a 7-7 tie is a result", () => {
+  const final = (hs, as) => contest({ teams: [team({ name: "Cedar Gap", homeAway: 0, score: hs }), team({ name: "Salt Fork", homeAway: 1, score: as })], start: "2026-10-23T19:00:00", hasResult: true });
+  const [blank] = parseSchedule(page([final(0, 0)]));
+  assert.deepEqual([blank.played, blank.live, blank.home.score, blank.away.score], [false, false, null, null]);
+  const bySlug = new Map([["cedar-gap", { school: "Cedar Gap", division: "II" }], ["salt-fork", { school: "Salt Fork", division: "II" }]]);
+  for (const t of [blank.home, blank.away]) t.slug = match(t, bySlug, {});
+  assert.equal(toCsv([blank], bySlug), `${COLUMNS}\n`);
+  const [tie] = parseSchedule(page([final(7, 7)]));
+  assert.deepEqual([tie.played, tie.home.score, tie.away.score], [true, 7, 7]);
+});
+
 test("fails loudly when the page shape changes", () => {
   assert.throws(() => parseSchedule("<html></html>"), /no __NEXT_DATA__/);
   assert.throws(() => parseSchedule(page([contest({ teams: [team({ name: "A", homeAway: 0 })], start: "2026-09-01" })])), /exactly two teams/);
