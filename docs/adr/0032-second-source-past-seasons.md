@@ -34,6 +34,7 @@ ADR 0025 stands for these reads. ADRs 0004, 0010, 0017, 0026, 0029 and 0031 stan
   - One row a game in `davecampbells-<year>/games.csv` in the private repo: date (Central), home and away program
     slugs, both scores, and each side's forfeit flag.
   - Never a ranking, poll, spread or the `winner` field.
+  - A final of 0-0 that is not a forfeit is the feed's placeholder, so it is written with no score.
   - Skipped and counted:
     - an 11-man or unknown opponent;
     - a game that is not finished;

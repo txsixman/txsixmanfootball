@@ -442,3 +442,18 @@ test("known programs come from the published seasons and the lineage table", () 
   assert.deepEqual([...found].sort(), ["finch", "lark-west", "old-finch", "wren"]);
   assert.deepEqual(renamed.get("finch"), [{ from: "old-finch", season: 2021 }]);
 });
+
+test("a 0-0 final is the feed's placeholder: written with no score", () => {
+  const [h, a] = past().participants;
+  const blank = past({ participants: [{ ...h, score: 0 }, { ...a, score: 0 }] });
+  const { rows } = historyRows([blank], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.equal(rows[0].home_score, "");
+  assert.equal(rows[0].away_score, "");
+});
+
+test("scores follow the feed's own home and away sides, whichever side is mapped", () => {
+  const [h, a] = past().participants;
+  const swapped = past({ participants: [{ ...a, participantType: "HOME" }, { ...h, participantType: "AWAY" }] });
+  const { rows } = historyRows([swapped], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.deepEqual([rows[0].home, rows[0].away, rows[0].home_score, rows[0].away_score], ["finch", "wren", "6", "52"]);
+});

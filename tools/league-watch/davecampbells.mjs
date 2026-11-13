@@ -612,12 +612,15 @@ export function historyRows(items, { ours, slugs, renamed, season }) {
       skipped.forfeitUnflagged++;
       continue;
     }
+    // A final of 0-0 is the feed's placeholder, not a result: no score (a forfeit keeps what it says).
+    let [hScore, aScore] = [cell(h.score ?? item.summary?.homeScore), cell(a.score ?? item.summary?.awayScore)];
+    if (hScore === "0" && aScore === "0" && !isForfeit(item)) [hScore, aScore] = ["", ""];
     rows.set(key, {
       game_date: date,
       home: hs,
       away: as,
-      home_score: cell(h.score ?? item.summary?.homeScore),
-      away_score: cell(a.score ?? item.summary?.awayScore),
+      home_score: hScore,
+      away_score: aScore,
       home_forfeit: flag(h.forfeited === true),
       away_forfeit: flag(a.forfeited === true),
     });
