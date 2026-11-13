@@ -18,6 +18,7 @@ import { CURRENT_SEASON } from "@/lib/season";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
 import { seasonRows, type Row } from "@/lib/program-games";
+import { embedSnippet } from "@/lib/embed-html";
 import { ratingSeries, type Rivalry } from "@/lib/program-history";
 import { programHistory } from "@/lib/program-seasons";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
@@ -601,6 +602,18 @@ export default async function ProgramPage({ params }: Props) {
             </ul>
           </Section>
         )}
+
+        {/* The embeddable scoreboard (ADR 0023): the iframe is text to copy, never an element on this page. */}
+        <details data-pagefind-ignore className="mx-3 mt-6 border-t border-line">
+          <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">Put this on your site</summary>
+          <p className="text-[14px] text-ink">Copy this into your school or booster page to show {school.school}&rsquo;s record, latest scores and next game.</p>
+          <pre className="mt-2 whitespace-pre-wrap break-words border border-line bg-panel p-3 text-[13px] text-ink">
+            <code>{embedSnippet(slug, school.school)}</code>
+          </pre>
+          <p className="pb-2 pt-1 text-[13px] text-muted">
+            Colors follow the visitor&rsquo;s device. Add <code>?theme=light</code>, <code>?theme=dark</code> or <code>?theme=auto</code> to the address to choose.
+          </p>
+        </details>
       </article>
     </EdgeToEdge>
   );
