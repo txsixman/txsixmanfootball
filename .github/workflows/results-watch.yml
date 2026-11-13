@@ -139,6 +139,16 @@ jobs:
           if [ -f "$RUNNER_TEMP/live.json" ]; then
             node tools/league-watch/davecampbells.mjs --live "data/seed/maxpreps-$SEASON/playoffs.csv" --merge "$RUNNER_TEMP/live.json"
           fi
+      - name: Finals cross-check
+        # ADR 0026: the bracket finals MaxPreps has scored in the last three game nights, compared with the same feed's
+        # finals, into the private repo's davecampbells-<season>/ (committed below with the captures, never to this
+        # repo). The summary shows counts only. Off until the repo variable SECOND_FINALS is "true". A failure (a 403 or
+        # 429 stops it at once) writes nothing and changes nothing else.
+        if: ${{ vars.SECOND_FINALS == 'true' }}
+        continue-on-error: true
+        env:
+          SEASON: ${{ steps.season.outputs.year }}
+        run: node tools/league-watch/davecampbells.mjs --finals "private/maxpreps-$SEASON/playoffs.csv" --report "private/davecampbells-$SEASON"
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
         # stops the finals from being committed below.

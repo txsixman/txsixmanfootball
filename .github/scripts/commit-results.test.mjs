@@ -182,3 +182,30 @@ test("a failed Zod check blocks the public push (the private captures are alread
   assert.equal(readFileSync(t.log, "utf8"), "private\n");
   assert.deepEqual(remoteLog(t, "public"), ["ignore", "start"]);
 });
+
+test("the finals cross-check's report goes in the private commit, alone or with new captures, and never to this repo", () => {
+  const report = (t, line) => write(path.join(t.work, "private", `davecampbells-${YEAR}`, "finals-check.csv"), `game_date,home,away,verdict\n${line}\n`);
+  // A report with no new captures: a private commit only; nothing public.
+  const t = setup();
+  report(t, "2026-11-12,lark,wren,agree");
+  const r = run(t);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(t.log, "utf8"), "private\n");
+  assert.match(remoteFile(t, "private", `davecampbells-${YEAR}/finals-check.csv`), /lark,wren,agree/);
+  assert.match(r.summary, /No new results\./);
+  assert.deepEqual(remoteLog(t, "public"), ["ignore", "start"]);
+  // The same report again: nothing to commit.
+  const again = run(t);
+  assert.equal(again.status, 0, again.stderr);
+  assert.match(again.summary, /Private repo: no new captures\./);
+  // A changed report with new captures: one private commit with both, then the public facts without the report.
+  report(t, "2026-11-12,lark,wren,disagree");
+  newCapture(t);
+  writeFileSync(t.log, "");
+  const both = run(t);
+  assert.equal(both.status, 0, both.stderr);
+  assert.equal(readFileSync(t.log, "utf8"), "private\npublic\n");
+  assert.match(remoteFile(t, "private", `davecampbells-${YEAR}/finals-check.csv`), /disagree/);
+  assert.match(remoteFile(t, "private", `${DIR}/games.csv`), /Kress,Spur/);
+  assert.equal(git(t.root, "--git-dir", path.join(t.root, "public.git"), "ls-tree", "-r", "--name-only", "main").includes("davecampbells"), false);
+});
