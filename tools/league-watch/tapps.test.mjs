@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkTapps, parseTapps, robotsAllows, toCsv } from "./tapps.mjs";
+import { checkTapps, parseTapps, robotsAllows, toCsv, USER_AGENT } from "./tapps.mjs";
 
 const SAMPLE = `Alignment
 District
@@ -45,5 +45,8 @@ test("robots.txt is honoured", () => {
   assert.equal(robotsAllows("User-agent: *\nDisallow: /home/\n", "/home/tapps-26-28-alignment/"), false);
   assert.equal(robotsAllows("User-agent: Googlebot\nDisallow: /\n", "/home/x/"), true);
   assert.equal(robotsAllows("User-agent: Googlebot\nUser-agent: *\nDisallow: /\n", "/home/x/"), false);
-  assert.equal(robotsAllows("User-agent: Project80x40-alignment-reader\nDisallow: /\n", "/home/x/"), false);
+  assert.equal(robotsAllows("User-agent: txsixmanfootball-results-reader\nDisallow: /\n", "/home/x/"), false);
+  // The reader names the site and a contact, and a robots.txt group for its product name applies to it.
+  assert.match(USER_AGENT, /^txsixmanfootball-results-reader\/1\.0 \(\+https:\/\/txsixmanfootball\.com; contact@txsixmanfootball\.com\)$/);
+  assert.equal(robotsAllows(`User-agent: ${USER_AGENT.split("/")[0]}\nDisallow: /\n`, "/home/x/"), false);
 });

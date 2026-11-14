@@ -5,7 +5,7 @@ import type { RatingsTable } from "./ratings";
 // Where a bracket goes next, from the ratings. The data lists only games that are on the schedule, so the next round
 // is known only where two of this round's games must meet: the two semifinals (their winners play the final), and two
 // area games of one UIL region (their winners play the regional final; the same closure lib/title-chances.ts rests on).
-// Nothing is shown past that: who else meets whom is not in the data. Words: projected margin and win probability.
+// Nothing is shown past that: who else meets whom is not in the data. Words: projected margin and chance to win.
 
 /** Round -> the rounds that its two paired games lead to. */
 const NEXT_ROUNDS: Record<string, string[]> = { semifinal: ["final", "state"], area: ["regional"] };

@@ -4,7 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { checkLive, migrate } from "../load.mjs";
 
 // Push subscriptions (migration 0008): only an endpoint, two keys and program slugs; reached by the API roles only
-// through push_follow and push_unfollow.
+// through push_follow and push_unfollow. Migration 0018: a full table evicts the oldest unconfirmed row, never a confirmed one.
 const ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc123:APA91bExample-token_value";
 const P256DH = "B".repeat(87);
 const AUTH = "a".repeat(22);
@@ -22,7 +22,7 @@ test("follow stores only the endpoint, keys and sorted, unique program slugs; fo
   const cols = await d.query(
     "select column_name from information_schema.columns where table_name = 'push_subscription' order by ordinal_position",
   );
-  assert.deepEqual(cols.rows.map((r) => r.column_name), ["endpoint", "p256dh", "auth", "programs", "created_at", "updated_at"]);
+  assert.deepEqual(cols.rows.map((r) => r.column_name), ["endpoint", "p256dh", "auth", "programs", "created_at", "updated_at", "confirmed_at"]);
   assert.deepEqual((await d.query("select programs from push_subscription")).rows[0].programs, ["guthrie", "jayton"]);
   await d.query("select push_follow($1, $2, $3, $4)", [ENDPOINT, P256DH, AUTH, ["strawn"]]);
   assert.deepEqual((await d.query("select programs from push_subscription")).rows, [{ programs: ["strawn"] }]);
@@ -91,6 +91,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "record_admin_audit", anon: false },
     { proname: "reply_to_thread", anon: false },
     { proname: "resolve_game_key", anon: false },
+    { proname: "results_read_at", anon: true }, // migration 0017: when the last game-day read finished, read-only, for anon and signed-in alike
     { proname: "submit_score_report", anon: false }, // migration 0014: signed-in fans only
     { proname: "unfollow_program", anon: false },
   ]);
@@ -110,4 +111,62 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
   assert.deepEqual(await checkLive(d), ["anon can run public.is_admin(integer)", "authenticated can run public.is_admin(integer)"]);
   await d.exec("drop function is_admin(int); create function unpinned() returns int language sql security definer as 'select 1'");
   assert.deepEqual(await checkLive(d), ["anon can run public.unpinned()", "authenticated can run public.unpinned()", "public.unpinned() is security definer with no search_path"]);
+});
+
+// A table of 5,000 made-up rows (as an anonymous flood would leave it): row i was last active i minutes after the first.
+async function fullDb() {
+  const d = await db();
+  await d.query(
+    `insert into push_subscription (endpoint, p256dh, auth, programs, created_at, updated_at)
+     select 'https://fcm.googleapis.com/fcm/send/flood' || i, $1, $2, array['jayton'],
+            timestamptz '2026-11-01' + i * interval '1 minute', timestamptz '2026-11-01' + i * interval '1 minute'
+       from generate_series(1, 5000) i`,
+    [P256DH, AUTH],
+  );
+  return d;
+}
+const count = async (d) => (await d.query("select count(*)::int as n from push_subscription")).rows[0].n;
+const has = async (d, endpoint) => (await d.query("select 1 from push_subscription where endpoint = $1", [endpoint])).rows.length === 1;
+const flood = (i) => `https://fcm.googleapis.com/fcm/send/flood${i}`;
+
+test("a full table no longer locks new browsers out: the least recently active unconfirmed row makes room", async () => {
+  const d = await fullDb();
+  await d.exec("set role anon"); // as the site calls it
+  await d.query("select push_follow($1, $2, $3, $4)", [ENDPOINT, P256DH, AUTH, ["strawn"]]);
+  await d.query("select push_follow($1, $2, $3, $4)", [`${ENDPOINT}2`, P256DH, AUTH, ["strawn"]]);
+  await d.exec("reset role");
+  assert.equal(await count(d), 5000);
+  assert.ok(await has(d, ENDPOINT));
+  assert.ok(!(await has(d, flood(1))) && !(await has(d, flood(2))), "the two oldest went");
+  assert.ok(await has(d, flood(3)));
+});
+
+test("eviction only touches unconfirmed rows: confirmed ones survive even when they are the oldest", async () => {
+  const d = await fullDb();
+  await d.query("update push_subscription set confirmed_at = now() where endpoint in ($1, $2)", [flood(1), flood(2)]);
+  await d.query("select push_follow($1, $2, $3, $4)", [ENDPOINT, P256DH, AUTH, ["strawn"]]);
+  assert.equal(await count(d), 5000);
+  assert.ok((await has(d, flood(1))) && (await has(d, flood(2))), "confirmed rows stay");
+  assert.ok(!(await has(d, flood(3))), "the oldest unconfirmed row went");
+  assert.equal((await d.query("select count(*)::int as n from push_subscription where confirmed_at is not null")).rows[0].n, 2);
+});
+
+test("when all 5,000 are confirmed the table stays full and refuses a new browser; a known browser can still change its follows", async () => {
+  const d = await fullDb();
+  await d.query("update push_subscription set confirmed_at = now()");
+  await assert.rejects(d.query("select push_follow($1, $2, $3, $4)", [ENDPOINT, P256DH, AUTH, ["strawn"]]), /no room for new subscriptions/);
+  assert.equal(await count(d), 5000);
+  await d.query("select push_follow($1, $2, $3, $4)", [flood(7), P256DH, AUTH, ["strawn"]]);
+  assert.deepEqual((await d.query("select programs from push_subscription where endpoint = $1", [flood(7)])).rows, [{ programs: ["strawn"] }]);
+  assert.equal(await count(d), 5000);
+});
+
+test("below the cap nothing is evicted, and the API roles still have no table rights", async () => {
+  const d = await db();
+  await d.query("select push_follow($1, $2, $3, $4)", [ENDPOINT, P256DH, AUTH, ["strawn"]]);
+  await d.query("select push_follow($1, $2, $3, $4)", [`${ENDPOINT}2`, P256DH, AUTH, ["strawn"]]);
+  assert.equal(await count(d), 2);
+  await d.exec("set role anon");
+  await assert.rejects(d.query("select confirmed_at from push_subscription"), /permission denied/);
+  await assert.rejects(d.query("update push_subscription set confirmed_at = now()"), /permission denied/);
 });

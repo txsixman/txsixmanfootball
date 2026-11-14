@@ -101,15 +101,28 @@ test("soft: a margin over 90, a score more than 3 days ahead, an idle program, a
   assert.equal(mondayOf("2026-11-15"), "2026-11-09");
 });
 
+const past = (games, playoffs = []) => checkSeason({ season: 2023, current: false, today: "2026-11-13", games, playoffs });
+
 test("an earlier season only warns, and only for what would fail today", () => {
-  const out = checkSeason({
-    season: 2023, current: false, today: "2026-11-13",
-    games: [game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-09-04", "Kress", "Jayton", "99", "0")],
-    playoffs: [],
-  });
+  const out = past([game("2023-09-04", "Jayton", "Guthrie", "52", "6", { end_reason: "forfeit" })]);
   assert.equal(out.hard.length, 0);
   assert.equal(out.soft.length, 1);
-  assert.match(out.soft[0], /^2023 \(history\): jayton has 2 games/);
+  assert.match(out.soft[0], /^2023 \(history\): score is not|^2023 \(history\): marked forfeit but not recorded 1-0 or 2-0/);
+});
+
+test("in any season a school playing twice in a night, or a game listed twice, fails", () => {
+  const night = past([game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-09-04", "Kress", "Jayton", "99", "0")]);
+  assert.equal(night.soft.length, 0);
+  assert.equal(night.hard.length, 1);
+  assert.equal(night.hard[0].key, "two-games 2023-09-04 jayton");
+  assert.match(night.hard[0].text, /^2023: jayton has 2 games on 2023-09-04/);
+  // The same pair, the same score, a day apart (home and away swapped): one game, listed twice.
+  const twice = past([game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-09-05", "Guthrie", "Jayton", "6", "52")]);
+  assert.deepEqual(twice.hard.map((h) => h.key), ["duplicate 2023-09-05|guthrie|jayton"]);
+  assert.match(twice.hard[0].text, /^2023: one game listed twice, 2023-09-05 Jayton at Guthrie 52-6 is a copy of the game on 2023-09-04/);
+  // Three days apart, or a different score, is two games.
+  assert.equal(past([game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-09-07", "Jayton", "Guthrie", "52", "6")]).hard.length, 0);
+  assert.equal(past([game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-09-05", "Jayton", "Guthrie", "52", "8")]).hard.length, 0);
 });
 
 test("exceptions excuse a known problem and fail once they match nothing", () => {

@@ -4,13 +4,15 @@ import { centralClock } from "@/lib/playoff-status";
 import { loadNight } from "@/lib/tonight";
 import { EmptyState, PageHeader } from "../../ui";
 import TonightBoard from "./board";
+import { tonightTitle } from "@/lib/titles";
 
 // Static, like the other score pages: which night it is, and the games on it, are worked out when the site is built
 // (every results commit rebuilds it on game nights), so the page says when. The live line of a game under way is the one
 // part read in the browser (app/scores/live-score.tsx).
 export const dynamic = "force-static";
 export const metadata: Metadata = {
-  title: "Tonight's games",
+  title: tonightTitle(),
+  alternates: { canonical: "/scores/tonight" },
   description: "Every Texas six-man game of the night, by organization and round, with live scores while they are played.",
 };
 
@@ -25,7 +27,7 @@ export default async function TonightPage() {
           title="Tonight"
           note={
             night.count
-              ? `${night.count} ${night.count === 1 ? "game" : "games"}, each organization on its own. Scores are not confirmed and may change.`
+              ? `${night.count} ${night.count === 1 ? "game" : "games"}, each organization on its own.`
               : undefined
           }
         />

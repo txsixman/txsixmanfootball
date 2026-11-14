@@ -13,7 +13,7 @@ export async function recordsCard(org: Org = ORGS[0]) {
     lines: [
       points ? `Most points in a game: ${points.points}, ${points.team} (${points.season})` : "Most points in a game",
       run ? `Longest winning run: ${run.wins}, ${run.team}${run.current ? ", still going" : ""}` : "Longest winning runs",
-      "Biggest upsets and unbeaten seasons",
+      "Biggest surprises and unbeaten seasons",
     ],
   });
 }

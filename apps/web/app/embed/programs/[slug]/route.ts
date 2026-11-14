@@ -8,6 +8,7 @@ import { seasonRows, type Row } from "@/lib/program-games";
 import { loadRanked } from "@/lib/rankings";
 import { record } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
+import { tonightsDate } from "@/lib/tonight";
 import { crestLogo, initials, logoCopy } from "@/app/programs/crest";
 
 // The embeddable scoreboard (ADR 0023): a program's crest, record, last three results and next game as one small static HTML
@@ -37,7 +38,7 @@ async function crestFor(school: string, identity: Identity): Promise<EmbedCrest>
   return { kind: "badge", text: initials(school), bg, fg, stripe };
 }
 
-const game = (r: Row): EmbedGame => ({ status: r.status, home: r.home, opponent: r.opponent, score: r.score, note: r.score ? undefined : r.note });
+const game = (r: Row): EmbedGame => ({ status: r.status, home: r.home, opponent: r.opponent, score: r.score, note: r.score ? undefined : (r.projected ?? r.note), playoff: r.playoff });
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -57,6 +58,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     record: ranked ? record(ranked) : null,
     recent: rows.filter((r) => r.score).slice(-3).reverse().map(game),
     next: next ? game(next) : null,
+    nextWaiting: !!next && next.date < tonightsDate(),
   };
   return new Response(renderEmbed(view), {
     headers: { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": embedCsp() },

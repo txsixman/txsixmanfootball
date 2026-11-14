@@ -1,9 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
+import { FIRST_SEASON } from "../lib/season";
 import { noLiveScores } from "./live-route";
 
-// The season hubs (/seasons, /seasons/<year>): one page per season with games read, 2021 to the current season. Every
+// The season hubs (/seasons, /seasons/<year>): one page per season with games read, FIRST_SEASON to the current season. Every
 // expectation comes from the same lib the site is built from. The pages are static and no request reaches Supabase.
 noLiveScores(test);
 test.setTimeout(600_000); // the dev server compiles each linked route the first time it is asked (CI serves a build)
@@ -69,7 +70,7 @@ async function checkWords(page: Page, teams: string[]) {
 test("the index lists every season with games, newest first, each linking to its page", async ({ page }) => {
   const { seasons, hubs } = await fixtures();
   expect(seasons.length).toBeGreaterThanOrEqual(5);
-  expect(seasons.at(-1)).toBe(2021);
+  expect(seasons.at(-1)).toBe(FIRST_SEASON);
   await checkPage(page, "/seasons");
   const links = await page.locator("main ol a[href^='/seasons/']").evaluateAll((els) => els.map((a) => a.getAttribute("href")));
   expect(links).toEqual(seasons.map((s) => `/seasons/${s}`));

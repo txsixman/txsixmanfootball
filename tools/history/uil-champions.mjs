@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { robotsAllows } from "../league-watch/tapps.mjs";
 
 export const ARCHIVE = "https://www.uiltexas.org/football/archives";
-const USER_AGENT = "Project80x40-history-reader/1.0";
+const USER_AGENT = "txsixmanfootball-results-reader/1.0 (+https://txsixmanfootball.com; contact@txsixmanfootball.com)";
 const DELAY_MS = 2500;
 export const COLUMNS = "season,conference,division,champion,runner_up,champion_score,runner_up_score,score_note,notes,source_url";
 

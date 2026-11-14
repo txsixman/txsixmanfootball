@@ -51,7 +51,7 @@ jobs:
         run: npm --prefix tools/school-identity test
       - name: History readers (UIL state finals)
         run: npm --prefix tools/history test
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
       - name: Ruff lint and format check (Python in services/ and tools/; ruff.toml)
         run: uvx ruff@0.17.4 check && uvx ruff@0.17.4 format --check
       - name: Ratings model
@@ -102,7 +102,7 @@ jobs:
       site: ${{ steps.filter.outputs.site }}
     steps:
       - uses: actions/checkout@v7
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
         with:
           # `site` is true when any changed file can change the built site or its page tests: anything but docs,
@@ -146,7 +146,7 @@ jobs:
 
   web-pages:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35  # up to 25 waiting for web-build (wait-for-build.mjs), then the tests
     permissions:
       contents: read
       actions: read # wait-for-build.mjs reads this run's jobs and artifacts
@@ -210,7 +210,7 @@ jobs:
   # site's own install (and Vercel's).
   lighthouse:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35  # up to 25 waiting for web-build (wait-for-build.mjs), then the tests
     permissions:
       contents: read
       actions: read # wait-for-build.mjs
@@ -295,3 +295,19 @@ jobs:
             exit 0
           fi
           [ "$(echo "$NEEDS" | jq -r '.["web-pages"].result')" = success ]
+
+  # Every commit a pull request adds has the project's own address (or a GitHub bot's) as author and committer, so a
+  # personal address never reaches the public history (.github/scripts/commit-emails.sh). The address is never printed.
+  commit-emails:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Commit author and committer addresses
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: bash .github/scripts/commit-emails.sh "$BASE..$HEAD"

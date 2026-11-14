@@ -45,7 +45,7 @@ export function newFinals(before, after) {
     .map(([, r]) => ({ date: r.game_date, home: r.home, away: r.away, homeScore: Number(r.home_score), awayScore: Number(r.away_score) }));
 }
 
-/** One alert a subscription: its programs' new finals. Names no winner (robot scores are unconfirmed, ADR 0004). */
+/** One alert a subscription: its programs' new finals, each as its score (a final is confirmed, ADR 0040). */
 export function message(finals, followed) {
   const mine = finals.filter((f) => followed.includes(slugify(f.home)) || followed.includes(slugify(f.away)));
   if (!mine.length) return null;
@@ -82,6 +82,8 @@ export async function sendAll({ db, send, finals }) {
     try {
       await send({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(msg));
       result.sent += 1;
+      // The push service took it: this browser is real, and push_follow's full-table eviction (migration 0018) leaves it alone.
+      await db.query("update push_subscription set confirmed_at = now() where endpoint = $1 and confirmed_at is null", [s.endpoint]);
     } catch (e) {
       if (e.statusCode === 404 || e.statusCode === 410) {
         await db.query("delete from push_subscription where endpoint = $1", [s.endpoint]);

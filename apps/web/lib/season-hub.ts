@@ -55,7 +55,7 @@ export type SeasonHub = {
   uilPlayoffs: boolean;
 };
 
-/** Seasons with games read, 2021 to the current season, newest first. */
+/** Seasons with games read, FIRST_SEASON (lib/season.ts) to the current season, newest first. */
 export const hubSeasons = memo<void, number[]>(async () => (await resultSeasons()).filter((s) => s <= CURRENT_SEASON));
 
 export const loadSeasonHub = memo(async (season: number): Promise<SeasonHub> => {

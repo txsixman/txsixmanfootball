@@ -39,9 +39,9 @@ test("signed() never prints a signed zero", () => {
 });
 
 test("a projected margin that rounds to nothing says so instead of claiming a one-point win", () => {
-  expect(projectionText({ favorite: "Jayton", margin: 0.4, winProbability: 0.51 })).toBe("Jayton by less than 1 · 51% win probability");
-  expect(projectionText({ favorite: "Jayton", margin: 12, winProbability: 0.74 })).toBe("Jayton by 12 · 74% win probability");
-  expect(projectionParts({ favorite: "Jayton", margin: 12, winProbability: 0.74 })).toEqual({ margin: "Jayton by 12", chance: "74% win probability" });
+  expect(projectionText({ favorite: "Jayton", margin: 0.4, winProbability: 0.51 })).toBe("Jayton by less than 1 · 51% chance to win");
+  expect(projectionText({ favorite: "Jayton", margin: 12, winProbability: 0.74 })).toBe("Jayton by 12 · 74% chance to win");
+  expect(projectionParts({ favorite: "Jayton", margin: 12, winProbability: 0.74 })).toEqual({ margin: "Jayton by 12", chance: "74% chance to win" });
 });
 
 test("most state titles count a merged school under the program it became", () => {
@@ -137,8 +137,8 @@ test("Standings says what its district and overall records count", async ({ page
 
 test("the rankings explainer shows what the ratings expected next to what happened", async ({ page }) => {
   await page.goto("/rankings/how");
-  const table = page.getByRole("table", { name: /favorite won, by its win probability/ });
-  await expect(table.getByRole("columnheader")).toHaveText(["Win probability", "Games", "Ratings said", "Favorite won"]);
+  const table = page.getByRole("table", { name: /projected team won, by its chance to win/ });
+  await expect(table.getByRole("columnheader")).toHaveText(["Chance to win", "Games", "Ratings said", "Projected team won"]);
   const first = (await table.getByRole("row").nth(1).getByRole("cell").allInnerTexts()).map((t) => t.trim());
   expect(first.every((t) => /^\d+%$|^[\d,]+$/.test(t))).toBe(true);
 });

@@ -5,6 +5,8 @@ import { orgBySlug } from "@/lib/orgs";
 import { ratingSeasons } from "@/lib/ratings";
 import { rankingWeeks } from "@/lib/week-rankings";
 import { describeWeekRankings, WeekRankings } from "../../view";
+import { rankingsTitle } from "@/lib/titles";
+import { CURRENT_SEASON } from "@/lib/season";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -21,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { week, org } = await params;
   const found = orgBySlug(org);
   return {
-    title: `${found?.label ?? ""} rankings after week ${week}`,
+    title: found ? rankingsTitle({ label: found.label, season: CURRENT_SEASON, week: Number(week) }) : "Rankings",
     ...(found && { description: await describeWeekRankings(found, week) }),
     alternates: { canonical: `/rankings/week/${week}/${org}` },
   };

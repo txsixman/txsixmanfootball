@@ -10,10 +10,11 @@ import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, pla
 import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
 import { orgOfLabel } from "@/lib/orgs";
-import { CURRENT_SEASON } from "@/lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
-import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
+import { projectedLine } from "@/lib/outcome";
+import { currentPeriod, isForfeit, outcomeOf, playedPeriods } from "@/lib/score-display";
 import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
 import { ShareButton } from "../../share-button";
@@ -22,10 +23,11 @@ import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
 import { GamePreviewSection } from "../game-preview";
-import { LiveScore } from "../live-score";
-import { BigLine, Fact, Verification, type Program } from "../game-parts";
+import { GameKickoffStatus, GameLiveRead, GameScore } from "../live-game";
+import { Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 import { hasCard } from "./card/ids";
+import { gameTitle } from "@/lib/titles";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -48,8 +50,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const card = (await hasCard(id)) && { openGraph: { images: [{ url: `/scores/${id}/card`, width: 1200, height: 630, alt: "Game card" }] } };
   // An invented sample game stays out of search (its schools are not real).
   return {
-    // The date keeps each meeting's title its own: the same two teams at the same field meet again in later seasons.
-    title: teams ? `${teams.away} at ${teams.home}${date ? `, ${mediumDate(date)}` : ""}` : "Game",
+    // The date, or a playoff game's round and season, keeps each meeting's title its own: the same two teams meet again in
+    // later seasons. A played final carries its score (away first, as the page shows it); a forfeit never does.
+    title: teams
+      ? gameTitle({
+          away: teams.away,
+          home: teams.home,
+          date: date && mediumDate(date),
+          scheduled: !found && g?.state === "scheduled",
+          final: found && !sample && !found.result.forfeit ? { away: found.result.awayScore, home: found.result.homeScore } : undefined,
+          round: playoff,
+          season,
+        })
+      : "Game",
     ...(teams && { description: gameDescription({ away: teams.away, home: teams.home, date: date && mediumDate(date), season, playoff, scheduled: !found && g?.state === "scheduled", sample }) }),
     alternates: { canonical: `/scores/${id}` },
     ...card,
@@ -129,7 +142,6 @@ export default async function GamePage({ params }: Props) {
   // Fan comments and score reports exist only while FAN_SIGNIN is "on" (read when the page is built; flip it and redeploy).
   const fan = fanSignIn();
   const live = g.state === "live";
-  const winner = winnerOf(g);
   const back = sample ? { href: "/scores/sample", name: "Scoreboard" } : own ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, name: own.season === CURRENT_SEASON ? "Results" : `${own.season} results` } : { href: "/scores", name: "Scoreboard" };
   const places = [
     [g.away.name, detail?.places.away],
@@ -138,32 +150,38 @@ export default async function GamePage({ params }: Props) {
 
   return (
     <article aria-labelledby="game-title">
-      <Breadcrumbs trail={[{ name: "Home", href: "/" }, back, { name: `${g.away.name} at ${g.home.name}`, href: `/scores/${id}` }]} />
+      <Breadcrumbs trail={[{ name: "Home", href: "/" }, back, { name: `${g.away.name} vs ${g.home.name}`, href: `/scores/${id}` }]} />
       {!sample && <JsonLd data={gameJsonLd(g, { url: `${SITE_URL}/scores/${id}`, home: programOf(g.home), away: programOf(g.away) })} />}
 
+      <GameLiveRead date={g.date} kickoff={g.kickoff} watch={!sample && !!g.date && g.state === "scheduled"}>
       <header>
         <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-red" : "bg-navy"}`}>
-          <span>{live ? "Live" : g.status}</span>
+          <span>
+            {live ? "Live" : g.status}
+            {/* A real game not yet played: its kickoff status at the moment of viewing (ADR 0036). */}
+            {!live && !sample && g.state === "scheduled" && g.date && (
+              <>
+                {" · "}
+                <GameKickoffStatus g={{ ...g, date: g.date }} />
+              </>
+            )}
+          </span>
           {live && <span>{g.status}</span>}
         </div>
         <VerifyBar g={g} />
         <h1 id="game-title" className="sr-only">
-          {g.away.name} at {g.home.name}
+          {g.away.name} vs {g.home.name}
         </h1>
         <p className="px-3 pt-2 text-[12px] font-bold uppercase tracking-wider text-muted">
           {g.league}
           {sample && ". Sample game, invented schools."}
         </p>
-        <ShareButton title={`${g.away.name} at ${g.home.name} | ${SITE_NAME}`} className="px-3 pt-1" />
+        <ShareButton title={`${g.away.name} vs ${g.home.name} | ${SITE_NAME}`} className="px-3 pt-1" />
       </header>
 
-      {/* A game with no final yet may be under way: its live score is read in the browser (ADR 0021). */}
-      {!sample && g.date && g.state === "scheduled" && <LiveScore date={g.date} home={g.home.name} away={g.away.name} />}
-
-      <section aria-label="Score" className="px-3">
-        <BigLine g={g} side="away" program={programOf(g.away)} neutral={neutral} />
-        <BigLine g={g} side="home" program={programOf(g.home)} neutral={neutral} />
-      </section>
+      {/* A game with no final yet may be under way: its live score is read in the browser and shown in the big score (ADR 0021). */}
+      <GameScore g={g} away={programOf(g.away)} home={programOf(g.home)} neutral={neutral} watch={!sample && !!g.date && g.state === "scheduled"} />
+      </GameLiveRead>
 
       <Linescore g={g} />
 
@@ -184,9 +202,10 @@ export default async function GamePage({ params }: Props) {
             </Fact>
           )}
           {g.endReason && !isForfeit(g) && <Fact label={g.state === "postponed" ? "Why" : "How it ended"}>{g.endReason}</Fact>}
-          {g.upset && winner && <Fact label="Upset">{g[winner].name} won after being projected to lose.</Fact>}
-          {g.projected && <Fact label="Projected">{g.projected}. A projection, not a result.</Fact>}
-          <Fact label="Venue">{g.venue}</Fact>
+          {/* What was projected before the game beside what happened (ADR 0044). A judged result shows it in its own section
+              below, with how far the result was from it. No upset label. */}
+          {g.projected && !(found && detail?.projection) && <Fact label="Projection"><span data-projected>{projectedLine(g.projected, outcomeOf(g))}</span>. A projection, not a result.</Fact>}
+          <Fact label="Site">{g.venue}</Fact>
           {places.length > 0 && (
             <Fact label="Plays in">
               {places.map(([team, place]) => (
@@ -202,7 +221,7 @@ export default async function GamePage({ params }: Props) {
 
       {detail && (
         <div className="pb-6">
-          {found && <ProjectionSection result={found.result} detail={detail} />}
+          {found && <ProjectionSection result={found.result} detail={detail} outcome={outcomeOf(g)} />}
           {preview ? (
             <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} />
           ) : (
@@ -214,7 +233,7 @@ export default async function GamePage({ params }: Props) {
           {series && (
             <p className="px-3 pt-2">
               <Link href={series} prefetch={false} className="inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-red">
-                Every {g.away.name} and {g.home.name} game since 2021
+                Every {g.away.name} and {g.home.name} game since {FIRST_SEASON}
               </Link>
             </p>
           )}

@@ -3,6 +3,7 @@
 //
 //   PGHOST=… PGUSER=… PGPASSWORD="$(security find-generic-password -s project-80x40-supabase-db -w)" \
 //     PGSSLROOTCERT=packages/db/supabase-ca.crt node packages/db/load.mjs
+//   … node packages/db/load.mjs --games 2026   (one season's games only, ADR 0031: what Results watch runs after a read)
 //
 // The password comes from the macOS Keychain, never the repo. PGPORT defaults to 5432 and PGDATABASE to postgres.
 
@@ -183,6 +184,24 @@ export async function loadAll(db, { retrievedOn, reason, publicResults = false }
   return report;
 }
 
+/**
+ * One season's games only (ADR 0031): Results watch writes a read's games to the hosted database in the same run, not
+ * only at the Monday load. The same upsert as loadAll (seedGames, keyed on round or date and the two teams): a game
+ * whose stored row says the same thing is left alone, and no game is deleted. Alignments, lineage and migrations wait for
+ * the full load.
+ */
+export async function loadSeasonGames(db, season, { retrievedOn, reason, publicResults = false }) {
+  const report = [];
+  for (const g of gameFiles().filter((f) => f.season === season)) {
+    const text = withSource(readFileSync(new URL(g.file, g.base), "utf8"), g.file, publicResults);
+    const rows = parseGames(g.dropLeague ? withoutLeague(text) : text);
+    if (!rows.length) continue;
+    const { inserted, updated, unchanged, flags } = await seedGames(db, rows, { season, retrievedOn, reason });
+    report.push({ file: g.file, inserted, updated, unchanged, flags: flags.length });
+  }
+  return report;
+}
+
 // Functions a signed-in user (never anon) may call, each as schema.name(argument types) so an overload with other
 // arguments is not allowed by its name. Each acts only on auth.uid()'s own rows, or refuses unless auth.uid() is the
 // admin; a migration that adds one adds its signature here, and the schema tests check it is not open to anon.
@@ -205,7 +224,7 @@ const SIGNED_IN_FUNCTIONS = [
 const ANON_FUNCTIONS = [
   "public.list_comments(text, integer, integer)", "public.fan_score_status(text)", "public.forum_boards()",
   "public.forum_threads(text, integer, integer)", "public.forum_thread_info(uuid)", "public.forum_posts(uuid, integer, integer)",
-  "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)", "public.live_scores()",
+  "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)", "public.live_scores()", "public.results_read_at()",
 ];
 
 /** Schemas the project owns and the API could reach. */
@@ -350,6 +369,13 @@ async function main() {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const db = adapt(client);
+    const only = process.argv.indexOf("--games");
+    if (only > 0) {
+      const season = Number(process.argv[only + 1]);
+      if (!/^\d{4}$/.test(String(season))) throw new Error("usage: load.mjs --games <season>");
+      const games = await loadSeasonGames(db, season, { retrievedOn: today, reason: "packages/db/load.mjs --games (Results watch)" });
+      return console.log(JSON.stringify({ season, games }));
+    }
     const report = await loadAll(db, { retrievedOn: today, reason: "packages/db/load.mjs" });
     report.problems = await checkLive(db);
     // After the security check, and on its own: a failure here is reported (the error code only) but never fails the load.

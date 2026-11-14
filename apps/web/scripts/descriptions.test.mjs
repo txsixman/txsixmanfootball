@@ -49,16 +49,16 @@ test("rankPhrase turns the program header's rank text into words, and says UIL f
 
 test("a game names its teams, date and round, never a score or a winner", () => {
   const base = { away: "Roby", home: "Jayton", date: "Oct 24, 2025", season: 2025, scheduled: false };
-  assert.equal(clean(d.gameDescription(base)), "Roby at Jayton, Oct 24, 2025: 2025 season game. Each team's record going in and their earlier meetings.");
+  assert.equal(clean(d.gameDescription(base)), "Roby vs Jayton, Oct 24, 2025: 2025 season game. Each team's record going in and their earlier meetings.");
   assert.equal(
     clean(d.gameDescription({ ...base, playoff: "UIL DI · Bi-district", scheduled: true })),
-    "Roby at Jayton, Oct 24, 2025: 2025 UIL Division I bi-district playoff game. A preview with each team's record and rating.",
+    "Roby vs Jayton, Oct 24, 2025: 2025 UIL Division I bi-district playoff game. A preview with each team's record and rating.",
   );
   assert.match(d.gameDescription({ ...base, playoff: "TAIAO D1 · Quarterfinal" }), /2025 TAIAO Division 1 quarterfinal playoff game\./);
   assert.match(d.gameDescription({ ...base, playoff: "TAPPS Division II · Semifinal" }), /2025 TAPPS Division II semifinal playoff game\./);
   assert.match(d.gameDescription({ ...base, playoff: "TCAF · State final" }), /2025 TCAF state final playoff game\./);
   assert.doesNotMatch(d.gameDescription({ ...base, date: undefined }), /undefined|, :/);
-  assert.match(clean(d.gameDescription({ away: "Cedar Gap", home: "Salt Fork", season: 2026, scheduled: false, sample: true })), /invented schools: Cedar Gap at Salt Fork/);
+  assert.match(clean(d.gameDescription({ away: "Cedar Gap", home: "Salt Fork", season: 2026, scheduled: false, sample: true })), /invented schools: Cedar Gap vs Salt Fork/);
 });
 
 test("a game with very long names drops the round, then the date, before it cuts a name", () => {
@@ -87,7 +87,7 @@ test("every other page kind fits, names its organization and season, and differs
     }
   }
   all.push(
-    d.homeDescription(2026, ["UIL", "TAPPS", "TAIAO", "TCAF", "Independent"]), d.scoresDescription(2026), d.matchupDescription(2026), d.howRankingsDescription(),
+    d.homeDescription(2026, ["UIL", "TAPPS", "TAIAO", "TCAF", "Independent"]), d.scoresDescription(2026), d.matchupDescription(2026), d.howRankingsDescription(), d.aboutRatingsDescription(),
     d.programsDescription(280, ["UIL", "TAPPS", "TAIAO", "TCAF", "Independent"]), d.championshipsDescription({ first: 1972, latest: 2025, games: 74 }),
     d.seasonsIndexDescription({ first: 2021, latest: 2026 }),
   );

@@ -6,7 +6,7 @@ import * as s from "../lib/data-schemas.ts";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { checkAll, checkMaxprepsFolders } from "./check-data.mjs";
+import { checkAll, checkDisputed, checkMaxprepsFolders } from "./check-data.mjs";
 
 // Robot-read games as this repo holds them: the facts, no source column (data-schemas.ts RESULT_COLUMNS).
 const HEADER = s.RESULT_COLUMNS.join(",");
@@ -98,4 +98,47 @@ test("a robot-read folder holds games.csv and playoffs.csv only; a capture or an
   assert.deepEqual(bad.map((r) => [r.file, r.ok]), [["data/seed/maxpreps-2020", false], ["data/seed/maxpreps-2020-old", false]]);
   assert.match(bad[0].note, /only games\.csv and playoffs\.csv.*: pages, teams\.csv$/);
   assert.match(bad[1].note, /maxpreps-<year>/);
+});
+
+test("a disputed final must be a game on file: a misspelled or wrong-date row fails (ADR 0040)", () => {
+  const seedDir = mkdtempSync(path.join(tmpdir(), "seed-"));
+  const put = (f, text) => {
+    mkdirSync(path.dirname(path.join(seedDir, f)), { recursive: true });
+    writeFileSync(path.join(seedDir, f), text);
+  };
+  put("maxpreps-2031/games.csv", "game_date,home,away,home_score,away_score\n2031-09-12,Salt Fork,Cedar Gap,52,46\n");
+  put("maxpreps-2031/playoffs.csv", "division,round,game_date,home,away\nI,bi-district,2031-11-14,Dry Wash,Pecan Valley\n");
+  put("uil-2031-32/playoffs-2031.csv", "division,round,game_date,home,away\nII,area,2031-11-21,Lone Post,Stillwater\n");
+  // Every row matches: either team order, a robot playoff game, a hand-captured one.
+  put("disputed/2031.csv", "game_date,home,away\n2031-09-12,Cedar Gap,Salt Fork\n2031-11-14,Dry Wash,Pecan Valley\n2031-11-21,Lone Post,Stillwater\n");
+  assert.deepEqual(checkDisputed(seedDir).map((r) => [r.file, r.ok]), [["data/seed/disputed/2031.csv", true]]);
+  // A misspelling and a wrong date each fail, named.
+  put("disputed/2031.csv", "game_date,home,away\n2031-09-12,Salt Forks,Cedar Gap\n2031-09-13,Salt Fork,Cedar Gap\n");
+  const [bad] = checkDisputed(seedDir);
+  assert.equal(bad.ok, false);
+  assert.match(bad.note, /2031-09-12 Cedar Gap at Salt Forks; 2031-09-13 Cedar Gap at Salt Fork$/);
+});
+
+test("a game's site is plain words, and a city needs a name (ADR 0041)", () => {
+  const details = (...lines) => [s.DETAIL_COLUMNS.join(","), ...lines].join("\n");
+  const ok = (line) => s.parseCsv("game-details.csv", details(line), s.DETAIL_COLUMNS, s.DetailRow);
+  const bad = (line, pattern) => assert.throws(() => ok(line), pattern);
+  assert.equal(ok("2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,St. Mary's Field (North) & Track,San Angelo")[0].row.site_city, "San Angelo");
+  ok("2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,");
+  ok("2026-11-13,Lark,Wren,,,");
+  bad("2026-11-13,Lark,Wren,,<b>Field</b>,Lark", /site_name/);
+  bad("2026-11-13,Lark,Wren,,Bird Field,https://x", /site_city/);
+  bad("2026-11-13,Lark,Wren,,,Lark", /a site city with no site name/);
+});
+
+test("a voided playoff listing that later reads a score is named for review, never dropped silently", async () => {
+  const { voidedButScored } = await import("./check-data.mjs");
+  const { buildCorrections } = await import("../lib/corrections.ts");
+  const fix = { game_date: "2026-11-20", home: "Alpha", away: "Beta", action: "void", home_score: "", away_score: "", source_url: "https://example.org/bracket", reason: "contradicts the league's bracket", corrected_on: "2026-11-14" };
+  const fixes = buildCorrections([], [fix]);
+  const row = (home, away, h, a) => ({ league: "TAIAO", division: "2", round: "semifinal", game_date: "2026-11-20", home, away, neutral: "", home_score: h, away_score: a, end_reason: "", end_period: "" });
+  assert.deepEqual(voidedButScored([row("Alpha", "Beta", "", "")], fixes, "f.csv"), [], "still a placeholder: nothing to say");
+  assert.deepEqual(voidedButScored([row("Gamma", "Delta", "20", "14")], fixes, "f.csv"), [], "a game no correction touches");
+  const [line] = voidedButScored([row("Beta", "Alpha", "28", "30")], fixes, "f.csv");
+  assert.match(line, /^f\.csv: 2026-11-20 Alpha at Beta is voided .* now reads 30-28; re-examine the correction$/);
 });

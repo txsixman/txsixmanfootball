@@ -6,11 +6,12 @@ import { commonOpponents, type CommonOpponent } from "./game-preview";
 import { pairKey } from "./meetings";
 import { memo } from "./memo";
 import type { Org } from "./orgs";
-import { pregame } from "./pregame";
-import type { Projection } from "./projection";
+import { pregame, pregameShown } from "./pregame";
+import { projectionText, type Projection } from "./projection";
 import { loadRanked, rankLabel } from "./rankings";
 import { loadRatings, record } from "./ratings";
 import { CURRENT_SEASON } from "./season";
+import { isDisputed, loadDisputed } from "./disputed";
 import { resultSeasons } from "./weeks";
 
 // A page for every robot-read game of every season (/scores/<id>, app/scores/[id]). The lookups below are worked out once
@@ -156,12 +157,13 @@ export const mediumDate = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 
 /**
- * A robot-read game as the scoreboard's Game, so it shares the playoff game page's look. Unconfirmed, so no winner is
- * named (ADR 0004); a forfeit carries the word and no score, so its 1-0 or 2-0 never reaches the page.
+ * A robot-read game as the scoreboard's Game, so it shares the playoff game page's look. A final, so it is confirmed and
+ * names its winner unless disputed (ADR 0040); a forfeit carries the word and no score, so its 1-0 or 2-0 never reaches the page.
  */
-function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game {
+function resultAsGame({ season, result: r }: Entry, d: GameDetail, disputed: Set<string>): Game {
   const team = (name: string, g: Going): Team => ({ name, mascot: "", initials: initials(name), color: "#0a2a5e", record: g.record ? `${g.record} going in` : "" });
   const kind = d.playoff ? `${season} playoffs · ${d.playoff}` : d.districtGame ? `${season} season · District game` : `${season} season`;
+  const dispute = !r.forfeit && isDisputed(disputed, r.date, r.home, r.away); // the sources give different winners: none marked
   return {
     id: r.id,
     date: r.date,
@@ -171,9 +173,9 @@ function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game {
     homeScore: r.forfeit ? null : r.homeScore,
     awayScore: r.forfeit ? null : r.awayScore,
     state: "final",
-    status: r.forfeit ? "Forfeit" : "Final",
+    status: r.forfeit ? "Forfeit" : dispute ? "Score reported" : "Final",
     endReason: r.forfeit ? "Forfeit" : undefined,
-    verification: "unconfirmed",
+    verification: dispute ? "disputed" : "confirmed",
     venue: d.playoff ? "Neutral site or not listed" : `${r.home} (home)`,
   };
 }
@@ -209,7 +211,9 @@ export async function resolveGame(id: string) {
           id: found?.result.id,
         })
       : undefined;
-  const g: Game = own ? resultAsGame(own, detail!) : bracket!;
+  // A played game's projection is the one from the week before it (ADR 0044), shown beside its outcome.
+  const before = own && (await pregameShown(own.season)).byId.get(own.result.id);
+  const g: Game = own ? { ...resultAsGame(own, detail!, await loadDisputed(own.season)), ...(before && { projected: projectionText(before) }) } : bracket!;
   return { g, found, own, sample, detail, neutral: own !== undefined && detail?.playoff !== undefined };
 }
 
