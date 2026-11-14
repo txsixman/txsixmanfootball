@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { noLiveScores } from "./live-route";
+import { sitemapPaths } from "./sitemap-urls";
 
 // Every public page has its own meta description, built from its own data (lib/descriptions.ts): not the site-wide one, at
 // most 160 characters, one per page, and with no betting word, source name or winner. One page of each kind in the sitemap.
@@ -13,16 +14,11 @@ const SOURCE = /maxpreps|hudl|calpreps|sixmanfootball|dave campbell/i;
 const WINNER = /\b(won|beat|defeated|winner|victory)\b/i;
 const CODENAME = /80x40|brady|dcs2|\/Users\//i;
 
-async function sitemapPaths(page: Page) {
-  const xml = await (await page.request.get("/sitemap.xml")).text();
-  return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].replace("https://txsixmanfootball.com", "") || "/");
-}
-
 const description = (page: Page) => page.locator('meta[name="description"]').getAttribute("content");
 
 test("every kind of page has its own short description, with no betting word, source or winner", async ({ page }, info) => {
   test.skip(info.project.name === "phone", "a page's meta tags do not depend on the viewport");
-  const map = await sitemapPaths(page);
+  const map = await sitemapPaths(page.request);
   const first = (re: RegExp) => {
     const found = map.find((p) => re.test(p));
     expect(found, `a sitemap page matching ${re}`).toBeTruthy();
@@ -72,6 +68,7 @@ test("every kind of page has its own short description, with no betting word, so
   ];
 
   const seen = new Map<string, string>();
+  const titles = new Map<string, string>();
   for (const [kind, path] of pages) {
     const response = await page.goto(path, { waitUntil: "domcontentloaded" });
     expect(response?.status(), path).toBe(200);
@@ -88,11 +85,29 @@ test("every kind of page has its own short description, with no betting word, so
     expect.soft(text, label).not.toMatch(CODENAME);
     expect.soft(text, label).not.toMatch(/unconfirmed/i);
     // A school's own name may hold such a word (Victory Christian Academy-Decatur): leave the page's team names out, longest first.
-    const names = (await page.title()).replace(/ \| .*$/, "").split(" vs ").sort((a, b) => b.length - a.length);
+    // A game's title is "A vs B football score, Nov 13, 2026" (lib/titles.ts): its teams are what comes before " football".
+    const title = (await page.title()).replace(/ \| .*$/, "");
+    // A played final's title is "Kress 6, Jayton 75 · ...": a game's teams come from its heading ("Kress vs Jayton") instead.
+    const teams = kind.startsWith("game") ? ((await page.locator("main h1").first().textContent()) ?? "") : title.replace(/ football: every meeting$/, "");
+    const names = teams.split(" vs ").sort((a, b) => b.length - a.length);
     expect.soft(names.reduce((t, n) => t.split(n).join(" "), text), `${label} names a winner`).not.toMatch(WINNER);
     // A game's description never holds a score ("21-14"), only its date, teams and round.
     if (kind.startsWith("game")) expect.soft(text, `${label} holds a score`).not.toMatch(/\d\s*[-–]\s*\d/);
-    if (kind.startsWith("game")) expect.soft(text, label).toContain(await page.title().then((t) => t.replace(/ \| .*$/, "")));
+    if (kind.startsWith("game")) expect.soft(text, label).toContain(teams);
+
+    // The title: the page's own (none repeats), at most 60 characters before the site's name, the words fans search for, no
+    // betting word or source; the canonical link is the page's own address.
+    // A played final's title is its score ("Kress 6, Jayton 75 · ..."), kept whole even for long names; every other title is
+    // at most 60 characters and says what the page is.
+    const score = /^.+ \d+, .+ \d+( · |$)/.test(title);
+    if (!score) expect.soft(title.length, `${label} title is ${title.length} characters: ${title}`).toBeLessThanOrEqual(61);
+    expect.soft(titles.get(title), `${label} repeats the title of ${titles.get(title)}`).toBeUndefined();
+    titles.set(title, label);
+    if (!score) expect.soft(title, `${label} title`).toMatch(/six-man|football/i);
+    expect.soft(title, `${label} title`).not.toMatch(BETTING);
+    expect.soft(title, `${label} title`).not.toMatch(SOURCE);
+    const canonicals = await page.locator('link[rel="canonical"]').evaluateAll((els) => els.map((el) => el.getAttribute("href")?.replace(/\/$/, "")));
+    expect.soft(canonicals, `${label} canonical`).toEqual([`https://txsixmanfootball.com${path === "/" ? "" : path}`]);
   }
   expect(seen.size).toBe(pages.length);
 });

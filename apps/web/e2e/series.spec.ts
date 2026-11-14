@@ -31,7 +31,7 @@ const rows = (page: Page) => page.locator("section[aria-labelledby=meetings] > u
 test("the page names both teams, shows both crests, and links each to its program page", async ({ page }) => {
   await open(page, JAYTON);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Guthrie vs Jayton");
-  await expect(page).toHaveTitle("Guthrie vs Jayton | TX Six-Man Football");
+  await expect(page).toHaveTitle("Guthrie vs Jayton football: every meeting | TX Six-Man Football");
   for (const [slug, name] of [["guthrie", "Guthrie"], ["jayton", "Jayton"]]) {
     const link = page.locator("header").getByRole("link", { name: new RegExp(name) });
     await expect(link).toHaveAttribute("href", `/programs/${slug}`);
@@ -216,7 +216,7 @@ test("a game page links to the two programs' series page, and a pair without one
   await expect(page.getByRole("link", { name: new RegExp(`game since ${FIRST_SEASON}$`) })).toHaveCount(0);
 });
 
-test("each meeting's game page has a title of its own: the teams and the date", async ({ page }) => {
+test("each meeting's game page has a title of its own: the teams, the score and the round or date", async ({ page }) => {
   await page.goto(`/series/${JAYTON.join("/")}`);
   const games = [...new Set(await page.getByRole("main").locator('a[href^="/scores/"]').evaluateAll((as) => as.map((a) => a.getAttribute("href")!)))];
   const titles: string[] = [];
@@ -225,6 +225,6 @@ test("each meeting's game page has a title of its own: the teams and the date", 
     titles.push(await page.title());
   }
   expect(titles.length).toBeGreaterThanOrEqual(3);
-  for (const t of titles) expect(t).toMatch(/^(Guthrie vs Jayton|Jayton vs Guthrie), [A-Z][a-z]{2} \d{1,2}, \d{4} \| TX Six-Man Football$/);
+  for (const t of titles) expect(t).toMatch(/^((Guthrie|Jayton) \d+, (Guthrie|Jayton) \d+ · .+|(Guthrie vs Jayton|Jayton vs Guthrie) football score, [A-Z][a-z]{2} \d{1,2}, \d{4}) \| TX Six-Man Football$/);
   expect(new Set(titles).size).toBe(titles.length);
 });

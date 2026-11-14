@@ -4,6 +4,7 @@ import { bracketSlug, latestRound, loadBrackets } from "@/lib/brackets";
 import { bracketDescription } from "@/lib/descriptions";
 import { CURRENT_SEASON } from "@/lib/season";
 import { BracketView } from "../../bracket-view";
+import { bracketTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -19,7 +20,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const b = (await loadBrackets()).find((x) => bracketSlug(x.name) === slug);
   return {
-    title: `${b?.name ?? "Bracket"} playoff bracket`,
+    title: b ? bracketTitle({ name: b.name, season: CURRENT_SEASON }) : "Playoff bracket",
+    alternates: { canonical: `/playoffs/bracket/${slug}` },
     ...(b && { description: bracketDescription({ name: b.name, season: CURRENT_SEASON, latestRound: latestRound(b)?.label }) }),
   };
 }

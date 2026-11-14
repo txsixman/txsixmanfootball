@@ -44,6 +44,7 @@ import { RatingChart, ratingPoints } from "../rating-chart";
 import { SeasonRatings } from "../season-ratings";
 import { RankTrend, rankTrend } from "../trend";
 import { CrestSlot, EdgeToEdge } from "../../ui";
+import { programTitle } from "@/lib/titles";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -54,10 +55,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const school = (await loadAlignments()).find((a) => a.slug === slug);
   // The same record and rank the page's header shows (the latest season's table), and the same title count.
-  const [ranked, seasons, titles] = await Promise.all([loadRanked(), ratingSeasons(), titlesBySlug()]);
+  const [ranked, seasons, titles, identities] = await Promise.all([loadRanked(), ratingSeasons(), titlesBySlug(), loadIdentities()]);
   const team = ranked.teams.find((t) => t.school.slug === slug);
   return {
-    title: `${school?.school ?? "Program"}`,
+    title: school ? programTitle({ name: school.school, mascot: identities.get(slug)?.mascot, season: seasons[0] }) : "Program",
     ...(school && {
       description: programDescription({
         name: school.school,

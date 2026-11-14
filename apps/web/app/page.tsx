@@ -18,9 +18,10 @@ import { latestReview } from "@/lib/week-review-load";
 import { MyTeams } from "./my-teams/block";
 import { ChanceList } from "./playoffs/chance-list";
 import { Crest } from "./programs/crest";
+import { homeTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { description: homeDescription(CURRENT_SEASON, ORGS.map((o) => o.label)) };
+export const metadata: Metadata = { title: { absolute: homeTitle() }, description: homeDescription(CURRENT_SEASON, ORGS.map((o) => o.label)), alternates: { canonical: "/" } };
 
 const TOP = 5; // UIL's two divisions
 const TOP_PRIVATE = 3; // each smaller organization
