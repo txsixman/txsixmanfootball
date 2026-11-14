@@ -232,8 +232,10 @@ test.describe("Tonight", () => {
 
   test("a game under way shows its live line, Unconfirmed, with no leader named", async ({ page }) => {
     const { tonight } = await fixtures();
-    const later = tonight.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games)).find((g) => g.state === "later");
+    const later = tonight.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games)).find((g) => g.state === "later" && g.kickoff);
     test.skip(!later, "no game of the night is waiting for a score");
+    const inWindow = new Date(Date.parse(later!.kickoff!) + 30 * 60_000);
+    await page.clock.install({ time: inWindow });
     const { liveKey } = await import("../lib/live-scores");
     const { slugify } = await import("../lib/slug");
     await page.route(LIVE_SCORES_URL, (route) =>
@@ -241,7 +243,7 @@ test.describe("Tonight", () => {
         status: route.request().method() === "OPTIONS" ? 204 : 200,
         contentType: "application/json",
         headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" },
-        body: JSON.stringify([{ game_key: liveKey(later!.date, later!.home, later!.away), home: slugify(later!.home), away: slugify(later!.away), home_score: 28, away_score: 14, period: "Q3", read_at: new Date().toISOString() }]),
+        body: JSON.stringify([{ game_key: liveKey(later!.date, later!.home, later!.away), home: slugify(later!.home), away: slugify(later!.away), home_score: 28, away_score: 14, period: "Q3", read_at: inWindow.toISOString() }]),
       }),
     );
     await page.goto("/scores/tonight");

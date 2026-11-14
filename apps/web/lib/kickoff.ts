@@ -34,3 +34,7 @@ export function kickoffState(game: { date: string; kickoff?: string }, now: Date
   if (now.getTime() < at + IN_PROGRESS_MS) return { kind: "in-progress", label: "In progress", short: "In progress" };
   return awaiting;
 }
+
+/** True when any of these games (with no final) is inside its in-progress window at `now`. A game with no kickoff time is
+ * never in progress, so a page of such games asks for nothing: the live read starts only on a time we know. */
+export const anyInProgress = (games: { date: string; kickoff?: string }[], now: Date) => games.some((g) => kickoffState(g, now).kind === "in-progress");

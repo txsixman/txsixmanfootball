@@ -22,7 +22,7 @@ import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
 import { lead, seasonRows, type Row } from "@/lib/program-games";
-import { ProgramLiveScore } from "../../scores/live-game";
+import { ProgramLiveRead, ProgramLiveScore } from "../../scores/live-game";
 import { embedSnippet } from "@/lib/embed-html";
 import { ratingSeries, type Rivalry } from "@/lib/program-history";
 import { programHistory, programSeasonPages } from "@/lib/program-seasons";
@@ -270,7 +270,7 @@ export default async function ProgramPage({ params }: Props) {
     </li>
   );
 
-  return (
+  const page = (
     <EdgeToEdge>
       {/* data-pagefind-body: this page is in the site search (app/search). */}
       <article data-pagefind-body aria-labelledby="school" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
@@ -692,5 +692,13 @@ export default async function ProgramPage({ params }: Props) {
         </details>
       </article>
     </EdgeToEdge>
+  );
+  // One live read for the page's next game, shared by its box and its row, and only while it is in progress (ADR 0021).
+  return next?.date ? (
+    <ProgramLiveRead date={next.date} kickoff={next.kickoff}>
+      {page}
+    </ProgramLiveRead>
+  ) : (
+    page
   );
 }

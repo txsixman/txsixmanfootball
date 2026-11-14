@@ -189,8 +189,8 @@ const orgOf = (g: Game) => ORGS.find((o) => g.league === o.league || g.league.st
 /** `weekInReview`: a link to the newest week in review, on the live page only (the sample page stays as it is). */
 export default function Board({ games, eyebrow, title, crests, weekInReview }: { games: Game[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string } }) {
   const [query, setQuery] = useState("");
-  // Only a game with a date and no final can be under way; a board of invented sample games or finals asks for nothing.
-  const liveRows = useLiveScores(games.some((g) => g.date && g.state === "scheduled"));
+  // Only a game with a date and no final can be under way, and only inside its kickoff window; invented sample games or finals ask for nothing.
+  const liveRows = useLiveScores(games.flatMap((g) => (g.date && g.state === "scheduled" ? [{ date: g.date, kickoff: g.kickoff }] : [])));
   // A game with no final that has a live row is under way (ADR 0021): it is counted and listed as Live, its score in its own
   // cells, unconfirmed, with no winner and no projection (asLive). A game with a final never takes a live row.
   const checked = new Map<string, LiveView>();
