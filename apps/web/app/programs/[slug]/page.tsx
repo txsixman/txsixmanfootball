@@ -12,6 +12,7 @@ import { loadAliases, loadLineage, otherNames } from "@/lib/lineage";
 import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
 import { loadRanked, rankLabel } from "@/lib/rankings";
+import { ratedFromOutsideOnly, OUTSIDE_ONLY_NOTE } from "@/lib/outside-only";
 import { FEW_GAMES, loadRatings, ratingSeasons, record, signed } from "@/lib/ratings";
 import { meetingScore, schedulesFor, type Meeting } from "@/lib/schedule-strength";
 import { whyItMoved } from "@/lib/why-moved";
@@ -278,8 +279,8 @@ export default async function ProgramPage({ params }: Props) {
           {ranked ? (
             <>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 sm:flex sm:[&>div]:flex-1">
-                <Stat label={`${seasons[0]} record`} sub={ranked.rated < FEW_GAMES ? `${ranked.rated} rated ${ranked.rated === 1 ? "game" : "games"}` : undefined}>
-                  {record(ranked)}
+                <Stat label={`${seasons[0]} record`} sub={ratedFromOutsideOnly(ranked) ? OUTSIDE_ONLY_NOTE : ranked.rated < FEW_GAMES ? `${ranked.rated} rated ${ranked.rated === 1 ? "game" : "games"}` : undefined}>
+                  {ratedFromOutsideOnly(ranked) ? "–" : record(ranked)}
                 </Stat>
                 <Stat
                   label="Rank"
@@ -516,7 +517,13 @@ export default async function ProgramPage({ params }: Props) {
                     <span className="inline-flex min-h-11 items-center font-num text-[18px] font-bold text-navy">{line.season}</span>
                   )}
                   <span className="min-w-0 text-[15px] leading-5 text-ink">
-                    {line.record ? <b className="font-num text-[20px] tabular-nums">{record(line.record)}</b> : <Dash what="record" />}
+                    {line.outsideOnly ? (
+                      <span className="text-[14px] text-muted">{OUTSIDE_ONLY_NOTE}</span>
+                    ) : line.record ? (
+                      <b className="font-num text-[20px] tabular-nums">{record(line.record)}</b>
+                    ) : (
+                      <Dash what="record" />
+                    )}
                     <span className="text-muted">
                       {" "}
                       {line.rank != null
