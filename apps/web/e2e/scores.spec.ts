@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { noLiveScores } from "./live-route";
+import { sitemapUrls } from "./sitemap-urls";
 import { skipReason, upcoming } from "./upcoming";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -657,10 +658,10 @@ test("search engines: only the public address is indexed, from robots.txt and a 
   }
   // Visitors see the site's name, never the codename (the owner, Nov 11, 2026).
   await page.goto("/programs/jayton");
-  await expect(page).toHaveTitle(/^Jayton \| TX Six-Man Football$/);
+  await expect(page).toHaveTitle(/^Jayton Jaybirds football: \d{4} schedule, scores, ranking \| TX Six-Man Football$/);
   expect((await (await request.get("/manifest.webmanifest")).json()).name).toBe("TX Six-Man Football");
   await page.goto("/");
-  await expect(page).toHaveTitle("TX Six-Man Football");
+  await expect(page).toHaveTitle("TX Six-Man Football: Texas six-man scores, brackets, rankings");
   await expect(page.locator("header").getByRole("link", { name: "TX Six-Man Football" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("80x40");
   await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
@@ -673,8 +674,7 @@ test("search engines: only the public address is indexed, from robots.txt and a 
   expect(robots).toContain("Allow: /");
   expect(robots).not.toContain("Disallow");
   expect(robots).toContain("Sitemap: https://txsixmanfootball.com/sitemap.xml");
-  const sitemap = await (await request.get("/sitemap.xml")).text();
-  const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const urls = (await sitemapUrls(request)).urls.map((u) => u.url);
   expect(urls.every((u) => u.startsWith("https://txsixmanfootball.com"))).toBe(true);
   for (const path of ["", "/programs/jayton", "/rankings/how", "/rankings/division-1", "/rankings/week/4", "/results/2025", "/standings/tapps", "/championships"]) {
     expect(urls, path).toContain(`https://txsixmanfootball.com${path}`);

@@ -19,6 +19,7 @@ import { Breadcrumbs } from "../../../breadcrumbs";
 import { seasonHref } from "../../../rankings/view";
 import { CrestSlot, EdgeToEdge, SectionBar } from "../../../ui";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../../crest";
+import { programSeasonTitle } from "@/lib/titles";
 
 // One program's season, FIRST_SEASON on (ADR 0013: records, ranks and scores may rest on unconfirmed robot-read results, so the page
 // says so and no game row names a winner, ADR 0004). The record, rank and last playoff round are the program page's own
@@ -45,7 +46,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!found) return { title: "Season" };
   const { school, season, line, org } = found;
   return {
-    title: `${school.school} ${season} season`,
+    title: programSeasonTitle({ name: school.school, mascot: (await loadIdentities()).get(school.slug)?.mascot, season }),
     description: programSeasonDescription({
       name: school.school,
       season,

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { LEAGUES } from "@/lib/brackets";
 import { describePlayoffs, PlayoffsView, type League } from "../view";
+import { playoffsTitle } from "@/lib/titles";
+import { CURRENT_SEASON } from "@/lib/season";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -13,7 +15,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ league: string }> }): Promise<Metadata> {
   const { league } = await params;
-  return { title: `${league.toUpperCase()} playoffs`, description: await describePlayoffs(league.toUpperCase() as League), alternates: { canonical: `/playoffs/${league}` } };
+  return { title: playoffsTitle({ league: league.toUpperCase(), season: CURRENT_SEASON, past: false }), description: await describePlayoffs(league.toUpperCase() as League), alternates: { canonical: `/playoffs/${league}` } };
 }
 
 export default async function LeaguePlayoffsPage({ params }: { params: Promise<{ league: string }> }) {

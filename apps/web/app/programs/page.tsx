@@ -5,11 +5,12 @@ import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS, orgByLeague } from "@/lib/orgs";
 import { PageHeader } from "../ui";
 import { Finder } from "./finder";
+import { programsTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
 export async function generateMetadata(): Promise<Metadata> {
   const programs = uniquePrograms(await loadAlignments()).length;
-  return { title: "Programs", description: programsDescription(programs, ORGS.map((o) => o.label)) };
+  return { title: programsTitle(), description: programsDescription(programs, ORGS.map((o) => o.label)), alternates: { canonical: "/programs" } };
 }
 
 export default async function Programs() {
