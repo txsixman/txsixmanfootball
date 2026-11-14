@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
-import { LIVE_SCORES_URL } from "./live-route";
+import { answer, LIVE_SCORES_URL, READ_AT_URL } from "./live-route";
 
 // A game under way shows its live score where its score goes (ADR 0021): the scores board's cells, the game page's big
 // score and the program page's next game. Dashed, "Unconfirmed", no winner, with where it stands and, when the reader has
@@ -48,6 +48,7 @@ async function serveLive(page: Page, f: Fixture, over: Record<string, unknown> =
   const row = { game_key: f.key, home: f.homeSlug, away: f.awaySlug, home_score: 28, away_score: 14, period: "Q3", clock: "4:12", read_at: inWindow(f).toISOString(), ...over };
   const seen: string[] = [];
   await page.clock.install({ time: at });
+  await answer(page, READ_AT_URL, "null"); // the board's "Scores checked" line asks too (ADR 0038): never the real project
   await page.route(LIVE_SCORES_URL, (route) => {
     if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
     seen.push(route.request().url());
