@@ -7,7 +7,9 @@
 // (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores, period and forfeit flags: never
 // a spread, ranking, poll or `winner` field. Nothing is saved to this repo. A 403 or 429 stops the read at once.
 // By hand, `--fields` after the same two flags writes nothing and prints, for the games under way, the field names and how
-// many games hold each clock, period or update-time format (to find a field such as the game clock; never a team or score).
+// many games hold each clock, period or update-time format (to find a field such as the game clock), then each of tonight's
+// due games: the team asked, its games tonight (status and school names, again with no status filter when none is Live or
+// Upcoming) and whether one matched. Never a score.
 //
 // Finals, as a private cross-check of MaxPreps (ADR 0026, the same permission):
 //   node tools/league-watch/davecampbells.mjs --finals <private playoffs.csv> --report <private davecampbells-<season>/>
@@ -124,6 +126,26 @@ export function clockFormats(items) {
     counts.set(f, (counts.get(f) ?? 0) + 1);
   }
   return counts.size ? [...counts].sort((a, b) => b[1] - a[1]).map(([f, n]) => `${n} ${f}`).join(", ") : "no game under way";
+}
+
+/** `--fields`, per bracket game due tonight: which of its teams was asked (their slug), how many of that team's Live and
+ * Upcoming games fall on tonight's date, their status and the feed's school names, and whether the game matched one of
+ * ours. School names and statuses only: never a score. */
+export function dueReport(due, { date, theirs, ours, listed }) {
+  const matched = new Set(matchTonight([...listed.values()].flat(), { date, due, ours }).map((m) => m.key));
+  return due.filter((r) => r.game_date === date).map((r) => {
+    const t = theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away));
+    const head = `${r.away} at ${r.home}:`;
+    if (!t) return `${head} no mapped team`;
+    if (!listed.has(t)) return `${head} asked ${t}, no team id`;
+    const tonight = listed.get(t).filter((x) => {
+      const at = new Date(x?.scheduledKickoff ?? "");
+      return !Number.isNaN(at.getTime()) && centralDate(at) === date;
+    });
+    const games = tonight.map((x) => `${x?.status ?? x?.summary?.status} [${(x?.participants ?? []).map((p) => p?.schoolName).join(" v ")}]`);
+    const hit = [...matched].some((k) => k.includes(slugify(r.home)) && k.includes(slugify(r.away)));
+    return `${head} asked ${t}, ${listed.get(t).length} listed, ${tonight.length} tonight${games.length ? `: ${games.join("; ")}` : ""}; matched ${hit ? "yes" : "no"}`;
+  });
 }
 
 export function liveFields(items) {
@@ -501,11 +523,33 @@ async function live() {
   const client = createClient();
   const items = [];
   let ids = 0;
+  const listed = new Map();
   for (const t of teams) {
     const id = await teamId(client, t, seasonId);
-    if (id) (ids++, items.push(...(await liveAndUpcoming(client, seasonId, id))));
+    if (id) {
+      ids++;
+      const got = await liveAndUpcoming(client, seasonId, id);
+      listed.set(t, got);
+      items.push(...got);
+    }
   }
-  if (process.argv.includes("--fields")) return console.log(liveFields(items).join("\n") || "no game under way in the feed's answers");
+  if (process.argv.includes("--fields")) {
+    console.log(liveFields(items).join("\n") || "no game under way in the feed's answers");
+    console.log(dueReport(due, { date, theirs, ours, listed }).join("\n"));
+    // A team with no Live or Upcoming game tonight: its games of tonight with no status filter (a final is not Live).
+    const onDate = (x) => {
+      const at = new Date(x?.scheduledKickoff ?? "");
+      return !Number.isNaN(at.getTime()) && centralDate(at) === date;
+    };
+    for (const [t, got] of listed) {
+      if (got.some(onDate)) continue;
+      const id = await teamId(client, t, seasonId);
+      const all = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&sort=NEWEST&size=5`);
+      const tonight = (Array.isArray(all?.items) ? all.items : []).filter(onDate);
+      console.log(`${t}, any status: ${tonight.length} tonight${tonight.length ? `: ${tonight.map((x) => `${x?.status} [${(x?.participants ?? []).map((p) => p?.schoolName).join(" v ")}]`).join("; ")}` : ""}`);
+    }
+    return;
+  }
   const rows = liveRowsFromItems(items, { date, due, ours });
   const seen = new Set(matchTonight(items, { date, due, ours }).map((m) => m.key));
   const before = JSON.parse(readFileSync(mergeFile, "utf8"));

@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { clockFormats, DETAIL_COLUMNS, kickoffRows, liveFields, mergeKickoffs } from "./davecampbells.mjs";
+import { clockFormats, DETAIL_COLUMNS, dueReport, kickoffRows, liveFields, mergeKickoffs } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -495,4 +495,23 @@ test("each live run logs the game clock's formats among games under way, never a
   assert.equal(clockFormats([]), "no game under way");
   assert.equal(clockFormats([game("Live", null), game("Live", undefined), game("Final", "0:00")]), "2 null");
   assert.equal(clockFormats([game("Live", "4:12"), game("In Progress", "11:05"), game("Live", "10:59"), game("Live", null)]), '2 string "99:99", 1 string "9:99", 1 null');
+});
+
+test("--fields reports each due game by school names and status, never a score", () => {
+  const due = [
+    { game_date: "2026-11-13", home: "Alpha", away: "Bravo" },
+    { game_date: "2026-11-13", home: "Delta", away: "Echo" },
+    { game_date: "2026-11-13", home: "Golf", away: "Hotel" },
+    { game_date: "2026-11-06", home: "India", away: "Juliet" },
+  ];
+  const theirs = new Map([["alpha", "alpha-a"], ["delta", "delta-d"]]);
+  const ours = new Map([["alpha-a", "alpha"], ["delta-d", "delta"]]);
+  const item = { status: "Live", scheduledKickoff: "2026-11-14T01:00:00Z", summary: { homeScore: 21, awayScore: 14 }, participants: [{ schoolName: "Bravo", score: 14 }, { schoolName: "Alpha", score: 21 }] };
+  const listed = new Map([["alpha-a", [item]], ["delta-d", []]]);
+  const lines = dueReport(due, { date: "2026-11-13", theirs, ours, listed });
+  assert.equal(lines.length, 3);
+  assert.match(lines[0], /^Bravo at Alpha: asked alpha-a, 1 listed, 1 tonight: Live \[Bravo v Alpha\]; matched (yes|no)$/);
+  assert.equal(lines[1], "Echo at Delta: asked delta-d, 0 listed, 0 tonight; matched no");
+  assert.equal(lines[2], "Hotel at Golf: no mapped team");
+  assert.ok(!lines.join("\n").match(/21|14/));
 });
