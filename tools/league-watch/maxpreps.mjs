@@ -26,6 +26,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { duplicateRows } from "../../apps/web/lib/duplicate-game.ts";
 import { CHANGES_FILE, changeLines, countsLine, mergeStored, parseCsv, PENDING_FILE, pendingCsv, readPending, rowKey } from "./store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -63,12 +64,18 @@ const SEEDS = ["https://www.maxpreps.com/tx/odonnell/odonnell-eagles/football/"]
 // outside our alignments is still read.
 export const ALIASES = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "maxpreps-aliases.json"), "utf8"));
 
-/** Our slug for a MaxPreps team, or null: an alias, then its name ("Jayton"), then city and name ("Lenorah Grady"). */
+/** Our schools whose MaxPreps page an alias names: each matches its own page only, never another school's page by name. */
+const pinnedOf = (aliases) => new Set(Object.values(aliases).flat().map(slugify));
+let PINNED; // built on first use: slugify is declared below
+
+/** Our slug for a MaxPreps team, or null: an alias, then its name ("Jayton"), then city and name ("Lenorah Grady"). A
+ * name that belongs to a pinned school is not matched by name (Community Christian in Orange is not ours in Mineral Wells). */
 export function match(team, bySlug, aliases = ALIASES) {
   if (team.state !== "TX") return null;
   const alias = [aliases[team.url]].flat()[0];
-  const tries = [alias, team.name, `${team.city} ${team.name}`].filter(Boolean).map(slugify);
-  return tries.find((s) => bySlug.has(s)) ?? null;
+  const pinned = aliases === ALIASES ? (PINNED ??= pinnedOf(ALIASES)) : pinnedOf(aliases);
+  const byName = [team.name, `${team.city} ${team.name}`].map(slugify).filter((s) => !pinned.has(s));
+  return [...(alias ? [slugify(alias)] : []), ...byName].find((s) => bySlug.has(s)) ?? null;
 }
 export const COLUMNS = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes";
 
@@ -294,7 +301,10 @@ export function playoffsCsv(games, bySlug) {
 
 /**
  * MaxPreps sometimes lists one game twice under two contest ids. Copies that agree on the score are one game (a copy
- * with a bracket wins); copies that disagree are all dropped and returned as conflicts, for coverage.txt. A game whose
+ * with a bracket wins); copies that disagree are all dropped and returned as conflicts, for coverage.txt. Then the shared
+ * rule (apps/web/lib/duplicate-game.ts, also the ratings' and check-data's): the same two teams with the same score at most two
+ * days apart are one game too, the earlier date kept, the later one returned in `repeats` (the source lists a late game a
+ * day apart on each team's schedule). A game whose
  * two sides are the same school of ours (two schools of one name matched to one) is never written: it is returned in
  * selfGames, named, so the run says so before anything reaches the private repo or the database.
  */
@@ -322,7 +332,12 @@ export function dedupe(games) {
     const pool = played.length ? played : copies;
     kept.push(pool.find((g) => g.bracket) ?? pool[0]);
   }
-  return { kept, conflicts, selfGames };
+  const playedKept = kept.filter((g) => g.played);
+  const copies = duplicateRows(playedKept.map((g) => ({ game_date: g.date, home: g.home.slug, away: g.away.slug, home_score: g.home.score, away_score: g.away.score })));
+  // A copy that carries the bracket gives it to the game that stays, so a playoff game is never dropped with its copy.
+  for (const [i, first] of copies) if (playedKept[i].bracket && !playedKept[first].bracket) playedKept[first].bracket = playedKept[i].bracket;
+  const repeats = [...copies].map(([i, first]) => `${playedKept[i].date} ${playedKept[i].away.slug} at ${playedKept[i].home.slug} ${playedKept[i].away.score}-${playedKept[i].home.score}, a copy of the game on ${playedKept[first].date}`);
+  return { kept: copies.size ? kept.filter((g) => !g.played || !copies.has(playedKept.indexOf(g))) : kept, conflicts, selfGames, repeats };
 }
 
 export const OUTSIDE_COLUMNS = "game_date,team,opponent,opponent_url,team_is_home,team_score,opponent_score,source_url";
@@ -520,9 +535,10 @@ async function main() {
     .filter(([slug]) => !reached.has(slug))
     .map(([slug, r]) => `${r.league} ${r.division}: ${r.school}${elevenSlugs.has(slug) ? " (11-man this season)" : readNames.has(slug) ? ` (MaxPreps page read: no ${SEASON} games)` : ""}`);
   mkdirSync(OUT, { recursive: true });
-  const { kept, conflicts, selfGames } = dedupe([...games.values()]);
+  const { kept, conflicts, selfGames, repeats } = dedupe([...games.values()]);
   // A row with the same school on both sides breaks the database (a game needs two team-seasons): name it loudly.
   for (const s of selfGames) console.log(`::warning::left out, the same school on both sides: ${s}`);
+  for (const r of repeats) console.log(`::warning::left out, one game listed twice: ${r}`);
   // The store is the record (ADR 0031): this read merges into the stored files and never deletes or blanks a score.
   const now = new Date().toISOString();
   const readTeam = (name) => readPages.has(teamPages.get(slugify(name)));
@@ -584,6 +600,9 @@ async function main() {
       "",
       `The same school on both sides, so left out (${selfGames.length}; fix the match or an alias):`,
       ...selfGames.sort(),
+      "",
+      `One game listed twice (the same teams and score, at most two days apart), so the later copy left out (${repeats.length}):`,
+      ...repeats.sort(),
       "",
       `${outside.size} opponents outside our alignments (${[...outside.values()].reduce((a, b) => a + b, 0)} game sides skipped; for a past season these include schools no longer six-man or no longer listed), most games first:`,
       ...[...outside.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([n, k]) => `${k}  ${n}`),

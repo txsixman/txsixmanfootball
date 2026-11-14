@@ -34,3 +34,17 @@ export function kickoffState(game: { date: string; kickoff?: string }, now: Date
   if (now.getTime() < at + IN_PROGRESS_MS) return { kind: "in-progress", label: "In progress", short: "In progress" };
   return awaiting;
 }
+
+/** Where a game with no kickoff time may be under way: its game date's evening in Central, 5:00 PM to midnight. */
+const EVENING_FROM_HOUR = 17;
+const centralHour = (now: Date) => Number(now.toLocaleString("en-US", { timeZone: "America/Chicago", hour: "numeric", hourCycle: "h23" }));
+
+/** True when any of these games (with no final) may be under way at `now`, so the page reads live scores: from kickoff to
+ * 4 hours after when the kickoff is known; with no kickoff time, through its game date's evening (5:00 PM to midnight
+ * Central), so its live score still shows. At any other time a page asks for nothing. */
+export const anyInProgress = (games: { date: string; kickoff?: string }[], now: Date) =>
+  games.some((g) =>
+    Number.isNaN(g.kickoff ? Date.parse(g.kickoff) : NaN)
+      ? g.date === centralDay(now) && centralHour(now) >= EVENING_FROM_HOUR
+      : kickoffState(g, now).kind === "in-progress",
+  );

@@ -128,7 +128,7 @@ export default async function Home() {
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-[15px] font-semibold leading-snug text-ink">
-                            {g.away.name} at {g.home.name}
+                            {g.away.name} vs {g.home.name}
                           </span>
                           <span className="block text-[13px] text-muted">{g.league}</span>
                           <span className="block text-[13px] font-semibold text-navy">

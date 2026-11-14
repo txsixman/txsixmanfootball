@@ -3,7 +3,11 @@ import type { SeasonResult } from "./games";
 import { isForfeit } from "./score-display";
 
 /** One game of a school's season: a robot-read result or a playoff game, each with its own page (a playoff game also has a projection until played). */
-export type Row = { id: string; date: string; status: string; home: boolean; opponent: string; score: string | null; note?: string; href: string; kickoff?: string };
+export type Row = { id: string; date: string; status: string; home: boolean; opponent: string; score: string | null; note?: string; href: string; kickoff?: string; playoff?: true };
+
+/** "vs" or "at" before the opponent. A playoff game's home team is only the bracket's designation, not where it is played
+ * (sites are mostly neutral), so a playoff game always reads "vs" (ADR 0037). */
+export const lead = (r: { home: boolean; playoff?: true }) => (r.home || r.playoff ? "vs" : "at");
 
 const dateLabel = (iso: string) => {
   const d = new Date(`${iso}T12:00:00Z`);
@@ -21,7 +25,7 @@ export function fromResult(school: string, r: SeasonResult, note?: string): Row 
     home,
     opponent: home ? r.away : r.home,
     href: r.href,
-    ...(note ? { note } : {}),
+    ...(note ? { note, playoff: true as const } : {}),
     score: r.forfeit ? "Forfeit" : home ? `${r.homeScore}-${r.awayScore}` : `${r.awayScore}-${r.homeScore}`,
   };
 }
@@ -52,6 +56,7 @@ export function seasonRows(school: string, allGames: Game[], seasonResults: Seas
         score: us == null ? null : isForfeit(g) ? "Forfeit" : `${us}-${them}`, // a forfeit shows the word, never 1-0 (ADR 0004)
         note: g.state === "scheduled" && g.projected ? `Projected: ${g.projected}` : g.league,
         href: `/scores/${g.id}`,
+        playoff: true,
         ...(g.kickoff && { kickoff: g.kickoff }),
       };
     }),

@@ -48,7 +48,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
   return (
     <section aria-labelledby="playoffs">
       <PageHeader id="playoffs" eyebrow={`${year} season · ${brackets.length} ${brackets.length === 1 ? "bracket" : "brackets"}`} title="Playoffs" />
-      {seasons.length > 1 && <TabNav label="Season" tabs={seasonTabs} current={seasonTabs[seasons.indexOf(year)].href} />}
+      {seasons.length > 1 && <TabNav label="Season" wrap tabs={seasonTabs} current={seasonTabs[seasons.indexOf(year)].href} />}
       <TabNav label="League" tabs={leagues.map((l) => ({ href: leagueHref(l, past ? year : undefined), label: l }))} current={leagueHref(league, past ? year : undefined)} />
       {!past && (
         <Link href="/playoffs/this-round" className="mt-3 flex min-h-11 items-center justify-between border-2 border-navy px-3 font-num text-[17px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
@@ -98,7 +98,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
         );
       })}
       <p className="mt-6 text-[13px] text-muted">
-        Away team first. Scores are not confirmed here and may change; a team&rsquo;s next game shows who went on.
+        Away team first. Scores may be corrected if a mistake is found. A team&rsquo;s next game shows who went on.
         {!past && " Projections and region and state title chances use the current ratings, on a neutral field unless the game is at a home site. A region\u2019s chances show once its two area games or its regional game are set."}
       </p>
     </section>

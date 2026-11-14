@@ -2,9 +2,12 @@
 // caller reads the files and applies the corrections (data/corrections), so a fix made the normal way, a correction or
 // an alias, is what is checked.
 //
-// Hard (fail CI and the robot's commit): the current season only. Earlier seasons are history the robots no longer
-// write; their findings print as warnings, so they are known without blocking a deploy.
-//   - no program plays two games on one date (a forfeit, 1-0 or 2-0, and a 0-0 no contest were not played, ADR 0004)
+// Hard (fail CI and the robot's commit): the current season only, except the two marked EVERY SEASON. Earlier seasons are
+// history the robots no longer write; their other findings print as warnings, so they are known without blocking a deploy.
+//   - EVERY SEASON: no game is listed twice (the same two teams, the same score, at most two days apart: lib/duplicate-game.ts,
+//     the rule the ratings and the site's loaders apply too; void the later copy in data/corrections)
+//   - EVERY SEASON: no program plays two games on one date (a forfeit, 1-0 or 2-0, and a 0-0 no contest were not played, ADR 0004);
+//     two games a school really played that night (a tournament, a junior varsity game) go in data/integrity-exceptions.json
 //   - every played playoff game (playoffs.csv, and a hand capture) is in games.csv: same teams, date and score
 //   - a team in a later playoff round did not lose, tie or miss its game in that bracket's round before
 //   - scores are whole numbers 0 to 200, and a game marked forfeit is recorded 1-0 or 2-0 (a forfeit-shaped score is
@@ -18,6 +21,7 @@
 // one) is listed in data/integrity-exceptions.json with the reason; an exception that no longer matches anything fails,
 // so the list only holds live problems.
 
+import { duplicateRows } from "../lib/duplicate-game.ts";
 import { forfeitScore } from "../lib/forfeit.ts";
 import { slugify } from "../lib/slug.ts";
 
@@ -50,6 +54,8 @@ export function checkSeason({ season, current, games, playoffs, programs, today 
   const fail = (key, text) => (current ? hard.push({ key, text }) : soft.push(`${season} (history): ${text}`));
   // The soft checks are for the season being written; history keeps only what would fail today.
   const warn = (text) => current && soft.push(text);
+  // Wrong in any season: a game counted twice changes a record, and a school cannot play twice in a night.
+  const failEvery = (key, text) => hard.push({ key, text: current ? text : `${season}: ${text}` });
 
   // Scores and forfeits, every row.
   for (const r of [...games, ...playoffs]) {
@@ -60,6 +66,12 @@ export function checkSeason({ season, current, games, playoffs, programs, today 
     else if (forfeitScore(+h, +a) && ["regulation", "overtime", "mercy_half", "mercy_2h"].includes(r.end_reason)) {
       fail(`forfeit ${gameKey(r)}`, `a forfeit's score (1-0 or 2-0) marked ${r.end_reason}: ${line(r)}`);
     }
+  }
+
+  // One game listed once: a later copy of the same game is the ratings' and the site's "duplicate" (lib/duplicate-game.ts).
+  const copies = duplicateRows(games);
+  for (const [i, first] of copies) {
+    failEvery(`duplicate ${gameKey(games[i])}`, `one game listed twice, ${line(games[i])} is a copy of the game on ${games[first].game_date}: void the later one in data/corrections`);
   }
 
   // One game a program a date. A playoff game is in both files: one game, counted once.
@@ -73,7 +85,7 @@ export function checkSeason({ season, current, games, playoffs, programs, today 
       byTeamDate.set(k, [...(byTeamDate.get(k) ?? []), r]);
     }
   }
-  for (const [k, rows] of byTeamDate) if (rows.length > 1) fail(`two-games ${k}`, `${k.split(" ")[1]} has ${rows.length} games on ${rows[0].game_date}: ${rows.map(line).join("; ")}`);
+  for (const [k, rows] of byTeamDate) if (rows.length > 1) failEvery(`two-games ${k}`, `${k.split(" ")[1]} has ${rows.length} games on ${rows[0].game_date}: ${rows.map(line).join("; ")}`);
 
   // Every played playoff game is in games.csv with the same score.
   const inGames = new Map(games.map((r) => [gameKey(r), r]));

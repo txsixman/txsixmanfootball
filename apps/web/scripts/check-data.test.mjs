@@ -6,7 +6,7 @@ import * as s from "../lib/data-schemas.ts";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { checkAll, checkMaxprepsFolders } from "./check-data.mjs";
+import { checkAll, checkDisputed, checkMaxprepsFolders } from "./check-data.mjs";
 
 // Robot-read games as this repo holds them: the facts, no source column (data-schemas.ts RESULT_COLUMNS).
 const HEADER = s.RESULT_COLUMNS.join(",");
@@ -98,4 +98,23 @@ test("a robot-read folder holds games.csv and playoffs.csv only; a capture or an
   assert.deepEqual(bad.map((r) => [r.file, r.ok]), [["data/seed/maxpreps-2020", false], ["data/seed/maxpreps-2020-old", false]]);
   assert.match(bad[0].note, /only games\.csv and playoffs\.csv.*: pages, teams\.csv$/);
   assert.match(bad[1].note, /maxpreps-<year>/);
+});
+
+test("a disputed final must be a game on file: a misspelled or wrong-date row fails (ADR 0040)", () => {
+  const seedDir = mkdtempSync(path.join(tmpdir(), "seed-"));
+  const put = (f, text) => {
+    mkdirSync(path.dirname(path.join(seedDir, f)), { recursive: true });
+    writeFileSync(path.join(seedDir, f), text);
+  };
+  put("maxpreps-2031/games.csv", "game_date,home,away,home_score,away_score\n2031-09-12,Salt Fork,Cedar Gap,52,46\n");
+  put("maxpreps-2031/playoffs.csv", "division,round,game_date,home,away\nI,bi-district,2031-11-14,Dry Wash,Pecan Valley\n");
+  put("uil-2031-32/playoffs-2031.csv", "division,round,game_date,home,away\nII,area,2031-11-21,Lone Post,Stillwater\n");
+  // Every row matches: either team order, a robot playoff game, a hand-captured one.
+  put("disputed/2031.csv", "game_date,home,away\n2031-09-12,Cedar Gap,Salt Fork\n2031-11-14,Dry Wash,Pecan Valley\n2031-11-21,Lone Post,Stillwater\n");
+  assert.deepEqual(checkDisputed(seedDir).map((r) => [r.file, r.ok]), [["data/seed/disputed/2031.csv", true]]);
+  // A misspelling and a wrong date each fail, named.
+  put("disputed/2031.csv", "game_date,home,away\n2031-09-12,Salt Forks,Cedar Gap\n2031-09-13,Salt Fork,Cedar Gap\n");
+  const [bad] = checkDisputed(seedDir);
+  assert.equal(bad.ok, false);
+  assert.match(bad.note, /2031-09-12 Cedar Gap at Salt Forks; 2031-09-13 Cedar Gap at Salt Fork$/);
 });
