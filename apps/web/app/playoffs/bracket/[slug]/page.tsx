@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { bracketSlug, loadBrackets } from "@/lib/brackets";
+import { bracketSlug, latestRound, loadBrackets } from "@/lib/brackets";
 import { bracketDescription } from "@/lib/descriptions";
 import { CURRENT_SEASON } from "@/lib/season";
 import { BracketView } from "../../bracket-view";
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: b ? bracketTitle({ name: b.name, season: CURRENT_SEASON }) : "Playoff bracket",
     alternates: { canonical: `/playoffs/bracket/${slug}` },
-    ...(b && { description: bracketDescription({ name: b.name, season: CURRENT_SEASON, latestRound: b.rounds.at(-1)?.label }) }),
+    ...(b && { description: bracketDescription({ name: b.name, season: CURRENT_SEASON, latestRound: latestRound(b)?.label }) }),
   };
 }
 

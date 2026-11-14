@@ -23,5 +23,15 @@
     "key": "two-games 2022-09-16 christian-heritage-classical-school-longview",
     "reason": "Christian Heritage Classical School-Longview is listed against The Highlands School-Irving (90-63 at 7:30 PM, set up in August) and against Leveretts Chapel (70-56 at a neutral site, date only, entered the next day). Both are on both schools' schedules with different scores; the neutral game may really have been played the next day, which the source does not say. Neither row can be voided without inventing the fact; correct the date or void the wrong one once known.",
     "reviewed": "2026-11-13"
+  },
+  {
+    "key": "bracket TAIAO 2 unplaced semifinal Vitoria Gators v Brazos Valley Lions Athletics",
+    "reason": "The results robot lists a Division 2 semifinal on Nov 20 between Brazos Valley Lions Athletics and Vitoria Gators. TAIAO's own bracket (read Nov 14) pairs SF1 Grace Academy Griffins v Brazos Valley Lions Athletics (Nov 20) and SF2 Vitoria Gators v the winner of NQ2, so the listed row looks like a placeholder on a team's schedule. Void it with a correction, or drop this entry once the listing matches the bracket.",
+    "reviewed": "2026-11-14"
+  },
+  {
+    "key": "bracket TAIAO 2 SF1 placed",
+    "reason": "The same listing as \"bracket TAIAO 2 unplaced semifinal Vitoria Gators v Brazos Valley Lions Athletics\": Grace Academy Griffins won NQ1 and TAIAO's bracket puts it in SF1 against Brazos Valley, but the robot's semifinal lists Vitoria Gators in its place. Drop both entries once the listing is corrected.",
+    "reviewed": "2026-11-14"
   }
 ]
