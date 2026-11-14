@@ -1,6 +1,6 @@
 import type { Game, Team } from "./demo-games";
 import { isForfeit } from "./score-display";
-import { SITE_URL } from "./site";
+import { SITE_NAME, SITE_URL } from "./site";
 
 // Structured data (schema.org JSON-LD) for search engines. It says only what the page already says: a score only when
 // the page's own rules call it confirmed (ADR 0004, 0011, 0013), never a winner from an unconfirmed score, nothing
@@ -17,6 +17,15 @@ export const breadcrumbList = (trail: Crumb[]) => ({
   "@context": CONTEXT,
   "@type": "BreadcrumbList",
   itemListElement: trail.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: abs(c.href) })),
+});
+
+/** The home page's: the site's own name, so a search result can show "TX Six-Man Football" rather than the address. */
+export const websiteJsonLd = () => ({
+  "@context": CONTEXT,
+  "@type": "WebSite",
+  name: SITE_NAME,
+  alternateName: ["TX Six-Man", "txsixmanfootball.com"],
+  url: `${SITE_URL}/`,
 });
 
 /** The ranked teams in table order: position, name and page. No ratings or numbers. */

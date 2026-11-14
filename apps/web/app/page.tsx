@@ -10,11 +10,14 @@ import { EMPTY, loadIdentities } from "@/lib/identity";
 import { loadRanked, type Ranked } from "@/lib/rankings";
 import { FEW_GAMES, signed } from "@/lib/ratings";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
-import { CURRENT_SEASON } from "@/lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { loadTitleChances } from "@/lib/title-chances";
 import { loadNight } from "@/lib/tonight";
 import { weekHref } from "@/lib/week-review-hrefs";
 import { latestReview } from "@/lib/week-review-load";
+import { homeEdge } from "@/lib/intros";
+import { websiteJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "./json-ld";
 import { MyTeams } from "./my-teams/block";
 import { ChanceList } from "./playoffs/chance-list";
 import { Crest } from "./programs/crest";
@@ -82,12 +85,14 @@ export default async function Home() {
 
   return (
     <>
+      <JsonLd data={websiteJsonLd()} />
       <p className="kicker">{ranked.season} season</p>
       <h1 className="page-title mt-1">Texas six-man football</h1>
       <p className="mt-2 text-[14px] text-muted">
         {ranked.teams.length} rated teams in UIL, TAPPS, TAIAO, TCAF and independent programs. Each organization has its own rankings, standings and
         brackets.
       </p>
+      <p className="mt-1 text-[14px] text-ink">{homeEdge({ firstSeason: FIRST_SEASON, firstFinal: Math.min(...finals.map((f) => f.season)) })}</p>
 
       <MyTeams />
 
