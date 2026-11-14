@@ -29,3 +29,11 @@ export const bracketIntro = ({ name, season }: { name: string; season: number })
 /** The home page's second line: what a fan gets here, in plain words. `firstFinal`: the first state final on record. */
 export const homeEdge = ({ firstSeason, firstFinal }: { firstSeason: number; firstFinal: number }) =>
   `Free, with no sign-in: scores through every game night, a projected margin and each team's chance to win for every game still to play, brackets that fill in as games finish, results since ${firstSeason} and every UIL state final since ${firstFinal}.`;
+
+/** The scores page's line: what the page gives a fan, in plain words. Same facts as `homeEdge`, plus the district tables. */
+export const scoresEdge = ({ firstSeason, firstFinal }: { firstSeason: number; firstFinal: number }) =>
+  `Live scores on game nights, a projected margin and chance to win for every game still to play, brackets that fill in as games finish, district standings, results since ${firstSeason} and every UIL State Championship since ${firstFinal}. Free, no sign-in.`;
+
+/** One program page's line: its own scores and games still to play, and how far back its games go. */
+export const programEdge = ({ name, firstSeason }: { name: string; firstSeason: number }) =>
+  `${name}'s scores through every game night, a projected margin and chance to win for each game still to play, and its games on record since ${firstSeason}, season by season. Free, no sign-in.`;
