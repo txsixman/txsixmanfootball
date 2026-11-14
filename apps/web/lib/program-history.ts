@@ -7,8 +7,7 @@ export type Tally = { won: number; lost: number; tied: number };
 /** A school's record against one opponent. `last`: the latest meeting. */
 export type Rivalry = Tally & { opponent: string; games: number; last: Meeting };
 
-// ADR 0013: W-L records may come from unconfirmed robot-read scores, so a game counts for whoever scored more, with the
-// pages' note that scores are not confirmed here. A forfeit (recorded 1-0 or 2-0) counts as a win or a loss like any
+// ADR 0013, as ADR 0040 amends it: a final counts for whoever scored more, however it was read. A forfeit (recorded 1-0 or 2-0) counts as a win or a loss like any
 // other result; its row shows the word, never the score (ADR 0004). A game row itself names no winner.
 export function tally(games: Pick<Meeting, "us" | "them">[]): Tally {
   return {

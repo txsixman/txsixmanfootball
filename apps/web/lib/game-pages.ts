@@ -156,8 +156,8 @@ export const mediumDate = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 
 /**
- * A robot-read game as the scoreboard's Game, so it shares the playoff game page's look. Unconfirmed, so no winner is
- * named (ADR 0004); a forfeit carries the word and no score, so its 1-0 or 2-0 never reaches the page.
+ * A robot-read game as the scoreboard's Game, so it shares the playoff game page's look. A final, so it is confirmed and
+ * names its winner (ADR 0040); a forfeit carries the word and no score, so its 1-0 or 2-0 never reaches the page.
  */
 function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game {
   const team = (name: string, g: Going): Team => ({ name, mascot: "", initials: initials(name), color: "#0a2a5e", record: g.record ? `${g.record} going in` : "" });
@@ -171,9 +171,9 @@ function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game {
     homeScore: r.forfeit ? null : r.homeScore,
     awayScore: r.forfeit ? null : r.awayScore,
     state: "final",
-    status: r.forfeit ? "Forfeit" : "Score reported",
+    status: r.forfeit ? "Forfeit" : "Final",
     endReason: r.forfeit ? "Forfeit" : undefined,
-    verification: "unconfirmed",
+    verification: "confirmed",
     venue: d.playoff ? "Neutral site or not listed" : `${r.home} (home)`,
   };
 }

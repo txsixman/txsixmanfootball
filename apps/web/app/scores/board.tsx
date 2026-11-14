@@ -33,7 +33,7 @@ function StatusCell({ g }: { g: Game }) {
             <span className="sr-only">confirmed</span>
           </span>
         ) : (
-          // Not confirmed: never "Final", which would name a winner from a score no second source has backed (ADR 0008).
+          // Not confirmed (a disputed score): never "Final", which would name a winner (ADR 0040).
           <>
             <span>Score</span>{" "}
             <span>reported</span>
@@ -280,7 +280,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
           <dt className="font-bold text-ink">Check</dt>
           <dd>A confirmed final.</dd>
           <dt className="font-bold text-ink">Unconfirmed</dt>
-          <dd>Dashed score. Not confirmed yet, and it may change.</dd>
+          <dd>Dashed score. A live score, not final yet.</dd>
           <dt className="font-bold text-ink">Disputed</dt>
           <dd>Wavy score. Reports disagree, so no winner is marked.</dd>
           <dt className="font-bold text-ink">Forfeit</dt>

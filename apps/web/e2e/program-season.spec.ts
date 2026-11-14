@@ -49,7 +49,7 @@ for (const year of [2025, CURRENT_SEASON]) {
     await expect(summary).toContainText(rank);
     await expect(summary).toContainText(rating);
     if (playoff) await expect(summary).toContainText(playoff);
-    await expect(summary).toContainText("Season scores, not confirmed here.");
+    await expect(summary).not.toContainText("not confirmed");
     await expect(page.locator("header").filter({ has: page.getByRole("heading", { level: 1 }) })).toContainText(/UIL Division (I|II) · Region \d+ · District \d+/);
     // The program page lists the past seasons' games in a details list: the same games, the same count (the current season lists them above).
     const rows = page.locator(GAMES);
@@ -82,7 +82,7 @@ test("every game row links to its game page, names its round when a playoff game
   await expect(rows.first().getByRole("link", { name: /, game page$/ })).toHaveAttribute("href", /^\/scores\/2025-08-28-/);
   const aria = await rows.first().getByRole("link", { name: /, game page$/ }).getAttribute("aria-label");
   expect(aria).toMatch(/^Thu 8\/28 vs Ira, \d+-\d+, game page$/);
-  await expect(page.locator("main")).toContainText("Season scores, not confirmed here.");
+  await expect(page.locator("main")).not.toContainText("not confirmed");
   // The game page opens by address: a click before a cold dev page hydrates goes nowhere.
   await page.goto(hrefs[0][0]!);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

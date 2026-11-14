@@ -124,7 +124,7 @@ test("record, three results and the next game, with no winner, betting or source
   await expect(page.locator(".rec")).toContainText("2026 record");
   await expect(page.getByRole("region", { name: "Latest results" }).getByRole("listitem")).toHaveCount(3);
   await expect(page.getByRole("region", { name: "Next game" }).getByRole("listitem")).toHaveCount(1);
-  await expect(page.getByText("Scores are not confirmed here.")).toBeVisible();
+  await expect(page.getByText("not confirmed", { exact: false })).toHaveCount(0); // a final is confirmed (ADR 0040)
   const text = await page.locator("body").innerText();
   expect(text).not.toMatch(WINNER);
   expect(text).not.toMatch(BETTING);

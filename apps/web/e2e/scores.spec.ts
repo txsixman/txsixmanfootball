@@ -315,15 +315,16 @@ test("the programs list and a program page pass", async ({ page }, info) => {
   await checkPage(page, "/programs/odonnell", `odonnell-${info.project.name}`);
 });
 
-test("the 2026 playoffs crown no one and name no source (ADR 0004, ADR 0009)", async ({ page }) => {
+test("a 2026 playoff final is confirmed and names no source (ADR 0040, ADR 0009)", async ({ page }) => {
   await page.goto("/scores");
   await expect(page.getByText(/UIL DI · Bi-district/).first()).toBeVisible();
-  await page.getByRole("group", { name: "Show games from" }).getByRole("button", { name: "TAPPS" }).click(); // robot-read, so unconfirmed
-  await expect(page.getByText(/^Unconfirmed\s*Score may change\.$/).first()).toBeAttached(); // played, unconfirmed: no winner
+  await page.getByRole("group", { name: "Show games from" }).getByRole("button", { name: "TAPPS" }).click(); // robot-read finals
+  await expect(page.locator("#final").getByText("confirmed", { exact: true }).first()).toBeAttached(); // a final: confirmed
+  await expect(page.getByText(/^Unconfirmed\s*Score may change\.$/)).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText(/maxpreps|bracket\./i);
 });
 
-test("a program page lists its season, marked unconfirmed, naming no source (ADR 0009, ADR 0010)", async ({ page }) => {
+test("a program page lists its season, naming no source (ADR 0009, ADR 0010)", async ({ page }) => {
   for (const url of ["/programs/odonnell", "/rankings"]) {
     await page.goto(url);
     await expect(page.locator("body"), url).not.toContainText(/maxpreps|sources|bracket\./i);
@@ -331,7 +332,7 @@ test("a program page lists its season, marked unconfirmed, naming no source (ADR
   await page.goto("/programs/odonnell");
   const games = page.getByRole("region", { name: "2026 games" });
   await expect(games.getByRole("listitem").first()).toContainText(/\d+-\d+/);
-  await expect(games).toContainText("not confirmed here");
+  await expect(page.locator("main")).not.toContainText("not confirmed here");
 });
 
 test("program pages cover every league, link rivals, and 404 when unknown", async ({ page }) => {

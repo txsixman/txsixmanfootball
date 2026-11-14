@@ -22,7 +22,7 @@ async function inWeb<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-/** A current-season game between two programs, played on one of their fields: robot-read, so its score is unconfirmed. */
+/** A current-season game between two programs, played on one of their fields: robot-read, and a final, so confirmed (ADR 0040). */
 const fixture = () =>
   inWeb(async () => {
     const { loadSeasonResults } = await import("../lib/games");
@@ -38,7 +38,7 @@ const jsonLd = (page: Page) =>
   page.locator('script[type="application/ld+json"]').evaluateAll((els) => els.map((el) => JSON.parse(el.textContent ?? "")));
 const ofType = async (page: Page, type: string) => (await jsonLd(page)).find((d) => d["@type"] === type);
 
-test("a game page has SportsEvent markup with both programs and no score or winner (the score is unconfirmed)", async ({ page }) => {
+test("a game page has SportsEvent markup with both programs and its final score", async ({ page }) => {
   const { game, homeSlug, awaySlug } = await fixture();
   await page.goto(game.href);
   const event = await ofType(page, "SportsEvent");
@@ -46,9 +46,8 @@ test("a game page has SportsEvent markup with both programs and no score or winn
   expect(event.homeTeam).toMatchObject({ "@type": "SportsTeam", name: game.home, url: `${SITE}/programs/${homeSlug}` });
   expect(event.awayTeam).toMatchObject({ "@type": "SportsTeam", name: game.away, url: `${SITE}/programs/${awaySlug}` });
   expect(event.location).toMatchObject({ "@type": "Place" });
-  // No result of any kind: no description, no winner, no score in any form.
-  expect(Object.keys(event).filter((k) => /desc|result|winner|score/i.test(k))).toEqual([]);
-  expect(JSON.stringify(event)).not.toMatch(/\bFinal\b/);
+  // A final is confirmed (ADR 0040): its score is the description, away team first.
+  expect(event.description).toBe(`Final: ${game.away} ${game.awayScore}, ${game.home} ${game.homeScore}.`);
 });
 
 test("a confirmed final carries its score in the markup; an unconfirmed score, a forfeit and an unplayed game carry none", async () => {

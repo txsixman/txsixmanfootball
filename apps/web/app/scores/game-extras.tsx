@@ -77,7 +77,6 @@ export function GoingInSection({ away, home, detail }: { away: string; home: str
           ))}
         </tbody>
       </table>
-      <p className="pt-1 text-[13px] text-muted">Records from season scores, not confirmed here.</p>
     </Section>
   );
 }
@@ -101,7 +100,7 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
         ))}
       </ul>
       <p className="pt-1 text-[13px] text-muted">
-        {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first. Scores are not confirmed here and may change.
+        {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first.
       </p>
     </>
   );
