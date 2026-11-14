@@ -5,27 +5,36 @@
 //   node tools/league-watch/maxpreps.mjs [--season 2027]
 // writes maxpreps-<season>/games.csv, teams.csv (every team page found, the next run's seeds) and coverage.txt in
 // $PRIVATE_DATA (the private data repo; data/seed without it). tools/league-watch/publish.mjs copies the facts here.
+// A read merges into the stored files and never deletes or blanks a stored score (store.mjs, ADR 0031); a past season read
+// in full is marked complete (season.json) and not read again without --reread.
+// A read is targeted (only the team pages the store is missing, targetPages) except a season's first read, a past season,
+// Mondays (the weekly audit) and --full, which walk every team page from the seeds.
 //   node tools/league-watch/maxpreps.mjs --due data/seed/maxpreps-2026/playoffs.csv
-// prints how many bracket games of tonight have no score yet (results-watch.yml reads only when it is not 0).
+// prints how many bracket games of tonight, or of the 3 game nights before it (ADR 0030), have no score yet
+// (results-watch.yml reads only when it is not 0).
 //   node tools/league-watch/maxpreps.mjs --canary
 // reads one seed team's schedule page and fails if MaxPreps changed its shape (maxpreps-canary.yml, before game nights).
 //   node tools/league-watch/maxpreps.mjs --tonight
-// (playoff game days, ADRs 0015 and 0019) reads only the pages of teams whose bracket game today has no score yet, one page a
-// game, and fills those finals into playoffs.csv and games.csv; every other row and file is left as it was.
+// (playoff game days, ADRs 0015, 0019 and 0030) reads only the pages of teams whose bracket game today, or on one of the 3
+// game nights before it, has no score yet, one page a game, and fills those finals into playoffs.csv and games.csv; every
+// other row and file is left as it was.
 //   node tools/league-watch/maxpreps.mjs --tonight --live-out <file>
 // also writes the games of tonight that show a score but no final yet (live scores, ADR 0021) to <file> as JSON, for
 // packages/db/live.mjs; the repo's files never change for a live score.
 // The season defaults to the one under way: August to January belongs to the year it started. A past season is read
 // from the same team pages with the season segment in the path (--season 2025 reads .../football/25-26/schedule/).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { duplicateRows } from "../../apps/web/lib/duplicate-game.ts";
+import { CHANGES_FILE, changeLines, countsLine, mergeStored, parseCsv, PENDING_FILE, pendingCsv, readPending, rowKey } from "./store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argSeason = process.argv.indexOf("--season");
 const today = new Date();
-export const SEASON = argSeason > 0 ? Number(process.argv[argSeason + 1])
-  : today.getUTCMonth() >= 6 ? today.getUTCFullYear() : today.getUTCFullYear() - 1;
+/** The season under way: August to January belongs to the year it started. */
+const DEFAULT_SEASON = today.getUTCMonth() >= 6 ? today.getUTCFullYear() : today.getUTCFullYear() - 1;
+export const SEASON = argSeason > 0 ? Number(process.argv[argSeason + 1]) : DEFAULT_SEASON;
 // The reader's folders (games with their source pages, teams.csv, outside.csv, coverage.txt) live in the private data
 // repo, checked out at PRIVATE_DATA (results-watch.yml); publish.mjs copies the facts into data/seed afterwards.
 const RESULTS = process.env.PRIVATE_DATA ? path.resolve(process.env.PRIVATE_DATA) : path.join(ROOT, "data/seed");
@@ -55,12 +64,18 @@ const SEEDS = ["https://www.maxpreps.com/tx/odonnell/odonnell-eagles/football/"]
 // outside our alignments is still read.
 export const ALIASES = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "maxpreps-aliases.json"), "utf8"));
 
-/** Our slug for a MaxPreps team, or null: an alias, then its name ("Jayton"), then city and name ("Lenorah Grady"). */
+/** Our schools whose MaxPreps page an alias names: each matches its own page only, never another school's page by name. */
+const pinnedOf = (aliases) => new Set(Object.values(aliases).flat().map(slugify));
+let PINNED; // built on first use: slugify is declared below
+
+/** Our slug for a MaxPreps team, or null: an alias, then its name ("Jayton"), then city and name ("Lenorah Grady"). A
+ * name that belongs to a pinned school is not matched by name (Community Christian in Orange is not ours in Mineral Wells). */
 export function match(team, bySlug, aliases = ALIASES) {
   if (team.state !== "TX") return null;
   const alias = [aliases[team.url]].flat()[0];
-  const tries = [alias, team.name, `${team.city} ${team.name}`].filter(Boolean).map(slugify);
-  return tries.find((s) => bySlug.has(s)) ?? null;
+  const pinned = aliases === ALIASES ? (PINNED ??= pinnedOf(ALIASES)) : pinnedOf(aliases);
+  const byName = [team.name, `${team.city} ${team.name}`].map(slugify).filter((s) => !pinned.has(s));
+  return [...(alias ? [slugify(alias)] : []), ...byName].find((s) => bySlug.has(s)) ?? null;
 }
 export const COLUMNS = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes";
 
@@ -90,8 +105,30 @@ export function periodText(contest, index = PERIOD_INDEX) {
 /** A team's page without any schedule path: past-season pages link their teams as .../football/25-26/schedule/. */
 export const teamPage = (url) => url.replace(/(?:\d{2}-\d{2}\/)?schedule\/$/, "");
 
-/** Games on one schedule page. Throws if the page no longer has the shape this reader knows. */
-export function parseSchedule(html) {
+/**
+ * Which football the team played that season by its page: "6", "11", or null when the page does not say. MaxPreps names the
+ * team's division once per page ("stateDivisionName"): "Division 1A 6 Man 2", "Division TAPPS II 6 Man" are six-man;
+ * "Division 2A-2", "Division 5A", "Division TAPPS III", "Division TCAF 11" are 11-man; blank, TAIAO, "TCAF 1" and
+ * "TCAL II" say neither. Many schools on today's six-man lists played 11-man in earlier seasons, sometimes each other.
+ */
+export function footballOf(html) {
+  const name = html.match(/"stateDivisionName":"([^"]*)"/)?.[1] ?? "";
+  if (/\b6 ?-?Man\b/i.test(name)) return { kind: "6", name };
+  return /\b[2-6]A\b|\bTAPPS\b|\b11\b/.test(name) ? { kind: "11", name } : { kind: null, name };
+}
+
+/** An 11-man game: one team's page says 11-man that season and neither says six-man (a six-man school plays six-man). */
+export const isElevenMan = (g, football) => {
+  const kinds = [football.get(g.home.url)?.kind, football.get(g.away.url)?.kind];
+  return kinds.includes("11") && !kinds.includes("6");
+};
+
+/**
+ * Games on one schedule page. Throws if the page no longer has the shape this reader knows. A past season's page may list
+ * a played game against a team MaxPreps has since removed (no name or page): with `onUnnamed`, such a game is skipped and
+ * reported to it instead of throwing; without it (the season under way), it throws as a new shape.
+ */
+export function parseSchedule(html, { onUnnamed } = {}) {
   const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
   if (!m) throw new Error("no __NEXT_DATA__ on the page");
   const props = JSON.parse(m[1])?.props?.pageProps;
@@ -118,10 +155,17 @@ export function parseSchedule(html) {
     if (teams.some((t) => !t.name || !t.url)) {
       // An opponent not yet named (an open date, a "TBA") with no result is not a game; a played one is a new shape.
       if (c[C.hasResult] !== true) continue;
+      if (onUnnamed) {
+        onUnnamed(date);
+        continue;
+      }
       throw new Error("a played game with a team without a name or page");
     }
     const home = teams.find((t) => t.homeAway === 0) ?? teams[0];
     const away = teams.find((t) => t !== home);
+    // A 0-0 "result" is a placeholder or a cancelled game, never a score (a forfeit is written 1-0 or 2-0): the game stays
+    // unplayed, so it is in no rating, record or streak (DECISIONS.md, Nov 13, 2026).
+    if (c[C.hasResult] === true && home.score === 0 && away.score === 0) home.score = away.score = null;
     games.push({
       id: String(c[0][0][T.contestId] ?? `${date}-${home.url}-${away.url}`),
       date,
@@ -257,11 +301,21 @@ export function playoffsCsv(games, bySlug) {
 
 /**
  * MaxPreps sometimes lists one game twice under two contest ids. Copies that agree on the score are one game (a copy
- * with a bracket wins); copies that disagree are all dropped and returned as conflicts, for coverage.txt.
+ * with a bracket wins); copies that disagree are all dropped and returned as conflicts, for coverage.txt. Then the shared
+ * rule (apps/web/lib/duplicate-game.ts, also the ratings' and check-data's): the same two teams with the same score at most two
+ * days apart are one game too, the earlier date kept, the later one returned in `repeats` (the source lists a late game a
+ * day apart on each team's schedule). A game whose
+ * two sides are the same school of ours (two schools of one name matched to one) is never written: it is returned in
+ * selfGames, named, so the run says so before anything reaches the private repo or the database.
  */
 export function dedupe(games) {
   const groups = new Map();
+  const selfGames = [];
   for (const g of games) {
+    if (g.home.slug === g.away.slug) {
+      selfGames.push(`${g.date} ${g.home.name} (${g.home.city}) vs ${g.away.name} (${g.away.city}), both matched to ${g.home.slug}`);
+      continue;
+    }
     const key = [g.date, ...[g.home.slug, g.away.slug].sort()].join("|");
     groups.set(key, [...(groups.get(key) ?? []), g]);
   }
@@ -278,7 +332,12 @@ export function dedupe(games) {
     const pool = played.length ? played : copies;
     kept.push(pool.find((g) => g.bracket) ?? pool[0]);
   }
-  return { kept, conflicts };
+  const playedKept = kept.filter((g) => g.played);
+  const copies = duplicateRows(playedKept.map((g) => ({ game_date: g.date, home: g.home.slug, away: g.away.slug, home_score: g.home.score, away_score: g.away.score })));
+  // A copy that carries the bracket gives it to the game that stays, so a playoff game is never dropped with its copy.
+  for (const [i, first] of copies) if (playedKept[i].bracket && !playedKept[first].bracket) playedKept[first].bracket = playedKept[i].bracket;
+  const repeats = [...copies].map(([i, first]) => `${playedKept[i].date} ${playedKept[i].away.slug} at ${playedKept[i].home.slug} ${playedKept[i].away.score}-${playedKept[i].home.score}, a copy of the game on ${playedKept[first].date}`);
+  return { kept: copies.size ? kept.filter((g) => !g.played || !copies.has(playedKept.indexOf(g))) : kept, conflicts, selfGames, repeats };
 }
 
 export const OUTSIDE_COLUMNS = "game_date,team,opponent,opponent_url,team_is_home,team_score,opponent_score,source_url";
@@ -329,12 +388,89 @@ export function toCsv(games, bySlug) {
   return [COLUMNS, ...rows].join("\n") + "\n";
 }
 
+/** A season stored and marked complete (ADR 0031) is never read again, except with --reread (a manual workflow input). */
+export const SEASON_FILE = "season.json";
+export function seasonComplete(dir) {
+  const file = path.join(dir, SEASON_FILE);
+  return existsSync(file) && JSON.parse(readFileSync(file, "utf8")).complete === true;
+}
+
+/** Outside games (outside.csv) the store keeps when a read no longer lists them: no stored score is lost (ADR 0031). */
+export function keepOutside(storedText, freshText) {
+  const lines = (text) => (text.trim() ? text.trimEnd().split("\n") : []);
+  const [header, ...fresh] = lines(freshText);
+  const key = (l) => l.split(",").slice(0, 3).map((c, i) => (i ? slugify(c) : c)).join("|"); // date, team, opponent
+  const have = new Set(fresh.map(key));
+  const kept = lines(storedText).slice(1).filter((l) => !have.has(key(l)));
+  const rows = [...fresh, ...kept].sort();
+  return { csv: [header ?? OUTSIDE_COLUMNS, ...rows].join("\n") + "\n", kept: kept.length };
+}
+
+/** The store's unplayed games between schools in our alignments (ADR 0031): what a targeted read looks for. Private. */
+export const SCHEDULE_FILE = "schedule.csv";
+export const SCHEDULE_COLUMNS = "game_date,home,away";
+/** A targeted read looks back this many days for games without a score. */
+export const LOOKBACK_DAYS = 14;
+
+/**
+ * Full or targeted (ADR 0031). A full read walks every team page from the seeds; it is the first read of a season (no
+ * schedule.csv yet), a past season's read, every Monday (UTC; the weekly audit, whatever starts the run) and `--full`.
+ * Every other read is targeted: only the pages targetPages names.
+ */
+export const isFullRead = ({ argv, now, past, scheduleStored }) => past || !scheduleStored || argv.includes("--full") || new Date(now).getUTCDay() === 1;
+
+/**
+ * The team pages a targeted read reads, from the store alone (ADR 0031):
+ * - both teams of an unplayed game (schedule.csv) dated in the last LOOKBACK_DAYS days or today;
+ * - both teams of a bracket game (playoffs.csv) dated in that window, played or not, so a winner's next game is found;
+ * - a school in our alignments with no game stored this season (its schedule not yet captured).
+ * Everything final and older than the window is not read again. Pages come from teams.csv; a team with none is skipped.
+ */
+export function targetPages({ today, schedule, games, playoffs, teams, schools }) {
+  const from = new Date(Date.parse(`${today}T12:00:00Z`) - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const recent = (r) => r.game_date >= from && r.game_date <= today;
+  const slugs = (rows) => rows.flatMap((r) => [slugify(r.home), slugify(r.away)]);
+  const due = new Set([...slugs(schedule.filter(recent)), ...slugs(playoffs.filter(recent))]);
+  const stored = new Set(slugs([...schedule, ...games, ...playoffs]));
+  const uncaptured = schools.filter((s) => !stored.has(s));
+  const want = new Set([...due, ...uncaptured]);
+  const pages = [...new Set([...want].map((s) => teams.get(s)).filter(Boolean))];
+  return { pages, due: due.size, uncaptured: uncaptured.length, noPage: [...want].filter((s) => !teams.has(s)).length };
+}
+
+/** A stored playoffs.csv row as the reader's game, so a targeted read names rounds from the whole stored bracket. */
+export const storedBracketGame = (r) => ({
+  date: r.game_date,
+  bracket: { league: r.league, division: r.division },
+  home: { slug: slugify(r.home), score: r.home_score === "" ? null : Number(r.home_score) },
+  away: { slug: slugify(r.away), score: r.away_score === "" ? null : Number(r.away_score) },
+  played: r.home_score !== "" && r.away_score !== "",
+  gameUrl: r.source_url,
+});
+
 async function main() {
+  if (seasonComplete(OUT) && !process.argv.includes("--reread")) {
+    return console.log(`Season ${SEASON} is stored and marked complete (${path.join(OUT, SEASON_FILE)}): nothing read. To read it again, pass --reread.`);
+  }
   const bySlug = loadAlignments();
   // Team pages are the same every season, so a season with no teams.csv of its own starts from a neighbour's.
   const known = [OUT, ...[SEASON - 1, SEASON + 1].map((y) => path.join(RESULTS, `maxpreps-${y}`))].map((d) => path.join(d, "teams.csv")).find(existsSync);
   const fromLastRun = known ? readFileSync(known, "utf8").trim().split("\n").slice(1).map((l) => l.split(",")[1]) : [];
-  const queue = [...new Set([...fromLastRun, ...SEEDS, ...Object.keys(ALIASES)])];
+  const storedText = (name) => (existsSync(path.join(OUT, name)) ? readFileSync(path.join(OUT, name), "utf8") : "");
+  const full = isFullRead({ argv: process.argv, now: Date.now(), past: SEASON < DEFAULT_SEASON, scheduleStored: existsSync(path.join(OUT, SCHEDULE_FILE)) });
+  const storedTeams = new Map(storedText("teams.csv").trim().split("\n").slice(1).filter(Boolean).map((l) => l.split(",")));
+  const target = full
+    ? null
+    : targetPages({
+        today: centralDate(new Date()),
+        schedule: parseCsv(storedText(SCHEDULE_FILE), SCHEDULE_FILE).rows,
+        games: parseCsv(storedText("games.csv"), "games.csv").rows,
+        playoffs: parseCsv(storedText("playoffs.csv"), "playoffs.csv").rows,
+        teams: storedTeams,
+        schools: [...bySlug.keys()],
+      });
+  const queue = full ? [...new Set([...fromLastRun, ...SEEDS, ...Object.keys(ALIASES)])] : target.pages;
+  console.log(full ? `Full read of ${SEASON}.` : `Targeted read of ${SEASON}: ${queue.length} team pages (${target.due} teams with a game in the last ${LOOKBACK_DAYS} days, ${target.uncaptured} with no stored game, ${target.noPage} with no known page).`);
   const seen = new Set(queue);
   const games = new Map();
   const reached = new Set();
@@ -343,14 +479,20 @@ async function main() {
   const outside = new Map(); // opponents not in our alignments, with how many games
   const outsideGames = new Map(); // played games of one of our schools against one that is not, for the ratings
   let pages = 0;
+  // A past season (read with --season) skips a played game whose other team MaxPreps no longer lists, and counts it.
+  let unnamed = 0;
+  const past = SEASON < DEFAULT_SEASON ? { onUnnamed: () => unnamed++ } : {};
+  // A past season also leaves out 11-man games (footballOf, isElevenMan).
+  const football = new Map(); // team page -> what its page says it played that season
 
   while (queue.length) {
     const teamUrl = queue.shift();
     const page = await fetchSchedule(teamUrl);
     pages++;
     if (page) readPages.add(teamUrl);
+    if (page && SEASON < DEFAULT_SEASON) football.set(teamPage(page.url), footballOf(page.html));
     if (page) {
-      for (const g of parseSchedule(page.html)) {
+      for (const g of parseSchedule(page.html, past)) {
         if (g.date < SEASON_START || g.date > SEASON_END) continue;
         for (const t of [g.home, g.away]) {
           t.slug = match(t, bySlug);
@@ -361,7 +503,7 @@ async function main() {
           }
           for (const name of [ALIASES[t.url] ?? t.slug].flat()) reached.add(slugify(name));
           teamPages.set(t.slug, t.url);
-          if (!seen.has(t.url)) {
+          if (full && !seen.has(t.url)) {
             seen.add(t.url);
             queue.push(t.url);
           }
@@ -378,37 +520,98 @@ async function main() {
   }
 
   // A school whose alias page was read but has no games this season most likely fielded no team (or MaxPreps has none).
+  // 11-man games are not six-man results: drop them, and list a school left with no six-man game as 11-man that season.
+  const elevenGames = [...games.values()].filter((g) => g.played && isElevenMan(g, football)).length;
+  for (const [id, g] of games) if (isElevenMan(g, football)) games.delete(id);
+  for (const [id, g] of outsideGames) if (isElevenMan(g, football)) outsideGames.delete(id);
+  const slugOfPage = new Map([...teamPages].map(([slug, url]) => [url, slug]));
+  const namesOf = (url) => [ALIASES[url] ?? slugOfPage.get(url) ?? []].flat().map(slugify);
+  const sixManPages = new Set([...games.values(), ...outsideGames.values()].flatMap((g) => [g.home.url, g.away.url]));
+  const elevenPages = [...football].filter(([url, f]) => f.kind === "11" && !sixManPages.has(url));
+  const elevenSlugs = new Set(elevenPages.flatMap(([url]) => namesOf(url)));
+  for (const s of elevenSlugs) reached.delete(s);
   const readNames = new Set([...readPages].flatMap((url) => [ALIASES[url] ?? []].flat().map(slugify)));
   const missing = [...bySlug.entries()]
     .filter(([slug]) => !reached.has(slug))
-    .map(([slug, r]) => `${r.league} ${r.division}: ${r.school}${readNames.has(slug) ? ` (MaxPreps page read: no ${SEASON} games)` : ""}`);
+    .map(([slug, r]) => `${r.league} ${r.division}: ${r.school}${elevenSlugs.has(slug) ? " (11-man this season)" : readNames.has(slug) ? ` (MaxPreps page read: no ${SEASON} games)` : ""}`);
   mkdirSync(OUT, { recursive: true });
-  const { kept, conflicts } = dedupe([...games.values()]);
-  writeFileSync(path.join(OUT, "games.csv"), toCsv(kept, bySlug));
-  writeFileSync(path.join(OUT, "playoffs.csv"), playoffsCsv(kept.filter((g) => g.bracket), bySlug));
+  const { kept, conflicts, selfGames, repeats } = dedupe([...games.values()]);
+  // A row with the same school on both sides breaks the database (a game needs two team-seasons): name it loudly.
+  for (const s of selfGames) console.log(`::warning::left out, the same school on both sides: ${s}`);
+  for (const r of repeats) console.log(`::warning::left out, one game listed twice: ${r}`);
+  // The store is the record (ADR 0031): this read merges into the stored files and never deletes or blanks a score.
+  const now = new Date().toISOString();
+  const readTeam = (name) => readPages.has(teamPages.get(slugify(name)));
+  const stored = storedText;
+  // A targeted read names playoff rounds from the whole stored bracket, its own games laid over it.
+  const bracket = new Map(full ? [] : parseCsv(stored("playoffs.csv"), "playoffs.csv").rows.filter((r) => bySlug.has(slugify(r.home)) && bySlug.has(slugify(r.away))).map((r) => [rowKey(r), storedBracketGame(r)]));
+  for (const g of kept.filter((g) => g.bracket)) bracket.set([g.date, ...[g.home.slug, g.away.slug].sort()].join("|"), g);
+  let pending = readPending(stored(PENDING_FILE));
+  const changes = [];
+  const storeLines = [];
+  const counted = {};
+  for (const [name, fresh] of [["games.csv", toCsv(kept, bySlug)], ["playoffs.csv", playoffsCsv([...bracket.values()], bySlug)]]) {
+    const m = mergeStored({ file: name, stored: stored(name), fresh, pending, readTeam, now });
+    writeFileSync(path.join(OUT, name), m.text);
+    pending = m.pending;
+    changes.push(...m.changes);
+    counted[name] = m.text;
+    storeLines.push(countsLine(name, m.counts));
+  }
+  writeFileSync(path.join(OUT, PENDING_FILE), pendingCsv(pending));
+  if (changes.length) appendFileSync(path.join(OUT, CHANGES_FILE), changeLines(changes, existsSync(path.join(OUT, CHANGES_FILE))));
   const outsideRows = outsideCsv([...outsideGames.values()], bySlug);
-  writeFileSync(path.join(OUT, "outside.csv"), outsideRows.csv);
-  writeFileSync(
-    path.join(OUT, "teams.csv"),
-    ["slug,maxpreps_url", ...[...teamPages.entries()].sort().map(([slug, url]) => `${slug},${url}`)].join("\n") + "\n",
-  );
+  const outsideStore = keepOutside(stored("outside.csv"), outsideRows.csv);
+  writeFileSync(path.join(OUT, "outside.csv"), outsideStore.csv);
+  storeLines.push(`outside.csv: ${outsideStore.kept} games kept that this read did not list.`);
+  // The unplayed games, for the next targeted read: a full read writes what it found; a targeted read keeps the stored
+  // list, drops the games now scored, and adds the unplayed games of the pages it read.
+  const playedKeys = new Set([...parseCsv(counted["games.csv"]).rows, ...parseCsv(counted["playoffs.csv"]).rows].filter((r) => r.home_score !== "").map(rowKey));
+  const unplayed = kept.filter((g) => !g.played).map((g) => ({ game_date: g.date, home: bySlug.get(g.home.slug).school, away: bySlug.get(g.away.slug).school }));
+  const scheduleRows = new Map((full ? [] : parseCsv(stored(SCHEDULE_FILE), SCHEDULE_FILE).rows).map((r) => [rowKey(r), r]));
+  for (const r of unplayed) scheduleRows.set(rowKey(r), r);
+  for (const k of playedKeys) scheduleRows.delete(k);
+  const scheduleList = [...scheduleRows.values()].sort((a, b) => a.game_date.localeCompare(b.game_date) || a.home.localeCompare(b.home));
+  writeFileSync(path.join(OUT, SCHEDULE_FILE), [SCHEDULE_COLUMNS, ...scheduleList.map((r) => `${r.game_date},${r.home},${r.away}`)].join("\n") + "\n");
+  storeLines.push(`${SCHEDULE_FILE}: ${scheduleList.length} unplayed games stored.`);
+  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### Results store (season ${SEASON}, ${full ? "full read" : "targeted read"}, ${pages} pages)\n\n${storeLines.map((l) => `- ${l}`).join("\n")}\n`);
+  // Team pages: a full read writes what it found; a targeted read adds to the stored list and never shortens it.
+  const teamList = new Map([...(full ? [] : storedTeams), ...teamPages]);
+  writeFileSync(path.join(OUT, "teams.csv"), ["slug,maxpreps_url", ...[...teamList.entries()].sort().map(([slug, url]) => `${slug},${url}`)].join("\n") + "\n");
+  if (!full) {
+    console.log(`\nTargeted read: ${pages} pages.`);
+    for (const l of storeLines) console.log(l);
+    return;
+  }
   writeFileSync(
     path.join(OUT, "coverage.txt"),
     [
       `Season ${SEASON}, read ${new Date().toISOString().slice(0, 10)} from ${pages} MaxPreps schedule pages (ADR 0008).`,
-      `${kept.filter((g) => g.played).length} played games between schools in our alignments.`,
+      `${kept.filter((g) => g.played).length} played games between schools in our alignments on this read; ${parseCsv(counted["games.csv"]).rows.length} in the store.`,
+      ...storeLines,
       `${outsideRows.count} played games against opponents outside them, in outside.csv (the ratings' hidden teams; ${outsideRows.conflicts} listed twice with different scores, left out).`,
+      ...(elevenGames ? [`${elevenGames} played 11-man games between schools in our alignments left out (and their games against others). Schools with no six-man game this season, their page's division: ${elevenPages.map(([url, f]) => `${namesOf(url)[0] ?? url} (${f.name})`).sort().join("; ")}.`] : []),
+      ...(unnamed ? [`${unnamed} played game sides skipped: the other team is no longer listed on MaxPreps (no name or page).`] : []),
       `${reached.size} of ${bySlug.size} schools reached. Not reached (${missing.length}):`,
       ...missing.sort(),
       "",
       `Listed twice with different scores, so left out (${conflicts.length}):`,
       ...conflicts.sort(),
       "",
+      `The same school on both sides, so left out (${selfGames.length}; fix the match or an alias):`,
+      ...selfGames.sort(),
+      "",
+      `One game listed twice (the same teams and score, at most two days apart), so the later copy left out (${repeats.length}):`,
+      ...repeats.sort(),
+      "",
       `${outside.size} opponents outside our alignments (${[...outside.values()].reduce((a, b) => a + b, 0)} game sides skipped; for a past season these include schools no longer six-man or no longer listed), most games first:`,
       ...[...outside.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([n, k]) => `${k}  ${n}`),
     ].join("\n") + "\n",
   );
+  // A past season read in full is finished: stored and marked complete, never read again without --reread.
+  if (SEASON < DEFAULT_SEASON) writeFileSync(path.join(OUT, SEASON_FILE), `${JSON.stringify({ complete: true, read: now.slice(0, 10) }, null, 2)}\n`);
   console.log(`\nWrote ${OUT}/games.csv; ${missing.length} schools not reached (coverage.txt)`);
+  for (const l of storeLines) console.log(l);
 }
 
 /** Today's date where the games are played ("2026-11-13", Central time), whatever the runner's clock zone. */
@@ -429,6 +632,21 @@ const pairKey = (date, a, b) => [date, ...[slugify(a), slugify(b)].sort()].join(
 /** Bracket rows (playoffs.csv) dated `date` that have no score yet: tonight's games still to read. */
 export function tonightsGames(playoffsText, date) {
   return parseRows(playoffsText).rows.filter((r) => r.game_date === date && r.home_score === "");
+}
+
+/** How many earlier game nights a game-day read catches up on (ADR 0030): a final MaxPreps posts after that night's last read. */
+export const CATCH_UP_NIGHTS = 3;
+
+/**
+ * Bracket rows with no score yet that a game-day read looks for (ADR 0030): tonight's, and those of the last
+ * `nights` game nights before it (the latest dates before `date` that have any bracket row). A game postponed past them
+ * leaves the list; the morning read and the next full read still find it.
+ */
+export function dueGames(playoffsText, date, nights = CATCH_UP_NIGHTS) {
+  const rows = parseRows(playoffsText).rows;
+  const earlier = [...new Set(rows.map((r) => r.game_date).filter((d) => d && d < date))].sort().slice(-nights);
+  const dates = new Set([date, ...(nights > 0 ? earlier : [])]);
+  return rows.filter((r) => dates.has(r.game_date) && r.home_score === "");
 }
 
 /**
@@ -506,13 +724,16 @@ export function inProgressShape(html, date) {
 async function tonight() {
   const date = gameNight();
   const [playoffsFile, gamesFile] = ["playoffs.csv", "games.csv"].map((f) => path.join(OUT, f));
-  const due = tonightsGames(readFileSync(playoffsFile, "utf8"), date);
+  // Tonight's unscored bracket games and those of the last few game nights (ADR 0030). Live scores stay tonight's only.
+  const due = dueGames(readFileSync(playoffsFile, "utf8"), date);
+  const dates = new Set(due.map((r) => r.game_date));
+  const earlier = due.filter((r) => r.game_date !== date).length;
   const liveOut = process.argv.includes("--live-out") ? process.argv[process.argv.indexOf("--live-out") + 1] : null;
   if (process.argv.includes("--live-out") && (!liveOut || liveOut.startsWith("--"))) throw new Error("--live-out needs a file");
   if (!due.length) {
     // Nothing is due, so nothing is live: an empty list clears any live row the database still holds.
     if (liveOut) writeFileSync(liveOut, "[]\n");
-    return console.log(`No bracket game without a score on ${date}: nothing read.`);
+    return console.log(`No bracket game without a score on ${date} or the ${CATCH_UP_NIGHTS} game nights before it: nothing read.`);
   }
   const bySlug = loadAlignments();
   const pageOf = new Map(readFileSync(path.join(OUT, "teams.csv"), "utf8").trim().split("\n").slice(1).map((l) => l.split(",")));
@@ -525,7 +746,7 @@ async function tonight() {
     const page = await fetchSchedule(teamUrl);
     if (page) underway.push(...inProgressShape(page.html, date));
     for (const g of page ? parseSchedule(page.html) : []) {
-      if (g.date !== date || !(g.played || g.live)) continue;
+      if (!dates.has(g.date) || !(g.played || g.live)) continue;
       for (const t of [g.home, g.away]) t.slug = match(t, bySlug);
       if (g.home.slug && g.away.slug) (g.played ? finals : live).push(g);
     }
@@ -538,7 +759,7 @@ async function tonight() {
   const stillDue = tonightsGames(merged.playoffs, date);
   const liveNow = liveRows(live, date, stillDue);
   if (liveOut) writeFileSync(liveOut, `${JSON.stringify(liveNow, null, 2)}\n`);
-  console.log(`${date}: ${due.length} bracket games without a score, ${urls.length} pages read, ${merged.filled} finals filled in, ${liveNow.length} under way.`);
+  console.log(`${date}: ${due.length} bracket games without a score (${earlier} from earlier nights), ${urls.length} pages read, ${merged.filled} finals filled in, ${liveNow.length} under way.`);
   const note = underway.length
     ? [`Games showing a score before the final (${underway.length}):`, ...new Set(underway)].join("\n")
     : "No game on these pages showed a score before its final.";
@@ -577,10 +798,11 @@ async function canary() {
   if (problems.length) process.exitCode = 1;
 }
 
-/** `--due <playoffs.csv>`: how many bracket games of tonight have no score yet. The workflow reads only when it is not 0. */
+/** `--due <playoffs.csv>`: how many bracket games of tonight and the last few game nights have no score yet (dueGames).
+ * The workflow reads only when it is not 0. */
 function due() {
   const file = process.argv[process.argv.indexOf("--due") + 1];
-  console.log(tonightsGames(readFileSync(file, "utf8"), gameNight()).length);
+  console.log(dueGames(readFileSync(file, "utf8"), gameNight()).length);
 }
 
 /** A read writes its captures under RESULTS. In CI that must be the private data repo: without PRIVATE_DATA they would land

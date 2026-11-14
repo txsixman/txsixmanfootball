@@ -14,7 +14,7 @@ import { cardIds } from "./ids";
 // The card a link preview shows when a game page is shared (/scores/<id>/card, the page's og:image): both teams (logo
 // from the school's own site, ADR 0006, shown as published beside the name; the school's colors and initials when there
 // is none), the date, and the score. The score says "Final" only for a confirmed final; a robot-read score says
-// "Unconfirmed" and names no winner (ADR 0004). An unplayed game shows no score. Drawn at build time from the same game
+// "Score reported" and names no winner (ADR 0004). An unplayed game shows no score. Drawn at build time from the same game
 // the page shows (lib/game-pages.ts).
 //
 // A plain route, not an opengraph-image file: Next gives a route its static params only from its own file, and an
@@ -49,7 +49,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const forfeit = isForfeit(g);
   const played = g.state === "final" && !forfeit && g.homeScore != null && g.awayScore != null;
   const winner = winnerOf(g);
-  const status = forfeit ? "Forfeit" : played ? (g.verification === "confirmed" ? "Final" : "Unconfirmed") : g.state === "postponed" ? "Postponed" : "Scheduled";
+  const status = forfeit ? "Forfeit" : played ? (g.verification === "confirmed" ? "Final" : "Score reported") : g.state === "postponed" ? "Postponed" : "Scheduled";
   const rows = await Promise.all(
     (["away", "home"] as const).map(async (side: Side) => ({ team: g[side], score: side === "home" ? g.homeScore : g.awayScore, tile: await tile(g[side]), lost: winner !== null && winner !== side })),
   );

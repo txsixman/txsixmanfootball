@@ -90,7 +90,7 @@ test("every kind of page has its own short description, with no betting word, so
     expect.soft(text, label).not.toMatch(CODENAME);
     expect.soft(text, label).not.toMatch(/unconfirmed/i);
     // A school's own name may hold such a word (Victory Christian Academy-Decatur): leave the page's team names out, longest first.
-    const names = (await page.title()).replace(/ \| .*$/, "").split(" at ").sort((a, b) => b.length - a.length);
+    const names = (await page.title()).replace(/ \| .*$/, "").split(" vs ").sort((a, b) => b.length - a.length);
     expect.soft(names.reduce((t, n) => t.split(n).join(" "), text), `${label} names a winner`).not.toMatch(WINNER);
     // A game's description never holds a score ("21-14"), only its date, teams and round.
     if (kind.startsWith("game")) expect.soft(text, `${label} holds a score`).not.toMatch(/\d\s*[-–]\s*\d/);

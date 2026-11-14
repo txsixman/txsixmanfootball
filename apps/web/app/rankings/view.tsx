@@ -81,7 +81,7 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
       <RankingsHeader eyebrow={`${table.season} season · ${view.eyebrow}`} note={table.games ? note : undefined} />
       {coverage && <p id="season-coverage" className="mt-1 max-w-prose text-[14px] leading-5 text-muted">{coverage}</p>}
       {seasons.length > 1 && (
-        <TabNav label="Season" tabs={seasons.map((y) => ({ href: seasonHref(y, seasons[0], org), label: String(y) }))} current={seasonHref(table.season, seasons[0], org)} />
+        <TabNav label="Season" wrap tabs={seasons.map((y) => ({ href: seasonHref(y, seasons[0], org), label: String(y) }))} current={seasonHref(table.season, seasons[0], org)} />
       )}
       <TabNav label="Rankings by organization" tabs={orgs.map((o) => ({ href: orgHref(orgBase, o), label: o.label }))} current={orgHref(orgBase, org)} />
       {!past && org === ORGS[0] && (
@@ -95,7 +95,7 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
       {rows.length ? (
         <>
           <RatingsTable rows={rows} hrefs={hrefs} />
-          <p className="mt-3 text-[13px] text-muted">Scores are not confirmed here and may change.</p>
+          <p className="mt-3 text-[13px] text-muted">Scores may be corrected if a mistake is found.</p>
           <HowToRead schedule />
         </>
       ) : (

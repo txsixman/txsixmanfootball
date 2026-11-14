@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 import type { GameDetail, GamePreview, PreviewSide } from "@/lib/game-pages";
 import { signed } from "@/lib/signed";
 import { MeetingsList } from "./game-extras";
+import { FIRST_SEASON } from "@/lib/season";
 
 // The preview on a game not yet played (/scores/<id>): both teams side by side, their games against each other since
-// 2021, and the opponents both met this season. Words are rating, projected margin and win probability, and nothing here
+// FIRST_SEASON, and the opponents both met this season. Words are rating, projected margin and win probability, and nothing here
 // names a winner or says how a game went: robot-read scores are unconfirmed (ADR 0004, ADR 0013), shown as scores only,
 // and a forfeit is the word. `programs` maps a school's name to its program page, for the schools our alignments list.
 
@@ -75,16 +76,16 @@ export function GamePreviewSection({ preview, detail, projected, programs }: { p
         <Team side={away} programs={programs} />
         <Team side={home} programs={programs} />
       </div>
-      <p className="pt-1 text-[13px] leading-4 text-muted">Away team first. Records are from season scores, not confirmed here. Rank is within the team&rsquo;s organization.</p>
+      <p className="pt-1 text-[13px] leading-4 text-muted">Away team first. Rank is within the team&rsquo;s organization.</p>
       {projected && (
         <p className="pt-2 text-[17px] font-semibold leading-6 text-ink">
           {projected} <span className="block text-[13px] font-normal leading-4 text-muted">A projection, not a result.</span>
         </p>
       )}
 
-      <Part id="head-to-head" title="Head-to-head since 2021">
+      <Part id="head-to-head" title={`Head-to-head since ${FIRST_SEASON}`}>
         {total === 0 ? (
-          <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since 2021.</p>
+          <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since {FIRST_SEASON}.</p>
         ) : (
           <MeetingsList detail={detail} />
         )}
@@ -112,7 +113,7 @@ export function GamePreviewSection({ preview, detail, projected, programs }: { p
               ))}
             </ul>
             <p className="pt-1 text-[13px] leading-4 text-muted">
-              {common.rest > 0 ? `${common.shown.length} of ${common.shown.length + common.rest} common opponents shown. ` : ""}Each team&rsquo;s own score first. Scores are not confirmed here and may change.
+              {common.rest > 0 ? `${common.shown.length} of ${common.shown.length + common.rest} common opponents shown. ` : ""}Each team&rsquo;s own score first.
             </p>
           </>
         )}

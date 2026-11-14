@@ -1,4 +1,4 @@
-import { CURRENT_SEASON } from "../season.ts";
+import { CURRENT_SEASON, FIRST_SEASON } from "../season.ts";
 import { requireAdmin } from "../auth/admin.ts";
 import { type AdminGame, alignmentSchools, parseSeasonGames, readCorrections } from "./files.ts";
 import { repoClient } from "./github.ts";
@@ -38,4 +38,4 @@ export async function loadLiveSchools(github: Github): Promise<{ names: string[]
 }
 
 /** Seasons the console can search, newest first. */
-export const SEARCH_SEASONS = Array.from({ length: CURRENT_SEASON - 2021 + 1 }, (_, i) => CURRENT_SEASON - i);
+export const SEARCH_SEASONS = Array.from({ length: CURRENT_SEASON - FIRST_SEASON + 1 }, (_, i) => CURRENT_SEASON - i);

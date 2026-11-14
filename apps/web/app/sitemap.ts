@@ -24,7 +24,7 @@ import { demoGames } from "../lib/demo-games";
 // its sitemap entry come and go together. Left out: the invented sample pages and sample games, search, the offline
 // page, the embeds (all noindex), and the fan, sign-in and admin pages (privacy and terms too: they exist only while fan
 // accounts are on).
-const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "results", "rankings", "rankings/how", "standings", "programs", "records", "championships", "matchup", "seasons"];
+const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "playoffs/this-round", "results", "rankings", "rankings/how", "standings", "programs", "records", "championships", "matchup", "seasons"];
 const SAMPLE_GAMES = new Set(demoGames.map((g) => g.id));
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

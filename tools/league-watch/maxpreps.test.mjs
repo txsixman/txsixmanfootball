@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, gameNight, inProgressShape, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -36,10 +36,33 @@ test("reads home, away, score and date; skips deleted games", () => {
   assert.equal(later.played, false);
 });
 
+test("a 0-0 result is no score: the game is not played and not written as a final; a 7-7 tie is a result", () => {
+  const final = (hs, as) => contest({ teams: [team({ name: "Cedar Gap", homeAway: 0, score: hs }), team({ name: "Salt Fork", homeAway: 1, score: as })], start: "2026-10-23T19:00:00", hasResult: true });
+  const [blank] = parseSchedule(page([final(0, 0)]));
+  assert.deepEqual([blank.played, blank.live, blank.home.score, blank.away.score], [false, false, null, null]);
+  const bySlug = new Map([["cedar-gap", { school: "Cedar Gap", division: "II" }], ["salt-fork", { school: "Salt Fork", division: "II" }]]);
+  for (const t of [blank.home, blank.away]) t.slug = match(t, bySlug, {});
+  assert.equal(toCsv([blank], bySlug), `${COLUMNS}\n`);
+  const [tie] = parseSchedule(page([final(7, 7)]));
+  assert.deepEqual([tie.played, tie.home.score, tie.away.score], [true, 7, 7]);
+});
+
 test("fails loudly when the page shape changes", () => {
   assert.throws(() => parseSchedule("<html></html>"), /no __NEXT_DATA__/);
   assert.throws(() => parseSchedule(page([contest({ teams: [team({ name: "A", homeAway: 0 })], start: "2026-09-01" })])), /exactly two teams/);
   assert.throws(() => parseSchedule(page([contest({ teams: [team({ name: "A", homeAway: 0 }), team({ name: "B", homeAway: 1 })], start: null })])), /without a date/);
+});
+
+test("a played game against a team no longer listed: a new shape now, skipped and counted for a past season", () => {
+  const gone = team({ name: "Gone", homeAway: 1, score: 6, contestId: "c9" });
+  gone[14] = null;
+  gone[13] = null;
+  const html = page([played, contest({ teams: [team({ name: "Cedar Gap", homeAway: 0, score: 40, contestId: "c9" }), gone], start: "2019-09-06T19:30:00", hasResult: true })]);
+  assert.throws(() => parseSchedule(html), /team without a name or page/);
+  const skipped = [];
+  const games = parseSchedule(html, { onUnnamed: (date) => skipped.push(date) });
+  assert.deepEqual(games.map((g) => g.home.name), ["Salt Fork"]);
+  assert.deepEqual(skipped, ["2019-09-06"]);
 });
 
 test("writes played games only, with our school names and the game page as source", () => {
@@ -66,6 +89,15 @@ test("matches on an alias, the name, or city and name, in Texas only", () => {
   assert.equal(match(t("Jayton", "Jayton", "u", "OK"), bySlug, {}), null);
   assert.equal(match(t("Valley", "Elsewhere"), bySlug, {}), null);
   assert.equal(match(t("Grady", "X", "g"), bySlug, { g: ["Lenorah Grady", "Jayton"] }), "lenorah-grady"); // listed twice: first wins
+});
+
+test("a school whose page an alias names matches that page only, never a namesake elsewhere", () => {
+  const bySlug = new Map([["community-christian", {}], ["jayton", {}]]);
+  const aliases = { "mw/": "Community Christian" };
+  const t = (name, city, url) => ({ name, city, url, state: "TX" });
+  assert.equal(match(t("Community Christian", "Mineral Wells", "mw/"), bySlug, aliases), "community-christian");
+  assert.equal(match(t("Community Christian", "Orange", "orange/"), bySlug, aliases), null);
+  assert.equal(match(t("Jayton", "Jayton", "j/"), bySlug, aliases), "jayton"); // a school with no alias still matches by name
 });
 
 test("maps MaxPreps playoff brackets to our leagues, and skips the rest", () => {
@@ -148,6 +180,29 @@ test("a game listed twice is one game; twice with different scores, it is left o
   const odd = dedupe([g("c1", 0, 8), g("c2", 0, 2)]);
   assert.equal(odd.kept.length, 0);
   assert.equal(odd.conflicts.length, 1);
+});
+
+test("the same game a day or two apart is one game: the earlier stays and gets the bracket; three days apart is two", async () => {
+  const { dedupe } = await import("./maxpreps.mjs");
+  const g = (id, date, hs, as, bracket = null, flip = false) => ({
+    id, date, played: true, bracket,
+    home: { slug: flip ? "salt-fork" : "cedar-gap", score: flip ? as : hs }, away: { slug: flip ? "cedar-gap" : "salt-fork", score: flip ? hs : as },
+  });
+  const out = dedupe([g("c2", "2018-11-23", 61, 14, { league: "UIL" }, true), g("c1", "2018-11-22", 61, 14)]);
+  assert.deepEqual(out.kept.map((x) => x.id), ["c1"]);
+  assert.deepEqual(out.kept[0].bracket, { league: "UIL" });
+  assert.deepEqual(out.repeats, ["2018-11-23 cedar-gap at salt-fork 61-14, a copy of the game on 2018-11-22"]);
+  assert.equal(dedupe([g("c1", "2018-10-19", 52, 24), g("c2", "2018-10-22", 52, 24)]).kept.length, 2);
+});
+
+test("a game with the same school on both sides is never written, and is named", async () => {
+  const { dedupe } = await import("./maxpreps.mjs");
+  const side = (city, score) => ({ slug: "community-christian", name: "Community Christian", city, score });
+  const self = { id: "c9", date: "2019-08-30", played: true, bracket: null, home: side("Mineral Wells", 81), away: side("Orange", 75) };
+  const real = { id: "c1", date: "2019-08-30", played: true, bracket: null, home: { slug: "jayton", score: 40 }, away: { slug: "guthrie", score: 20 } };
+  const out = dedupe([self, real]);
+  assert.deepEqual(out.kept.map((g) => g.id), ["c1"]);
+  assert.deepEqual(out.selfGames, ["2019-08-30 Community Christian (Mineral Wells) vs Community Christian (Orange), both matched to community-christian"]);
 });
 
 test("a game against a school outside our alignments is kept for the ratings, once, never a placeholder opponent", () => {
@@ -337,9 +392,64 @@ test("live rows: tonight's still-unscored bracket games only, our slugs, the sit
   assert.equal(rows[0].game_key, siteKey("2026-11-13", "Salt Fork", "Cedar Gap"));
 });
 
+test("a past season's 11-man games: the page's own division says which football, and six-man wins a disagreement", () => {
+  const page = (name) => `<script>{"stateDivisionName":"${name}"}</script>`;
+  assert.equal(footballOf(page("Division 1A 6 Man 2")).kind, "6");
+  assert.equal(footballOf(page("Division TAPPS II 6 Man")).kind, "6");
+  assert.equal(footballOf(page("Division 6 Man")).kind, "6");
+  for (const name of ["Division 2A-2", "Division 5A", "Division TAPPS III", "Division TAPPS IV", "Division TCAF 11", "Division TCAL 11"]) {
+    assert.equal(footballOf(page(name)).kind, "11", name);
+  }
+  for (const name of ["", "Division TAIAO 1", "Division TCAF 1", "Division TCAL II"]) assert.equal(footballOf(page(name)).kind, null, name);
+  assert.equal(footballOf("<html>no division</html>").kind, null);
+
+  const football = new Map([["a", { kind: "11" }], ["b", { kind: "11" }], ["s", { kind: "6" }], ["u", { kind: null }]]);
+  const game = (home, away) => ({ home: { url: home }, away: { url: away } });
+  assert.equal(isElevenMan(game("a", "b"), football), true);
+  assert.equal(isElevenMan(game("a", "u"), football), true);
+  assert.equal(isElevenMan(game("a", "not-read"), football), true);
+  assert.equal(isElevenMan(game("a", "s"), football), false); // a six-man school plays six-man
+  assert.equal(isElevenMan(game("s", "u"), football), false);
+  assert.equal(isElevenMan(game("u", "not-read"), football), false);
+});
+
 test("in CI a read refuses to run without PRIVATE_DATA, naming it; a local run and a CI run with it go ahead", () => {
   assert.throws(() => requirePrivateData({ CI: "true" }), /PRIVATE_DATA is not set/);
   assert.throws(() => requirePrivateData({ CI: "true", PRIVATE_DATA: "" }), /PRIVATE_DATA/);
   assert.doesNotThrow(() => requirePrivateData({ CI: "true", PRIVATE_DATA: "/w/private" }));
   assert.doesNotThrow(() => requirePrivateData({}));
+});
+
+test("a game-day read also looks for the last 3 game nights' unscored bracket games (ADR 0030), and merges their finals", () => {
+  const P = `league,${COLUMNS}`;
+  const row = (date, home, away, score = ",") => `UIL,I,area,${date},${home},${away},,${score},${score === "," ? "" : "unknown"},,https://www.maxpreps.com/tx/football/game/x/?c=${home},`;
+  const playoffsText = [
+    P,
+    row("2026-11-05", "Old Night", "Older"), // four game nights back: dropped
+    row("2026-11-06", "Fri A", "Fri B"),
+    row("2026-11-07", "Sat A", "Sat B", "40,8"), // scored: not due
+    row("2026-11-12", "Thu A", "Thu B"),
+    row("2026-11-13", "Tonight A", "Tonight B"),
+    row("2026-11-14", "Tomorrow A", "Tomorrow B"), // after tonight: not due
+  ].join("\n") + "\n";
+  const homes = (rows) => rows.map((r) => r.home);
+  assert.deepEqual(homes(dueGames(playoffsText, "2026-11-13")), ["Fri A", "Thu A", "Tonight A"]);
+  assert.deepEqual(homes(dueGames(playoffsText, "2026-11-13", 0)), ["Tonight A"]);
+  assert.deepEqual(homes(tonightsGames(playoffsText, "2026-11-13")), ["Tonight A"]);
+  // A morning with no game tonight still catches up on the night before.
+  assert.deepEqual(homes(dueGames(playoffsText, "2026-11-08")), ["Old Night", "Fri A"]);
+
+  // Thursday's final, read on Friday, fills Thursday's row and joins games.csv.
+  const bySlug = new Map(["thu-a", "thu-b"].map((s) => [s, { school: s === "thu-a" ? "Thu A" : "Thu B", division: "I" }]));
+  const t = (slug, score) => ({ slug, score });
+  const merged = mergeTonight({
+    playoffsText,
+    gamesText: `${COLUMNS}\n`,
+    finals: [{ date: "2026-11-12", played: true, home: t("thu-b", 30), away: t("thu-a", 28), gameUrl: "https://www.maxpreps.com/tx/football/game/thu/?c=t" }],
+    bySlug,
+  });
+  assert.equal(merged.filled, 1);
+  assert.match(merged.playoffs, /2026-11-12,Thu A,Thu B,,28,30,unknown/);
+  assert.deepEqual(homes(dueGames(merged.playoffs, "2026-11-13")), ["Fri A", "Tonight A"]);
+  assert.equal(merged.games.trim().split("\n").length, 2);
 });

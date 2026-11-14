@@ -5,6 +5,7 @@ import type { SeasonResult } from "@/lib/games";
 import { projectionParts } from "@/lib/projection";
 import { signed } from "@/lib/signed";
 import { MIN_SURPRISE, surpriseOf } from "@/lib/why-moved";
+import { FIRST_SEASON } from "@/lib/season";
 
 // What a game page adds to the score for a robot-read game, on its own page and on a current-season playoff game's page.
 // Words are rating, projected margin and win probability (never spreads, lines or odds), and nothing here names a
@@ -76,7 +77,6 @@ export function GoingInSection({ away, home, detail }: { away: string; home: str
           ))}
         </tbody>
       </table>
-      <p className="pt-1 text-[13px] text-muted">Records from season scores, not confirmed here.</p>
     </Section>
   );
 }
@@ -92,7 +92,7 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
             <Link href={m.href} className="grid min-h-14 grid-cols-[6.75rem_1fr_auto] items-center gap-x-3 py-1 hover:bg-panel">
               <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(m.date)}</span>
               <span className="min-w-0 text-[15px] leading-5 text-ink">
-                {m.away} at {m.home}
+                {m.away} vs {m.home}
               </span>
               <span className="font-num text-[19px] font-bold tabular-nums text-ink">{m.forfeit ? "Forfeit" : `${m.awayScore}-${m.homeScore}`}</span>
             </Link>
@@ -100,18 +100,18 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
         ))}
       </ul>
       <p className="pt-1 text-[13px] text-muted">
-        {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first. Scores are not confirmed here and may change.
+        {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first.
       </p>
     </>
   );
 }
 
-/** Earlier games of the two programs, 2021 on, each on its own page. Away team first, like every results list. */
+/** Earlier games of the two programs, FIRST_SEASON on, each on its own page. Away team first, like every results list. */
 export function MeetingsSection({ detail }: { detail: GameDetail }) {
   return (
     <Section id="meetings" title="Earlier meetings">
       {detail.meetings.total === 0 ? (
-        <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since 2021.</p>
+        <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since {FIRST_SEASON}.</p>
       ) : (
         <MeetingsList detail={detail} />
       )}

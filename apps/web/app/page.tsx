@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { loadAlignments, slugify } from "@/lib/alignments";
+import { loadBrackets } from "@/lib/brackets";
 import { homeDescription } from "@/lib/descriptions";
 import { loadGames } from "@/lib/games";
 import { loadFinals } from "@/lib/champions";
@@ -56,13 +57,16 @@ function Top({ title, href, teams, identities }: {
 }
 
 export default async function Home() {
-  const [ranked, finals, identities, alignments, chances, tonight, review] = await Promise.all([
-    loadRanked(), loadFinals(), loadIdentities(), loadAlignments(), loadTitleChances(), loadNight(), latestReview(),
+  const [ranked, finals, identities, alignments, chances, tonight, review, brackets] = await Promise.all([
+    loadRanked(), loadFinals(), loadIdentities(), loadAlignments(), loadTitleChances(), loadNight(), latestReview(), loadBrackets(),
   ]);
+  // This round's page is linked while a playoff game is still to be played (app/playoffs/this-round).
+  const playoffsOn = brackets.some((b) => b.rounds.some((r) => r.games.some((g) => g.homeScore == null && !g.forfeit)));
   const current = new Set(alignments.map((a) => a.slug));
   // The closest projected games still to play in each organization: the ones most worth watching.
+  // A game dated before tonight with no score yet is waiting on its score, not still to play: it is left out.
   const upcoming = (await loadGames(alignments))
-    .filter((g) => g.state === "scheduled" && g.projectedMargin != null)
+    .filter((g) => g.state === "scheduled" && g.projectedMargin != null && !(g.date && g.date < tonight.night))
     .sort((a, b) => a.projectedMargin! - b.projectedMargin!);
   const watch = ORGS.map((org) => ({ org, games: upcoming.filter((g) => orgOfGame(g.league) === org).slice(0, WATCH) })).filter((w) => w.games.length);
   // Ranks counted inside the list shown: teams arrive best first.
@@ -86,11 +90,16 @@ export default async function Home() {
 
       <MyTeams />
 
-      {/* Tonight is linked only when the night has games, and the week in review is the newest week with a game: both decided when the site is built. */}
+      {/* Tonight is linked only when the night has games, this round only while a playoff game is still to play, and the week in review is the newest week with a game: both decided when the site is built. */}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         {tonight.count > 0 && (
           <Link href="/scores/tonight" className="btn w-full sm:w-auto">
             Tonight, {nightTitle(tonight.night)}: {tonight.count} {tonight.count === 1 ? "game" : "games"}
+          </Link>
+        )}
+        {playoffsOn && (
+          <Link href="/playoffs/this-round" className="btn w-full sm:w-auto">
+            Playoffs: this round
           </Link>
         )}
         {review && (
@@ -103,7 +112,7 @@ export default async function Home() {
       {watch.length > 0 && (
         <section aria-labelledby="watch" className="mt-6">
           <h2 id="watch" className="section-title">Games to watch</h2>
-          <p className="section-note">The closest playoff games still to play in each organization, by projected margin. The percentage is the favorite&rsquo;s win probability.</p>
+          <p className="section-note">The closest playoff games still to play in each organization, by projected margin, with the projected team&rsquo;s chance to win.</p>
           {watch.map(({ org, games }) => (
             <section key={org.slug} aria-labelledby={`watch-${org.slug}`} className="mt-3">
               <h3 id={`watch-${org.slug}`} className="sub-title">{org.label}</h3>
@@ -119,7 +128,7 @@ export default async function Home() {
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-[15px] font-semibold leading-snug text-ink">
-                            {g.away.name} at {g.home.name}
+                            {g.away.name} vs {g.home.name}
                           </span>
                           <span className="block text-[13px] text-muted">{g.league}</span>
                           <span className="block text-[13px] font-semibold text-navy">
@@ -136,6 +145,7 @@ export default async function Home() {
           ))}
           <div className="flex flex-wrap gap-x-5">
             <Link href="/scores" className="link-more">Playoff scores</Link>
+            <Link href="/playoffs/this-round" className="link-more">This round</Link>
             <Link href="/playoffs" className="link-more">Playoff brackets</Link>
           </div>
         </section>

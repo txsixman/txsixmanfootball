@@ -1,7 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { FIRST_SEASON } from "../lib/season";
 
-// A series page: the games of one pair of programs, 2021 on, at /series/<a>/<b> with the slugs in alphabetical order. The
+// A series page: the games of one pair of programs, FIRST_SEASON on, at /series/<a>/<b> with the slugs in alphabetical order. The
 // record comes from unconfirmed scores (ADR 0013), so the page says so and no game row names a winner (ADR 0004); a forfeit
 // shows the word, never 1-0 or 2-0; and no page names a source.
 test.use({ serviceWorkers: "block" });
@@ -37,7 +38,7 @@ test("the page names both teams, shows both crests, and links each to its progra
     // The logo, or the badge in the school's colors where it has none: either way the crest is drawn.
     await expect(link.locator("img, span[aria-hidden=true]").first()).toBeVisible();
   }
-  await expect(page.getByText("Season scores, not confirmed here.").first()).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("not confirmed"); // a final is confirmed (ADR 0040)
   await expect(page.getByText("A forfeit counts as a win or a loss.")).toBeVisible();
 });
 
@@ -45,7 +46,7 @@ test("the description fits, names no score or winner, and the canonical link is 
   await open(page, JAYTON);
   const description = await page.locator('meta[name="description"]').getAttribute("content");
   expect(description!.length).toBeLessThanOrEqual(160);
-  expect(description).toMatch(/^Guthrie vs Jayton six-man football: \d+ meetings since 2021\./);
+  expect(description).toMatch(new RegExp(`^Guthrie vs Jayton six-man football: \\d+ meetings since ${FIRST_SEASON}\\.`));
   expect(description).not.toMatch(/\d+-\d+|\b(won|beat|defeated|winner|unconfirmed)\b/i);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://txsixmanfootball.com/series/guthrie/jayton");
 });
@@ -54,7 +55,7 @@ for (const pair of [JAYTON, FORFEIT, LONG]) {
   test(`${pair.join(" vs ")}: the record is the first team's, and it adds up to the meetings listed`, async ({ page }) => {
     await open(page, pair);
     const line = (await page.locator("header p").filter({ hasText: /against/ }).textContent())!;
-    const [, won, lost, tied = "0", meetings] = line.match(/(\d+)-(\d+)(?:-(\d+))? for .+ against .+ since 2021 · (\d+) meetings/)!.map((x, i) => (i ? x : undefined)) as string[];
+    const [, won, lost, tied = "0", meetings] = line.match(new RegExp(`(\\d+)-(\\d+)(?:-(\\d+))? for .+ against .+ since ${FIRST_SEASON} · (\\d+) meetings`))!.map((x, i) => (i ? x : undefined)) as string[];
     const list = rows(page);
     await expect(list).toHaveCount(Number(meetings));
     expect(Number(won) + Number(lost) + Number(tied)).toBe(Number(meetings));
@@ -63,7 +64,7 @@ for (const pair of [JAYTON, FORFEIT, LONG]) {
     const labels = await list.getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("aria-label")!));
     let [w, l, t, forfeits] = [0, 0, 0, 0];
     for (const label of labels) {
-      const m = label.match(/^[A-Za-z]+ \d+, \d{4}, (.+) at (.+?), (forfeit|(\d+)-(\d+)), game page$/)!;
+      const m = label.match(/^[A-Za-z]+ \d+, \d{4}, (.+) vs (.+?), (forfeit|(\d+)-(\d+)), game page$/)!;
       expect(m, label).not.toBeNull();
       if (m[3] === "forfeit") {
         forfeits += 1;
@@ -208,11 +209,11 @@ test("a game page links to the two programs' series page, and a pair without one
   await page.goto(`/series/${JAYTON.join("/")}`);
   const game = await page.getByRole("main").locator('a[href^="/scores/"]').first().getAttribute("href");
   await page.goto(game!);
-  const link = page.getByRole("link", { name: /^Every (Guthrie and Jayton|Jayton and Guthrie) game since 2021$/ });
+  const link = page.getByRole("link", { name: new RegExp(`^Every (Guthrie and Jayton|Jayton and Guthrie) game since ${FIRST_SEASON}$`) });
   await expect(link).toHaveAttribute("href", `/series/${JAYTON.join("/")}`);
   expect((await link.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
   await page.goto("/scores/g1"); // an invented sample game: no series
-  await expect(page.getByRole("link", { name: /game since 2021$/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: new RegExp(`game since ${FIRST_SEASON}$`) })).toHaveCount(0);
 });
 
 test("each meeting's game page has a title of its own: the teams and the date", async ({ page }) => {
@@ -224,6 +225,6 @@ test("each meeting's game page has a title of its own: the teams and the date", 
     titles.push(await page.title());
   }
   expect(titles.length).toBeGreaterThanOrEqual(3);
-  for (const t of titles) expect(t).toMatch(/^(Guthrie at Jayton|Jayton at Guthrie), [A-Z][a-z]{2} \d{1,2}, \d{4} \| TX Six-Man Football$/);
+  for (const t of titles) expect(t).toMatch(/^(Guthrie vs Jayton|Jayton vs Guthrie), [A-Z][a-z]{2} \d{1,2}, \d{4} \| TX Six-Man Football$/);
   expect(new Set(titles).size).toBe(titles.length);
 });

@@ -9,7 +9,7 @@ export type EmbedCrest =
   | { kind: "badge"; text: string; bg: string; fg: string; stripe: string | null };
 
 /** One game as the embed shows it: the program page's own row (lib/program-games.ts). `score` is already "Forfeit" for a forfeit. */
-export type EmbedGame = { status: string; home: boolean; opponent: string; score: string | null; note?: string };
+export type EmbedGame = { status: string; home: boolean; opponent: string; score: string | null; note?: string; playoff?: true };
 
 export type EmbedView = {
   slug: string;
@@ -23,6 +23,8 @@ export type EmbedView = {
   /** The last results, latest first. */
   recent: EmbedGame[];
   next: EmbedGame | null;
+  /** The next game is dated before tonight: it is waiting on its score, not still to play. */
+  nextWaiting?: boolean;
 };
 
 /** The program page the embed links to: absolute, because the embed is shown on another site. */
@@ -84,7 +86,7 @@ a{display:inline-flex;align-items:center;min-height:44px;font-weight:600;color:v
 `.replace(/\n/g, "");
 
 const gameRow = (g: EmbedGame) =>
-  `<li class="g"><span class="d">${escapeHtml(g.status)}</span><span>${g.home ? "vs" : "at"} ${escapeHtml(g.opponent)}</span>` +
+  `<li class="g"><span class="d">${escapeHtml(g.status)}</span><span>${g.home || g.playoff ? "vs" : "at"} ${escapeHtml(g.opponent)}</span>` +
   `${g.score ? `<b class="s">${escapeHtml(g.score)}</b>` : "<span></span>"}${g.note ? `<span class="n">${escapeHtml(g.note)}</span>` : ""}</li>`;
 
 const crestHtml = (c: EmbedCrest) =>
@@ -105,9 +107,9 @@ export function renderEmbed(v: EmbedView): string {
     `<header class="band" style="background:${color(v.band.bg, "#0a2a5e")};color:${color(v.band.fg, "#ffffff")};border-color:${color(v.band.stripe ?? v.band.bg, "#bf1e2e")}">` +
     `${crestHtml(v.crest)}<div><h1>${school}</h1>${v.record ? `<p class="rec"><b>${escapeHtml(v.record)}</b> ${v.season} record</p>` : ""}</div></header>` +
     `<main>${v.recent.length ? `<section aria-labelledby="r"><h2 id="r">Latest results</h2><ul>${v.recent.map(gameRow).join("")}</ul></section>` : ""}` +
-    `${v.next ? `<section aria-labelledby="n"><h2 id="n">Next game</h2><ul>${gameRow(v.next)}</ul></section>` : ""}` +
+    `${v.next ? `<section aria-labelledby="n"><h2 id="n">${v.nextWaiting ? "Score not in yet" : "Next game"}</h2><ul>${gameRow(v.next)}</ul></section>` : ""}` +
     `${empty ? `<p class="fine">No ${v.season} games on record yet.</p>` : ""}` +
-    `${v.recent.length ? `<p class="fine">Scores are not confirmed here.</p>` : ""}</main>` +
+    `</main>` +
     `<footer><a href="${escapeHtml(href)}" target="_blank" rel="noopener">Full schedule on TX Six-Man Football</a></footer></body></html>`
   );
 }
