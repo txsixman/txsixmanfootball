@@ -3,8 +3,10 @@
 // on a game-day tick, after the MaxPreps night read:
 //   node tools/league-watch/davecampbells.mjs --live <playoffs.csv> --merge <live.json>
 // reads tonight's still-unscored bracket games (the same Central game-night rule as maxpreps.mjs --tonight), asks the
-// feed for the Live and Upcoming games of one mapped team per game, and merges the games under way into <live.json>
-// (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores, period and forfeit flags: never
+// feed for the Live, Upcoming and finished games of one mapped team per game, and merges the games under way or just
+// finished (ADR 0042) into <live.json>
+// (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores and forfeit flags (the period only
+// for the run summary's counts, ADR 0042): never
 // a spread, ranking, poll or `winner` field. Nothing is saved to this repo. A 403 or 429 stops the read at once.
 // By hand, `--fields` after the same two flags writes nothing and prints, for the games under way, the field names and how
 // many games hold each clock, period or update-time format (to find a field such as the game clock), then each of tonight's
@@ -93,16 +95,22 @@ export async function teamId(client, theirSlug, seasonId) {
   return null;
 }
 
-/** A team's games that are live or still to come this season. */
+/** A team's games that are live, still to come or finished this season (finished: a game drops out of Live once it ends,
+ * often long before our own final is read, and the read keeps its last score; ADR 0042). */
 export async function liveAndUpcoming(client, seasonId, id) {
-  const data = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&status=Live%2CUpcoming`);
+  const status = encodeURIComponent(["Live", "Upcoming", ...FINAL_STATUSES].join(","));
+  const data = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&status=${status}&size=50`);
   return Array.isArray(data?.items) ? data.items : [];
 }
 
-/** The period as the site shows it (letters, digits and spaces only, at most 12): "Q1" to "Q4", "Halftime", "OT"; else null. */
+/** The period as the site would show it (letters, digits and spaces only, at most 12): "Q1" to "Q4", "Halftime", or "OT"
+ * when the feed says so in words; else null. A number above 4 is null, not "OT": on Nov 13, 2026 two games of the same
+ * kickoff slot read 5 nearly two hours in, an end-of-game state more likely than overtime. NOT USED for live rows (ADR
+ * 0042): the feed's period lagged the score (Q1 at 75-6, 86 minutes in), so rows carry none. Kept, with its tests, for
+ * when the period-by-minutes log shows the feed can be trusted. */
 export function periodLabel(summary) {
   const p = summary?.period;
-  if (typeof p === "number" && Number.isInteger(p)) return p >= 1 && p <= 4 ? `Q${p}` : p > 4 ? "OT" : null;
+  if (typeof p === "number" && Number.isInteger(p)) return p >= 1 && p <= 4 ? `Q${p}` : null;
   if (typeof p !== "string") return null;
   const t = p.trim();
   if (/^half(time)?$/i.test(t)) return "Halftime";
@@ -112,10 +120,6 @@ export function periodLabel(summary) {
   return null;
 }
 
-/** `--live <playoffs.csv> --fields` (by hand, to find a field; writes nothing): for the games under way, each distinct item
- * shape (field names only, three levels deep), and for each field whose name speaks of the clock, the period or an update
- * time (clock, time, remain, period, quarter, updated), how many games hold each value format (digits shown as 9, so
- * "4:12" is "9:99"), with one example. Never a team, a score or any other value. */
 /** The game clock's formats among the games under way, for each live run's summary: "19 null" or "12 \"9:99\", 7 null"
  * (digits shown as 9). It is how we learn the night the feed first fills summary.periodRemainingTime. Never a value. */
 export function clockFormats(items) {
@@ -148,6 +152,10 @@ export function dueReport(due, { date, theirs, ours, listed }) {
   });
 }
 
+/** `--live <playoffs.csv> --fields` (by hand, to find a field; writes nothing): for the games under way, each distinct item
+ * shape (field names only, three levels deep), and for each field whose name speaks of the clock, the period or an update
+ * time (clock, time, remain, period, quarter, updated), how many games hold each value format (digits shown as 9, so
+ * "4:12" is "9:99"), with one example. Never a team, a score or any other value. */
 export function liveFields(items) {
   const shapes = new Set();
   const formats = new Map();
@@ -172,6 +180,44 @@ export function liveFields(items) {
   return [`${live.length} games under way`, ...shapes, ...[...formats].sort().map(([k, f]) => `${k}: ${f.n} game(s), e.g. ${JSON.stringify(f.example)}`)];
 }
 
+/** Minutes-since-kickoff buckets for the period log. */
+const MINUTE_BUCKETS = [[0, 30], [30, 60], [60, 90], [90, 120], [120, Infinity]];
+
+/**
+ * The run summary's evidence on the feed's period (ADR 0042): for the games under way, how many hold each raw
+ * summary.period value in each band of minutes since kickoff ("0-30: 1 x4, 2 x1; 30-60: ..."). Never a team or a score.
+ * A trustworthy period would climb with the minutes (1 early, 4 late); on Nov 13, 2026 it did not.
+ */
+export function periodByMinutes(items, now = new Date()) {
+  const bands = MINUTE_BUCKETS.map(([lo, hi]) => ({ name: hi === Infinity ? `${lo}+` : `${lo}-${hi}`, lo, hi, counts: new Map() }));
+  for (const item of items.filter(isLive)) {
+    const kickoff = Date.parse(String(item?.scheduledKickoff ?? ""));
+    if (Number.isNaN(kickoff)) continue;
+    const minutes = (now.getTime() - kickoff) / 60_000;
+    const band = bands.find((b) => minutes >= b.lo && minutes < b.hi);
+    if (!band) continue;
+    const p = item?.summary?.period;
+    const value = p === null || p === undefined ? "none" : String(p).replace(/[^A-Za-z0-9 ]/g, "").slice(0, 12) || "other";
+    band.counts.set(value, (band.counts.get(value) ?? 0) + 1);
+  }
+  const used = bands.filter((b) => b.counts.size);
+  if (!used.length) return "no game under way";
+  return used.map((b) => `${b.name} min: ${[...b.counts].sort(([x], [y]) => x.localeCompare(y)).map(([v, n]) => `${v} x${n}`).join(", ")}`).join("; ");
+}
+
+/**
+ * The read sees the game in the fourth quarter or later (ADR 0043): the feed's raw period is 4 or more, or 2 hours have
+ * passed since kickoff. A game with no kickoff goes by the period alone. The raw period is used only here, never stored
+ * or shown (ADR 0042). live_scores() calls a late game whose score has not changed for 60 minutes final (migration 0020).
+ */
+export const LATE_AFTER_MS = 2 * 3600_000;
+export function isLate(item, now = new Date()) {
+  const p = Number(item?.summary?.period);
+  if (Number.isFinite(p) && p >= 4) return true;
+  const kickoff = Date.parse(String(item?.scheduledKickoff ?? ""));
+  return !Number.isNaN(kickoff) && now.getTime() - kickoff >= LATE_AFTER_MS;
+}
+
 /** A game under way: the feed's status says live, in progress or halftime (any case, spaces or dashes). */
 export function isLive(item) {
   const s = String(item?.status ?? item?.summary?.status ?? "").toLowerCase().replace(/[\s_-]/g, "");
@@ -190,18 +236,25 @@ export function sameSchool(schoolName, ourSlug) {
  * Tonight's games under way as live rows (packages/db/live.mjs): games of `date` (Central) that are one of tonight's
  * still-unscored bracket games (`due`). A team is ours by the map (`ours`: their slug to our slug); when only one team is
  * mapped, the other is that team's opponent in tonight's bracket row, and only if the feed's school name matches it.
- * Scores are set in the bracket row's own home and away order. Skipped: a forfeit, a score outside 0 to 200, and a 0-0
- * with no period (a game may list 0-0 before kickoff). One row a game.
+ * Scores are set in the bracket row's own home and away order. A game the feed calls finished (Final, Completed or
+ * Finished) is kept with its last score and `finished: true` (ADR 0042): pages show it as "Final" (ADR 0043) until our
+ * own final is read, which takes it off tonight's due list. A game in the fourth quarter or later (isLate) carries
+ * `late: true`, so live_scores() can call it final once its score sits unchanged for an hour (ADR 0043).
+ * Skipped: a forfeit, a score outside 0 to 200, a 0-0
+ * (a game may list 0-0 before kickoff, and the period that would tell is not trusted) and a finished 0-0. No row carries a
+ * period: the feed's lagged the score on Nov 13, 2026 (ADR 0042), so pages say "Live" with no quarter. One row a game.
  */
 export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() }) {
   const rows = new Map();
   for (const m of matchTonight(items, { date, due, ours })) {
     const { item, key, row, h, a, hs, as } = m;
-    if (!isLive(item) || rows.has(key) || h.forfeited === true || a.forfeited === true) continue;
+    const finished = !isLive(item) && isFinal(item);
+    if (!(isLive(item) || finished) || rows.has(key) || isForfeit(item)) continue;
     const [hScore, aScore] = [score(h.score ?? item.summary?.homeScore), score(a.score ?? item.summary?.awayScore)];
     if (hScore === null || aScore === null) continue;
-    const period = periodLabel(item.summary);
-    if (hScore === 0 && aScore === 0 && !period) continue;
+    // The feed's period is not trusted (ADR 0042): never stored. See periodByMinutes for the evidence log.
+    const period = null;
+    if (hScore === 0 && aScore === 0) continue;
     // The bracket row's home and away, whatever the feed calls them.
     const flip = slugify(row.home) !== hs;
     rows.set(key, {
@@ -211,6 +264,8 @@ export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() 
       home_score: flip ? aScore : hScore,
       away_score: flip ? hScore : aScore,
       period,
+      ...(finished && { finished: true }),
+      ...(isLate(item, readAt) && { late: true }),
       read_at: readAt.toISOString(),
     });
   }
@@ -262,12 +317,22 @@ export function matchGames(items, { rows, ours }) {
 
 /**
  * Both sources' rows for tonight, one per game. Scores only go up during a game, so the row with the higher total is
- * the newer read; on a tie, the one that knows the period. Neither row names a winner, and every live score stays
- * unconfirmed on the site.
+ * the newer read; on a tie, the one that says finished, then the one that knows the period. Neither row names a winner,
+ * and every live score stays unconfirmed on the site.
  */
 export function mergeLive(first, second) {
   const total = (r) => r.home_score + r.away_score;
-  const better = (x, y) => (total(y) > total(x) || (total(y) === total(x) && !x.period && y.period) ? y : x);
+  const rank = (r) => [total(r), r.finished === true ? 1 : 0, r.period ? 1 : 0];
+  const ahead = (x, y) => {
+    const [a, b] = [rank(x), rank(y)];
+    const i = a.findIndex((v, n) => v !== b[n]);
+    return i >= 0 && b[i] > a[i];
+  };
+  // Late (ADR 0043) if either source's read says so: the MaxPreps rows never carry it.
+  const better = (x, y) => {
+    const row = ahead(x, y) ? y : x;
+    return x.late === true || y.late === true ? { ...row, late: true } : row;
+  };
   const byKey = new Map(first.map((r) => [r.game_key, r]));
   for (const r of second) byKey.set(r.game_key, byKey.has(r.game_key) ? better(byKey.get(r.game_key), r) : r);
   return [...byKey.values()].sort((x, y) => x.game_key.localeCompare(y.game_key));
@@ -558,8 +623,9 @@ async function live() {
   // Games listed but none of tonight's found: the item shape (names only) shows whether matching or the feed changed.
   if (items.length && !seen.size) console.warn(`none of tonight's games matched; a listed game looks like ${shapeOf(items[0])}`);
   const unmapped = due.filter((r) => !theirs.has(slugify(r.home)) && !theirs.has(slugify(r.away))).length;
-  summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.length} under way.`);
+  summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.filter((r) => !r.finished).length} under way, ${rows.filter((r) => r.finished).length} finished.`);
   summary(`Game clock (summary.periodRemainingTime) in the games under way: ${clockFormats(items)}.`);
+  summary(`Second source's period (not shown on pages) by minutes since kickoff, games under way: ${periodByMinutes(items)}.`);
 }
 
 // ---- Past seasons (ADR 0032: the same permission, which the owner confirmed covers past seasons) ----

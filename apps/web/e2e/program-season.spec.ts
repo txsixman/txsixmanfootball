@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { CURRENT_SEASON } from "../lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season";
 import { noLiveScores } from "./live-route";
 
 // A program's season (/programs/<slug>/<season>, 2021 on): the record, rank and last playoff round the program page's season
@@ -133,7 +133,7 @@ test("a forfeit shows the word, never 1-0 or 2-0, and counts in the record", asy
 });
 
 test("a season with no game on record, a year out of range and a malformed year are all 404", async ({ request }) => {
-  for (const path of ["/programs/dell-city/2024", "/programs/jayton/2019", "/programs/jayton/2099", "/programs/jayton/02025", "/programs/jayton/abc", "/programs/no-such-school/2025"]) {
+  for (const path of ["/programs/dell-city/2024", `/programs/jayton/${FIRST_SEASON - 1}`, "/programs/jayton/2099", "/programs/jayton/02025", "/programs/jayton/abc", "/programs/no-such-school/2025"]) {
     expect((await request.get(path)).status(), path).toBe(404);
   }
 });
@@ -154,7 +154,7 @@ test("the share card is the program's own: no image route of its own, the same c
 test("season navigation: the program's other seasons, the program page and the season's rankings", async ({ page }) => {
   await open(page, "/programs/jayton/2025");
   const nav = page.getByRole("navigation", { name: "Jayton seasons" });
-  await expect(nav.getByRole("link").filter({ hasText: /^\d{4}$/ })).toHaveText(["2026", "2024", "2023", "2022", "2021"]);
+  await expect(nav.getByRole("link").filter({ hasText: /^\d{4}$/ })).toHaveText(Array.from({ length: CURRENT_SEASON - FIRST_SEASON + 1 }, (_, i) => String(CURRENT_SEASON - i)).filter((y) => y !== "2025"));
   await expect(nav.getByRole("link", { name: "2024" })).toHaveAttribute("href", "/programs/jayton/2024");
   await expect(nav.getByRole("link", { name: /^Jayton program page/ })).toHaveAttribute("href", "/programs/jayton");
   await expect(nav.getByRole("link", { name: "2025 UIL rankings" })).toHaveAttribute("href", "/rankings/season/2025");

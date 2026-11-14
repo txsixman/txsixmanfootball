@@ -91,6 +91,15 @@ test("matches on an alias, the name, or city and name, in Texas only", () => {
   assert.equal(match(t("Grady", "X", "g"), bySlug, { g: ["Lenorah Grady", "Jayton"] }), "lenorah-grady"); // listed twice: first wins
 });
 
+test("a school whose page an alias names matches that page only, never a namesake elsewhere", () => {
+  const bySlug = new Map([["community-christian", {}], ["jayton", {}]]);
+  const aliases = { "mw/": "Community Christian" };
+  const t = (name, city, url) => ({ name, city, url, state: "TX" });
+  assert.equal(match(t("Community Christian", "Mineral Wells", "mw/"), bySlug, aliases), "community-christian");
+  assert.equal(match(t("Community Christian", "Orange", "orange/"), bySlug, aliases), null);
+  assert.equal(match(t("Jayton", "Jayton", "j/"), bySlug, aliases), "jayton"); // a school with no alias still matches by name
+});
+
 test("maps MaxPreps playoff brackets to our leagues, and skips the rest", () => {
   assert.deepEqual(bracketOf("2026 UIL Texas Football State Championships ", "2026 Football 6-Man 1A D2 "), { league: "UIL", division: "II" });
   assert.deepEqual(bracketOf("TAPPS 2026 High School Football Playoff", "TAPPS 6 Man III Large School"), { league: "TAPPS", division: "III Large School" });
@@ -171,6 +180,19 @@ test("a game listed twice is one game; twice with different scores, it is left o
   const odd = dedupe([g("c1", 0, 8), g("c2", 0, 2)]);
   assert.equal(odd.kept.length, 0);
   assert.equal(odd.conflicts.length, 1);
+});
+
+test("the same game a day or two apart is one game: the earlier stays and gets the bracket; three days apart is two", async () => {
+  const { dedupe } = await import("./maxpreps.mjs");
+  const g = (id, date, hs, as, bracket = null, flip = false) => ({
+    id, date, played: true, bracket,
+    home: { slug: flip ? "salt-fork" : "cedar-gap", score: flip ? as : hs }, away: { slug: flip ? "cedar-gap" : "salt-fork", score: flip ? hs : as },
+  });
+  const out = dedupe([g("c2", "2018-11-23", 61, 14, { league: "UIL" }, true), g("c1", "2018-11-22", 61, 14)]);
+  assert.deepEqual(out.kept.map((x) => x.id), ["c1"]);
+  assert.deepEqual(out.kept[0].bracket, { league: "UIL" });
+  assert.deepEqual(out.repeats, ["2018-11-23 cedar-gap at salt-fork 61-14, a copy of the game on 2018-11-22"]);
+  assert.equal(dedupe([g("c1", "2018-10-19", 52, 24), g("c2", "2018-10-22", 52, 24)]).kept.length, 2);
 });
 
 test("a game with the same school on both sides is never written, and is named", async () => {

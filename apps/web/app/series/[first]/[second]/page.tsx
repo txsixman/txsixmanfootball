@@ -17,7 +17,7 @@ import { Breadcrumbs } from "../../../breadcrumbs";
 import { Crest } from "../../../programs/crest";
 import { EdgeToEdge, SectionBar } from "../../../ui";
 
-// The games of one pair of programs, 2021 on (ADR 0013: records and scores may rest on unconfirmed robot-read results, so
+// The games of one pair of programs, FIRST_SEASON on (ADR 0013: records and scores may rest on unconfirmed robot-read results, so
 // the page says so and no game row names a winner, ADR 0004). The address is the two program slugs in alphabetical order;
 // the reversed address is not generated, so it answers 404 and the pair has one page.
 type Props = { params: Promise<{ first: string; second: string }> };

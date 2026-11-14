@@ -1,5 +1,6 @@
 // A program's history from its games and each season's ratings table. Pure: no file access and no imports but types, so
 // node can test it directly (scripts/program-history.test.mjs). lib/program-seasons.ts feeds it the data.
+import { ratedFromOutsideOnly } from "./outside-only.ts";
 
 /** One game of a school from its own side. `forfeit`: recorded 1-0 or 2-0 (lib/forfeit.ts); a page shows the word, never the score. */
 export type Meeting = { opponent: string; date: string; us: number; them: number; forfeit: boolean };
@@ -36,6 +37,8 @@ export type SeasonLine = {
   games: number;
   record: Tally | null;
   rating: number | null;
+  /** Rated only from games against teams outside our list (lib/outside-only.ts): the page says so instead of a 0-0 record. */
+  outsideOnly: boolean;
   /** Rank among its organization's teams that season; null for a team with too few games to be ranked (lib/rank-range.ts). */
   rank: number | null;
   /** Teams ranked in the organization that season. */
@@ -49,7 +52,7 @@ export type SeasonLine = {
  */
 export function seasonLine(input: {
   season: number;
-  row?: (Tally & { rating: number }) | undefined;
+  row?: (Tally & { rating: number; rated?: number; rated_outside?: number }) | undefined;
   meetings: Pick<Meeting, "us" | "them">[];
   rank?: number | undefined;
   of: number;
@@ -61,6 +64,7 @@ export function seasonLine(input: {
     games: meetings.length,
     record: row ? { won: row.won, lost: row.lost, tied: row.tied } : meetings.length ? tally(meetings) : null,
     rating: row ? row.rating : null,
+    outsideOnly: row ? ratedFromOutsideOnly(row) : false,
     rank: row && rank != null ? rank : null,
     of,
     playoff: playoff ?? null,

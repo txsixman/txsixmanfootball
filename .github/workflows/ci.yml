@@ -295,3 +295,19 @@ jobs:
             exit 0
           fi
           [ "$(echo "$NEEDS" | jq -r '.["web-pages"].result')" = success ]
+
+  # Every commit a pull request adds has the project's own address (or a GitHub bot's) as author and committer, so a
+  # personal address never reaches the public history (.github/scripts/commit-emails.sh). The address is never printed.
+  commit-emails:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Commit author and committer addresses
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: bash .github/scripts/commit-emails.sh "$BASE..$HEAD"

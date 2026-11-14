@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { noLiveScores } from "./live-route";
+import { skipReason, upcoming } from "./upcoming";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { demoGames } from "../lib/demo-games";
@@ -8,6 +9,9 @@ import { gameNight, isNight } from "../lib/game-night";
 import { normalCdf, project, projectionText } from "../lib/projection";
 import { chancesFor } from "../lib/title-chances";
 import { movement } from "../lib/ratings";
+import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season";
+
+const SEASONS = CURRENT_SEASON - FIRST_SEASON + 1; // seasons on file, FIRST_SEASON to now
 
 // No live-score request reaches the network (e2e/live-route.ts).
 noLiveScores(test, false);
@@ -226,10 +230,21 @@ test("the home page shows title chances for brackets down to their last four", a
 });
 
 test("upcoming playoff games show a projected margin and win probability, never betting words", async ({ page }) => {
-  await page.goto("/scores");
+  // Games still to play come from the season's data (e2e/upcoming.ts): each game night uses some up, the offseason has none.
+  const { projectedGames } = await upcoming();
+  if (!projectedGames) return test.skip(true, skipReason("no playoff game is still to play with a projection"));
+  await page.goto("/scores", { waitUntil: "networkidle" });
   const projected = page.getByText(/^Projected: .+ by \d+\+? · (>99|\d{2})% win probability$/);
-  expect(await projected.count()).toBeGreaterThan(5);
-  await expect(page.locator("body")).not.toContainText(/\b(spread|odds|lines?|bets?|betting|favorite)\b/i);
+  // The board shows one organization at a time: count each one's, and check each for betting words.
+  const buttons = page.getByRole("group", { name: "Show games from" }).getByRole("button");
+  let seen = await projected.count();
+  for (let i = 0, n = await buttons.count(); i < n; i++) {
+    await buttons.nth(i).click();
+    await expect(buttons.nth(i)).toHaveAttribute("aria-pressed", "true");
+    if (i > 0) seen += await projected.count();
+    await expect(page.locator("body")).not.toContainText(/\b(spread|odds|lines?|bets?|betting|favorite)\b/i);
+  }
+  expect(seen, "unplayed games with a projection on the board").toBeGreaterThan(0);
 });
 
 test("old ratings and champions links land on the new pages", async ({ page }) => {
@@ -486,10 +501,10 @@ test("a program page lists each season: record, place and the last playoff round
   await expect(trend.getByRole("img", { name: /^Rank in its organization from #\d+ in the week ending .+ to #\d+ in the week ending .+; best #\d+\.$/ })).toBeVisible();
   expect(await trend.locator("tbody tr").count()).toBeGreaterThanOrEqual(3);
   const seasons = page.getByRole("region", { name: "Season by season" });
-  await expect(seasons.getByRole("listitem")).toHaveCount(6);
+  await expect(seasons.getByRole("listitem")).toHaveCount(SEASONS);
   const last = seasons.getByRole("listitem").filter({ has: page.getByRole("link", { name: "2025 rankings" }) });
   await expect(last).toContainText("Playoffs: reached the state final");
-  await expect(seasons.getByText(/^\d+-\d+(-\d+)? from 2021 to 2026 · playoffs in \d of 6 seasons$/)).toBeVisible();
+  await expect(seasons.getByText(new RegExp(`^\\d+-\\d+(-\\d+)? from ${FIRST_SEASON} to ${CURRENT_SEASON} · playoffs in \\d of ${SEASONS} seasons$`))).toBeVisible();
   const rivals = page.getByRole("region", { name: "Most played" }).getByRole("listitem");
   expect(await rivals.count()).toBeGreaterThan(0);
   await expect(rivals.first()).toContainText(/\d+ games · last 20\d\d, \d+-\d+/);
@@ -593,7 +608,7 @@ test("rankings stand at the end of each week, with records then and moves from t
 test("past playoff seasons list their brackets round by round, with no projections, winners or source", async ({ page }, info) => {
   await checkPage(page, "/playoffs/season/2025", `playoffs-2025-${info.project.name}`);
   const seasons = page.getByRole("navigation", { name: "Season" });
-  await expect(seasons.getByRole("link")).toHaveText(["2026", "2025", "2024", "2023", "2022", "2021"]);
+  await expect(seasons.getByRole("link")).toHaveText(Array.from({ length: SEASONS }, (_, i) => String(CURRENT_SEASON - i)));
   await expect(seasons.getByRole("link", { name: "2025" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("navigation", { name: "League" }).getByRole("link")).toHaveText(["UIL", "TAPPS", "TAIAO", "TCAF"]);
   const division = page.getByRole("region", { name: "UIL Division I", exact: true });

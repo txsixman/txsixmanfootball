@@ -22,7 +22,7 @@ import { seasonHref } from "../../../rankings/view";
 import { CrestSlot, EdgeToEdge, SectionBar } from "../../../ui";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../../crest";
 
-// One program's season, 2021 on (ADR 0013: records, ranks and scores may rest on unconfirmed robot-read results, so the page
+// One program's season, FIRST_SEASON on (ADR 0013: records, ranks and scores may rest on unconfirmed robot-read results, so the page
 // says so and no game row names a winner, ADR 0004). The record, rank and last playoff round are the program page's own
 // season row (lib/program-seasons.ts); only a season with a game read has a page, and any other address is a 404. The share
 // card is the program's (app/programs/[slug]/opengraph-image.tsx): this route adds no image of its own.

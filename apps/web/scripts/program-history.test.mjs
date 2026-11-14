@@ -36,12 +36,17 @@ test("opponentRecords: the record against each, most played first, then latest, 
 test("seasonLine: the ratings table's record and rating, else the games' record with no rating, else nothing", () => {
   const playoff = { round: "regional", league: "UIL" };
   const full = seasonLine({ season: 2025, row: { won: 10, lost: 2, tied: 0, rating: 31.4 }, meetings: [{ us: 1, them: 0 }], rank: 3, of: 40, playoff });
-  assert.deepEqual(full, { season: 2025, games: 1, record: { won: 10, lost: 2, tied: 0 }, rating: 31.4, rank: 3, of: 40, playoff });
+  assert.deepEqual(full, { season: 2025, games: 1, record: { won: 10, lost: 2, tied: 0 }, rating: 31.4, outsideOnly: false, rank: 3, of: 40, playoff });
   // A team with too few games has a rating and a record but no rank.
   assert.equal(seasonLine({ season: 2024, row: { won: 1, lost: 1, tied: 0, rating: -2 }, meetings: [], of: 40 }).rank, null);
   // No table row: the record comes from the games, and there is no rating or rank to guess.
   const noRow = seasonLine({ season: 2023, meetings: [{ us: 7, them: 0 }, { us: 0, them: 7 }, { us: 3, them: 0 }], rank: 5, of: 40 });
   assert.deepEqual([noRow.record, noRow.rating, noRow.rank, noRow.playoff], [{ won: 2, lost: 1, tied: 0 }, null, null, null]);
+  // Rated only from games against schools we do not list: no listed game, so the page says that instead of a 0-0 record.
+  const outside = seasonLine({ season: 2021, row: { won: 0, lost: 0, tied: 0, rating: -45.9, rated: 0, rated_outside: 2 }, meetings: [], of: 40 });
+  assert.equal(outside.outsideOnly, true);
+  assert.equal(seasonLine({ season: 2021, row: { won: 1, lost: 0, tied: 0, rating: 3, rated: 0, rated_outside: 2 }, meetings: [], of: 40 }).outsideOnly, false);
+  assert.equal(seasonLine({ season: 2021, row: { won: 0, lost: 0, tied: 0, rating: 3, rated: 0, rated_outside: 0 }, meetings: [], of: 40 }).outsideOnly, false);
   // Nothing at all: every figure is null, so the page shows dashes.
   const none = seasonLine({ season: 2022, meetings: [], of: 40 });
   assert.deepEqual([none.games, none.record, none.rating, none.rank], [0, null, null, null]);

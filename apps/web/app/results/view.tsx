@@ -66,6 +66,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
       {seasons.length > 1 && (
         <TabNav
           label="Season"
+          wrap
           tabs={seasons.map((s) => ({ href: seasonHref(s, seasons[0], org), label: String(s) }))}
           current={seasonHref(season, seasons[0], org)}
         />

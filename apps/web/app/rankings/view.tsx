@@ -77,7 +77,7 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
       {ranked.length > 0 && <JsonLd data={rankedList(`${table.season} ${view.eyebrow} six-man rankings`, ranked.map((r) => ({ name: r.name, href: r.href! })))} />}
       <RankingsHeader eyebrow={`${table.season} season · ${view.eyebrow}`} note={table.games ? note : undefined} />
       {seasons.length > 1 && (
-        <TabNav label="Season" tabs={seasons.map((y) => ({ href: seasonHref(y, seasons[0], org), label: String(y) }))} current={seasonHref(table.season, seasons[0], org)} />
+        <TabNav label="Season" wrap tabs={seasons.map((y) => ({ href: seasonHref(y, seasons[0], org), label: String(y) }))} current={seasonHref(table.season, seasons[0], org)} />
       )}
       <TabNav label="Rankings by organization" tabs={orgs.map((o) => ({ href: orgHref(orgBase, o), label: o.label }))} current={orgHref(orgBase, org)} />
       {!past && org === ORGS[0] && (

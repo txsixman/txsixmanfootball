@@ -2,6 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 import { noLiveScores } from "./live-route";
+import { ORGS } from "../lib/orgs";
+import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season";
 import { SITE_NAME } from "../lib/site";
 
 // The week in review (/weeks, /weeks/<season>/<week>[/<org>]): every expectation comes from the same lib the site is built from.
@@ -257,7 +259,7 @@ test("the home page and Scores link to the latest week in review", async ({ page
 
 test("share cards: one per organization and season, never one per week", async ({ page, request }) => {
   const { latest, seasonCards, pageCount } = await fixtures();
-  expect(seasonCards.length).toBeLessThan(40);
+  expect(seasonCards.length).toBeLessThanOrEqual(ORGS.length * (CURRENT_SEASON - FIRST_SEASON + 1)); // at most one per organization and season
   expect(seasonCards.length).toBeLessThan(pageCount);
   console.info(`week in review: ${pageCount} pages, ${seasonCards.length} share images`);
   await page.goto(`/weeks/${latest.season}/${latest.week}`);

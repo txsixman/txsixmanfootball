@@ -223,7 +223,7 @@ type SeriesFacts = {
   projection: boolean;
 };
 
-/** A series page (two programs' games since 2021): how many meetings, and what the page lists. No score and no winner. */
+/** A series page (two programs' games since FIRST_SEASON): how many meetings, and what the page lists. No score and no winner. */
 export function seriesDescription({ first, second, games, since, playoff, projection }: SeriesFacts) {
   const teams = `${first} vs ${second}`;
   const what = playoff ? "Every score and playoff game" : "Every score";

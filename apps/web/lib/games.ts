@@ -224,7 +224,8 @@ export const loadSeasonResults = memo(async (season: number): Promise<SeasonResu
   });
   if (!text) return [];
   const playoffPages = new Map(season === CURRENT_SEASON ? (await playoffRows([season])).map(({ r }) => [gameKey(r.game_date, r.home, r.away), playoffGameId(season, r)]) : []);
-  const { results, voided } = buildSeasonResults(season, text, await loadCorrections(), playoffPages, gameKey);
+  const { results, voided, duplicates } = buildSeasonResults(season, text, await loadCorrections(), playoffPages, gameKey);
   reportSkipped(`data/seed/maxpreps-${season}/games.csv#voided`, voided, "voided by a correction");
+  reportSkipped(`data/seed/maxpreps-${season}/games.csv#duplicates`, duplicates, "one game listed twice");
   return results;
 });

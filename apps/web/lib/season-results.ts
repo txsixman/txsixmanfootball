@@ -1,6 +1,7 @@
 import type { Corrections } from "./corrections.ts";
 import { applyToGame } from "./corrections.ts";
 import { parseCsv, PlayedGameRow, RESULT_COLUMNS } from "./data-schemas.ts";
+import { duplicateRows } from "./duplicate-game.ts";
 import { forfeitScore } from "./forfeit.ts";
 import { slugify } from "./slug.ts";
 
@@ -24,7 +25,10 @@ function shortDate(iso: string): string {
  * A season's games.csv text → its results, with the corrections applied (data/corrections, lib/corrections.ts): program
  * names merged, scores fixed, and a game voided as listed in error left out, so it has no result and no page of its own
  * (lib/game-pages.ts builds every game page from these). `playoffPages` maps a current-season playoff game's key to its
- * bracket page id. A fixed score stays unconfirmed like every robot-read result (ADR 0011). Pure: no file access.
+ * bracket page id. A fixed score stays unconfirmed like every robot-read result (ADR 0011). A game listed twice (the same two
+ * teams, the same score, at most two days apart: lib/duplicate-game.ts) is one game, the earlier row, so a team never lists
+ * more games than its record counts; `duplicates` says how many were folded (check-data fails on one in the files, so the
+ * data should have none). Pure: no file access.
  */
 export function buildSeasonResults(
   season: number,
@@ -32,15 +36,16 @@ export function buildSeasonResults(
   fixes: Corrections,
   playoffPages: Map<string, string>,
   gameKey: (date: string, home: string, away: string) => string,
-): { results: SeasonResult[]; voided: number } {
+): { results: SeasonResult[]; voided: number; duplicates: number } {
   let voided = 0;
-  const results = parseCsv(`data/seed/maxpreps-${season}/games.csv`, text, RESULT_COLUMNS, PlayedGameRow).flatMap(({ row: parsed }) => {
+  const rows = parseCsv(`data/seed/maxpreps-${season}/games.csv`, text, RESULT_COLUMNS, PlayedGameRow).flatMap(({ row: parsed }) => {
     const fixed = applyToGame(fixes, parsed);
-    if (!fixed) {
-      voided += 1;
-      return [];
-    }
-    const r = fixed.row;
+    if (!fixed) voided += 1;
+    return fixed ? [fixed.row] : [];
+  });
+  const copies = duplicateRows(rows);
+  const results = rows.flatMap((r, i) => {
+    if (copies.has(i)) return [];
     const id = `${r.game_date}-${slugify(r.away)}-at-${slugify(r.home)}`;
     return [
       {
@@ -56,5 +61,5 @@ export function buildSeasonResults(
       },
     ];
   });
-  return { results, voided };
+  return { results, voided, duplicates: copies.size };
 }

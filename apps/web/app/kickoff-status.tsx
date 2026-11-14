@@ -9,7 +9,7 @@ import { kickoffState, kickoffTime, type KickoffState } from "@/lib/kickoff";
 const TICK_MS = 60_000;
 
 /** The time now, refreshed every minute; null on the server and the first render in the browser. */
-function useNow(): Date | null {
+export function useNow(): Date | null {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     setNow(new Date());

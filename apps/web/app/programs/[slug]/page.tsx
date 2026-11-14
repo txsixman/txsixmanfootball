@@ -13,6 +13,7 @@ import { loadAliases, loadLineage, otherNames } from "@/lib/lineage";
 import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
 import { loadRanked, rankLabel } from "@/lib/rankings";
+import { ratedFromOutsideOnly, OUTSIDE_ONLY_NOTE } from "@/lib/outside-only";
 import { FEW_GAMES, loadRatings, ratingSeasons, record, signed } from "@/lib/ratings";
 import { meetingScore, schedulesFor, type Meeting } from "@/lib/schedule-strength";
 import { whyItMoved } from "@/lib/why-moved";
@@ -22,6 +23,7 @@ import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
 import { lead, seasonRows, type Row } from "@/lib/program-games";
+import { ProgramLiveRead, ProgramLiveScore } from "../../scores/live-game";
 import { embedSnippet } from "@/lib/embed-html";
 import { ratingSeries, type Rivalry } from "@/lib/program-history";
 import { programHistory, programSeasonPages } from "@/lib/program-seasons";
@@ -157,7 +159,7 @@ export default async function ProgramPage({ params }: Props) {
     .filter((f) => names.has(slugify(f.champion)) || names.has(slugify(f.runnerUp)))
     .sort((a, b) => b.season - a.season);
   const titles = finals.filter((f) => names.has(slugify(f.champion))).length;
-  // Season by season, 2021 on: record, final rating, place within its organization and the last playoff round played, from each
+  // Season by season, FIRST_SEASON on: record, final rating, place within its organization and the last playoff round played, from each
   // season's table (lib/program-seasons.ts); a season with nothing on record keeps its row, with dashes.
   const seasons = await ratingSeasons();
   const { entries, opponents } = await programHistory(school, seasons);
@@ -185,7 +187,15 @@ export default async function ProgramPage({ params }: Props) {
   const GameRow = ({ r, big = true }: { r: Row; big?: boolean }) => {
     const score = (
       <span className={`font-num font-bold tabular-nums text-ink ${big ? "text-[22px]" : "text-[19px]"}`}>
-        {r.score ?? <ChevronRight aria-hidden="true" className="size-5 text-muted" />}
+        {r.score ??
+          // The next game, while under way, shows its live score here (ADR 0021); every other unplayed game, the arrow.
+          (r.id === next?.id && r.date ? (
+            <ProgramLiveScore date={r.date} school={school.school} opponent={r.opponent} home={r.home}>
+              <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+            </ProgramLiveScore>
+          ) : (
+            <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+          ))}
       </span>
     );
     return (
@@ -261,7 +271,7 @@ export default async function ProgramPage({ params }: Props) {
     </li>
   );
 
-  return (
+  const page = (
     <EdgeToEdge>
       {/* data-pagefind-body: this page is in the site search (app/search). */}
       <article data-pagefind-body aria-labelledby="school" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
@@ -283,8 +293,8 @@ export default async function ProgramPage({ params }: Props) {
           {ranked ? (
             <>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 sm:flex sm:[&>div]:flex-1">
-                <Stat label={`${seasons[0]} record`} sub={ranked.rated < FEW_GAMES ? `${ranked.rated} rated ${ranked.rated === 1 ? "game" : "games"}` : undefined}>
-                  {record(ranked)}
+                <Stat label={`${seasons[0]} record`} sub={ratedFromOutsideOnly(ranked) ? OUTSIDE_ONLY_NOTE : ranked.rated < FEW_GAMES ? `${ranked.rated} rated ${ranked.rated === 1 ? "game" : "games"}` : undefined}>
+                  {ratedFromOutsideOnly(ranked) ? "–" : record(ranked)}
                 </Stat>
                 <Stat
                   label="Rank"
@@ -345,6 +355,7 @@ export default async function ProgramPage({ params }: Props) {
                           <KickoffStatus date={next.date} kickoff={next.kickoff} />
                         </span>
                       )}
+                      {next.date && <ProgramLiveScore line date={next.date} school={school.school} opponent={next.opponent} home={next.home} />}
                       {next.note && <span className="block text-[14px] font-normal text-muted">{next.note}</span>}
                     </span>
                     <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted" />
@@ -522,7 +533,13 @@ export default async function ProgramPage({ params }: Props) {
                     <span className="inline-flex min-h-11 items-center font-num text-[18px] font-bold text-navy">{line.season}</span>
                   )}
                   <span className="min-w-0 text-[15px] leading-5 text-ink">
-                    {line.record ? <b className="font-num text-[20px] tabular-nums">{record(line.record)}</b> : <Dash what="record" />}
+                    {line.outsideOnly ? (
+                      <span className="text-[14px] text-muted">{OUTSIDE_ONLY_NOTE}</span>
+                    ) : line.record ? (
+                      <b className="font-num text-[20px] tabular-nums">{record(line.record)}</b>
+                    ) : (
+                      <Dash what="record" />
+                    )}
                     <span className="text-muted">
                       {" "}
                       {line.rank != null
@@ -682,5 +699,13 @@ export default async function ProgramPage({ params }: Props) {
         </details>
       </article>
     </EdgeToEdge>
+  );
+  // One live read for the page's next game, shared by its box and its row, and only while it is in progress (ADR 0021).
+  return next?.date ? (
+    <ProgramLiveRead date={next.date} kickoff={next.kickoff}>
+      {page}
+    </ProgramLiveRead>
+  ) : (
+    page
   );
 }
