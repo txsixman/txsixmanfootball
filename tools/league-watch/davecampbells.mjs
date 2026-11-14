@@ -18,6 +18,8 @@
 // Seasons (ADR 0032), run by hand, to the private data repo only: `--seasons` lists the feed's seasons,
 // `--history <year> --private <private repo>` writes a season's six-man games to <private>/davecampbells-history-<year>/games.csv,
 // and `--team <year> <their slug>` shows one team's game count and statuses. On Nov 13, 2026 only 2026 had games.
+// `--opponents <year> <their slug> [--about <slug,slug>]` lists a mapped team's opponents (slug and school name) and, for
+// each `--about` slug, the team's name and place fields: how a new davecampbells-teams.json row is checked by hand.
 //
 // Problems that do not fail the step (it runs with continue-on-error) are named in the file OPS_REASONS, when set, for
 // the workflow's notify job to post to the robot-alert issue (ADR 0028): a refusal (403 or 429), no season id from
@@ -866,5 +868,51 @@ function mergeDetails() {
   writeFileSync(out, mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh.trim() ? parseCsv(fresh, "game details").rows : []));
 }
 
-const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails };
+/** A mapped team's opponents in its games (`items`), one row a team slug (or a name, for one with no team page): the slug and the feed's school name, for finding a
+ * map row by hand (ADR 0025). Never a score, a ranking or a `winner` field. */
+export function opponentRows(items, theirSlug) {
+  const out = new Map();
+  for (const item of items) {
+    for (const p of Array.isArray(item?.participants) ? item.participants : []) {
+      const slug = teamSlugOf(p?.websiteUrl) ?? "";
+      const school = typeof p?.schoolName === "string" ? p.schoolName : "";
+      // An opponent with no team page is listed by its name, with a blank slug: the feed has the game but no team to map.
+      const key = slug || `name:${school}`;
+      if ((slug || school) && slug !== theirSlug && !out.has(key)) out.set(key, { slug, school });
+    }
+  }
+  return [...out.values()].sort((a, b) => a.slug.localeCompare(b.slug) || a.school.localeCompare(b.school));
+}
+
+/** The name and place words of a team's answer, two levels deep: each string field whose name says name, city, town,
+ * location or state, as "path: value". Nothing else of the answer is shown (field names come from shapeOf). */
+export function placeFields(value, prefix = "", depth = 2) {
+  if (!value || typeof value !== "object" || depth < 0) return [];
+  return Object.entries(value).flatMap(([k, v]) => {
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (typeof v === "string") return /name|city|town|location|state/i.test(k) && !/url|image|logo/i.test(k) ? [`${key}: ${v}`] : [];
+    return v && typeof v === "object" && !Array.isArray(v) ? placeFields(v, key, depth - 1) : [];
+  });
+}
+
+/** `--opponents <year> <their slug> [--about <slug,slug>]`: a mapped team's opponents (slug and school name) from its season's
+ * games, and for each `--about` slug the team answer's name and place fields: how a new map row is checked against a
+ * program's name and town before it is added by hand. Prints only; nothing is saved. */
+async function opponents() {
+  const i = process.argv.indexOf("--opponents");
+  const [year, theirSlug] = [Number(process.argv[i + 1]), process.argv[i + 2]];
+  const about = (process.argv.includes("--about") ? process.argv[process.argv.indexOf("--about") + 1] : "").split(",").filter((s) => /^[a-z0-9-]+$/.test(s));
+  if (!Number.isInteger(year) || !/^[a-z0-9-]+$/.test(theirSlug ?? "")) throw new Error("usage: davecampbells.mjs --opponents <year> <their team slug> [--about <slug,slug>]");
+  const client = createClient();
+  const seasonId = footballSeasons(await client.getData("/api/public/seasons")).get(year);
+  const id = seasonId && (await teamId(client, theirSlug, seasonId));
+  if (!id) return console.log(`${year} ${theirSlug}: no season or team id`);
+  for (const r of opponentRows(await liveAndUpcoming(client, seasonId, id), theirSlug)) console.log(`${r.slug} | ${r.school}`);
+  for (const slug of about) {
+    const t = await client.getData(`/api/public/teams/${encodeURIComponent(slug)}?seasonId=${encodeURIComponent(seasonId)}`);
+    console.log(`about ${slug}: ${t ? placeFields(t).join(" | ") || `no name or place fields (${shapeOf(t, 2)})` : "no answer"}`);
+  }
+}
+
+const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents };
 if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(Object.entries(MODES).find(([f]) => process.argv.includes(f))?.[1] ?? live);
