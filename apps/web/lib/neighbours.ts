@@ -49,7 +49,7 @@ export async function gameNeighbours({ season, date, home, away, resultId }: { s
       .filter((g) => g.bracket === playoff.bracket && ROUNDS.indexOf(g.round) > at && [g.home, g.away].some((t) => t === playoff.home || t === playoff.away))
       .sort((a, b) => ROUNDS.indexOf(a.round) - ROUNDS.indexOf(b.round) || a.date.localeCompare(b.date))[0];
     const id = next && (season === CURRENT_SEASON ? (await bracketGames()).find((g) => g.round === next.round && g.home.name === next.home && g.away.name === next.away)?.id : (await pageOf(season)).get(gameKey(next.date, next.home, next.away))?.slice("/scores/".length));
-    if (next && id) out.push({ href: `/scores/${id}`, label: `Next playoff game: ${next.round === "final" || next.round === "state" ? "State Championship" : roundLabel(next.round, next.league)}, ${next.away} at ${next.home}` });
+    if (next && id) out.push({ href: `/scores/${id}`, label: `Next playoff game: ${next.round === "final" || next.round === "state" ? "State Championship" : roundLabel(next.round, next.league)}, ${next.away} vs ${next.home}` });
   }
   const week = resultId ? (await weekOf(season)).get(resultId) : undefined;
   if (week) {

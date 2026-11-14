@@ -118,7 +118,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
         </section>
       ))}
       {(review || rankings) && (
-        <nav aria-label="This week" className="mt-4 flex flex-wrap gap-x-5">
+        <nav aria-label="Related pages" className="mt-4 flex flex-wrap gap-x-5">
           {[review, rankings].map((n) => n && <Link key={n.href} href={n.href} prefetch={false} className="link-more">{n.label}</Link>)}
         </nav>
       )}
