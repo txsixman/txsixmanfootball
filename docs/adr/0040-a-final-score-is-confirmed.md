@@ -24,7 +24,11 @@ a robot-read or corrected score unconfirmed, and the "Score reported" rule of AD
      never reads private files.
    - Only a different winner goes on it. A final whose margin differs between sources stays a normal confirmed final.
    - A disputed final shows its score with no winner. Its status is "Score reported", and the bracket pages mark it "Disputed".
-   - The file ships empty and is filled as disagreements are settled.
+   - It starts with the 5 finals of 2026 whose winner the sources disagree on, after the build session's check (Nov 14).
+   - `check-data.mjs` fails on a row that matches no game in that season's `games.csv` or `playoffs.csv`, or in a hand
+     capture. A misspelled row would otherwise leave the game showing a winner without anyone noticing.
+   - Records, standings and series still count a disputed game by its score as listed. The page marks no winner, and a
+     correction (ADR 0011) settles the record.
 5. **A 0-0 is no score, never a final.** The store already writes it blank; the loaders also refuse it.
 
 - **Wording:** every "not confirmed here" and "Scores are not confirmed here and may change" line is removed. Where a caveat
@@ -36,7 +40,7 @@ a robot-read or corrected score unconfirmed, and the "Score reported" rule of AD
 ## Consequences
 - The "Score reported" section and status from ADR 0037 now hold only a disputed final.
 - `scripts/disputed.test.mjs` covers the list: a match in either team order, a missing file meaning none, and a bad
-  header or row failing the build.
+  header or row failing the build. `check-data.test.mjs` checks that a misspelled or wrongly dated row fails.
 - The tests that asserted "Unconfirmed" on a final now assert the reverse.
   - The game page test checks that the winner is marked.
   - The structured-data test checks the final score in its description.
