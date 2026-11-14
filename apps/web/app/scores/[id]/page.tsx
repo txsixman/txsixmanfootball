@@ -27,6 +27,7 @@ import { GameKickoffStatus, GameLiveRead, GameScore } from "../live-game";
 import { Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 import { hasCard } from "./card/ids";
+import { gameTitle } from "@/lib/titles";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -49,8 +50,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const card = (await hasCard(id)) && { openGraph: { images: [{ url: `/scores/${id}/card`, width: 1200, height: 630, alt: "Game card" }] } };
   // An invented sample game stays out of search (its schools are not real).
   return {
-    // The date keeps each meeting's title its own: the same two teams at the same field meet again in later seasons.
-    title: teams ? `${teams.away} vs ${teams.home}${date ? `, ${mediumDate(date)}` : ""}` : "Game",
+    // The date, or a playoff game's round and season, keeps each meeting's title its own: the same two teams meet again in
+    // later seasons. A played final carries its score (away first, as the page shows it); a forfeit never does.
+    title: teams
+      ? gameTitle({
+          away: teams.away,
+          home: teams.home,
+          date: date && mediumDate(date),
+          scheduled: !found && g?.state === "scheduled",
+          final: found && !sample && !found.result.forfeit ? { away: found.result.awayScore, home: found.result.homeScore } : undefined,
+          round: playoff,
+          season,
+        })
+      : "Game",
     ...(teams && { description: gameDescription({ away: teams.away, home: teams.home, date: date && mediumDate(date), season, playoff, scheduled: !found && g?.state === "scheduled", sample }) }),
     alternates: { canonical: `/scores/${id}` },
     ...card,

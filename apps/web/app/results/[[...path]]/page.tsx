@@ -5,6 +5,7 @@ import { ORGS } from "@/lib/orgs";
 import { cardSize } from "../../page-card";
 import { parseResultsPath, resultPaths } from "../paths";
 import { ResultsWeek } from "../view";
+import { resultsTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -21,8 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!where) return {};
   const { org, season, week, games } = where;
   const dated = (path ?? []).filter((p) => /^\d+$/.test(p)).length;
-  const when = dated === 2 ? `${season} week ${week} ` : dated === 1 ? `${season} ` : "";
-  const title = `${org.label} ${when}results`;
+  const title = resultsTitle({ label: org.label, season, week, scope: dated === 2 ? "week" : dated === 1 ? "season" : "latest" });
   const canonical = `/results${(path ?? []).map((p) => `/${p}`).join("")}`;
   const description = resultsDescription({ org: org.label, season, week, games, scope: dated === 2 ? "week" : dated === 1 ? "season" : "latest" });
   // UIL's card is the section's own (opengraph-image.tsx beside this folder); each other organization has its own, so

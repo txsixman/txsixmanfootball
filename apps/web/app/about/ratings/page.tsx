@@ -5,7 +5,7 @@ import { FEW_GAMES, MOVE_THRESHOLD } from "@/lib/ratings";
 import { PageHeader } from "../../ui";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "About the ratings", description: aboutRatingsDescription() };
+export const metadata: Metadata = { title: "About the six-man ratings", description: aboutRatingsDescription(), alternates: { canonical: "/about/ratings" } };
 
 // What a rating means and what it rests on, in plain words. Every claim is checked against services/ratings (model.py CAP,
 // rows.py) and the ADRs it names; it must stay true to them and to /rankings/how, which says how the fit works. The words are

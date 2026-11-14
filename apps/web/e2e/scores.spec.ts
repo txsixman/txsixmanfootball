@@ -657,10 +657,10 @@ test("search engines: only the public address is indexed, from robots.txt and a 
   }
   // Visitors see the site's name, never the codename (the owner, Nov 11, 2026).
   await page.goto("/programs/jayton");
-  await expect(page).toHaveTitle(/^Jayton \| TX Six-Man Football$/);
+  await expect(page).toHaveTitle(/^Jayton Jaybirds football: \d{4} schedule, scores, ranking \| TX Six-Man Football$/);
   expect((await (await request.get("/manifest.webmanifest")).json()).name).toBe("TX Six-Man Football");
   await page.goto("/");
-  await expect(page).toHaveTitle("TX Six-Man Football");
+  await expect(page).toHaveTitle("TX Six-Man Football: Texas six-man scores, brackets, rankings");
   await expect(page.locator("header").getByRole("link", { name: "TX Six-Man Football" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("80x40");
   await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
