@@ -209,6 +209,9 @@ export default async function HowPage() {
       <p className="mt-3 text-[16px] text-ink">
         Teams are ranked by their rating, best first, within one organization at a time (UIL, TAPPS, TAIAO or TCAF) and, for UIL, within Division I and Division II. A rating is how many points better or worse a team is than the average team in the table, on a neutral field. The projected margin between two teams is the difference in their ratings.
       </p>
+      <Link href="/about/ratings" className="inline-flex min-h-11 items-center font-semibold text-navy underline">
+        About the ratings: what a rating means, and which games it rests on
+      </Link>
       <ol className="mt-6 space-y-5">
         {STEPS.map((s, i) => (
           <li key={s.title} className="border-l-4 border-red pl-3">

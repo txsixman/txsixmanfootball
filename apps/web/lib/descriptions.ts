@@ -58,6 +58,11 @@ export const championshipsDescription = ({ first, latest, games }: { first?: num
     ["Division I and Division II since 2006, and the programs with the most state titles.", "The programs with the most state titles."],
   );
 
+export const aboutRatingsDescription = () =>
+  fit("What a six-man rating means: points better than an average team, the ± and rank range, games rated, the 45-point rule and forfeits.", [
+    "What a six-man rating means and which games it rests on.",
+  ]);
+
 export const howRankingsDescription = () =>
   fit("How the six-man ratings work: one rating per team fitted to every score, how the 45-point rule counts, and how well past seasons' ratings fit.", [
     "How the ratings work, and how well past seasons' ratings fit.",

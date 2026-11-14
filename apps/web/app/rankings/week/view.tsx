@@ -60,7 +60,10 @@ export async function WeekRankings({ wanted, org }: { wanted: string; org: Org }
         </Link>
       </nav>
       <RatingsTable rows={rows} />
-      <p className="mt-3 text-[13px] text-muted">Scores may be corrected if a mistake is found. Records count forfeits; ratings leave them out.</p>
+      <p className="mt-3 text-[13px] text-muted">
+        Scores may be corrected if a mistake is found. Records count forfeits; ratings leave them out. Under each team: games played and games rated, through that Sunday.
+      </p>
+      <Link href="/about/ratings" className="inline-flex min-h-11 items-center font-semibold text-navy underline">What a rating rests on</Link>
     </section>
   );
 }

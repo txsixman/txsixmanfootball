@@ -36,6 +36,7 @@ test("every kind of page has its own short description, with no betting word, so
     ["results", "/results"],
     ["rankings", "/rankings"],
     ["how", "/rankings/how"],
+    ["about the ratings", "/about/ratings"],
     ["standings", "/standings"],
     ["programs", "/programs"],
     ["records", "/records"],
