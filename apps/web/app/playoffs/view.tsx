@@ -2,13 +2,13 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { loadAlignments } from "@/lib/alignments";
 import { playoffsDescription } from "@/lib/descriptions";
-import { bracketHref, bracketLabel, LEAGUES, loadBrackets, playoffLeagues, playoffSeasons } from "@/lib/brackets";
+import { bracketHref, bracketLabel, latestRound, LEAGUES, loadBrackets, playoffLeagues, playoffSeasons } from "@/lib/brackets";
 import { loadIdentities } from "@/lib/identity";
 import { centralClock } from "@/lib/playoff-status";
 import { TabNav } from "../tab-nav";
 import { PageHeader, SectionBar } from "../ui";
 import { ChanceList } from "./chance-list";
-import { GameList } from "./game-list";
+import { BuiltList, GameList } from "./game-list";
 
 export type League = (typeof LEAGUES)[number];
 /** The latest season lives at /playoffs; past seasons at /playoffs/season/<year> (UIL) and .../<league>. */
@@ -48,14 +48,20 @@ export async function PlayoffsView({ league, season }: { league: League; season?
   return (
     <section aria-labelledby="playoffs">
       <PageHeader id="playoffs" eyebrow={`${year} season · ${brackets.length} ${brackets.length === 1 ? "bracket" : "brackets"}`} title="Playoffs" />
-      {seasons.length > 1 && <TabNav label="Season" tabs={seasonTabs} current={seasonTabs[seasons.indexOf(year)].href} />}
+      {seasons.length > 1 && <TabNav label="Season" wrap tabs={seasonTabs} current={seasonTabs[seasons.indexOf(year)].href} />}
       <TabNav label="League" tabs={leagues.map((l) => ({ href: leagueHref(l, past ? year : undefined), label: l }))} current={leagueHref(league, past ? year : undefined)} />
+      {!past && (
+        <Link href="/playoffs/this-round" className="mt-3 flex min-h-11 items-center justify-between border-2 border-navy px-3 font-num text-[17px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
+          This round in every bracket
+          <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+        </Link>
+      )}
       {brackets.map((b) => {
         const id = `bracket-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
         const roundId = (round: string) => `${id}-${round}`;
         return (
           <section key={b.name} aria-labelledby={id} className="mt-8">
-            <SectionBar id={id} title={b.name} aside={`Latest: ${b.rounds.at(-1)!.label}`} className="" />
+            <SectionBar id={id} title={b.name} aside={`Latest: ${latestRound(b)!.label}`} className="" />
             {!past && (
               <Link href={bracketHref(b.name)} className="flex min-h-11 items-center justify-between border-b border-line px-3 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
                 {bracketLabel(b)} bracket page: current round first
@@ -83,16 +89,21 @@ export async function PlayoffsView({ league, season }: { league: League; season?
             {b.rounds.map((r) => (
               <section key={r.round} id={roundId(r.round)} aria-label={`${b.name}, ${r.label}`} className="mt-5 scroll-mt-4">
                 <h3 className="border-b-2 border-navy px-3 pb-1 font-num text-[20px] font-bold uppercase tracking-wider text-navy">
-                  {r.label} <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">· {r.games.length} {r.games.length === 1 ? "game" : "games"}</span>
+                  {r.label}{" "}
+                  <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">
+                    · {r.games.length} {r.games.length === 1 ? "game" : "games"}
+                    {r.built.length ? ` · ${r.built.length} more set by the bracket` : ""}
+                  </span>
                 </h3>
-                <GameList games={r.games} league={league} alignments={alignments} identities={identities} today={today} showStatus={!past} />
+                {r.games.length > 0 && <GameList games={r.games} league={league} alignments={alignments} identities={identities} today={today} showStatus={!past} />}
+                {r.built.length > 0 && <BuiltList games={r.built} league={league} alignments={alignments} identities={identities} />}
               </section>
             ))}
           </section>
         );
       })}
       <p className="mt-6 text-[13px] text-muted">
-        Away team first. Scores are not confirmed here and may change; a team&rsquo;s next game shows who went on.
+        Away team first. Scores may be corrected if a mistake is found. A team&rsquo;s next game shows who went on.
         {!past && " Projections and region and state title chances use the current ratings, on a neutral field unless the game is at a home site. A region\u2019s chances show once its two area games or its regional game are set."}
       </p>
     </section>

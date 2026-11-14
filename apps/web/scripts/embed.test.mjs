@@ -74,10 +74,10 @@ test("a forfeit shows the word, an unplayed game shows no score, and no row name
   assert.ok(html.includes('<b class="s">Forfeit</b>'));
   assert.doesNotMatch(html, /\b(1-0|2-0)\b/);
   assert.doesNotMatch(html, /\b(won|beat|defeated|winner)\b/i);
-  assert.ok(html.includes("Scores are not confirmed here."));
+  assert.doesNotMatch(html, /not confirmed/); // a final is confirmed (ADR 0040)
 });
 
-test("a program with no games says so and shows no unconfirmed-score note", () => {
+test("a program with no games says so", () => {
   const html = renderEmbed(view({ record: null, recent: [], next: null }));
   assert.ok(html.includes("No 2026 games on record yet."));
   assert.doesNotMatch(html, /not confirmed|record</);
@@ -88,4 +88,17 @@ test("the snippet is the iframe a school pastes: the address, an escaped title, 
     embedSnippet("jayton", `Jay "ton" & Co`),
     `<iframe src="https://txsixmanfootball.com/embed/programs/jayton" title="Jay &quot;ton&quot; &amp; Co scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>`,
   );
+});
+
+test("a next game dated before tonight is headed as waiting on its score, never as still to play", () => {
+  assert.match(renderEmbed(view()), /<h2 id="n">Next game<\/h2>/);
+  const waiting = renderEmbed(view({ nextWaiting: true }));
+  assert.match(waiting, /<h2 id="n">Score not in yet<\/h2>/);
+  assert.ok(!waiting.includes("Next game"));
+});
+
+test("a playoff game reads vs, never at: its home team is the bracket's designation, not where it is played (ADR 0037)", () => {
+  const away = (playoff) => renderEmbed(view({ next: { status: "Fri 11/13", home: false, opponent: "Kress", score: null, ...(playoff && { playoff: true }) } }));
+  assert.match(away(false), /<span>at Kress<\/span>/);
+  assert.match(away(true), /<span>vs Kress<\/span>/);
 });

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { loadAlignments } from "@/lib/alignments";
 import { loadIdentities } from "@/lib/identity";
 import { SearchBox, type SearchPrograms } from "./search-box";
+import { FIRST_SEASON } from "@/lib/season";
 
 export const metadata: Metadata = { title: "Search", robots: { index: false } };
 
@@ -18,7 +19,7 @@ export default async function SearchPage() {
       <h1 id="search" className="font-num text-[56px] font-bold uppercase leading-none tracking-wide text-navy">
         Search
       </h1>
-      <p className="mt-2 text-[15px] text-muted">Every program page and every week of results since 2021.</p>
+      <p className="mt-2 text-[15px] text-muted">Every program page and every week of results since {FIRST_SEASON}.</p>
       <SearchBox programs={programs} />
     </section>
   );

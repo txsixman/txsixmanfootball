@@ -202,7 +202,8 @@ test("signed out, the Follow button still follows and unfollows on this browser"
   await expect(page.getByRole("button", { name: "Alert me to Jayton finals" })).toBeEnabled(); // not the busy moment in between
   await expect(page.getByRole("status").filter({ hasText: "Alerts off" })).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("followed-programs") ?? "[]"))).toEqual([]);
-  expect(calls).toEqual(["push_follow", "push_unfollow"]);
+  // The push calls only: a program page also reads live scores (its next game's, ADR 0021), which is not this test's.
+  expect(calls.filter((c) => c !== "live_scores")).toEqual(["push_follow", "push_unfollow"]);
 });
 
 test("signed in, the header shows the display name and the Follow button follows on the account as well", async ({ page }) => {

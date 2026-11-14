@@ -1,10 +1,11 @@
 // Invented fixtures only: no test calls the feed.
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
+import { bracketFields, DETAIL_COLUMNS, gamesOnLines, kickoffRows, mergeKickoffs, missingDetails, opponentRows, placeFields, positionProblems } from "./davecampbells.mjs";
+import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLate, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
 
@@ -40,8 +41,8 @@ test("a 403 or 429 stops the read with no retry; other errors and bad bodies giv
   assert.equal(await teamId(client, "x", "s"), null);
 });
 
-test("periods become Q1 to Q4, Halftime or OT, never a clock", () => {
-  const cases = [[1, "Q1"], [4, "Q4"], [5, "OT"], [0, null], ["2", "Q2"], ["Q3", "Q3"], ["3rd", "Q3"], ["4th Quarter", "Q4"], ["Half", "Halftime"], ["HALFTIME", "Halftime"], ["OT", "OT"], ["Overtime 2", "OT"], ["Final", null], ["Q2 4:31", null], [null, null]];
+test("periods become Q1 to Q4, Halftime or OT in words, never a clock; a number above 4 is not OT", () => {
+  const cases = [[1, "Q1"], [2, "Q2"], [3, "Q3"], [4, "Q4"], [5, null], [6, null], [0, null], ["2", "Q2"], ["Q3", "Q3"], ["3rd", "Q3"], ["4th Quarter", "Q4"], ["Half", "Halftime"], ["HALFTIME", "Halftime"], ["OT", "OT"], ["Overtime 2", "OT"], ["Final", null], ["Q2 4:31", null], [null, null]];
   for (const [period, want] of cases) assert.equal(periodLabel({ period }), want, String(period));
   for (const label of cases.map(([p]) => periodLabel({ period: p })).filter(Boolean)) assert.match(label, /^[A-Za-z0-9 ]{1,12}$/);
 });
@@ -97,15 +98,29 @@ const readAt = new Date("2026-11-14T02:00:00Z");
 
 test("a live game becomes one row in the bracket row's own home and away order, with only the fields the site reads", () => {
   const rows = liveRowsFromItems([item(), item()], { date: "2026-11-13", due, ours, readAt });
-  assert.deepEqual(rows, [{ game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: "Q2", read_at: "2026-11-14T02:00:00.000Z" }]);
+  assert.deepEqual(rows, [{ game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: null, read_at: "2026-11-14T02:00:00.000Z" }]);
 });
 
-test("skips games not live, not tonight, not due, unmapped, forfeited, out of range, or 0-0 before kickoff", () => {
+test("a game the feed calls finished keeps its last score, marked finished, with no period (ADR 0042)", () => {
+  const opts = { date: "2026-11-13", due, ours, readAt };
+  for (const status of ["Finished", "Final", "Completed"]) {
+    assert.deepEqual(liveRowsFromItems([item({ status, summary: { period: 4, homeScore: 20, awayScore: 14 } })], opts), [
+      { game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: null, finished: true, late: true, read_at: "2026-11-14T02:00:00.000Z" },
+    ], status); // period 4: late too (ADR 0043)
+  }
+  // A live listing of the same game comes first in the answer: the row says under way (no finished field).
+  assert.equal(liveRowsFromItems([item(), item({ status: "Finished" })], opts)[0].finished, undefined);
+});
+
+test("skips games not live or finished, not tonight, not due, unmapped, forfeited, out of range, 0-0 before kickoff or a finished 0-0", () => {
   const opts = { date: "2026-11-13", due, ours, readAt };
   const [h, a] = item().participants;
   const skipped = [
     item({ status: "Upcoming" }),
-    item({ status: "Finished" }),
+    item({ status: "Forfeit" }),
+    item({ status: "Double Forfeit" }),
+    item({ status: "Finished", participants: [{ ...item().participants[0], forfeited: true }, item().participants[1]] }),
+    item({ status: "Final", participants: [{ ...item().participants[0], score: 0 }, { ...item().participants[1], score: 0 }] }),
     item({ scheduledKickoff: "2026-11-14T07:00:00Z" }), // 1 AM Central on Nov 14
     item({ scheduledKickoff: "not a date" }),
     item({ participants: [h, { ...a, websiteUrl: "https://www.davecampbells.com/team/robin-robins" }] }),
@@ -117,8 +132,10 @@ test("skips games not live, not tonight, not due, unmapped, forfeited, out of ra
     item({ participants: [h] }),
   ];
   for (const it of skipped) assert.deepEqual(liveRowsFromItems([it], opts), [], JSON.stringify(it));
-  // 0-0 with a period is a game under way.
-  assert.equal(liveRowsFromItems([item({ participants: [{ ...h, score: 0 }, { ...a, score: 0 }], summary: { period: 1 } })], opts)[0].period, "Q1");
+  // 0-0 is skipped even with a period: the feed's period is not trusted to say kickoff has passed (ADR 0042).
+  assert.deepEqual(liveRowsFromItems([item({ participants: [{ ...h, score: 0 }, { ...a, score: 0 }], summary: { period: 1 } })], opts), []);
+  // No row carries the feed's period, whatever it says.
+  for (const period of [1, 4, 5, "Q3", "Halftime", "OT"]) assert.equal(liveRowsFromItems([item({ summary: { period, homeScore: 20, awayScore: 14 } })], opts)[0].period, null, String(period));
   // The summary's scores stand in when a participant has none.
   assert.equal(liveRowsFromItems([item({ participants: [{ ...h, score: undefined }, { ...a, score: undefined }] })], opts)[0].away_score, 20);
 });
@@ -339,4 +356,288 @@ test("problems for the robot-alert issue: a season id owed from August, no agree
   raise("second-source-no-season", file);
   assert.equal(readFileSync(file, "utf8"), "second-source-refused\nsecond-source-no-season\n");
   raise("x", undefined);
+});
+
+// ---- Past seasons (ADR 0032) ----
+
+test("the season list gives high school boys football ids by year, nothing else", () => {
+  const ids = footballSeasons([
+    { year: 2019, seasonId: "s-2019", sportName: "Football", gender: "BOYS", schoolTypeName: "High School" },
+    { year: 2019, seasonId: "s-jv", sportName: "JV Football", gender: "BOYS", schoolTypeName: "High School" },
+    { year: 2019, seasonId: "s-college", sportName: "Football", gender: "BOYS", schoolTypeName: "College" },
+    { year: 2019, seasonId: "s-ball", sportName: "Baseball", gender: "BOYS", schoolTypeName: "High School" },
+  ]);
+  assert.deepEqual([...ids], [[2019, "s-2019"]]);
+  assert.equal(footballSeasons(null).size, 0);
+});
+
+test("a team's finished games are read page by page, and a repeated page stops the read", async () => {
+  const pages = [
+    { items: [{ n: 1 }], page: 0, totalPages: 2 },
+    { items: [{ n: 2 }], page: 1, totalPages: 2 },
+  ];
+  const asked = [];
+  const client = { getData: async (p) => (asked.push(p), pages.shift()) };
+  assert.deepEqual(await allFinishedGames(client, "s1", "t1"), [{ n: 1 }, { n: 2 }]);
+  assert.equal(asked.length, 2);
+  assert.match(asked[1], /&page=1$/);
+  const warned = [];
+  const stuck = { getData: async () => ({ items: [{ n: 1 }], page: 0, totalPages: 3 }) };
+  assert.deepEqual(await allFinishedGames(stuck, "s1", "t1", (w) => warned.push(w)), [{ n: 1 }]);
+  assert.match(warned[0], /answered as page 0/);
+});
+
+const past = (over = {}) => ({
+  scheduledKickoff: "2019-09-07T00:30:00Z", // 7:30 PM Central on Sep 6
+  status: "Final",
+  pointSpread: -7,
+  winner: "HOME",
+  rank: 3,
+  participants: [
+    { participantType: "HOME", websiteUrl: "https://www.davecampbells.com/team/wren-wrens", schoolName: "Wren", score: 52 },
+    { participantType: "AWAY", websiteUrl: "https://www.davecampbells.com/team/finch-finches", schoolName: "Finch", score: 6 },
+  ],
+  ...over,
+});
+const pastOurs = new Map([["wren-wrens", "wren"]]);
+const slugs = new Set(["wren", "finch", "old-finch", "lark-west"]);
+
+test("a past final is one row a game: date, our two programs, scores and forfeit flags, and no other field", () => {
+  const { rows, skipped } = historyRows([past(), past()], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.deepEqual(rows, [{ game_date: "2019-09-06", home: "wren", away: "finch", home_score: "52", away_score: "6", home_forfeit: "false", away_forfeit: "false" }]);
+  assert.deepEqual(Object.keys(rows[0]), HISTORY_COLUMNS);
+  assert.equal(skipped.notOurs, 0);
+  assert.equal(historyCsv(rows), "game_date,home,away,home_score,away_score,home_forfeit,away_forfeit\n2019-09-06,wren,finch,52,6,false,false\n");
+});
+
+test("a team neither mapped nor one of ours by name is skipped and counted, as is an unfinished game", () => {
+  const eleven = past({ participants: [past().participants[0], { participantType: "AWAY", websiteUrl: "x/team/big-city-bulldogs", schoolName: "Big City", score: 40 }] });
+  const { rows, skipped } = historyRows([eleven, past({ status: "Scheduled" })], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.deepEqual(rows, []);
+  assert.deepEqual(skipped, { notFinished: 1, notOurs: 1, noDate: 0, forfeitUnflagged: 0 });
+});
+
+test("an old name: a program renamed after the season is written under the name it had then", () => {
+  const renamed = new Map([["finch", [{ from: "old-finch", season: 2021 }]]]);
+  assert.equal(asOf("finch", 2019, renamed), "old-finch");
+  assert.equal(asOf("finch", 2021, renamed), "finch");
+  const { rows } = historyRows([past()], { ours: pastOurs, slugs, renamed, season: 2019 });
+  assert.equal(rows[0].away, "old-finch");
+});
+
+test("a school name that could be two of our programs is not guessed", () => {
+  assert.equal(programByName("Lark", new Set(["lark-west", "lark-east"])), null);
+  assert.equal(programByName("Lark", new Set(["lark-west", "wren"]), "west-lark-owls"), "lark-west");
+});
+
+test("a same-named school in another town is not ours: our slug's town must be in the feed's team slug", () => {
+  const ours = new Set(["community-christian-mineral-wells", "wren"]);
+  assert.equal(programByName("Community Christian", ours, "orange-community-christian-lions"), null);
+  assert.equal(programByName("Community Christian", ours, "mineral-wells-community-christian-warriors"), "community-christian-mineral-wells");
+  assert.equal(programByName("Wren", ours, "wren-wrens"), "wren");
+  // Words that say what kind of school, not where, need not be in the feed's slug.
+  assert.equal(programByName("Finch Charter", new Set(["finch-charter-school", "wren"]), "finch-charter-falcons"), "finch-charter-school");
+});
+
+test("a forfeit keeps its side's flag; one naming no side is not written", () => {
+  const [h, a] = past().participants;
+  const flagged = past({ status: "Forfeit", participants: [h, { ...a, forfeited: true, score: 0 }] });
+  const unflagged = past({ scheduledKickoff: "2019-09-14T00:30:00Z", status: "Forfeit" });
+  const { rows, skipped } = historyRows([flagged, unflagged], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].away_forfeit, "true");
+  assert.equal(skipped.forfeitUnflagged, 1);
+});
+
+test("known programs come from the published seasons and the lineage table", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "dc-known-"));
+  mkdirSync(path.join(dir, "maxpreps-2021"));
+  mkdirSync(path.join(dir, "lineage"));
+  writeFileSync(path.join(dir, "maxpreps-2021", "games.csv"), "division,round,game_date,home,away\nI,season,2021-09-03,Wren,Lark West\n");
+  writeFileSync(path.join(dir, "lineage", "programs.csv"), "predecessor,successor,event,season,source_url,notes\nOld Finch,Finch,consolidation,2021,https://example.org,invented\n");
+  const { slugs: found, renamed } = knownPrograms(dir);
+  assert.deepEqual([...found].sort(), ["finch", "lark-west", "old-finch", "wren"]);
+  assert.deepEqual(renamed.get("finch"), [{ from: "old-finch", season: 2021 }]);
+});
+
+test("a 0-0 final is the feed's placeholder: written with no score", () => {
+  const [h, a] = past().participants;
+  const blank = past({ participants: [{ ...h, score: 0 }, { ...a, score: 0 }] });
+  const { rows } = historyRows([blank], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.equal(rows[0].home_score, "");
+  assert.equal(rows[0].away_score, "");
+});
+
+test("scores follow the feed's own home and away sides, whichever side is mapped", () => {
+  const [h, a] = past().participants;
+  const swapped = past({ participants: [{ ...a, participantType: "HOME" }, { ...h, participantType: "AWAY" }] });
+  const { rows } = historyRows([swapped], { ours: pastOurs, slugs, renamed: new Map(), season: 2019 });
+  assert.deepEqual([rows[0].home, rows[0].away, rows[0].home_score, rows[0].away_score], ["finch", "wren", "6", "52"]);
+});
+
+test("kickoffs: a bracket game still to play gets the feed's kickoff in UTC, the bracket's names, and no source", () => {
+  const due = [{ game_date: "2026-11-13", home: "Lark", away: "Wren", home_score: "", away_score: "" }];
+  // The feed has Wren at home: the row keeps the bracket's home and away.
+  const rows = kickoffRows([finalItem("wren-wrens", "lark-owls", null, null, { status: "Upcoming", scheduledKickoff: "2026-11-14T01:00:00.000Z" })], { due, ours: oursMap });
+  assert.deepEqual(rows, [{ date: "2026-11-13", home: "Lark", away: "Wren", kickoff_utc: "2026-11-14T01:00:00Z", site_name: "", site_city: "" }]);
+  // A kickoff on another Central date is another game.
+  assert.deepEqual(kickoffRows([finalItem("wren-wrens", "lark-owls", null, null, { scheduledKickoff: "2026-11-15T01:00:00Z" })], { due, ours: oursMap }), []);
+  const text = mergeKickoffs("", rows);
+  assert.equal(text, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,,\n`);
+  assert.doesNotMatch(text, /davecampbells|https?:/i);
+  // A filled value is never overwritten (ADR 0041): a fresh value only fills a blank; other kept rows stay.
+  const kept = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`;
+  assert.equal(mergeKickoffs(kept, rows), kept);
+  const blank = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,,,\n`;
+  const sited = [{ ...rows[0], site_name: "Bird Field", site_city: "Lark" }];
+  assert.equal(mergeKickoffs(blank, sited), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n`);
+});
+
+test("kickoffs: the site is the feed's venue name and city, plain words only, or blank", () => {
+  const due = [{ game_date: "2026-11-13", home: "Lark", away: "Wren", home_score: "", away_score: "" }];
+  const at = (venue) =>
+    kickoffRows([finalItem("wren-wrens", "lark-owls", null, null, { status: "Upcoming", scheduledKickoff: "2026-11-14T01:00:00Z", venue })], { due, ours: oursMap })[0];
+  const site = (venue) => [at(venue).site_name, at(venue).site_city];
+  assert.deepEqual(site({ locationName: "Bird Field", city: "Lark", state: "TX" }), ["Bird Field", "Lark"]);
+  // No location name: the site label; a bad location name falls back the same way. Nothing else of the venue is kept.
+  assert.deepEqual(site({ siteLabel: "Wren Stadium", city: "Lark" }), ["Wren Stadium", "Lark"]);
+  assert.deepEqual(site({ locationName: "<b>x</b>", siteLabel: "Wren Stadium", city: "Lark" }), ["Wren Stadium", "Lark"]);
+  const full = at({ locationName: "Bird Field", siteLabel: "Wren Stadium", addressLine1: "1 Main St", city: "Lark", postalCode: "79999", latitude: 33.1, longitude: -100.2 });
+  assert.deepEqual(Object.keys(full), ["date", "home", "away", "kickoff_utc", "site_name", "site_city"]);
+  assert.doesNotMatch(Object.values(full).join(","), /Main St|79999|33\.1|-100/);
+  assert.deepEqual(site({ locationName: "  Shotwell   Stadium ", city: "Abilene" }), ["Shotwell Stadium", "Abilene"]);
+  assert.deepEqual(site({ locationName: "Field 2, North Campus", city: "Lark" }), ["Field 2 - North Campus", "Lark"], "the file has no quoting");
+  assert.deepEqual(site({ locationName: "St. Mary's (Annex) / Field & Track", city: "San Angelo" }), ["St. Mary's (Annex) / Field & Track", "San Angelo"]);
+  for (const bad of [undefined, null, {}, { city: "Lark" }, { locationName: "<b>Field</b>", city: "Lark" }, { locationName: "x".repeat(81), city: "Lark" }, { locationName: 5, city: "Lark" }]) {
+    assert.deepEqual(site(bad), ["", ""], JSON.stringify(bad));
+  }
+  assert.deepEqual(site({ locationName: "Bird Field", city: "Lark<br>" }), ["Bird Field", ""], "a bad city leaves the name");
+  // The kickoff stands either way, and the file still names no source.
+  assert.equal(at({ locationName: "Bird Field", city: "Lark" }).kickoff_utc, "2026-11-14T01:00:00Z");
+  assert.doesNotMatch(mergeKickoffs("", [at({ locationName: "Bird Field", city: "Lark" })]), /davecampbells|https?:|venue/i);
+});
+
+test("kickoffs: what is still missing is counted by league, never naming a school", () => {
+  const due = [
+    { league: "TAPPS", game_date: "2026-11-13", home: "Lark", away: "Wren", home_score: "" },
+    { league: "TAPPS", game_date: "2026-11-13", home: "Finch", away: "Heron", home_score: "" },
+    { league: "TCAF", game_date: "2026-11-14", home: "Owl", away: "Crane", home_score: "" },
+  ];
+  const text = `${DETAIL_COLUMNS}\n2026-11-13,Wren,Lark,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Owl,Crane,2026-11-14T19:00:00Z,,\n`;
+  const line = missingDetails(due, text);
+  assert.equal(line, "Still missing: a kickoff 1 (TAPPS 1); a site 2 (TAPPS 1, TCAF 1).");
+  assert.doesNotMatch(line, /Lark|Wren|Finch|Heron|Owl|Crane/);
+  assert.equal(missingDetails(due.slice(0, 1), text), "Still missing: a kickoff 0; a site 0.");
+  assert.equal(missingDetails(due, ""), "Still missing: a kickoff 3 (TAPPS 2, TCAF 1); a site 3 (TAPPS 2, TCAF 1).");
+});
+
+test("--merge-details lays an earlier read over the file without overwriting a filled value, and reads no feed", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const dir = mkdtempSync(path.join(tmpdir(), "merge-details-"));
+  const fresh = path.join(dir, "fresh.csv");
+  const out = path.join(dir, "2026.csv");
+  writeFileSync(fresh, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
+  writeFileSync(out, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:30:00Z,,\n`);
+  // No network: the feed's host is unreachable here, so a read would fail the run.
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "davecampbells.mjs"), "--merge-details", fresh, "--out", out], { encoding: "utf8", env: { ...process.env, HTTPS_PROXY: "http://127.0.0.1:9" } });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(out, "utf8"), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:30:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
+});
+
+test("merging the two sources: on the same score, the row that says finished wins, then the one with a period", () => {
+  const r = (over) => ({ game_key: "2026-11-13|a|b", home: "a", away: "b", home_score: 28, away_score: 14, period: null, read_at: "2026-11-14T02:00:00.000Z", ...over });
+  assert.equal(mergeLive([r({ period: "Q4" })], [r({ finished: true })])[0].finished, true);
+  assert.equal(mergeLive([r({ finished: true })], [r({ period: "Q4" })])[0].finished, true);
+  // A higher score is the newer read, finished or not.
+  assert.equal(mergeLive([r({ finished: true })], [r({ home_score: 34, period: "Q4" })])[0].home_score, 34);
+  assert.equal(mergeLive([r({})], [r({ period: "Q2" })])[0].period, "Q2");
+});
+
+test("the period log counts the feed's period by minutes since kickoff, games under way only, never a team or score", () => {
+  const now = new Date("2026-11-14T02:26:00Z");
+  const at = (minutes, period, status = "Live") => item({ status, scheduledKickoff: new Date(now - minutes * 60_000).toISOString(), summary: { period, homeScore: 75, awayScore: 6 } });
+  assert.equal(periodByMinutes([], now), "no game under way");
+  const line = periodByMinutes([at(10, 1), at(20, 1), at(86, 1), at(116, 5), at(116, 5), at(45, null), at(130, 4, "Finished"), at(5, "Q<2>")], now);
+  assert.equal(line, "0-30 min: 1 x2, Q2 x1; 30-60 min: none x1; 60-90 min: 1 x1; 90-120 min: 5 x2");
+  assert.ok(!/75|6\b|wren|lark/i.test(line));
+});
+
+test("late (ADR 0043): the raw period is 4 or more, or 2 hours since kickoff; with no kickoff, the period alone", () => {
+  const kickoff = "2026-11-14T01:00:00Z";
+  const at = (minutes) => new Date(Date.parse(kickoff) + minutes * 60_000);
+  assert.equal(isLate(item({ summary: { period: 4 } }), at(40)), true, "late by period");
+  assert.equal(isLate(item({ summary: { period: 5 } }), at(40)), true, "past the fourth quarter");
+  assert.equal(isLate(item({ summary: { period: "4" } }), at(40)), true, "a period given as text");
+  assert.equal(isLate(item({ summary: { period: 2 } }), at(120)), true, "late by time: 2 hours since kickoff");
+  assert.equal(isLate(item({ summary: { period: 2 } }), at(119)), false, "not late");
+  assert.equal(isLate(item({ summary: { period: null } }), at(60)), false);
+  assert.equal(isLate(item({ scheduledKickoff: undefined, summary: { period: 2 } }), at(600)), false, "no kickoff: period alone");
+  assert.equal(isLate(item({ scheduledKickoff: undefined, summary: { period: 4 } }), at(0)), true);
+  // The row carries the flag only when late; the period itself is never stored.
+  const opts = { date: "2026-11-13", due, ours };
+  const [late] = liveRowsFromItems([item({ summary: { period: 2, homeScore: 20, awayScore: 14 } })], { ...opts, readAt: at(130) });
+  assert.deepEqual([late.late, late.period], [true, null]);
+  assert.equal(liveRowsFromItems([item()], { ...opts, readAt: at(60) })[0].late, undefined);
+});
+
+test("mergeLive keeps late when either source's row says so (ADR 0043)", () => {
+  const r = (total, late) => ({ game_key: "2026-11-13|a|b", home: "a", away: "b", home_score: total, away_score: 0, period: null, ...(late && { late: true }), read_at: "2026-11-14T03:00:00.000Z" });
+  assert.equal(mergeLive([r(28)], [r(21, true)])[0].late, true, "the higher score wins, the late flag is kept");
+  assert.equal(mergeLive([r(28)], [r(21, true)])[0].home_score, 28);
+  assert.equal(mergeLive([r(28)], [r(21)])[0].late, undefined);
+});
+
+test("--opponents lists a team's opponents by slug and school name, once each, never the team itself", () => {
+  const game = (a, b) => ({ participants: [{ websiteUrl: `/team/${a}`, schoolName: a.toUpperCase(), score: 7 }, { websiteUrl: `https://x.test/team/${b}/`, schoolName: "Wren Academy" }] });
+  const rows = opponentRows([game("lark-owls", "wren-academy-wrens"), game("lark-owls", "wren-academy-wrens"), game("finch-falcons", "lark-owls"), { participants: null }, { participants: [{ websiteUrl: "/team/lark-owls" }, { schoolName: "Robin Prep" }, {}] }], "lark-owls");
+  assert.deepEqual(rows, [{ slug: "", school: "Robin Prep" }, { slug: "finch-falcons", school: "FINCH-FALCONS" }, { slug: "wren-academy-wrens", school: "Wren Academy" }]);
+  assert.ok(!JSON.stringify(rows).includes("7"), "no score");
+});
+
+test("--about shows only a team answer's name and place fields", () => {
+  const answer = { teamId: "t1", schoolName: "Wren Academy", logoUrl: "https://x.test/l.png", school: { name: "Wren Academy", city: "Lark", state: "TX", websiteUrl: "https://x.test" }, ranking: 3, records: [{ city: "no" }] };
+  assert.deepEqual(placeFields(answer), ["schoolName: Wren Academy", "school.name: Wren Academy", "school.city: Lark", "school.state: TX"]);
+  assert.deepEqual(placeFields(null), []);
+});
+
+test("bracketFields prints a playoff game's bracket fields, never a score, and copes with missing ones (ADR 0047)", () => {
+  const item = {
+    scheduledKickoff: "2026-11-14T01:00:00Z", seasonPhase: "Playoffs", playoffRound: "Bi-District", playoffBracketPosition: 6,
+    eventDescription: "1A D1 Bi-District", status: "Final", homeScore: 98, awayScore: 50,
+    participants: [{ schoolName: "Invented Valley", participantType: "Home", seed: 1 }, { schoolName: "Made Up", participantType: "Away" }],
+  };
+  const line = bracketFields(item);
+  assert.equal(line, "2026-11-13 | Invented Valley (Home, seed 1) v Made Up (Away, seed -) | phase Playoffs | round Bi-District | position 6 | event 1A D1 Bi-District | status Final");
+  assert.doesNotMatch(line, /98|50/);
+  assert.equal(bracketFields({}), "no date |  | phase - | round - | position - | event - | status -");
+});
+
+test("the feed's UIL bracket positions are checked against UIL's bracket: G(first of round + position) (ADR 0047)", () => {
+  const structure = [
+    ["G1", "bi-district", "Salt Fork", "Cedar Gap"], ["G2", "bi-district", "Dry Wash", "Owl Creek"],
+    ["G3", "bi-district", "Lone Elm", "Big Draw"], ["G4", "bi-district", "Kite Hill", "Sand Bend"],
+    ["G17", "area", "winner:G1", "winner:G2"], ["G18", "area", "winner:G3", "winner:G4"],
+  ].map(([slot, round, a, b]) => ({ division: "I", round, slot, a, b }));
+  const game = (round, position, home, away, league = "UIL") => ({ item: { playoffRound: round, playoffBracketPosition: position }, row: { league, division: "I", home, away } });
+  const fit = positionProblems([game("Bi-District", 2, "Owl Creek", "Dry Wash"), game("Area", 1, "Owl Creek", "Salt Fork"), game("Area", 2, "Big Draw", "Sand Bend")], structure);
+  assert.deepEqual(fit, { checked: 3, misfits: [] });
+  // Area position 1 is G17 (G1 and G2's winners): a pairing from G3 and G4 there does not fit; nor does a position with no slot.
+  const wrong = positionProblems([game("Area", 1, "Big Draw", "Sand Bend"), game("Area", 5, "Owl Creek", "Salt Fork")], structure);
+  assert.deepEqual(wrong, { checked: 2, misfits: ["UIL I G17", "UIL I G21"] });
+  // Not UIL, no position or an unknown round: not checked.
+  const skipped = positionProblems([game("Area", 1, "Owl Creek", "Salt Fork", "TAPPS"), game("Area", null, "Owl Creek", "Salt Fork"), game("Playoffs", 1, "Owl Creek", "Salt Fork")], structure);
+  assert.deepEqual(skipped, { checked: 0, misfits: [] });
+});
+
+test("games on a Central date: each side's name, score and forfeit flag, never the spread or the winner flag (ADR 0046)", () => {
+  const items = [
+    finalItem("lark-owls", "wren-wrens", 68, 0), // 7 PM Central on Nov 12
+    finalItem("lark-owls", "jay-jays", null, null, { status: "Upcoming", scheduledKickoff: "2026-11-14T23:00:00Z" }),
+    finalItem("lark-owls", "kite-kites", 2, 0, { participants: [{ participantType: "HOME", schoolName: "lark", score: 2 }, { participantType: "AWAY", schoolName: "kite", score: 0, forfeited: true }] }),
+    { status: "Final" }, // no kickoff: not listed
+  ];
+  assert.deepEqual(gamesOnLines(items, "2026-11-12"), ["2026-11-12 | Final | AWAY wren 0 | HOME lark 68", "2026-11-12 | Final | AWAY kite 0 (forfeited) | HOME lark 2"]);
+  assert.deepEqual(gamesOnLines(items, "2026-11-14"), ["2026-11-14 | Upcoming | AWAY jay - | HOME lark -"]);
+  assert.equal(gamesOnLines(items, "all").length, 3);
+  assert.ok(!gamesOnLines(items, "all").join("\n").match(/-10|winner/i));
 });

@@ -1,6 +1,7 @@
 import { ChevronRight, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { KickoffStatus } from "../../kickoff-status";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { heading, loadAlignments, placeLabel, programFor, slugify, uniquePrograms } from "@/lib/alignments";
@@ -12,14 +13,19 @@ import { loadAliases, loadLineage, otherNames } from "@/lib/lineage";
 import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
 import { loadRanked, rankLabel } from "@/lib/rankings";
+import { ratedFromOutsideOnly, OUTSIDE_ONLY_NOTE } from "@/lib/outside-only";
 import { FEW_GAMES, loadRatings, ratingSeasons, record, signed } from "@/lib/ratings";
 import { meetingScore, schedulesFor, type Meeting } from "@/lib/schedule-strength";
 import { whyItMoved } from "@/lib/why-moved";
 import { seasonHref } from "../../rankings/view";
 import { CURRENT_SEASON } from "@/lib/season";
+import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
-import { seasonRows, type Row } from "@/lib/program-games";
+import { playedCounts } from "@/lib/season-results";
+import { shownBefore } from "@/lib/pregame";
+import { lead, seasonRows, type Row } from "@/lib/program-games";
+import { ProgramLiveRead, ProgramLiveScore } from "../../scores/live-game";
 import { embedSnippet } from "@/lib/embed-html";
 import { ratingSeries, type Rivalry } from "@/lib/program-history";
 import { programHistory, programSeasonPages } from "@/lib/program-seasons";
@@ -38,6 +44,7 @@ import { RatingChart, ratingPoints } from "../rating-chart";
 import { SeasonRatings } from "../season-ratings";
 import { RankTrend, rankTrend } from "../trend";
 import { CrestSlot, EdgeToEdge } from "../../ui";
+import { programTitle } from "@/lib/titles";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -48,10 +55,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const school = (await loadAlignments()).find((a) => a.slug === slug);
   // The same record and rank the page's header shows (the latest season's table), and the same title count.
-  const [ranked, seasons, titles] = await Promise.all([loadRanked(), ratingSeasons(), titlesBySlug()]);
+  const [ranked, seasons, titles, identities] = await Promise.all([loadRanked(), ratingSeasons(), titlesBySlug(), loadIdentities()]);
   const team = ranked.teams.find((t) => t.school.slug === slug);
   return {
-    title: `${school?.school ?? "Program"}`,
+    title: school ? programTitle({ name: school.school, mascot: identities.get(slug)?.mascot, season: seasons[0] }) : "Program",
     ...(school && {
       description: programDescription({
         name: school.school,
@@ -146,16 +153,26 @@ export default async function ProgramPage({ params }: Props) {
     (a) => a.slug !== slug && a.league === school.league && a.division === school.division && a.region === school.region && a.district === school.district,
   );
   // The season as one timeline: robot-read results and playoff games together, by date (lib/program-games.ts).
-  const { rows, results, games, latest, next } = seasonRows(school.school, await loadGames(all), await loadSeasonResults(CURRENT_SEASON));
+  const { rows, results, games, latest, next } = seasonRows(
+    school.school,
+    await loadGames(all),
+    await loadSeasonResults(CURRENT_SEASON),
+    await shownBefore(CURRENT_SEASON),
+  );
   // This program's own finals, and those of the schools that merged into it (ADR 0003), marked "as <old name>".
   const lineage = await loadLineage();
   const names = new Set([slug, ...lineage.filter((l) => slugify(l.successor) === slug).map((l) => slugify(l.predecessor))]);
-  const aka = otherNames(slug, lineage, await loadAliases(), (await loadCorrections()).merges);
-  const finals = (await loadFinals())
+  const allFinals = await loadFinals();
+  const aka = otherNames(slug, lineage, await loadAliases(), {
+    merges: (await loadCorrections()).merges,
+    finals: allFinals,
+    programs: new Set(all.map((a) => a.slug)),
+  });
+  const finals = allFinals
     .filter((f) => names.has(slugify(f.champion)) || names.has(slugify(f.runnerUp)))
     .sort((a, b) => b.season - a.season);
   const titles = finals.filter((f) => names.has(slugify(f.champion))).length;
-  // Season by season, 2021 on: record, final rating, place within its organization and the last playoff round played, from each
+  // Season by season, FIRST_SEASON on: record, final rating, place within its organization and the last playoff round played, from each
   // season's table (lib/program-seasons.ts); a season with nothing on record keeps its row, with dashes.
   const seasons = await ratingSeasons();
   const { entries, opponents } = await programHistory(school, seasons);
@@ -164,6 +181,8 @@ export default async function ProgramPage({ params }: Props) {
   // The opponents this program has a series page with (lib/series-data.ts): their games count links to it.
   const partners = (await seriesPartners()).get(slug);
   const current = await loadRatings(seasons[0]);
+  // What the rating rests on: the games played (from the season's games the site lists) and the ratings' own `rated`.
+  const played = ranked ? (playedCounts(await loadSeasonResults(seasons[0])).get(ranked.team) ?? 0) : 0;
   // How hard the record was, measured against this organization's top teams (lib/schedule-strength.ts), and the game each
   // week that went furthest from its projection (lib/why-moved.ts).
   const schedule = ranked ? (await schedulesFor(seasons[0], ranked.org.league)).stats.get(ranked.team) : undefined;
@@ -183,26 +202,39 @@ export default async function ProgramPage({ params }: Props) {
   const GameRow = ({ r, big = true }: { r: Row; big?: boolean }) => {
     const score = (
       <span className={`font-num font-bold tabular-nums text-ink ${big ? "text-[22px]" : "text-[19px]"}`}>
-        {r.score ?? <ChevronRight aria-hidden="true" className="size-5 text-muted" />}
+        {r.score ??
+          // The next game, while under way, shows its live score here (ADR 0021); every other unplayed game, the arrow.
+          (r.id === next?.id && r.date ? (
+            <ProgramLiveScore date={r.date} school={school.school} opponent={r.opponent} home={r.home}>
+              <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+            </ProgramLiveScore>
+          ) : (
+            <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+          ))}
       </span>
     );
     return (
       <li key={r.id} className="relative border-b border-line hover:bg-panel">
         <div className="grid min-h-14 grid-cols-[4.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
-          <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{r.status}</span>
+          <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">
+            {r.status}
+            {/* Not yet played: its kickoff status when the page is viewed (ADR 0036). */}
+            {!r.score && r.date && <KickoffStatus date={r.date} kickoff={r.kickoff} short className="block w-fit font-sans text-[13px] normal-case" />}
+          </span>
           <span className="min-w-0 text-[15px] leading-5 text-ink">
             <span className="flex items-center">
               {opponentCrest(r.opponent)}
               <span className="flex min-w-0 items-center gap-1">
-                {r.home ? "vs" : "at"} {opponentLink(r.opponent)}
+                {lead(r)} {opponentLink(r.opponent)}
               </span>
             </span>
             {r.note && <span className="block text-[13px] leading-4 text-muted">{r.note}</span>}
+            {r.projected && <span data-projected className="block text-[13px] leading-4 text-muted">{r.projected}</span>}
           </span>
           {r.href ? (
             <Link
               href={r.href}
-              aria-label={`${r.status} ${r.home ? "vs" : "at"} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}
+              aria-label={`${r.status} ${lead(r)} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}
               className="flex min-h-11 min-w-11 items-center justify-end after:absolute after:inset-0"
             >
               {score}
@@ -255,7 +287,7 @@ export default async function ProgramPage({ params }: Props) {
     </li>
   );
 
-  return (
+  const page = (
     <EdgeToEdge>
       {/* data-pagefind-body: this page is in the site search (app/search). */}
       <article data-pagefind-body aria-labelledby="school" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
@@ -277,8 +309,26 @@ export default async function ProgramPage({ params }: Props) {
           {ranked ? (
             <>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 sm:flex sm:[&>div]:flex-1">
-                <Stat label={`${seasons[0]} record`} sub={ranked.rated < FEW_GAMES ? `${ranked.rated} rated ${ranked.rated === 1 ? "game" : "games"}` : undefined}>
-                  {record(ranked)}
+                <Stat
+                  label={`${seasons[0]} record`}
+                  sub={
+                    ratedFromOutsideOnly(ranked) ? (
+                      OUTSIDE_ONLY_NOTE
+                    ) : (
+                      <>
+                        <Link href="/about/ratings" className="inline-flex min-h-11 items-center underline underline-offset-2">
+                          {played} played, {ranked.rated} rated
+                        </Link>
+                        {!!ranked.rated_outside && (
+                          <span className="block">
+                            + {ranked.rated_outside} rated {ranked.rated_outside === 1 ? "game against a school" : "games against schools"} not listed here
+                          </span>
+                        )}
+                      </>
+                    )
+                  }
+                >
+                  {ratedFromOutsideOnly(ranked) ? "–" : record(ranked)}
                 </Stat>
                 <Stat
                   label="Rank"
@@ -328,18 +378,26 @@ export default async function ProgramPage({ params }: Props) {
           <section aria-label="Next and latest game" className="grid gap-px border-b border-line bg-line sm:grid-cols-2">
             {next && (
               <div className="bg-white px-3 py-2.5">
-                <p className="text-[12px] font-bold uppercase tracking-widest text-red">Next game</p>
+                {/* A game dated before tonight with no score yet is waiting on its score, not still to play. */}
+                <p className="text-[12px] font-bold uppercase tracking-widest text-red">{next.date < tonightsDate() ? "Score not in yet" : "Next game"}</p>
                 {next.href ? (
                   <Link href={next.href} className="flex min-h-11 items-center justify-between gap-2 text-[16px] font-semibold text-ink hover:text-navy">
                     <span>
-                      {next.status} · {next.home ? "vs" : "at"} {next.opponent}
+                      {next.status} · {lead(next)} {next.opponent}
+                      {next.date && (
+                        <span className="block text-[14px]">
+                          <KickoffStatus date={next.date} kickoff={next.kickoff} />
+                        </span>
+                      )}
+                      {next.date && <ProgramLiveScore line date={next.date} school={school.school} opponent={next.opponent} home={next.home} />}
                       {next.note && <span className="block text-[14px] font-normal text-muted">{next.note}</span>}
+                      {next.projected && <span data-projected className="block text-[14px] font-normal text-muted">{next.projected}</span>}
                     </span>
                     <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted" />
                   </Link>
                 ) : (
                   <p className="text-[16px] font-semibold text-ink">
-                    {next.status} · {next.home ? "vs" : "at"} {next.opponent}
+                    {next.status} · {lead(next)} {next.opponent}
                   </p>
                 )}
               </div>
@@ -349,8 +407,7 @@ export default async function ProgramPage({ params }: Props) {
                 <p className="text-[12px] font-bold uppercase tracking-widest text-red">Latest score</p>
                 <div className="flex min-h-11 items-center justify-between gap-2 text-[16px] font-semibold text-ink">
                   <span>
-                    {latest.status} · {latest.home ? "vs" : "at"} {opponentLink(latest.opponent)}
-                    <span className="block text-[14px] font-normal text-muted">Score not confirmed here.</span>
+                    {latest.status} · {lead(latest)} {opponentLink(latest.opponent)}
                   </span>
                   <Link
                     href={latest.href}
@@ -380,9 +437,6 @@ export default async function ProgramPage({ params }: Props) {
                   <GameRow key={r.id} r={r} />
                 ))}
               </ul>
-              {(results.length > 0 || games.some((g) => g.verification === "unconfirmed")) && (
-                <p className="px-3 pt-2 text-[13px] text-muted">Season scores, not confirmed here.</p>
-              )}
             </>
           ) : (
             <p className="px-3 py-4 text-[15px] text-muted">No {CURRENT_SEASON} games on record yet. Scores and projections appear here as games are read.</p>
@@ -429,7 +483,7 @@ export default async function ProgramPage({ params }: Props) {
                 </li>
               ))}
             </ul>
-            <p className="px-3 pt-2 text-[13px] text-muted">Forfeits are left out of the figures. Season scores, not confirmed here.</p>
+            <p className="px-3 pt-2 text-[13px] text-muted">Forfeits are left out of the figures.</p>
           </Section>
         )}
 
@@ -463,7 +517,7 @@ export default async function ProgramPage({ params }: Props) {
         {moves.length > 0 && (
           <Section id="why-moved" title="Why the rating moved" accent={accent}>
             <p className="px-3 pt-2 text-[13px] text-muted">
-              Each week, the game that went furthest from what the ratings projected the week before. Season scores, not confirmed here.
+              Each week, the game that went furthest from what the ratings projected the week before.
             </p>
             <ul>
               {moves.map((m) => (
@@ -514,7 +568,13 @@ export default async function ProgramPage({ params }: Props) {
                     <span className="inline-flex min-h-11 items-center font-num text-[18px] font-bold text-navy">{line.season}</span>
                   )}
                   <span className="min-w-0 text-[15px] leading-5 text-ink">
-                    {line.record ? <b className="font-num text-[20px] tabular-nums">{record(line.record)}</b> : <Dash what="record" />}
+                    {line.outsideOnly ? (
+                      <span className="text-[14px] text-muted">{OUTSIDE_ONLY_NOTE}</span>
+                    ) : line.record ? (
+                      <b className="font-num text-[20px] tabular-nums">{record(line.record)}</b>
+                    ) : (
+                      <Dash what="record" />
+                    )}
                     <span className="text-muted">
                       {" "}
                       {line.rank != null
@@ -553,7 +613,7 @@ export default async function ProgramPage({ params }: Props) {
                         <GameRow key={r.id} r={r} big={false} />
                       ))}
                     </ul>
-                    <p className="pt-1 text-[13px] text-muted">Season scores, not confirmed here. Playoff games name their round.</p>
+                    <p className="pt-1 text-[13px] text-muted">Playoff games name their round.</p>
                   </details>
                 )}
               </li>
@@ -567,7 +627,7 @@ export default async function ProgramPage({ params }: Props) {
         {opponents.length > 0 && (
           <Section id="rivals" title={rivals.length ? "Most played" : "Opponents"} accent={accent}>
             <p className="px-3 pt-2 text-[13px] text-muted">
-              Record against each since {withRecord.at(-1)?.line.season ?? seasons.at(-1)}, from scores not confirmed here. A forfeit counts as a win or a loss.
+              Record against each since {withRecord.at(-1)?.line.season ?? seasons.at(-1)}. A forfeit counts as a win or a loss.
             </p>
             {rivals.length > 0 && (
               <ul>
@@ -637,8 +697,14 @@ export default async function ProgramPage({ params }: Props) {
           <Section id="other-names" title="Other names" accent={accent}>
             <ul>
               {aka.map((n) => (
-                <li key={n.name} className="flex min-h-11 flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2 text-[15px] text-ink">
-                  <b>{n.name}</b>
+                <li key={`${n.name}-${n.note}`} className="flex min-h-11 flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2 text-[15px] text-ink">
+                  {n.slug ? (
+                    <Link href={`/programs/${n.slug}`} className="font-bold text-navy hover:underline">
+                      {n.name}
+                    </Link>
+                  ) : (
+                    <b>{n.name}</b>
+                  )}
                   <span className="text-[14px] text-muted">{n.note}</span>
                 </li>
               ))}
@@ -674,5 +740,13 @@ export default async function ProgramPage({ params }: Props) {
         </details>
       </article>
     </EdgeToEdge>
+  );
+  // One live read for the page's next game, shared by its box and its row, and only while it is in progress (ADR 0021).
+  return next?.date ? (
+    <ProgramLiveRead date={next.date} kickoff={next.kickoff}>
+      {page}
+    </ProgramLiveRead>
+  ) : (
+    page
   );
 }
