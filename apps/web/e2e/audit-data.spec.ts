@@ -137,8 +137,8 @@ test("Standings says what its district and overall records count", async ({ page
 
 test("the rankings explainer shows what the ratings expected next to what happened", async ({ page }) => {
   await page.goto("/rankings/how");
-  const table = page.getByRole("table", { name: /projected team won, by its win probability/ });
-  await expect(table.getByRole("columnheader")).toHaveText(["Win probability", "Games", "Ratings said", "Projected team won"]);
+  const table = page.getByRole("table", { name: /projected team won, by its chance to win/ });
+  await expect(table.getByRole("columnheader")).toHaveText(["Chance to win", "Games", "Ratings said", "Projected team won"]);
   const first = (await table.getByRole("row").nth(1).getByRole("cell").allInnerTexts()).map((t) => t.trim());
   expect(first.every((t) => /^\d+%$|^[\d,]+$/.test(t))).toBe(true);
 });

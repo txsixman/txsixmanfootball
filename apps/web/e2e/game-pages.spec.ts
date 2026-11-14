@@ -92,7 +92,7 @@ async function checkPage(page: Page, url: string) {
 
 const NO_SOURCE_OR_BETTING = /\b(spreads?|odds|lines?|bets?|bettors?|sources?|maxpreps)\b/i;
 // A final names its winner (ADR 0040), marked on the score and read out as "winner"; no other winner word is written.
-// "Win probability" is the projection's own phrase.
+// "Chance to win" is the projection's own phrase.
 const WINNER_WORDS = /\b(won|beat|beats|defeated|defeats|winner|wins|victory|loser|lost)\b/i;
 const withoutProjectionPhrase = (text: string) => text.replace(/win probability|chance to win/gi, "");
 

@@ -43,6 +43,7 @@
 | [0042](../adr/0042-a-finished-live-game-shows-score-reported.md) | A game the live read saw finish keeps its last score as "Score reported" (dashed, unconfirmed, no winner, under Reported) until the final is read; `live_score.finished` (migration 0019). Live rows carry no quarter from the second source (it lagged the score; a 5 was shown as OT) | Proposed Nov 14, 2026 |
 | [0043](../adr/0043-a-stale-late-live-score-is-final.md) | A late live score (period 4 or more, or 2 hours since kickoff) unchanged for 60 minutes is final; a finished live row shows "Final" with the winner marked and "as of" the read, not "Score reported" (amends 0042); the stored final still wins | Proposed Nov 14, 2026 |
 | [0044](../adr/0044-projection-beside-the-outcome.md) | Every game row and game page with a projection shows it beside the outcome ("Projected: … · Final: <team> by 3"; live "Now: …", disputed, forfeit); a played game's projection is the week-before one (lib/pregame.ts projectBefore), never today's ratings; "chance to win", no upset label. Supersedes 0040's no-winner rule on list pages for that line | Proposed Nov 14, 2026 |
+| [0045](../adr/0045-chance-to-win-everywhere.md) | The site's words are rating, projected margin and "chance to win", never "win probability"; the Records list is "Biggest surprises"; no projection is removed |
 
 Not in an ADR:
 - Interviews are cut from the plan (the owner, Nov 10, 2026; see `docs/plan/v1.2-notes.md`).

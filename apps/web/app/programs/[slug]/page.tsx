@@ -22,6 +22,7 @@ import { CURRENT_SEASON } from "@/lib/season";
 import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
+import { playedCounts } from "@/lib/season-results";
 import { shownBefore } from "@/lib/pregame";
 import { lead, seasonRows, type Row } from "@/lib/program-games";
 import { ProgramLiveRead, ProgramLiveScore } from "../../scores/live-game";
@@ -179,6 +180,8 @@ export default async function ProgramPage({ params }: Props) {
   // The opponents this program has a series page with (lib/series-data.ts): their games count links to it.
   const partners = (await seriesPartners()).get(slug);
   const current = await loadRatings(seasons[0]);
+  // What the rating rests on: the games played (from the season's games the site lists) and the ratings' own `rated`.
+  const played = ranked ? (playedCounts(await loadSeasonResults(seasons[0])).get(ranked.team) ?? 0) : 0;
   // How hard the record was, measured against this organization's top teams (lib/schedule-strength.ts), and the game each
   // week that went furthest from its projection (lib/why-moved.ts).
   const schedule = ranked ? (await schedulesFor(seasons[0], ranked.org.league)).stats.get(ranked.team) : undefined;
@@ -305,7 +308,25 @@ export default async function ProgramPage({ params }: Props) {
           {ranked ? (
             <>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 sm:flex sm:[&>div]:flex-1">
-                <Stat label={`${seasons[0]} record`} sub={ratedFromOutsideOnly(ranked) ? OUTSIDE_ONLY_NOTE : ranked.rated < FEW_GAMES ? `${ranked.rated} rated ${ranked.rated === 1 ? "game" : "games"}` : undefined}>
+                <Stat
+                  label={`${seasons[0]} record`}
+                  sub={
+                    ratedFromOutsideOnly(ranked) ? (
+                      OUTSIDE_ONLY_NOTE
+                    ) : (
+                      <>
+                        <Link href="/about/ratings" className="inline-flex min-h-11 items-center underline underline-offset-2">
+                          {played} played, {ranked.rated} rated
+                        </Link>
+                        {!!ranked.rated_outside && (
+                          <span className="block">
+                            + {ranked.rated_outside} rated {ranked.rated_outside === 1 ? "game against a school" : "games against schools"} not listed here
+                          </span>
+                        )}
+                      </>
+                    )
+                  }
+                >
                   {ratedFromOutsideOnly(ranked) ? "–" : record(ranked)}
                 </Stat>
                 <Stat

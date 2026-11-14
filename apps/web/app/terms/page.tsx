@@ -49,7 +49,7 @@ export default function TermsPage() {
 
       <LegalH2>Scores, ratings and projections</LegalH2>
       <p className="mt-2">
-        Ratings, projected margins and win probabilities are estimates, not facts. Scores may be corrected if a mistake is found. Nothing here is an
+        Ratings, projected margins and chances to win are estimates, not facts. Scores may be corrected if a mistake is found. Nothing here is an
         official result of any league or school.
       </p>
 
