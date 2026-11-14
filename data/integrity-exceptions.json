@@ -3,5 +3,20 @@
     "key": "two-games 2026-08-20 logos-preparatory-academy-sugar-land",
     "reason": "One game listed twice by the source, once on each Second Baptist University-Model campus's schedule (UM-North and UM-Memorial), both a 47-0 loss at Logos Prep. The source does not say which campus played, so neither row can be voided without inventing the fact. Settle it with a correction (void the wrong one) once the right campus is known.",
     "reviewed": "2026-11-13"
+  },
+  {
+    "key": "two-games 2018-09-21 rotan",
+    "reason": "Rotan is listed at Guthrie (38-7, set up in May with a named field, on both schools' schedules) and at Moran (22-15, entered five days after the game, on both schools' schedules). Both versions are on the source and neither carries a forfeit mark or a copied score, so neither row can be voided without inventing the fact. Void the wrong one with a correction once the right opponent is known.",
+    "reviewed": "2026-11-13"
+  },
+  {
+    "key": "two-games 2020-09-04 lorenzo",
+    "reason": "Lorenzo is listed against Kingdom Preparatory Academy-Lubbock (neutral site) and against Lazbuddie (at Lorenzo), both 68-32 and both set up in June and on both schools' schedules, so the score was copied onto one wrong opponent. Neither schedule says which, so neither row can be voided without inventing the fact. Void the wrong one with a correction once the right opponent is known.",
+    "reviewed": "2026-11-13"
+  },
+  {
+    "key": "two-games 2022-09-16 christian-heritage-classical-school-longview",
+    "reason": "Christian Heritage Classical School-Longview is listed against The Highlands School-Irving (90-63 at 7:30 PM, set up in August) and against Leveretts Chapel (70-56 at a neutral site, date only, entered the next day). Both are on both schools' schedules with different scores; the neutral game may really have been played the next day, which the source does not say. Neither row can be voided without inventing the fact; correct the date or void the wrong one once known.",
+    "reviewed": "2026-11-13"
   }
 ]

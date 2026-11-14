@@ -182,6 +182,19 @@ test("a game listed twice is one game; twice with different scores, it is left o
   assert.equal(odd.conflicts.length, 1);
 });
 
+test("the same game a day or two apart is one game: the earlier stays and gets the bracket; three days apart is two", async () => {
+  const { dedupe } = await import("./maxpreps.mjs");
+  const g = (id, date, hs, as, bracket = null, flip = false) => ({
+    id, date, played: true, bracket,
+    home: { slug: flip ? "salt-fork" : "cedar-gap", score: flip ? as : hs }, away: { slug: flip ? "cedar-gap" : "salt-fork", score: flip ? hs : as },
+  });
+  const out = dedupe([g("c2", "2018-11-23", 61, 14, { league: "UIL" }, true), g("c1", "2018-11-22", 61, 14)]);
+  assert.deepEqual(out.kept.map((x) => x.id), ["c1"]);
+  assert.deepEqual(out.kept[0].bracket, { league: "UIL" });
+  assert.deepEqual(out.repeats, ["2018-11-23 cedar-gap at salt-fork 61-14, a copy of the game on 2018-11-22"]);
+  assert.equal(dedupe([g("c1", "2018-10-19", 52, 24), g("c2", "2018-10-22", 52, 24)]).kept.length, 2);
+});
+
 test("a game with the same school on both sides is never written, and is named", async () => {
   const { dedupe } = await import("./maxpreps.mjs");
   const side = (city, score) => ({ slug: "community-christian", name: "Community Christian", city, score });
