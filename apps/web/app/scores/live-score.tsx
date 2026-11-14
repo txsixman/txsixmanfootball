@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { checkedAt, fetchLiveRows, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
+import { checkedAt, fetchLiveRows, type LiveRow, type LiveView } from "@/lib/live-scores";
 
 // Live scores during a game (ADR 0021). The pages are static; this reads the score of games under way through the public
 // function live_scores() in the browser, every minute while the tab is visible. It shows nothing when the request fails or
@@ -53,17 +53,5 @@ export function LiveLine({ live, className = "" }: { live: LiveView; className?:
         {live.away.name} {live.away.score}, {live.home.name} {live.home.score} &middot; checked {checkedAt(live.readAt)}
       </p>
     </div>
-  );
-}
-
-/** A game page's live line, for a game with no final. */
-export function LiveScore({ date, home, away }: { date: string; home: string; away: string }) {
-  const rows = useLiveScores();
-  const live = liveView(rows, { date, home, away });
-  if (!live) return null;
-  return (
-    <section aria-label="Live score" className="px-3 pt-2">
-      <LiveLine live={live} />
-    </section>
   );
 }

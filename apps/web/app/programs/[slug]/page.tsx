@@ -22,6 +22,7 @@ import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
 import { lead, seasonRows, type Row } from "@/lib/program-games";
+import { ProgramLiveScore } from "../../scores/live-game";
 import { embedSnippet } from "@/lib/embed-html";
 import { ratingSeries, type Rivalry } from "@/lib/program-history";
 import { programHistory, programSeasonPages } from "@/lib/program-seasons";
@@ -185,7 +186,15 @@ export default async function ProgramPage({ params }: Props) {
   const GameRow = ({ r, big = true }: { r: Row; big?: boolean }) => {
     const score = (
       <span className={`font-num font-bold tabular-nums text-ink ${big ? "text-[22px]" : "text-[19px]"}`}>
-        {r.score ?? <ChevronRight aria-hidden="true" className="size-5 text-muted" />}
+        {r.score ??
+          // The next game, while under way, shows its live score here (ADR 0021); every other unplayed game, the arrow.
+          (r.id === next?.id && r.date ? (
+            <ProgramLiveScore date={r.date} school={school.school} opponent={r.opponent} home={r.home}>
+              <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+            </ProgramLiveScore>
+          ) : (
+            <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+          ))}
       </span>
     );
     return (
@@ -345,6 +354,7 @@ export default async function ProgramPage({ params }: Props) {
                           <KickoffStatus date={next.date} kickoff={next.kickoff} />
                         </span>
                       )}
+                      {next.date && <ProgramLiveScore line date={next.date} school={school.school} opponent={next.opponent} home={next.home} />}
                       {next.note && <span className="block text-[14px] font-normal text-muted">{next.note}</span>}
                     </span>
                     <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted" />

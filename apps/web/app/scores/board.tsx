@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files
-import { asLive, checkedAt, liveView } from "@/lib/live-scores";
+import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
 import { ORGS } from "@/lib/orgs";
 import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
 import { CrestSlot, EmptyState, PageHeader } from "../ui";
@@ -129,8 +129,8 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
   );
 }
 
-/** `checked`: when the live score of a game under way was read (asLive put it in the score cells). */
-function Row({ g, crests, checked }: { g: Game; crests?: Crests; checked?: Date }) {
+/** `live`: the live read of a game under way (asLive put its score in the score cells; this says where the game stands). */
+function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView }) {
   const edge =
     g.verification === "disputed"
       ? "border-l-[6px] border-red"
@@ -146,9 +146,9 @@ function Row({ g, crests, checked }: { g: Game; crests?: Crests; checked?: Date 
             <TeamLine g={g} side="away" crests={crests} />
             <TeamLine g={g} side="home" crests={crests} />
             <Notes g={g} />
-            {checked && (
-              <p data-live-score className="mt-0.5 text-[13px] leading-4 text-muted">
-                Checked {checkedAt(checked)}
+            {live && (
+              <p data-live-score className="mt-0.5 font-num text-[14px] font-bold uppercase leading-4 tracking-wide text-red">
+                {liveStatus(live)}
               </p>
             )}
           </div>
@@ -159,7 +159,7 @@ function Row({ g, crests, checked }: { g: Game; crests?: Crests; checked?: Date 
   );
 }
 
-function Section({ id, title, live, games, crests, checked }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; checked: Map<string, Date> }) {
+function Section({ id, title, live, games, crests, checked }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; checked: Map<string, LiveView> }) {
   if (!games.length) return null;
   const leagues = [...new Set(games.map((g) => g.league))];
   return (
@@ -174,7 +174,7 @@ function Section({ id, title, live, games, crests, checked }: { id: string; titl
           </h3>
           <ul>
             {games.filter((g) => g.league === league).map((g) => (
-              <Row key={g.id} g={g} crests={crests} checked={checked.get(g.id)} />
+              <Row key={g.id} g={g} crests={crests} live={checked.get(g.id)} />
             ))}
           </ul>
         </div>
@@ -193,11 +193,11 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
   const liveRows = useLiveScores(games.some((g) => g.date && g.state === "scheduled"));
   // A game with no final that has a live row is under way (ADR 0021): it is counted and listed as Live, its score in its own
   // cells, unconfirmed, with no winner and no projection (asLive). A game with a final never takes a live row.
-  const checked = new Map<string, Date>();
+  const checked = new Map<string, LiveView>();
   const boardGames = games.map((g) => {
     const live = g.state === "scheduled" ? liveView(liveRows, { date: g.date, home: g.home.name, away: g.away.name }) : null;
     if (!live) return g;
-    checked.set(g.id, live.readAt);
+    checked.set(g.id, live);
     return asLive(g, live);
   });
   // One button per organization that has games, in the site's order (UIL first, the default). Never an "All".

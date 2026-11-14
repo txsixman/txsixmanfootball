@@ -65,16 +65,15 @@ async function openBoard(page: Page, f: Fixture) {
   return page.locator(`li[data-game="${f.id}"]`);
 }
 
-test("a game under way shows its live line on the game page and the board: Live, period, score, Unconfirmed, no winner", async ({ page }) => {
+test("a game under way shows its live score in the score itself on the game page and the board: dashed, Unconfirmed, no winner", async ({ page }) => {
   const { scheduled: f } = await fixtures();
   const seen = await serveLive(page, { rows: [liveRow(f)] });
 
   await page.goto(`/scores/${f.id}`);
   const line = page.locator("[data-live-score]");
-  // Scores in the order the page lists the teams (away first): away 14, home 28.
-  await expect(line.getByText("Live · Q3 · 14–28 · Unconfirmed")).toBeVisible();
-  await expect(line).toContainText(`${f.away} 14, ${f.home} 28`);
-  await expect(line).toContainText(/checked \d{1,2}:\d{2} (AM|PM) CT/);
+  // The score is in the big score, each on its own team (away listed first: 14, home 28), dashed; the line says where it stands.
+  await expect(line).toHaveText(/^Live · Q3 · as of \d{1,2}:\d{2} (AM|PM) CT · Unconfirmed$/);
+  await expect(page.getByRole("region", { name: "Score" }).locator(".decoration-dashed")).toHaveText(["14", "28"]);
   expect((await line.innerText()).replace(f.away, "").replace(f.home, "")).not.toMatch(NO_WINNER_OR_BETTING);
   // One POST to the function, with the public key and nothing else.
   expect(seen[0].url).toBe(`${SUPABASE_URL}/rest/v1/rpc/live_scores`);
@@ -93,16 +92,17 @@ test("a game under way shows its live line on the game page and the board: Live,
   await expect(row.locator(".decoration-dashed")).toHaveText(["14", "28"]);
   expect(text).toMatch(/Unconfirmed/i);
   expect(text).not.toMatch(/Projected|no score|In progress/i);
-  await expect(row.locator("[data-live-score]")).toHaveText(/^Checked \d{1,2}:\d{2} (AM|PM) CT$/);
+  await expect(row.locator("[data-live-score]")).toHaveText(/^Q3 · as of \d{1,2}:\d{2} (AM|PM) CT$/);
   expect(text.toLowerCase()).not.toMatch(/\bwinner\b/);
   await expect(row.locator("[aria-hidden='true']", { hasText: "◀" })).toHaveCount(0);
 });
 
-test("a row with no period reads Live · score · Unconfirmed", async ({ page }) => {
+test("a row with no period reads Live · as of … · Unconfirmed, the score in the big score", async ({ page }) => {
   const { scheduled: f } = await fixtures();
   await serveLive(page, { rows: [liveRow(f, { period: null })] });
   await page.goto(`/scores/${f.id}`);
-  await expect(page.locator("[data-live-score]").getByText("Live · 14–28 · Unconfirmed")).toBeVisible();
+  await expect(page.locator("[data-live-score]")).toHaveText(/^Live · as of \d{1,2}:\d{2} (AM|PM) CT · Unconfirmed$/);
+  await expect(page.getByRole("region", { name: "Score" }).locator(".decoration-dashed")).toHaveText(["14", "28"]);
 });
 
 test("a game with a final ignores a live row, on its page and on the board", async ({ page }) => {
@@ -141,7 +141,8 @@ test("the line refreshes every minute and goes away when the game leaves the tab
   await expect(line).toHaveCount(0);
   current.rows = [liveRow(f, { home_score: 35, away_score: 14, period: "Q4" })];
   await page.clock.runFor(61_000);
-  await expect(line.getByText("Live · Q4 · 14–35 · Unconfirmed")).toBeVisible();
+  await expect(line).toHaveText(/^Live · Q4 · as of /);
+  await expect(page.getByRole("region", { name: "Score" }).locator(".decoration-dashed")).toHaveText(["14", "35"]);
   current.rows = [];
   await page.clock.runFor(61_000);
   await expect(line).toHaveCount(0);
