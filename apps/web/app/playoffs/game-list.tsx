@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { programFor, type Alignment } from "@/lib/alignments";
-import type { BracketRow } from "@/lib/brackets";
+import type { Side } from "@/lib/bracket-fill";
+import { sideText } from "@/lib/bracket-fill";
+import type { BracketRow, BuiltRow } from "@/lib/brackets";
 import { EMPTY, type loadIdentities } from "@/lib/identity";
 import { gameStatus } from "@/lib/playoff-status";
 import { projectionParts } from "@/lib/projection";
@@ -74,6 +76,42 @@ export function GameList({ games, league, alignments, identities, today, showSta
                 </span>
               )}
             </p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Next-round games no site lists yet (ADR 0047): both winners, or the winner so far and the game it waits on. No date or
+ * site (none is listed), and the projection on a neutral field once both teams are known. A listing replaces the row. */
+export function BuiltList({ games, league, alignments }: { games: BuiltRow[]; league: string; alignments: Alignment[] }) {
+  const name = (s: Side) => {
+    const slug = "team" in s ? programFor(alignments, s.team, league)?.slug : undefined;
+    const text = sideText(s);
+    return slug ? (
+      <Link href={`/programs/${slug}`} className="hover:text-navy hover:underline">
+        {text}
+      </Link>
+    ) : (
+      text
+    );
+  };
+  return (
+    <ul className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+      {games.map((g) => {
+        const proj = g.projection && projectionParts(g.projection);
+        return (
+          <li key={g.sides.map(sideText).join("|")} data-built className="min-w-0 border-b border-dashed border-line px-3 py-2 text-[16px] text-ink">
+            <p className="text-[17px] font-bold leading-tight">
+              {name(g.sides[0])} vs {name(g.sides[1])}
+            </p>
+            <p className="text-[14px] leading-6 text-muted">Next game · date and site not listed yet</p>
+            {proj && (
+              <p className="text-[14px] font-semibold leading-6 text-navy">
+                <span>Projected: {proj.margin}</span> · <span className="whitespace-nowrap">{proj.chance}</span>
+              </p>
+            )}
           </li>
         );
       })}

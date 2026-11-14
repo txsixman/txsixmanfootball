@@ -28,7 +28,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `data/ratings/<season>.json`: the ratings table `/rankings` shows, written by `services/ratings/run.py --season` (the
   `ratings-table` job in `main.yml` and `results-watch.yml` commit it; both rate with `PRIVATE_DATA`, below). Never edit by hand. A season starts from the one before it, so
   after a model change rerun 2021, 2022, ... 2026 in that order. Fields are listed at the top of `run.py`
-- `data/seed/uil-2026-28/`: UIL alignments (with regions) and the 2026 playoff capture file
+- `data/seed/uil-2026-28/`: UIL alignments (with regions), the 2026 playoff capture file, and `bracket-2026.csv`: UIL's
+  own bracket by hand (G1 to G31, seeds, regions and feeds; ADR 0047)
+- `data/seed/brackets/<season>.csv`: TAIAO's bracket slots, written by `tools/league-watch/taiao.mjs`, never by hand (ADR 0047)
 - `data/seed/private-2026/`: TAIAO, TCAF and Independent alignments, 2026 only. TAIAO rows are written by
   `tools/league-watch/taiao.mjs`, never by hand (ADR 0005); TCAF and Independent rows by hand, one cited source a row
   (the school's own site for Community Christian and CenTex Chargers; `maxpreps-aliases.json` maps their MaxPreps pages)

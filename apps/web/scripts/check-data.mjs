@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { bracketProblems, bracketSlots, ROUND_ORDER, uilSlotRows } from "../lib/bracket-fill.ts";
 import { applyToGame, buildCorrections } from "../lib/corrections.ts";
 import * as s from "../lib/data-schemas.ts";
 import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season.ts";
@@ -30,10 +31,20 @@ function files() {
     for (const f of readdirSync(path.join(root, "data/seed", d)).filter((f) => /^playoffs-\d{4}\.csv$/.test(f))) {
       list.push({ file: seed(d, f), csv: [s.GAME_COLUMNS, s.PlayoffRow] });
     }
+    if (/^uil-\d{4}-\d{2}$/.test(d)) {
+      for (const f of readdirSync(path.join(root, "data/seed", d)).filter((f) => /^bracket-\d{4}\.csv$/.test(f))) {
+        list.push({ file: seed(d, f), csv: [s.UIL_BRACKET_COLUMNS, s.UilBracketRow] });
+      }
+    }
   }
   if (existsSync(path.join(root, seed("disputed")))) {
     for (const f of readdirSync(path.join(root, seed("disputed"))).filter((f) => /^\d{4}\.csv$/.test(f))) {
       list.push({ file: seed(`disputed/${f}`), csv: [s.DISPUTED_COLUMNS, s.DisputedRow] });
+    }
+  }
+  if (existsSync(path.join(root, seed("brackets")))) {
+    for (const f of readdirSync(path.join(root, seed("brackets"))).filter((f) => /^\d{4}\.csv$/.test(f))) {
+      list.push({ file: seed(`brackets/${f}`), csv: [s.BRACKET_COLUMNS, s.BracketSlotRow] });
     }
   }
   if (existsSync(path.join(root, seed("game-details")))) {
@@ -204,6 +215,7 @@ export function checkIntegrity(today = new Date().toISOString().slice(0, 10)) {
     const out = checkSeason({ season, current, games, playoffs: [...captured, ...robot], programs: current ? programs : undefined, today });
     hard.push(...out.hard);
     warnings.push(...out.soft);
+    if (current) hard.push(...checkBrackets(season, [...captured, ...robot], alignments, read));
   }
   const exceptions = existsSync(path.join(root, EXCEPTIONS)) ? JSON.parse(readFileSync(path.join(root, EXCEPTIONS), "utf8")) : [];
   // No source column: this repo names no source (ADR 0010); the private data repo keeps the game's pages.
@@ -211,6 +223,64 @@ export function checkIntegrity(today = new Date().toISOString().slice(0, 10)) {
   const { failures, excused } = applyExceptions(hard, exceptions.filter((e) => !bad.includes(e)));
   for (const e of bad) failures.push(`${EXCEPTIONS}: an exception needs a key, a reason and a reviewed date: ${JSON.stringify(e).slice(0, 120)}`);
   return { failures, warnings, excused };
+}
+
+/**
+ * The current season's brackets (ADR 0047): each listed later-round game has the winners of the games that feed it, a
+ * winner is never passed over, and a team that lost plays no later round. A bracket's slots are its league's own
+ * (data/seed/brackets/<season>.csv) or what the data closes (two semifinals feed the final; a UIL region's two area games
+ * feed its regional final). A disputed final names no winner (ADR 0040), so nothing is checked past it.
+ */
+export function checkBrackets(season, playoffs, alignments, read, uilFiles = readdirSync(path.join(root, "data/seed")).filter((d) => /^uil-\d{4}-\d{2}$/.test(d)).map((d) => seed(d, `bracket-${season}.csv`))) {
+  const uil = uilFiles.flatMap((f) => read(f, s.UIL_BRACKET_COLUMNS, s.UilBracketRow));
+  const slotRows = [...read(seed(`brackets/${season}.csv`), s.BRACKET_COLUMNS, s.BracketSlotRow), ...uilSlotRows(uil)];
+  const disputed = new Set(read(seed(`disputed/${season}.csv`), s.DISPUTED_COLUMNS, s.DisputedRow).map(gameKey));
+  const scored = (r) => r.home_score !== "" && r.away_score !== "" && !(r.home_score === "0" && r.away_score === "0");
+  const problems = [];
+  for (const [key, rows] of Map.groupBy(playoffs.filter((r) => r.league), (r) => `${r.league}|${r.division}`)) {
+    const [league, division] = key.split("|");
+    const games = rows.map((r) => ({
+      round: r.round, date: r.game_date, home: r.home, away: r.away, confirmed: scored(r) && !disputed.has(gameKey(r)),
+      ...(scored(r) ? { homeScore: Number(r.home_score), awayScore: Number(r.away_score) } : {}),
+    }));
+    const region = new Map(alignments.filter((a) => a.league === league && a.division === division).map((a) => [a.school, a.region]));
+    const slots = bracketSlots(slotRows, games, { league, division, regionOf: (t) => region.get(t) });
+    problems.push(...bracketProblems(`${league} ${division}`, slots, games, ROUND_ORDER));
+  }
+  return [...problems, ...uilStructureProblems(uil, alignments)];
+}
+
+/**
+ * UIL's hand-entered bracket against the alignments (ADR 0047): each team is in UIL's alignments for that division, in the
+ * slot's region, with the district its seed names; each "winner:" side names a slot of an earlier round of that division;
+ * and every slot code is used once.
+ */
+export function uilStructureProblems(rows, alignments) {
+  const out = [];
+  const add = (key, text) => out.push({ key: `uil bracket ${key}`, text: `UIL bracket: ${text}` });
+  for (const [division, list] of Map.groupBy(rows, (r) => r.division)) {
+    const bySlot = new Map();
+    for (const r of list) {
+      if (bySlot.has(r.slot)) add(`${division} ${r.slot} twice`, `Division ${division} ${r.slot} is listed twice`);
+      bySlot.set(r.slot, r);
+    }
+    for (const r of list) {
+      for (const [side, seedCode] of [[r.a, r.a_seed], [r.b, r.b_seed]]) {
+        if (side.startsWith("winner:")) {
+          const from = bySlot.get(side.slice("winner:".length));
+          if (!from || ROUND_ORDER.indexOf(from.round) >= ROUND_ORDER.indexOf(r.round)) add(`${division} ${r.slot} feed`, `Division ${division} ${r.slot}: ${side} is no earlier slot`);
+          continue;
+        }
+        if (side === "bye") continue;
+        const a = alignments.find((x) => x.league === "UIL" && x.division === division && x.school === side);
+        if (!a) add(`${division} ${r.slot} ${side}`, `Division ${division} ${r.slot}: ${side} is not in UIL's Division ${division} alignments`);
+        else if ((r.region && a.region !== r.region) || (seedCode && a.district !== seedCode.slice(1))) {
+          add(`${division} ${r.slot} ${side} seed`, `Division ${division} ${r.slot}: ${side} is Region ${a.region}, District ${a.district}, not ${[r.region && `Region ${r.region}`, seedCode].filter(Boolean).join(", ")}`);
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /**
