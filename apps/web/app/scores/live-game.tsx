@@ -1,8 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
-import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
+import { asLive, liveStatus, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
 import { BigLine, type Program } from "./game-parts";
 import { useLiveScores } from "./live-score";
 
@@ -19,7 +19,7 @@ const statusLine = (live: LiveView, score?: string) =>
 /** The game page's score: the two big lines. While a game with no final is under way (`watch`), they hold the live score,
  * under a line saying where it stands; otherwise they are the page's own. */
 export function GameScore({ g, away, home, neutral, watch }: { g: Game; away?: Program; home?: Program; neutral?: boolean; watch: boolean }) {
-  const rows = useLiveScores(watch);
+  const rows = useLiveScores(watch && g.date ? [{ date: g.date, kickoff: g.kickoff }] : []);
   const live = watch ? liveView(rows, { date: g.date, home: g.home.name, away: g.away.name }) : null;
   const shown = live ? asLive(g, live) : g;
   return (
@@ -37,11 +37,19 @@ export function GameScore({ g, away, home, neutral, watch }: { g: Game; away?: P
   );
 }
 
-/** A program page's game with no score yet, while it is under way: the live score from `school`'s side ("28-14"), dashed.
- * `line` shows it with where the game stands, for the next-game box; otherwise it is the score alone, for a game row. Shows
- * `children` (what the page has without it) when there is no live score. */
+const ProgramLiveRows = createContext<LiveRow[]>([]);
+
+/** A program page's one live read, for its next game (`date`, `kickoff`), shared by the next-game box and the game's row:
+ * asked only from kickoff to the end of its window (useLiveScores), so a page with no game in progress asks for nothing. */
+export function ProgramLiveRead({ date, kickoff, children }: { date: string; kickoff?: string; children: ReactNode }) {
+  return <ProgramLiveRows.Provider value={useLiveScores([{ date, kickoff }])}>{children}</ProgramLiveRows.Provider>;
+}
+
+/** A program page's game with no score yet, while it is under way: the live score from `school`'s side ("28-14"), dashed,
+ * from the page's one read (ProgramLiveRead). `line` shows it with where the game stands, for the next-game box; otherwise
+ * it is the score alone, for a game row. Shows `children` (what the page has without it) when there is no live score. */
 export function ProgramLiveScore({ date, school, opponent, home, line, children }: { date: string; school: string; opponent: string; home: boolean; line?: boolean; children?: ReactNode }) {
-  const rows = useLiveScores();
+  const rows = useContext(ProgramLiveRows);
   const live = liveView(rows, { date, home: home ? school : opponent, away: home ? opponent : school });
   if (!live) return <>{children}</>;
   const [us, them] = home ? [live.home.score, live.away.score] : [live.away.score, live.home.score];

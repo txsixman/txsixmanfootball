@@ -1,16 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { anyInProgress } from "@/lib/kickoff";
 import { checkedAt, fetchLiveRows, type LiveRow, type LiveView } from "@/lib/live-scores";
+import { useNow } from "../kickoff-status";
 
 // Live scores during a game (ADR 0021). The pages are static; this reads the score of games under way through the public
-// function live_scores() in the browser, every minute while the tab is visible. It shows nothing when the request fails or
-// no row matches. The score is the read's, so it says "Unconfirmed" and names no leader.
+// function live_scores() in the browser, every minute while the tab is visible and a game on the page may be under way
+// (lib/kickoff.ts anyInProgress: kickoff to 4 hours after, or with no kickoff time its game date's evening, 5:00 PM to
+// midnight Central), re-checked every minute: it starts by itself and stops when the window ends. It shows
+// nothing when the request fails or no row matches. The score is the read's, so it says "Unconfirmed" and names no leader.
 const REFRESH_MS = 60_000;
 
 /** The live rows, refreshed every minute while the tab is visible. Empty until a read succeeds, and again when one fails.
- * `enabled` false (nothing on the page can be under way) asks for nothing. */
-export function useLiveScores(enabled = true): LiveRow[] {
+ * `games` are the page's games with no final: nothing is asked unless one may be under way now, and the rows are dropped
+ * when none is. */
+export function useLiveScores(games: { date: string; kickoff?: string }[]): LiveRow[] {
+  const now = useNow();
+  const enabled = now !== null && anyInProgress(games, now);
   const [rows, setRows] = useState<LiveRow[]>([]);
   useEffect(() => {
     if (!enabled) return;
@@ -38,7 +45,7 @@ export function useLiveScores(enabled = true): LiveRow[] {
       document.removeEventListener("visibilitychange", load);
     };
   }, [enabled]);
-  return rows;
+  return enabled ? rows : [];
 }
 
 /** "Live · Q3 · 28–14 · Unconfirmed" (scores in the order the page lists the teams), the teams with their scores, and when it
