@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KickoffStatus } from "../../kickoff-status";
 import { notFound } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
 import { gameDescription } from "@/lib/descriptions";
@@ -23,7 +22,7 @@ import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
 import { GamePreviewSection } from "../game-preview";
-import { GameScore } from "../live-game";
+import { GameKickoffStatus, GameLiveRead, GameScore } from "../live-game";
 import { Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 import { hasCard } from "./card/ids";
@@ -142,6 +141,7 @@ export default async function GamePage({ params }: Props) {
       <Breadcrumbs trail={[{ name: "Home", href: "/" }, back, { name: `${g.away.name} vs ${g.home.name}`, href: `/scores/${id}` }]} />
       {!sample && <JsonLd data={gameJsonLd(g, { url: `${SITE_URL}/scores/${id}`, home: programOf(g.home), away: programOf(g.away) })} />}
 
+      <GameLiveRead date={g.date} kickoff={g.kickoff} watch={!sample && !!g.date && g.state === "scheduled"}>
       <header>
         <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-red" : "bg-navy"}`}>
           <span>
@@ -150,7 +150,7 @@ export default async function GamePage({ params }: Props) {
             {!live && !sample && g.state === "scheduled" && g.date && (
               <>
                 {" · "}
-                <KickoffStatus date={g.date} kickoff={g.kickoff} tone={false} />
+                <GameKickoffStatus g={{ ...g, date: g.date }} />
               </>
             )}
           </span>
@@ -169,6 +169,7 @@ export default async function GamePage({ params }: Props) {
 
       {/* A game with no final yet may be under way: its live score is read in the browser and shown in the big score (ADR 0021). */}
       <GameScore g={g} away={programOf(g.away)} home={programOf(g.home)} neutral={neutral} watch={!sample && !!g.date && g.state === "scheduled"} />
+      </GameLiveRead>
 
       <Linescore g={g} />
 

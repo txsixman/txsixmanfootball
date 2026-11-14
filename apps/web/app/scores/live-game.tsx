@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import { asLive, liveStatus, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
 import { BigLine, type Program } from "./game-parts";
+import { KickoffStatus } from "../kickoff-status";
 import { useLiveScores } from "./live-score";
 
 // A game under way shows its live score where its score goes, not beside it (ADR 0021): the read's score, dashed and
@@ -16,10 +17,26 @@ const statusLine = (live: LiveView, score?: string) =>
     ? ["Score reported", score, liveStatus(live).replace(/^Score reported · /, ""), "Unconfirmed"].filter(Boolean).join(" · ")
     : ["Live", score, liveStatus(live).replace(/^Live · /, ""), "Unconfirmed"].filter(Boolean).join(" · ");
 
+const GameLiveRows = createContext<LiveRow[]>([]);
+
+/** A game page's one live read, shared by its header (GameKickoffStatus) and its score (GameScore): asked only while a game
+ * with no final (`watch`) may be under way (useLiveScores). */
+export function GameLiveRead({ date, kickoff, watch, children }: { date?: string; kickoff?: string; watch: boolean; children: ReactNode }) {
+  return <GameLiveRows.Provider value={useLiveScores(watch && date ? [{ date, kickoff }] : [])}>{children}</GameLiveRows.Provider>;
+}
+
+/** The game page header's kickoff status (ADR 0036), except for a game the live read saw finished: "Score reported", never
+ * "In progress" (ADR 0042). */
+export function GameKickoffStatus({ g }: { g: Game & { date: string } }) {
+  const live = liveView(useContext(GameLiveRows), { date: g.date, home: g.home.name, away: g.away.name });
+  if (live?.finished) return <span data-kickoff-status="reported">Score reported</span>;
+  return <KickoffStatus date={g.date} kickoff={g.kickoff} tone={false} />;
+}
+
 /** The game page's score: the two big lines. While a game with no final is under way (`watch`), they hold the live score,
- * under a line saying where it stands; otherwise they are the page's own. */
+ * under a line saying where it stands; otherwise they are the page's own. Reads the page's one live read (GameLiveRead). */
 export function GameScore({ g, away, home, neutral, watch }: { g: Game; away?: Program; home?: Program; neutral?: boolean; watch: boolean }) {
-  const rows = useLiveScores(watch && g.date ? [{ date: g.date, kickoff: g.kickoff }] : []);
+  const rows = useContext(GameLiveRows);
   const live = watch ? liveView(rows, { date: g.date, home: g.home.name, away: g.away.name }) : null;
   const shown = live ? asLive(g, live) : g;
   return (

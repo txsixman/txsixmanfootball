@@ -110,6 +110,7 @@ test("a game the read saw finished shows as Score reported until the final: dash
   await page.goto(`/scores/${f.id}`);
   await expect(page.locator("[data-live-score]")).toHaveText(/^Score reported · as of \d{1,2}:\d{2} (AM|PM) CT · Unconfirmed$/);
   await expect(page.getByRole("region", { name: "Score" }).locator(".decoration-dashed")).toHaveText(["14", "28"]);
+  await expect(page.locator("[data-kickoff-status]")).toHaveText("Score reported"); // the header too, never "In progress"
   await expect(page.locator("body")).not.toContainText(/winner|In progress/i);
 
   // The board lists it under Score reported, counted in the jump bar, not under Live.
