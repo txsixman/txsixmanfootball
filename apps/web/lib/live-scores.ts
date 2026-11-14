@@ -17,7 +17,7 @@ export type LiveRow = {
   period: string | null;
   /** Time left in the period ("4:12"), when the reader has it; absent until it does (the page then leaves it out). */
   clock?: string | null;
-  /** The read saw the game finished (migration 0019, ADR 0041): its last score, "Score reported", until our own final. */
+  /** The read saw the game finished (migration 0019, ADR 0042): its last score, "Score reported", until our own final. */
   finished?: boolean;
   read_at: string;
 };
@@ -100,7 +100,7 @@ export const checkedAt = (at: Date) =>
 
 /** Where a game under way stands, beside its score: "Q3 · 4:12 left · as of 7:42 PM CT". The period reads "Live" when the
  * read has none, and the time left is left out until the reader has it. A game the read saw finished: "Score reported ·
- * as of 9:05 PM CT" (ADR 0041), never "In progress" and never "Final": only our own final is that. */
+ * as of 9:05 PM CT" (ADR 0042), never "In progress" and never "Final": only our own final is that. */
 export const liveStatus = (live: LiveView) =>
   live.finished
     ? `Score reported · as of ${checkedAt(live.readAt)}`
@@ -128,7 +128,7 @@ export function asLive<G extends BoardGame>(g: G, live: LiveView): G {
   return {
     ...g,
     // A game the read saw finished is a reported score, not a live one: it sits with the other unconfirmed finals
-    // ("Score reported", dashed, no winner) until our own final replaces it (ADR 0041).
+    // ("Score reported", dashed, no winner) until our own final replaces it (ADR 0042).
     state: live.finished ? "final" : "live",
     status: live.finished ? "Score reported" : (live.period ?? ""),
     homeScore: live.home.score,

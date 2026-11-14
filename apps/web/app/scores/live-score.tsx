@@ -42,7 +42,7 @@ export function useLiveScores(enabled = true): LiveRow[] {
 }
 
 /** "Live · Q3 · 28–14 · Unconfirmed" (scores in the order the page lists the teams), the teams with their scores, and when it
- * was read. A game the read saw finished reads "Score reported · 28–14 · Unconfirmed" (ADR 0041). */
+ * was read. A game the read saw finished reads "Score reported · 28–14 · Unconfirmed" (ADR 0042). */
 export function LiveLine({ live, className = "" }: { live: LiveView; className?: string }) {
   const scores = `${live.away.score}–${live.home.score}`;
   return (

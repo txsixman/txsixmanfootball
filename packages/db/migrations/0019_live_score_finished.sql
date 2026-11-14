@@ -1,4 +1,4 @@
--- A game the live read last saw finished (ADR 0041). The second live source drops a game from its Live list once it
+-- A game the live read last saw finished (ADR 0042). The second live source drops a game from its Live list once it
 -- ends, often well before the site's own final is read, so a page fell back to "In progress" for a game that was over.
 -- The read now keeps such a game with its last score and `finished` set: pages show it as "Score reported", dashed and
 -- naming no winner, until the stored final replaces it. Still a read, never a result: unconfirmed, no winner.

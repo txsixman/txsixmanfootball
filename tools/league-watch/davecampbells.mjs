@@ -4,7 +4,7 @@
 //   node tools/league-watch/davecampbells.mjs --live <playoffs.csv> --merge <live.json>
 // reads tonight's still-unscored bracket games (the same Central game-night rule as maxpreps.mjs --tonight), asks the
 // feed for the Live, Upcoming and finished games of one mapped team per game, and merges the games under way or just
-// finished (ADR 0041) into <live.json>
+// finished (ADR 0042) into <live.json>
 // (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores, period and forfeit flags: never
 // a spread, ranking, poll or `winner` field. Nothing is saved to this repo. A 403 or 429 stops the read at once.
 //
@@ -91,7 +91,7 @@ export async function teamId(client, theirSlug, seasonId) {
 }
 
 /** A team's games that are live, still to come or finished this season (finished: a game drops out of Live once it ends,
- * often long before our own final is read, and the read keeps its last score; ADR 0041). */
+ * often long before our own final is read, and the read keeps its last score; ADR 0042). */
 export async function liveAndUpcoming(client, seasonId, id) {
   const status = encodeURIComponent(["Live", "Upcoming", ...FINAL_STATUSES].join(","));
   const data = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&status=${status}&size=50`);
@@ -130,7 +130,7 @@ export function sameSchool(schoolName, ourSlug) {
  * still-unscored bracket games (`due`). A team is ours by the map (`ours`: their slug to our slug); when only one team is
  * mapped, the other is that team's opponent in tonight's bracket row, and only if the feed's school name matches it.
  * Scores are set in the bracket row's own home and away order. A game the feed calls finished (Final, Completed or
- * Finished) is kept with its last score and `finished: true`, and no period (ADR 0041): pages show it as "Score reported"
+ * Finished) is kept with its last score and `finished: true`, and no period (ADR 0042): pages show it as "Score reported"
  * until our own final is read, which takes it off tonight's due list. Skipped: a forfeit, a score outside 0 to 200, a 0-0
  * with no period (a game may list 0-0 before kickoff) and a finished 0-0. One row a game.
  */

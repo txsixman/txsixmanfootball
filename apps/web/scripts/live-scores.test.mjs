@@ -169,7 +169,7 @@ test("the live status beside the score: period, time left when read, and when it
   assert.equal(view({ clock: "4:60" }), null, "a bad clock drops the row, as a bad period does");
 });
 
-test("a game the read saw finished is a reported score: Score reported, dashed, no winner, never Live (ADR 0041)", async () => {
+test("a game the read saw finished is a reported score: Score reported, dashed, no winner, never Live (ADR 0042)", async () => {
   const { asLive, liveStatus } = await import("../lib/live-scores.ts");
   const { winnerOf } = await import("../lib/score-display.ts");
   const at = "2026-11-14T03:05:00Z"; // 9:05 PM in Central

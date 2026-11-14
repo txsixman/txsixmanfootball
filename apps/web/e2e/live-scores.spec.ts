@@ -97,7 +97,7 @@ test("a game under way shows its live score in the score itself on the game page
   await expect(row.locator("[aria-hidden='true']", { hasText: "◀" })).toHaveCount(0);
 });
 
-test("a game the read saw finished shows as Score reported until the final: dashed, no winner, never In progress (ADR 0041)", async ({ page }) => {
+test("a game the read saw finished shows as Score reported until the final: dashed, no winner, never In progress (ADR 0042)", async ({ page }) => {
   const { scheduled: f } = await fixtures();
   await serveLive(page, { rows: [liveRow(f, { period: null, finished: true })] });
   await page.goto(`/scores/${f.id}`);

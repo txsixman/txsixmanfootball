@@ -10,7 +10,7 @@ import { useLiveScores } from "./live-score";
 // "Unconfirmed", naming no winner or leader, with where it stands ("Q3 · 4:12 left · as of 7:42 PM CT"). A final replaces it.
 
 /** "Live · Q3 · 4:12 left · as of 7:42 PM CT · Unconfirmed" (`score`, when given, after "Live"; with no period, "Live" once).
- * A game the read saw finished: "Score reported · 28-14 · as of 9:05 PM CT · Unconfirmed" (ADR 0041). */
+ * A game the read saw finished: "Score reported · 28-14 · as of 9:05 PM CT · Unconfirmed" (ADR 0042). */
 const statusLine = (live: LiveView, score?: string) =>
   live.finished
     ? ["Score reported", score, liveStatus(live).replace(/^Score reported · /, ""), "Unconfirmed"].filter(Boolean).join(" · ")

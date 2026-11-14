@@ -101,7 +101,7 @@ test("a live game becomes one row in the bracket row's own home and away order, 
   assert.deepEqual(rows, [{ game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: "Q2", read_at: "2026-11-14T02:00:00.000Z" }]);
 });
 
-test("a game the feed calls finished keeps its last score, marked finished, with no period (ADR 0041)", () => {
+test("a game the feed calls finished keeps its last score, marked finished, with no period (ADR 0042)", () => {
   const opts = { date: "2026-11-13", due, ours, readAt };
   for (const status of ["Finished", "Final", "Completed"]) {
     assert.deepEqual(liveRowsFromItems([item({ status, summary: { period: 4, homeScore: 20, awayScore: 14 } })], opts), [

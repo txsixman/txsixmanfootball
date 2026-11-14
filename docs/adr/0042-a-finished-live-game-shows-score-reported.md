@@ -1,4 +1,4 @@
-# ADR 0041: A game the live read saw finish shows "Score reported" until the final is read
+# ADR 0042: A game the live read saw finish shows "Score reported" until the final is read
 
 **Status:** Proposed Nov 14, 2026; accepted when its pull request is merged. It extends ADR 0021 (live scores) and leaves
 ADR 0040 (a final score is confirmed) as it is: this row is a read, not our final.
