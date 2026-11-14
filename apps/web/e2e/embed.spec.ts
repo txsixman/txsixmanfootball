@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { EMBED_HEIGHT } from "../lib/embed-html";
+import { skipReason, upcoming } from "./upcoming";
 
 // The embeddable scoreboard (ADR 0023): /embed/programs/<slug> is the only page any site may frame, it ships no cookie and no
 // script bundle, and every other address still refuses to be framed. Scores keep the program page's wording.
@@ -118,8 +119,11 @@ test("with no ?theme the page follows the device; light and dark can be forced e
 });
 
 test("record, three results and the next game, with no winner, betting or source words", async ({ page }) => {
-  await open(page, embed("jayton"));
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Jayton");
+  // A program with a game still to play, picked from the season's data (e2e/upcoming.ts); none in the offseason.
+  const next = (await upcoming()).programs[0];
+  if (!next) return test.skip(true, skipReason());
+  await open(page, embed(next.slug));
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(next.school);
   await expect(page.getByText(/^\d+-\d+(-\d+)?$/).first()).toBeVisible(); // the record, same figure as the program page
   await expect(page.locator(".rec")).toContainText("2026 record");
   await expect(page.getByRole("region", { name: "Latest results" }).getByRole("listitem")).toHaveCount(3);
@@ -133,7 +137,7 @@ test("record, three results and the next game, with no winner, betting or source
   expect((await page.content()).replaceAll("txsixmanfootball.com", "")).not.toMatch(SOURCE);
   // The record is the program page's own.
   const record = (await page.locator(".rec b").innerText()).trim();
-  await page.goto("/programs/jayton");
+  await page.goto(`/programs/${next.slug}`);
   await expect(page.getByText(record, { exact: true }).first()).toBeVisible();
 });
 
