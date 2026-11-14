@@ -37,11 +37,12 @@ done
 
 # Git on the private repo with the token (DATA_PRIVATE_TOKEN, when set) as a header for that one command, handed over by
 # environment variable: it is never written to private/.git/config (the checkout keeps no credentials) or into a
-# command line. Only fetch and push need it; the rest of the script uses plain git.
+# command line. Only fetch and push need it; the rest of the script uses plain git. Nothing prints it, not even an
+# ::add-mask:: line (that would put the header's value on stdout); git -q prints no headers, and the runner already masks
+# the secret and its base64 forms.
 auth=""
 if [ -n "${DATA_PRIVATE_TOKEN:-}" ]; then
   auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$DATA_PRIVATE_TOKEN" | base64 | tr -d '\n')"
-  if [ "${GITHUB_ACTIONS:-}" = true ]; then echo "::add-mask::${auth#AUTHORIZATION: basic }"; fi
 fi
 pgit() {
   if [ -z "$auth" ]; then git -C private "$@"; return; fi

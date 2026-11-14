@@ -166,7 +166,8 @@ echo "$* :: $h" >> "${seen}"
 exec "${realGit}" "$@"
 `);
   const token = "tok-for-test-only-123";
-  const r = run(t, { DATA_PRIVATE_TOKEN: token });
+  // As on a runner (GITHUB_ACTIONS=true), so anything the script prints only there is checked here too.
+  const r = run(t, { DATA_PRIVATE_TOKEN: token, GITHUB_ACTIONS: "true" });
   assert.equal(r.status, 0, r.stderr);
   const lines = readFileSync(seen, "utf8").split("\n");
   const withHeader = lines.filter((l) => l.endsWith(":: header")).map((l) => l.split(" ").slice(0, 3).join(" "));
