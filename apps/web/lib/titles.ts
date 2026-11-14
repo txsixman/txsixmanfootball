@@ -65,7 +65,8 @@ export function gameTitle({ away, home, date, scheduled, final, round, season }:
   if (final) {
     const score = `${away} ${final.away}, ${home} ${final.home}`;
     const tail = round ? `${roundWords(round)}${season ? ` ${season}` : ""}` : (date ?? "");
-    return fit(...[tail && `${score} · ${tail}`, date && `${score} · ${date}`, score].filter((t): t is string => Boolean(t)));
+    // Never cut a score short: names too long for even the bare score keep it whole (search results trim the end).
+    return [tail && `${score} · ${tail}`, date && `${score} · ${date}`].find((t) => t && t.length <= MAX) || score;
   }
   return scheduled
     ? fit(`${teams} football preview${when}`, `${teams}${when}`, teams)

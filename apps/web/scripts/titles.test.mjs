@@ -58,6 +58,11 @@ test("a played final carries both scores, away team first, and the round or the 
   // Too long for the round: the date, then the score alone; the names always lead.
   const long = t.gameTitle({ away: "Valor North Austin", home: "Fort Bend Chargers", date: "Nov 6, 2026", scheduled: false, final: { away: 28, home: 12 }, round: "TAIAO D1 · First round", season: 2026 });
   assert.equal(long, "Valor North Austin 28, Fort Bend Chargers 12 · Nov 6, 2026");
+  // Names too long for any of it keep both scores whole.
+  assert.equal(
+    t.gameTitle({ away: "The Emery/Weiner School-Houston", home: "Faith Academy of Bellville", date: "Aug 20, 2026", scheduled: false, final: { away: 48, home: 0 } }),
+    "The Emery/Weiner School-Houston 48, Faith Academy of Bellville 0",
+  );
   for (const text of [long, t.gameTitle({ away: "Kress", home: "Jayton", scheduled: false, final })]) {
     assert.ok(text.length <= 61, text);
     assert.doesNotMatch(text, BANNED, text);

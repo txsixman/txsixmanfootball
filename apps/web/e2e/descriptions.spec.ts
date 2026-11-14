@@ -101,15 +101,17 @@ test("every kind of page has its own short description, with no betting word, so
 
     // The title: the page's own (none repeats), at most 60 characters before the site's name, the words fans search for, no
     // betting word or source; the canonical link is the page's own address.
-    expect.soft(title.length, `${label} title is ${title.length} characters: ${title}`).toBeLessThanOrEqual(61);
+    // A played final's title is its score ("Kress 6, Jayton 75 · ..."), kept whole even for long names; every other title is
+    // at most 60 characters and says what the page is.
+    const score = /^.+ \d+, .+ \d+( · |$)/.test(title);
+    if (!score) expect.soft(title.length, `${label} title is ${title.length} characters: ${title}`).toBeLessThanOrEqual(61);
     expect.soft(titles.get(title), `${label} repeats the title of ${titles.get(title)}`).toBeUndefined();
     titles.set(title, label);
-    // A played final's title is its score ("Kress 6, Jayton 75 · ..."); every other title says what the page is.
-    if (!/^.+ \d+, .+ \d+ · /.test(title)) expect.soft(title, `${label} title`).toMatch(/six-man|football/i);
+    if (!score) expect.soft(title, `${label} title`).toMatch(/six-man|football/i);
     expect.soft(title, `${label} title`).not.toMatch(BETTING);
     expect.soft(title, `${label} title`).not.toMatch(SOURCE);
-    const canonical = await page.locator('link[rel="canonical"]').getAttribute("href");
-    expect.soft(canonical?.replace(/\/$/, ""), `${label} canonical`).toBe(`https://txsixmanfootball.com${path === "/" ? "" : path}`);
+    const canonicals = await page.locator('link[rel="canonical"]').evaluateAll((els) => els.map((el) => el.getAttribute("href")?.replace(/\/$/, "")));
+    expect.soft(canonicals, `${label} canonical`).toEqual([`https://txsixmanfootball.com${path === "/" ? "" : path}`]);
   }
   expect(seen.size).toBe(pages.length);
 });
