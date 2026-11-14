@@ -107,6 +107,7 @@ test("a game under way shows its live score in the score itself on the game page
 test("a game the read saw finished shows as Score reported until the final: dashed, no winner, never In progress (ADR 0042)", async ({ page }) => {
   const { scheduled: f } = await fixtures();
   await serveLive(page, { rows: [liveRow(f, { period: null, finished: true })] });
+  await page.clock.install({ time: inWindow(f) });
   await page.goto(`/scores/${f.id}`);
   await expect(page.locator("[data-live-score]")).toHaveText(/^Score reported · as of \d{1,2}:\d{2} (AM|PM) CT · Unconfirmed$/);
   await expect(page.getByRole("region", { name: "Score" }).locator(".decoration-dashed")).toHaveText(["14", "28"]);
@@ -124,13 +125,18 @@ test("a game the read saw finished shows as Score reported until the final: dash
   expect(text.replace(f.away, "").replace(f.home, "")).not.toMatch(NO_WINNER_OR_BETTING);
 });
 
-test("a row with no period reads Live · as of … · Unconfirmed, the score in the big score", async ({ page }) => {
+test("a row with no period reads Live · as of … · Unconfirmed, the score in the big score, and Live with no quarter on the board", async ({ page }) => {
   const { scheduled: f } = await fixtures();
   await serveLive(page, { rows: [liveRow(f, { period: null })] });
   await page.clock.install({ time: inWindow(f) });
   await page.goto(`/scores/${f.id}`);
   await expect(page.locator("[data-live-score]")).toHaveText(/^Live · as of \d{1,2}:\d{2} (AM|PM) CT · Unconfirmed$/);
   await expect(page.getByRole("region", { name: "Score" }).locator(".decoration-dashed")).toHaveText(["14", "28"]);
+  // Every second-source row now has no period (ADR 0042): the board says Live, with no quarter and never OT.
+  const row = await openBoard(page, f);
+  await expect(page.locator("#live").locator(`li[data-game="${f.id}"]`)).toBeVisible();
+  await expect(row.locator("[data-live-score]")).toHaveText(/^Live · as of \d{1,2}:\d{2} (AM|PM) CT$/);
+  expect((await row.innerText()).replace(/\s+/g, " ")).not.toMatch(/\b(Q[1-4]|OT|Half)\b/);
 });
 
 test("a game with a final ignores a live row, on its page and on the board", async ({ page }) => {

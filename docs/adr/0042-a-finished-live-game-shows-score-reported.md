@@ -27,3 +27,16 @@ ADR 0040 (a final score is confirmed) as it is: this row is a read, not our fina
 - Between that run and the rebuild (a few minutes) the game shows its kickoff status again, as it did before.
 - A finished row is still a read: if the feed later lists the game as live again, the next run clears the flag.
 - `lastUpdatedUtc` from the feed is not used: on Nov 13 it equalled the kickoff time in 17 of 19 games.
+
+## Addendum (Nov 14, 2026): no quarter from the second source
+- **Context:** the owner reported wrong quarters and false "OT". On the Nov 13 board at 8:26 PM CT, the second source's
+  `summary.period` lagged the score: Kress at Jayton read Q1 at 75-6, 86 minutes after kickoff, and two 0-0 games read Q1
+  56 and 86 minutes in. Two games of the same 6:30 PM kickoff read 5 at 116 minutes, which `periodLabel` showed as "OT":
+  more likely an end-of-game state than two overtimes at once.
+- **Decision:** live rows from the second source carry no period (null), so pages say "Live · as of 8:26 PM CT" with no
+  quarter. MaxPreps rows already carry none. `periodLabel` stays, for a source that proves reliable, but maps only 1 to 4
+  (Q1 to Q4), Halftime and "OT" in words; a number above 4 is null. A 0-0 game under way is not shown at all, since the
+  period that would show kickoff has passed is not trusted.
+- **Evidence for later:** each live run's summary counts the feed's raw period for the games under way, in bands of
+  minutes since kickoff (0-30, 30-60, 60-90, 90-120, 120+), with no team or score. A period that climbs with the minutes
+  across a few game nights is the case for showing it again, in a new ADR.

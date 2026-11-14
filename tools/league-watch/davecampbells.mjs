@@ -5,7 +5,8 @@
 // reads tonight's still-unscored bracket games (the same Central game-night rule as maxpreps.mjs --tonight), asks the
 // feed for the Live, Upcoming and finished games of one mapped team per game, and merges the games under way or just
 // finished (ADR 0042) into <live.json>
-// (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores, period and forfeit flags: never
+// (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores and forfeit flags (the period only
+// for the run summary's counts, ADR 0042): never
 // a spread, ranking, poll or `winner` field. Nothing is saved to this repo. A 403 or 429 stops the read at once.
 //
 // Finals, as a private cross-check of MaxPreps (ADR 0026, the same permission):
@@ -98,10 +99,14 @@ export async function liveAndUpcoming(client, seasonId, id) {
   return Array.isArray(data?.items) ? data.items : [];
 }
 
-/** The period as the site shows it (letters, digits and spaces only, at most 12): "Q1" to "Q4", "Halftime", "OT"; else null. */
+/** The period as the site would show it (letters, digits and spaces only, at most 12): "Q1" to "Q4", "Halftime", or "OT"
+ * when the feed says so in words; else null. A number above 4 is null, not "OT": on Nov 13, 2026 two games of the same
+ * kickoff slot read 5 nearly two hours in, an end-of-game state more likely than overtime. NOT USED for live rows (ADR
+ * 0042): the feed's period lagged the score (Q1 at 75-6, 86 minutes in), so rows carry none. Kept, with its tests, for
+ * when the period-by-minutes log shows the feed can be trusted. */
 export function periodLabel(summary) {
   const p = summary?.period;
-  if (typeof p === "number" && Number.isInteger(p)) return p >= 1 && p <= 4 ? `Q${p}` : p > 4 ? "OT" : null;
+  if (typeof p === "number" && Number.isInteger(p)) return p >= 1 && p <= 4 ? `Q${p}` : null;
   if (typeof p !== "string") return null;
   const t = p.trim();
   if (/^half(time)?$/i.test(t)) return "Halftime";
@@ -109,6 +114,31 @@ export function periodLabel(summary) {
   if (q) return `Q${q[1]}`;
   if (/^(ot|overtime)\s*\d*$/i.test(t)) return "OT";
   return null;
+}
+
+/** Minutes-since-kickoff buckets for the period log. */
+const MINUTE_BUCKETS = [[0, 30], [30, 60], [60, 90], [90, 120], [120, Infinity]];
+
+/**
+ * The run summary's evidence on the feed's period (ADR 0042): for the games under way, how many hold each raw
+ * summary.period value in each band of minutes since kickoff ("0-30: 1 x4, 2 x1; 30-60: ..."). Never a team or a score.
+ * A trustworthy period would climb with the minutes (1 early, 4 late); on Nov 13, 2026 it did not.
+ */
+export function periodByMinutes(items, now = new Date()) {
+  const bands = MINUTE_BUCKETS.map(([lo, hi]) => ({ name: hi === Infinity ? `${lo}+` : `${lo}-${hi}`, lo, hi, counts: new Map() }));
+  for (const item of items.filter(isLive)) {
+    const kickoff = Date.parse(String(item?.scheduledKickoff ?? ""));
+    if (Number.isNaN(kickoff)) continue;
+    const minutes = (now.getTime() - kickoff) / 60_000;
+    const band = bands.find((b) => minutes >= b.lo && minutes < b.hi);
+    if (!band) continue;
+    const p = item?.summary?.period;
+    const value = p === null || p === undefined ? "none" : String(p).replace(/[^A-Za-z0-9 ]/g, "").slice(0, 12) || "other";
+    band.counts.set(value, (band.counts.get(value) ?? 0) + 1);
+  }
+  const used = bands.filter((b) => b.counts.size);
+  if (!used.length) return "no game under way";
+  return used.map((b) => `${b.name} min: ${[...b.counts].sort(([x], [y]) => x.localeCompare(y)).map(([v, n]) => `${v} x${n}`).join(", ")}`).join("; ");
 }
 
 /** A game under way: the feed's status says live, in progress or halftime (any case, spaces or dashes). */
@@ -130,9 +160,10 @@ export function sameSchool(schoolName, ourSlug) {
  * still-unscored bracket games (`due`). A team is ours by the map (`ours`: their slug to our slug); when only one team is
  * mapped, the other is that team's opponent in tonight's bracket row, and only if the feed's school name matches it.
  * Scores are set in the bracket row's own home and away order. A game the feed calls finished (Final, Completed or
- * Finished) is kept with its last score and `finished: true`, and no period (ADR 0042): pages show it as "Score reported"
+ * Finished) is kept with its last score and `finished: true` (ADR 0042): pages show it as "Score reported"
  * until our own final is read, which takes it off tonight's due list. Skipped: a forfeit, a score outside 0 to 200, a 0-0
- * with no period (a game may list 0-0 before kickoff) and a finished 0-0. One row a game.
+ * (a game may list 0-0 before kickoff, and the period that would tell is not trusted) and a finished 0-0. No row carries a
+ * period: the feed's lagged the score on Nov 13, 2026 (ADR 0042), so pages say "Live" with no quarter. One row a game.
  */
 export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() }) {
   const rows = new Map();
@@ -142,8 +173,9 @@ export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() 
     if (!(isLive(item) || finished) || rows.has(key) || isForfeit(item)) continue;
     const [hScore, aScore] = [score(h.score ?? item.summary?.homeScore), score(a.score ?? item.summary?.awayScore)];
     if (hScore === null || aScore === null) continue;
-    const period = finished ? null : periodLabel(item.summary);
-    if (hScore === 0 && aScore === 0 && (finished || !period)) continue;
+    // The feed's period is not trusted (ADR 0042): never stored. See periodByMinutes for the evidence log.
+    const period = null;
+    if (hScore === 0 && aScore === 0) continue;
     // The bracket row's home and away, whatever the feed calls them.
     const flip = slugify(row.home) !== hs;
     rows.set(key, {
@@ -485,6 +517,7 @@ async function live() {
   if (items.length && !seen.size) console.warn(`none of tonight's games matched; a listed game looks like ${shapeOf(items[0])}`);
   const unmapped = due.filter((r) => !theirs.has(slugify(r.home)) && !theirs.has(slugify(r.away))).length;
   summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.filter((r) => !r.finished).length} under way, ${rows.filter((r) => r.finished).length} finished.`);
+  summary(`Second source's period (not shown on pages) by minutes since kickoff, games under way: ${periodByMinutes(items)}.`);
 }
 
 // ---- Past seasons (ADR 0032: the same permission, which the owner confirmed covers past seasons) ----
