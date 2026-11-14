@@ -13,13 +13,13 @@ and uses ADR 0036's kickoff status for it; every other rule of ADRs 0004, 0009, 
     kickoff first.
   - The server's HTML, and the first render in the browser, put every game with no final under "Up next", so nothing
     differs between them; the groups move once the page runs.
-- **The live read runs only while a game on the page is in progress** by `kickoffState`, checked again every minute. It
-  starts by itself at kickoff and stops when the 4-hour window ends. On a game page that means that game's window. A game
-  with a final never starts it. A game with no kickoff time is never "in progress", so it does not start it either: when no
-  time is known the page asks for nothing. Still true: no request while the tab is hidden, the request is aborted when the
-  page is left, and a failed request shows nothing.
+- **The live read runs only while a game on the page may be under way** (`anyInProgress` in `lib/kickoff.ts`), checked
+  again every minute: from kickoff to 4 hours after when the kickoff is known; with no kickoff time, through its game
+  date's evening, 5:00 PM to midnight Central, so its live score still shows. It starts by itself and stops when the window
+  ends. On a game page that means that game's window. A game with a final never starts it. Still true: no request while
+  the tab is hidden, the request is aborted when the page is left, and a failed request shows nothing.
 
 ## Consequences
 - A page opened before the first kickoff, after the last window, or on a night of finals sends no request to Supabase.
-- A game whose kickoff is missing from the facts file shows no live line until its time is added, even if the reader has a
-  live row for it. The kickoff file is the switch.
+- A game whose kickoff is missing from the facts file is read only through its evening (5:00 PM to midnight Central); an
+  afternoon game with no time listed shows no live line until its time is added.

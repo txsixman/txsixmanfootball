@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files
-import { liveView, type LiveRow } from "@/lib/live-scores";
+import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
 import { ORGS } from "@/lib/orgs";
 import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
 import { CrestSlot, EmptyState, PageHeader } from "../ui";
 import { KickoffStatus } from "../kickoff-status";
-import { LiveLine, useLiveScores } from "./live-score";
+import { useLiveScores } from "./live-score";
 import { ForfeitMark, VerifyBar, scoreClass } from "./parts";
 
 function StatusCell({ g }: { g: Game }) {
@@ -26,15 +26,19 @@ function StatusCell({ g }: { g: Game }) {
   if (g.state === "final") {
     return (
       <div className={`${base} border-r border-line text-navy`}>
-        <span className="flex items-center gap-0.5">
-          Final
-          {g.verification === "confirmed" && (
-            <>
-              <Check aria-hidden="true" className="size-3.5" strokeWidth={3} />
-              <span className="sr-only">confirmed</span>
-            </>
-          )}
-        </span>
+        {g.verification === "confirmed" ? (
+          <span className="flex items-center gap-0.5">
+            Final
+            <Check aria-hidden="true" className="size-3.5" strokeWidth={3} />
+            <span className="sr-only">confirmed</span>
+          </span>
+        ) : (
+          // Not confirmed (a disputed score): never "Final", which would name a winner (ADR 0040).
+          <>
+            <span>Score</span>{" "}
+            <span>reported</span>
+          </>
+        )}
       </div>
     );
   }
@@ -125,9 +129,8 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
   );
 }
 
-function Row({ g, crests, liveRows }: { g: Game; crests?: Crests; liveRows: LiveRow[] }) {
-  // A game with no final yet may be under way (ADR 0021); one with a final never shows a live row.
-  const live = g.state === "scheduled" ? liveView(liveRows, { date: g.date, home: g.home.name, away: g.away.name }) : null;
+/** `live`: the live read of a game under way (asLive put its score in the score cells; this says where the game stands). */
+function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView }) {
   const edge =
     g.verification === "disputed"
       ? "border-l-[6px] border-red"
@@ -143,7 +146,11 @@ function Row({ g, crests, liveRows }: { g: Game; crests?: Crests; liveRows: Live
             <TeamLine g={g} side="away" crests={crests} />
             <TeamLine g={g} side="home" crests={crests} />
             <Notes g={g} />
-            {live && <LiveLine live={live} className="mt-0.5" />}
+            {live && (
+              <p data-live-score className="mt-0.5 font-num text-[14px] font-bold uppercase leading-4 tracking-wide text-red">
+                {liveStatus(live)}
+              </p>
+            )}
           </div>
         </div>
         <VerifyBar g={g} />
@@ -152,7 +159,7 @@ function Row({ g, crests, liveRows }: { g: Game; crests?: Crests; liveRows: Live
   );
 }
 
-function Section({ id, title, live, games, crests, liveRows }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; liveRows: LiveRow[] }) {
+function Section({ id, title, live, games, crests, checked }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; checked: Map<string, LiveView> }) {
   if (!games.length) return null;
   const leagues = [...new Set(games.map((g) => g.league))];
   return (
@@ -167,7 +174,7 @@ function Section({ id, title, live, games, crests, liveRows }: { id: string; tit
           </h3>
           <ul>
             {games.filter((g) => g.league === league).map((g) => (
-              <Row key={g.id} g={g} crests={crests} liveRows={liveRows} />
+              <Row key={g.id} g={g} crests={crests} live={checked.get(g.id)} />
             ))}
           </ul>
         </div>
@@ -184,18 +191,29 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
   const [query, setQuery] = useState("");
   // Only a game with a date and no final can be under way, and only inside its kickoff window; invented sample games or finals ask for nothing.
   const liveRows = useLiveScores(games.flatMap((g) => (g.date && g.state === "scheduled" ? [{ date: g.date, kickoff: g.kickoff }] : [])));
+  // A game with no final that has a live row is under way (ADR 0021): it is counted and listed as Live, its score in its own
+  // cells, unconfirmed, with no winner and no projection (asLive). A game with a final never takes a live row.
+  const checked = new Map<string, LiveView>();
+  const boardGames = games.map((g) => {
+    const live = g.state === "scheduled" ? liveView(liveRows, { date: g.date, home: g.home.name, away: g.away.name }) : null;
+    if (!live) return g;
+    checked.set(g.id, live);
+    return asLive(g, live);
+  });
   // One button per organization that has games, in the site's order (UIL first, the default). Never an "All".
-  const orgs = ORGS.filter((o) => games.some((g) => orgOf(g) === o));
+  const orgs = ORGS.filter((o) => boardGames.some((g) => orgOf(g) === o));
   const [chosen, setChosen] = useState("");
   const org = orgs.find((o) => o.slug === chosen) ?? orgs[0];
-  const inOrgGames = org ? games.filter((g) => orgOf(g) === org) : [];
+  const inOrgGames = org ? boardGames.filter((g) => orgOf(g) === org) : [];
   const q = query.trim().toLowerCase();
   const shown = q ? inOrgGames.filter((g) => `${g.home.name} ${g.away.name}`.toLowerCase().includes(q)) : inOrgGames;
   const live = shown.filter((g) => g.state === "live");
-  const final = shown.filter((g) => g.state === "final");
+  const final = shown.filter((g) => g.state === "final" && g.verification === "confirmed");
+  const reported = shown.filter((g) => g.state === "final" && g.verification !== "confirmed");
   const later = shown.filter((g) => g.state === "scheduled" || g.state === "postponed");
   const jumps = [
     { href: "#live", label: "Live", n: live.length },
+    { href: "#reported", label: "Reported", n: reported.length },
     { href: "#final", label: "Final", n: final.length },
     { href: "#later", label: "Later", n: later.length },
   ];
@@ -258,9 +276,10 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
         )}
       </nav>
 
-      <Section id="live" title="Live now" live games={live} crests={crests} liveRows={liveRows} />
-      <Section id="final" title="Final" games={final} crests={crests} liveRows={liveRows} />
-      <Section id="later" title="Later" games={later} crests={crests} liveRows={liveRows} />
+      <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} />
+      <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} />
+      <Section id="final" title="Final" games={final} crests={crests} checked={checked} />
+      <Section id="later" title="Later" games={later} crests={crests} checked={checked} />
       {!shown.length && (
         <div className="px-3 pb-6">
           <EmptyState>{q ? <>No team matches &ldquo;{query.trim()}&rdquo;.</> : "No games in this organization yet."}</EmptyState>
@@ -273,7 +292,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
           <dt className="font-bold text-ink">Check</dt>
           <dd>A confirmed final.</dd>
           <dt className="font-bold text-ink">Unconfirmed</dt>
-          <dd>Dashed score. Not confirmed yet, and it may change.</dd>
+          <dd>Dashed score. A live score, not final yet.</dd>
           <dt className="font-bold text-ink">Disputed</dt>
           <dd>Wavy score. Reports disagree, so no winner is marked.</dd>
           <dt className="font-bold text-ink">Forfeit</dt>

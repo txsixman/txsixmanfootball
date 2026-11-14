@@ -16,17 +16,22 @@ const CENTEX = "CenTex Chargers Homeschool Sports Association";
 const CENTEX_GAME =
   "Six-Man,season,2026-10-30,CenTex Chargers Homeschool Sports Association,Community Christian,false,40,20,unknown,";
 
-/** A tree like the repo's (apps/web beside data/), every file linked to the real one except the 2026 games file. */
+/** A tree like the repo's (apps/web beside data/), every file linked to the real one except each season's games file:
+ * 2026's is `games`, and every earlier season's is the real one without CenTex's games. */
 function fixture(root, games) {
   mkdirSync(path.join(root, "apps/web"), { recursive: true });
   const link = (from, to, skip) => {
     mkdirSync(to, { recursive: true });
-    for (const name of readdirSync(from)) if (name !== skip) symlinkSync(path.join(from, name), path.join(to, name));
+    for (const name of readdirSync(from)) if (!skip(name)) symlinkSync(path.join(from, name), path.join(to, name));
   };
-  link(DATA, path.join(root, "data"), "seed");
-  link(path.join(DATA, "seed"), path.join(root, "data/seed"), "maxpreps-2026");
-  link(path.join(DATA, "seed/maxpreps-2026"), path.join(root, "data/seed/maxpreps-2026"), "games.csv");
-  writeFileSync(path.join(root, "data/seed/maxpreps-2026/games.csv"), games);
+  const season = (name) => /^maxpreps-\d{4}$/.test(name);
+  link(DATA, path.join(root, "data"), (name) => name === "seed");
+  link(path.join(DATA, "seed"), path.join(root, "data/seed"), season);
+  for (const dir of readdirSync(path.join(DATA, "seed")).filter(season)) {
+    link(path.join(DATA, "seed", dir), path.join(root, "data/seed", dir), (name) => name === "games.csv");
+    const real = readFileSync(path.join(DATA, "seed", dir, "games.csv"), "utf8").trimEnd().split("\n");
+    writeFileSync(path.join(root, "data/seed", dir, "games.csv"), dir === "maxpreps-2026" ? games : real.filter((l) => !l.includes(CENTEX)).join("\n") + "\n");
+  }
   return path.join(root, "apps/web");
 }
 

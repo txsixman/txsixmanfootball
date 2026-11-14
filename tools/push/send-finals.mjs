@@ -45,7 +45,7 @@ export function newFinals(before, after) {
     .map(([, r]) => ({ date: r.game_date, home: r.home, away: r.away, homeScore: Number(r.home_score), awayScore: Number(r.away_score) }));
 }
 
-/** One alert a subscription: its programs' new finals. Names no winner (robot scores are unconfirmed, ADR 0004). */
+/** One alert a subscription: its programs' new finals, each as its score (a final is confirmed, ADR 0040). */
 export function message(finals, followed) {
   const mine = finals.filter((f) => followed.includes(slugify(f.home)) || followed.includes(slugify(f.away)));
   if (!mine.length) return null;

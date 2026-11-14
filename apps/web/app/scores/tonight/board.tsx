@@ -16,10 +16,10 @@ function Status({ g, liveRows }: { g: NightGame; liveRows: LiveRow[] }) {
   if (g.state === "final") {
     return (
       <>
-        <p className="text-[14px] font-bold uppercase leading-5 tracking-wide text-navy">{g.unconfirmed ? "Final · Unconfirmed" : "Final"}</p>
+        <p className="text-[14px] font-bold uppercase leading-5 tracking-wide text-navy">{g.unconfirmed ? "Score reported" : "Final"}</p>
         <p className="text-[15px] leading-5 text-ink">
           {g.away} {g.awayScore}, {g.home} {g.homeScore}
-          {g.unconfirmed && <span className="text-muted"> &middot; may change</span>}
+          {g.unconfirmed && <span className="text-muted"> &middot; disputed</span>}
         </p>
       </>
     );
@@ -37,8 +37,8 @@ function Status({ g, liveRows }: { g: NightGame; liveRows: LiveRow[] }) {
 }
 
 export default function TonightBoard({ night }: { night: Night }) {
-  // Only a game with no final can be under way, and only inside its kickoff window: a night of finals, or the hours before
-  // the first kickoff, ask for nothing.
+  // Only a game with no final can be under way, and only inside its window (lib/kickoff.ts anyInProgress): a night of
+  // finals, or the hours before the first kickoff, ask for nothing.
   const liveRows = useLiveScores(night.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games.filter((g) => g.state === "later"))));
   // The groups are worked out in the browser, as the status labels are, so this static page re-sorts as the clock moves.
   const now = useNow();
@@ -60,7 +60,7 @@ export default function TonightBoard({ night }: { night: Night }) {
                     <li key={g.id} data-game={g.id} className="border-b border-line">
                       <Link href={g.href} className="block min-h-16 px-3 py-2 hover:bg-panel focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-navy active:bg-panel">
                         <p className="text-[16px] font-semibold leading-5 text-ink">
-                          {g.away} at {g.home}
+                          {g.away} vs {g.home}
                         </p>
                         <p className="text-[13px] leading-4 text-muted">{g.round === "Season games" ? g.where : `${g.where} \u00b7 ${g.round}`}</p>
                         <div className="mt-0.5">
