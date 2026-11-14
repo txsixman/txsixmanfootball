@@ -175,3 +175,11 @@ const untimed = () =>
       process.chdir(was);
     }
   })());
+
+test("a bad clock never hides the score: it is left out, the score and the rest stay", async ({ page }) => {
+  const f = await fixture();
+  await serveLive(page, f, { clock: "<b>4:99" });
+  await page.goto(`/scores/${f.id}`);
+  await expect(page.getByRole("region", { name: "Score" }).locator(".decoration-dashed")).toHaveText(["14", "28"], { timeout: 15_000 });
+  await expect(page.locator("[data-live-score]")).toHaveText(new RegExp(`^Live · Q3 · ${AS_OF} · Unconfirmed$`));
+});

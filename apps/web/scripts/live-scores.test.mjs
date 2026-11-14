@@ -14,7 +14,8 @@ const REFERENCE = z.object({
   home_score: z.number().int().min(0).max(200),
   away_score: z.number().int().min(0).max(200),
   period: z.string().min(1).max(12).regex(/^[A-Za-z0-9 ]+$/).nullable(),
-  clock: z.string().max(5).regex(/^\d{1,2}:[0-5]\d$/).nullable().optional(),
+  // Anything but m:ss is no clock (null): a bad clock never drops the row.
+  clock: z.preprocess((v) => (typeof v === "string" && v.length <= 5 && /^\d{1,2}:[0-5]\d$/.test(v) ? v : null), z.string().nullable()).optional(),
   finished: z.boolean().optional(),
   read_at: z.iso.datetime({ offset: true }),
 });
@@ -166,7 +167,13 @@ test("the live status beside the score: period, time left when read, and when it
   assert.equal(liveStatus(view({ clock: null })), "Q3 · as of 7:42 PM CT");
   assert.equal(liveStatus(view({ clock: "4:12" })), "Q3 · 4:12 left · as of 7:42 PM CT");
   assert.equal(liveStatus(view({ period: null, clock: "0:09" })), "Live · 0:09 left · as of 7:42 PM CT");
-  assert.equal(view({ clock: "4:60" }), null, "a bad clock drops the row, as a bad period does");
+  // A clock that fails, whatever way, is no clock: the row and its score stay, the time left is left out.
+  for (const bad of ["", "4:60", "412", "4:12 ", "<b>", "Q3", 412, false, {}]) {
+    assert.equal(liveStatus(view({ clock: bad })), "Q3 · as of 7:42 PM CT", JSON.stringify(bad));
+  }
+  // A bad score or team still drops the row.
+  assert.equal(view({ clock: "4:12", home_score: 500 }), null);
+  assert.equal(view({ clock: "4:12", home: "someone-else" }), null);
 });
 
 test("a finished live row is a final: Final with the winner marked, as of the read, never Live (ADR 0043)", async () => {
