@@ -1,13 +1,14 @@
 "use client";
 
-import { ArrowUpRight, CalendarClock, Check, ChevronRight, Search } from "lucide-react";
+import { CalendarClock, Check, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files
 import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
 import { ORGS } from "@/lib/orgs";
-import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
+import { projectedLine } from "@/lib/outcome";
+import { isForfeit, outcomeOf, winnerOf, type Side } from "@/lib/score-display";
 import { CrestSlot, EmptyState, PageHeader } from "../ui";
 import { KickoffStatus } from "../kickoff-status";
 import { ScoresChecked } from "./freshness";
@@ -77,15 +78,10 @@ function Notes({ g }: { g: Game }) {
       </span>,
     );
   }
-  if (g.upset) {
-    items.push(
-      <span key="u" className="flex items-center gap-0.5 font-bold uppercase tracking-wide text-navy">
-        <ArrowUpRight aria-hidden="true" className="size-3.5" strokeWidth={3} />
-        Upset
-      </span>,
-    );
-  }
-  if (g.state === "scheduled" && g.projected) items.push(<span key="r" className="text-muted">Projected: {g.projected}</span>);
+  // What was projected beside what happened (ADR 0044): before the game, the projection alone; after, "Final: …", "Forfeit"
+  // or "Disputed"; under way, "Now: …". No upset label.
+  const line = projectedLine(g.projected, outcomeOf(g));
+  if (line) items.push(<span key="r" data-projected className="text-muted">{line}</span>);
   if (!items.length) return null;
   return <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[13px] leading-4">{items}</p>;
 }
@@ -193,7 +189,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
   // Only a game with a date and no final can be under way, and only inside its kickoff window; invented sample games or finals ask for nothing.
   const liveRows = useLiveScores(games.flatMap((g) => (g.date && g.state === "scheduled" ? [{ date: g.date, kickoff: g.kickoff }] : [])));
   // A game with no final that has a live row is under way (ADR 0021): it is counted and listed as Live, its score in its own
-  // cells, unconfirmed, with no winner and no projection (asLive). A game with a final never takes a live row.
+  // cells, unconfirmed, with no winner, its projection beside the score so far (asLive). A game with a final never takes a live row.
   const checked = new Map<string, LiveView>();
   const boardGames = games.map((g) => {
     const live = g.state === "scheduled" ? liveView(liveRows, { date: g.date, home: g.home.name, away: g.away.name }) : null;

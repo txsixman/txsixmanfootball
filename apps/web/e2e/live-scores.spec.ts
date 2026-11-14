@@ -90,7 +90,8 @@ test("a game under way shows its live score in the score itself on the game page
   // The page still names nobody: no winner mark anywhere on it.
   await expect(page.locator("body")).not.toContainText(/winner/i);
 
-  // The board lists it under Live, counted in the jump bar, its score in its own cells (dashed), Unconfirmed, no projection.
+  // The board lists it under Live, counted in the jump bar, its score in its own cells (dashed), Unconfirmed, and its
+  // projection from before the game beside the score so far, naming no leader (ADR 0044).
   const row = await openBoard(page, f);
   await expect(page.locator("#live").locator(`li[data-game="${f.id}"]`)).toBeVisible();
   await expect(page.locator("#later").locator(`li[data-game="${f.id}"]`)).toHaveCount(0);
@@ -99,7 +100,8 @@ test("a game under way shows its live score in the score itself on the game page
   expect(text).toMatch(/^Live Q3 /i);
   await expect(row.locator(".decoration-dashed")).toHaveText(["14", "28"]);
   expect(text).toMatch(/Unconfirmed/i);
-  expect(text).not.toMatch(/Projected|no score|In progress/i);
+  expect(text).not.toMatch(/no score|In progress/i);
+  for (const line of await row.locator("[data-projected]").allInnerTexts()) expect(line).toMatch(/^Projected: .+ · Now: 14–28 · Unconfirmed$/);
   await expect(row.locator("[data-live-score]")).toHaveText(/^Q3 · as of \d{1,2}:\d{2} (AM|PM) CT$/);
   expect(text.toLowerCase()).not.toMatch(/\bwinner\b/);
   await expect(row.locator("[aria-hidden='true']", { hasText: "◀" })).toHaveCount(0);
@@ -128,7 +130,12 @@ test("a finished live row shows Final with the winner marked, as of the read, ne
   await expect(row.locator("[data-live-score]")).toHaveText(/^Final · as of \d{1,2}:\d{2} (AM|PM) CT$/);
   await expect(row.getByText("winner", { exact: true })).toHaveCount(1);
   const text = (await row.innerText()).replace(/\s+/g, " ");
-  expect(text).not.toMatch(/In progress|Projected|\bLive\b|Unconfirmed/i);
+  expect(text).not.toMatch(/In progress|\bLive\b|Unconfirmed/i);
+  // Its projection from before the game, beside the final (ADR 0044).
+  for (const line of await row.locator("[data-projected]").allTextContents()) {
+    expect(line).toMatch(/^Projected: .+ chance to win · Final: /);
+    expect(line.endsWith(`· Final: ${f.home} by 14`)).toBe(true);
+  }
 });
 
 test("a row with no period reads Live · as of … · Unconfirmed, the score in the big score, and Live with no quarter on the board", async ({ page }) => {

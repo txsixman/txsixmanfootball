@@ -48,3 +48,43 @@ export const anyInProgress = (games: { date: string; kickoff?: string }[], now: 
       ? g.date === centralDay(now) && centralHour(now) >= EVENING_FROM_HOUR
       : kickoffState(g, now).kind === "in-progress",
   );
+
+export type NightGroupKey = "in-progress" | "up-next" | "final" | "awaiting";
+/** `underWay`: the live read has a score for it now (ADR 0039), so it is in progress whatever its kickoff says. */
+type NightGame = { date: string; kickoff?: string; state: "later" | "final" | "forfeit"; underWay?: boolean };
+
+const GROUPS: { key: NightGroupKey; label: string }[] = [
+  { key: "in-progress", label: "In progress" },
+  { key: "up-next", label: "Up next" },
+  { key: "final", label: "Final" },
+  // Over four hours past kickoff with no final: not "Final" (no score is in), so a group of its own, last.
+  { key: "awaiting", label: "Score not reported yet" },
+];
+const kickoffMs = (g: { kickoff?: string }) => (g.kickoff ? Date.parse(g.kickoff) : NaN);
+
+/**
+ * One organization's games for the Tonight page at `now`, in groups, empty ones left out: "In progress" (earliest kickoff
+ * first), "Up next" (earliest first, no time last), "Final" (latest first, no time last). A game with a final or a forfeit is
+ * always Final; a game with no final is in progress inside its window, up next before it or with no time listed, and Final
+ * once the window has passed with no score (its row still says "Score not reported yet"). `now` null (the server, and the
+ * first render in the browser) puts every game with no final under "Up next", so the first paint is the same everywhere.
+ */
+export function groupTonight<T extends NightGame>(games: T[], now: Date | null): { key: NightGroupKey; label: string; games: T[] }[] {
+  const keyOf = (g: T): NightGroupKey => {
+    if (g.state !== "later") return "final";
+    if (g.underWay) return "in-progress";
+    const kind = now ? kickoffState(g, now).kind : "starts";
+    return kind === "in-progress" ? "in-progress" : kind === "awaiting" ? "awaiting" : "up-next";
+  };
+  return GROUPS.map(({ key, label }) => {
+    const sign = key === "up-next" || key === "in-progress" ? 1 : -1;
+    const inGroup = games.filter((g) => keyOf(g) === key);
+    // Array.prototype.sort is stable: games with the same (or no) time keep the order they came in.
+    const sorted = [...inGroup].sort((a, b) => {
+      const [x, y] = [kickoffMs(a), kickoffMs(b)];
+      if (Number.isNaN(x) || Number.isNaN(y)) return Number.isNaN(x) === Number.isNaN(y) ? 0 : Number.isNaN(x) ? 1 : -1;
+      return sign * (x - y);
+    });
+    return { key, label, games: sorted };
+  }).filter((group) => group.games.length);
+}

@@ -7,9 +7,9 @@ on:
     - cron: "17 13 * * 1" # Mondays, 8:17 AM Central
   workflow_dispatch:
 
+# Read-only by default; each job that pushes its branch and opens the pull request says so itself.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency: league-watch
 
@@ -19,6 +19,9 @@ jobs:
     if: github.event_name != 'schedule' || vars.LIVE == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -62,6 +65,9 @@ jobs:
     if: github.event_name != 'schedule' || vars.LIVE == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

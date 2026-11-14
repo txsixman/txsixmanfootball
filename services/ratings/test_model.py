@@ -273,6 +273,46 @@ def test_a_trend_holds_each_teams_rating_at_the_end_of_every_week(tmp_path):
     assert trend["Alpha"][-1] == next(row["rating"] for row in result["teams"] if row["team"] == "Alpha")
 
 
+def test_a_games_week_before_ratings_do_not_change_once_its_own_result_is_rated(tmp_path):
+    """The site projects a played game from the week before it (apps/web/lib/pregame.ts): `trend`, `week_sigma` and
+    `week_home_field` at the last Sunday before its date. Rating the game, or any later one, must leave those unchanged."""
+    from run import with_trend
+
+    header = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes\n"
+    rows = [
+        ("2030-09-05", "Alpha", "Beta", 40, 20),
+        ("2030-09-05", "Gamma", "Delta", 35, 34),
+        ("2030-09-12", "Gamma", "Alpha", 10, 30),
+        ("2030-09-12", "Delta", "Beta", 22, 28),
+        ("2030-09-19", "Beta", "Gamma", 28, 27),
+        ("2030-09-19", "Alpha", "Delta", 50, 6),
+    ]
+    later = ("2030-10-02", "Delta", "Gamma", 60, 0)  # the game, then rated: a result far from any projection
+
+    def run(games, name):
+        path = tmp_path / name
+        path.write_text(
+            header
+            + "".join(
+                f"I,season,{d},{h},{a},false,{hs},{as_},unknown,,https://example.test/{i},\n"
+                for i, (d, h, a, hs, as_) in enumerate(games)
+            )
+        )
+        return with_trend([str(path)], skip=0)
+
+    before, after = run(rows, "before.csv"), run([*rows, later], "after.csv")
+    weeks = len(before["weeks"])
+    assert after["weeks"][:weeks] == before["weeks"] and max(before["weeks"]) < later[0]
+    assert after["week_sigma"][:weeks] == before["week_sigma"]
+    assert after["week_home_field"][:weeks] == before["week_home_field"]
+    was = {row["team"]: row["trend"] for row in before["teams"]}
+    now = {row["team"]: row["trend"][:weeks] for row in after["teams"]}
+    assert now == was
+    # The current ratings do move: they count the game, which is why a played game is never projected from them.
+    rating = lambda table: {row["team"]: row["rating"] for row in table["teams"]}
+    assert rating(after)["Delta"] > rating(before)["Delta"]
+
+
 def prior_season(seed=0, n_teams=24, weeks=8, start="2030-09-02"):
     """An invented season with dates: week w's games are on the Thursday of the w-th week after `start` (a Monday)."""
     import datetime as dt

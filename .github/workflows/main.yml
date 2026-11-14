@@ -32,7 +32,7 @@ jobs:
           node-version: 22
       - run: npm ci --prefix packages/db && npm --prefix packages/db test
       - run: npm ci --prefix apps/web && node apps/web/scripts/check-data.mjs
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
       - run: uv run --directory services/ratings pytest -q
 
   # The ratings table the site shows (/ratings). Rated here, not by hand, so entering a game in a capture file is the
@@ -52,7 +52,7 @@ jobs:
           token: ${{ secrets.DATA_PRIVATE_TOKEN }}
           path: private
           persist-credentials: false
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
       - name: Rate the season under way (August to January belongs to the year it started)
         env:
           PRIVATE_DATA: ${{ github.workspace }}/private

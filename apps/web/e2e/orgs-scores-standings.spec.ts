@@ -160,5 +160,5 @@ test("the matchup pickers list each organization's teams in their own option gro
   await page.getByRole("combobox", { name: "Team 1" }).selectOption("jayton");
   const tapps = await page.getByRole("combobox", { name: "Team 2" }).locator("optgroup[label^='TAPPS'] option").first().getAttribute("value");
   await page.getByRole("combobox", { name: "Team 2" }).selectOption(tapps!);
-  await expect(page.getByRole("region", { name: "Projection" })).toContainText(/win probability/);
+  await expect(page.getByRole("region", { name: "Projection" })).toContainText(/chance to win/);
 });

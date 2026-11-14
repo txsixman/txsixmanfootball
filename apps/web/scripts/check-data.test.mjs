@@ -118,3 +118,15 @@ test("a disputed final must be a game on file: a misspelled or wrong-date row fa
   assert.equal(bad.ok, false);
   assert.match(bad.note, /2031-09-12 Cedar Gap at Salt Forks; 2031-09-13 Cedar Gap at Salt Fork$/);
 });
+
+test("a game's site is plain words, and a city needs a name (ADR 0041)", () => {
+  const details = (...lines) => [s.DETAIL_COLUMNS.join(","), ...lines].join("\n");
+  const ok = (line) => s.parseCsv("game-details.csv", details(line), s.DETAIL_COLUMNS, s.DetailRow);
+  const bad = (line, pattern) => assert.throws(() => ok(line), pattern);
+  assert.equal(ok("2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,St. Mary's Field (North) & Track,San Angelo")[0].row.site_city, "San Angelo");
+  ok("2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,");
+  ok("2026-11-13,Lark,Wren,,,");
+  bad("2026-11-13,Lark,Wren,,<b>Field</b>,Lark", /site_name/);
+  bad("2026-11-13,Lark,Wren,,Bird Field,https://x", /site_city/);
+  bad("2026-11-13,Lark,Wren,,,Lark", /a site city with no site name/);
+});
