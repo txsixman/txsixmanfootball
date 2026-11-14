@@ -43,7 +43,7 @@ for (const year of [2025, CURRENT_SEASON]) {
 
     await open(page, `/programs/jayton/${year}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Jayton ${year}`);
-    await expect(page).toHaveTitle(new RegExp(`^Jayton ${year} season \\|`));
+    await expect(page).toHaveTitle(new RegExp(`^Jayton Jaybirds football ${year}: schedule and scores \\|`));
     const summary = page.getByRole("region", { name: "Season summary" });
     await expect(summary).toContainText(record);
     await expect(summary).toContainText(rank);

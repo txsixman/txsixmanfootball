@@ -11,9 +11,10 @@ import { weekHref } from "@/lib/week-review-hrefs";
 import { latestReview } from "@/lib/week-review-load";
 import { EmptyState, PageHeader } from "../ui";
 import Board, { type NextGame } from "./board";
+import { scoresTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Scores", description: scoresDescription(CURRENT_SEASON) };
+export const metadata: Metadata = { title: scoresTitle(CURRENT_SEASON), description: scoresDescription(CURRENT_SEASON), alternates: { canonical: "/scores" } };
 
 export default async function ScoresPage() {
   const alignments = await loadAlignments();
