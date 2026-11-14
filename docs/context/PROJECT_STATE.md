@@ -25,7 +25,7 @@ played two or more of ours stay in the fit as hidden teams (`outside.csv`). Win 
 calibrated on walk-forward predictions (">99%" shown only above 99.5%). Rate the seasons in order, 2021 to 2026, because
 each reads the one before it. Open: the 45-point rule means very large margins are underpredicted, so those chances stay capped.
 
-## The site (`apps/web`, Vercel, open to search engines at `txsixmanfootball.com` (`app/sitemap.ts`, `app/robots.ts`, `lib/site.ts`); `www` redirects there, and `txsixmanfootballcom.vercel.app` and previews send `noindex`)
+## The site (`apps/web`, Vercel, open to search engines at `txsixmanfootball.com` (`app/sitemap.xml`, `app/robots.ts`, `lib/site.ts`); `www` redirects there, and `txsixmanfootballcom.vercel.app` and previews send `noindex`)
 - **Organizations never mix (ADR 0012, the owner Nov 11):** UIL, TAPPS, TAIAO, TCAF and Independent each get their own tab, list and
   ranks (`lib/orgs.ts`; Independent has no standings, and an organization's tabs show only once it has a game, `lib/active-orgs.ts`); UIL is each section's default page, the others `<section>/<org>`. No "All", no "Private"
 - **Home**: My teams (programs this browser follows: record, last game, next game with its projection; `app/my-teams/`,
@@ -42,8 +42,9 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   Each title carries the date ("Away at Home, Nov 13, 2026"), so the same pair's meetings never share a title; a pair
   with a series page gets "Every <away> and <home> game since 2021"; this season's games have their own share card
   (`app/scores/[id]/card/route.tsx`, a route handler with its own static params), a past season's game the site's card
-- **Getting found** (live since Nov 13): open to search engines (robots, a sitemap of the public pages with no sample
-  games, `app/sitemap.ts`), canonical links, breadcrumbs, structured data (`lib/json-ld.ts`), a meta description per page
+- **Getting found** (live since Nov 13): open to search engines (robots; `/sitemap.xml` is an index of one sitemap per kind of
+  page, `/sitemaps/<kind>.xml` (sections, programs, scores, series, results, weeks; `app/sitemaps/lists.ts`), no sample
+  games, each address's lastmod the date of the latest game it shows, never the build time, `lib/sitemap-xml.ts`), canonical links, breadcrumbs, structured data (`lib/json-ld.ts`), a meta description per page
   (below), and a 404 and an error page of the site's own (noindex, a plain search form, the main sections)
 - **Playoffs** `/playoffs` (UIL), `/playoffs/tapps`, `/taiao`, `/tcaf`: each 2026 bracket round by round
   (`lib/brackets.ts`), earlier games in the order of the later games they feed, projections for unplayed games; no
