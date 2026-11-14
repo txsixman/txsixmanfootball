@@ -23,6 +23,7 @@ import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
 import { playedCounts } from "@/lib/season-results";
+import { shownBefore } from "@/lib/pregame";
 import { lead, seasonRows, type Row } from "@/lib/program-games";
 import { ProgramLiveRead, ProgramLiveScore } from "../../scores/live-game";
 import { embedSnippet } from "@/lib/embed-html";
@@ -151,7 +152,12 @@ export default async function ProgramPage({ params }: Props) {
     (a) => a.slug !== slug && a.league === school.league && a.division === school.division && a.region === school.region && a.district === school.district,
   );
   // The season as one timeline: robot-read results and playoff games together, by date (lib/program-games.ts).
-  const { rows, results, games, latest, next } = seasonRows(school.school, await loadGames(all), await loadSeasonResults(CURRENT_SEASON));
+  const { rows, results, games, latest, next } = seasonRows(
+    school.school,
+    await loadGames(all),
+    await loadSeasonResults(CURRENT_SEASON),
+    await shownBefore(CURRENT_SEASON),
+  );
   // This program's own finals, and those of the schools that merged into it (ADR 0003), marked "as <old name>".
   const lineage = await loadLineage();
   const names = new Set([slug, ...lineage.filter((l) => slugify(l.successor) === slug).map((l) => slugify(l.predecessor))]);
@@ -217,6 +223,7 @@ export default async function ProgramPage({ params }: Props) {
               </span>
             </span>
             {r.note && <span className="block text-[13px] leading-4 text-muted">{r.note}</span>}
+            {r.projected && <span data-projected className="block text-[13px] leading-4 text-muted">{r.projected}</span>}
           </span>
           {r.href ? (
             <Link
@@ -378,6 +385,7 @@ export default async function ProgramPage({ params }: Props) {
                       )}
                       {next.date && <ProgramLiveScore line date={next.date} school={school.school} opponent={next.opponent} home={next.home} />}
                       {next.note && <span className="block text-[14px] font-normal text-muted">{next.note}</span>}
+                      {next.projected && <span data-projected className="block text-[14px] font-normal text-muted">{next.projected}</span>}
                     </span>
                     <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted" />
                   </Link>

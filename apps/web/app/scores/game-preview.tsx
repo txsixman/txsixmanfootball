@@ -61,7 +61,7 @@ function Team({ side, programs }: { side: PreviewSide; programs: Programs }) {
   );
 }
 
-/** `projected` is the game's own projection text ("Jayton by 12 · 74% win probability"), undefined when a team is unrated. */
+/** `projected` is the game's own projection text ("Jayton by 12 · 74% chance to win"), undefined when a team is unrated. */
 export function GamePreviewSection({ preview, detail, projected, programs }: { preview: GamePreview; detail: GameDetail; projected?: string; programs: Programs }) {
   const { away, home, common } = preview;
   const { total } = detail.meetings;

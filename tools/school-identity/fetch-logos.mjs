@@ -30,7 +30,7 @@ export const COPIES = [[SMALL, SMALL_BOX], [TINY, TINY_BOX], [LARGE, LARGE_BOX]]
 const COPY_DIRS = COPIES.map(([dir]) => dir);
 /** A stored raster fits inside this box: wide wordmarks keep at least ~160px of height where the source allows. */
 export const STORED_BOX = { width: 1200, height: 320 };
-const USER_AGENT = "Project80x40-logo-fetch/1.0";
+const USER_AGENT = "txsixmanfootball-results-reader/1.0 (+https://txsixmanfootball.com; contact@txsixmanfootball.com)";
 const MAX_BYTES = 8_000_000; // the download; what is stored is shrunk to fit STORED_BOX
 const PAUSE_MS = 400; // between requests; one at a time
 

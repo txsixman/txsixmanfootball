@@ -132,8 +132,8 @@ export default async function Home() {
                           </span>
                           <span className="block text-[13px] text-muted">{g.league}</span>
                           <span className="block text-[13px] font-semibold text-navy">
-                            {g.projected?.replace(/ win probability$/, "")}
-                            <span className="sr-only"> win probability</span>
+                            {g.projected?.replace(/ chance to win$/, "")}
+                            <span className="sr-only"> chance to win</span>
                           </span>
                         </span>
                       </Link>
