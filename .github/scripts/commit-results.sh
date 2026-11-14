@@ -8,8 +8,8 @@
 #
 #   .github/scripts/commit-results.sh <season>
 #
-# Env: WRITE (true pushes; anything else reports what would be pushed), INTEGRITY and INTEGRITY_REPORT (passed to
-# apps/web/scripts/check-data.mjs: cross-file failures are written down, not blocking; the workflow fails the job from
+# Env: WRITE (true pushes; anything else reports what would be pushed), DATA_PRIVATE_TOKEN (the private repo's token,
+# handed to git for fetch and push there only; see pgit), INTEGRITY and INTEGRITY_REPORT (passed to apps/web/scripts/check-data.mjs: cross-file failures are written down, not blocking; the workflow fails the job from
 # that file after the push), GITHUB_STEP_SUMMARY, GITHUB_OUTPUT (sha=<the pushed commit>), RUNNER_TEMP.
 # Exits 1 when a push fails three times or a Zod check fails; the private commit, once pushed, stays.
 # Tested against local bare repos in commit-results.test.mjs.
@@ -31,12 +31,31 @@ for repo in private .; do
   git -C "$repo" config user.name "github-actions[bot]"
   git -C "$repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 done
+
+# Git on the private repo with the token (DATA_PRIVATE_TOKEN, when set) as a header for that one command, handed over by
+# environment variable: it is never written to private/.git/config (the checkout keeps no credentials) or into a
+# command line. Only fetch and push need it; the rest of the script uses plain git.
+auth=""
+if [ -n "${DATA_PRIVATE_TOKEN:-}" ]; then
+  auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$DATA_PRIVATE_TOKEN" | base64 | tr -d '\n')"
+  if [ "${GITHUB_ACTIONS:-}" = true ]; then echo "::add-mask::${auth#AUTHORIZATION: basic }"; fi
+fi
+pgit() {
+  if [ -z "$auth" ]; then git -C private "$@"; return; fi
+  # A subshell with the next free GIT_CONFIG slot (a runner may already use some), so the exports end with the call.
+  (
+    n="${GIT_CONFIG_COUNT:-0}"
+    export GIT_CONFIG_COUNT=$((n + 1))
+    export "GIT_CONFIG_KEY_$n=http.https://github.com/.extraheader" "GIT_CONFIG_VALUE_$n=$auth"
+    git -C private "$@"
+  )
+}
 message="Results and ratings from MaxPreps, $(date -u +%Y-%m-%d)"
 
 # 1. The private repo: this read's captures laid on its newest main. Only this workflow writes them.
 for try in 1 2 3 4; do
   [ "$try" -le 3 ] || exit 1
-  git -C private fetch -q origin main
+  pgit fetch -q origin main
   git -C private reset -q --hard origin/main
   for p in "${private_paths[@]}"; do rm -rf "private/${p:?}" && mkdir -p "$(dirname "private/$p")" && cp -r "$read/$p" "private/$p"; done
   if [ -z "$(git -C private status --porcelain -- "${private_paths[@]}")" ]; then
@@ -49,7 +68,7 @@ for try in 1 2 3 4; do
   fi
   git -C private add -- "${private_paths[@]}"
   git -C private commit -q -m "$message"
-  git -C private push -q origin HEAD:main && break
+  pgit push -q origin HEAD:main && break
   echo "data-private main moved; try $try again"
 done
 

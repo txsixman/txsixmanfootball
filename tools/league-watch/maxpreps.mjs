@@ -41,7 +41,7 @@ const OUT = path.join(RESULTS, `maxpreps-${SEASON}`);
 const SEASON_START = `${SEASON}-08-01`;
 const SEASON_END = `${SEASON + 1}-01-31`;
 const DELAY_MS = 2500;
-const USER_AGENT = "project-80x40-results-reader/1.0 (six-man scores; one request per 2.5 s)";
+const USER_AGENT = "txsixmanfootball-results-reader/1.0 (+https://txsixmanfootball.com; contact@txsixmanfootball.com)";
 // The only paths this reader may request. MaxPreps' robots.txt disallows /team/, /school/, /scores/ and /contest/ (and
 // /*/schedule/all-time/); it does not disallow team schedule pages, current (.../football/schedule/) or past season
 // (.../football/25-26/schedule/ for the 2025 season, read Nov 11, 2026).

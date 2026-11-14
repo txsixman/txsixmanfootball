@@ -154,6 +154,26 @@ test("the public push fails three times: exit 1, nothing on public main, the pri
   assert.equal(r.output, "");
 });
 
+test("the private token reaches only fetch and push on private/, by environment, and is never stored or printed", () => {
+  const t = setup();
+  newCapture(t);
+  const seen = path.join(t.root, "git-config-seen.log");
+  const realGit = spawnSync("which", ["git"], { encoding: "utf8" }).stdout.trim();
+  exe(path.join(t.bin, "git"), `#!/usr/bin/env bash
+if env | grep -q '^GIT_CONFIG_KEY_[0-9]*=http.https://github.com/.extraheader$'; then h=header; else h=plain; fi
+echo "$* :: $h" >> "${seen}"
+exec "${realGit}" "$@"
+`);
+  const token = "tok-for-test-only-123";
+  const r = run(t, { DATA_PRIVATE_TOKEN: token });
+  assert.equal(r.status, 0, r.stderr);
+  const lines = readFileSync(seen, "utf8").split("\n");
+  const withHeader = lines.filter((l) => l.endsWith(":: header")).map((l) => l.split(" ").slice(0, 3).join(" "));
+  assert.deepEqual(withHeader, ["-C private fetch", "-C private push"]);
+  const everything = r.stdout + r.stderr + readFileSync(path.join(t.work, "private/.git/config"), "utf8");
+  assert.ok(!everything.includes(token) && !everything.includes(Buffer.from(`x-access-token:${token}`).toString("base64")));
+});
+
 test("WRITE not true: nothing is pushed anywhere, and the summary lists what would have been", () => {
   const t = setup();
   newCapture(t);
