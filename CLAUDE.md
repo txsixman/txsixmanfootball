@@ -49,6 +49,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   Without it the ratings have no hidden teams (not the published table) and the DB tests load the public files.
   `DATA_PRIVATE_TOKEN` reaches it only from push-to-main, schedule and dispatch runs (`main.yml`, `results-watch.yml`,
   `supabase.yml`); CI's data job fails if a pull-request workflow names it (`.github/scripts/token-guard.sh`)
+- Commit addresses: every commit has `contact@txsixmanfootball.com` (or a GitHub bot) as author and committer. CI's
+  `commit-emails` job fails a pull request otherwise (`.github/scripts/commit-emails.sh`, which never prints the address)
 - The repo variable `LIVE` (true from cut-over): until then no schedule writes, and alerts, the hosted database and the
   ratings-table commit do nothing. Proofs by hand: Results watch with `write` pushes both repos, an After merge
   run rates and commits the table, and a Supabase run (dispatched itself, not called) loads the hosted database
