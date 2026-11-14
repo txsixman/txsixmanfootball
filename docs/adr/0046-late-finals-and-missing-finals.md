@@ -19,15 +19,20 @@ its two-read rule), ADR 0034 (forfeits) and ADR 0028 (ops alerts), and changes n
    If both have a final they must agree, or nothing is filled. A forfeit is never filled this way (ADR 0034): not a game
    whose bracket text says forfeit, not one the feed flags, and not a 1-0, 2-0 or 0-0. It waits for MaxPreps or a hand
    capture.
-2. **The fill goes through the store's own merge** (`store.mjs` `mergeStored`), as an ordinary stored row with a note
-   saying where it came from. A later MaxPreps read that differs is proposed and applies only after two reads (ADR 0031).
+2. **The fill goes through the store's own merge** (`store.mjs` `mergeStored`), into playoffs.csv and games.csv (which
+   holds every played game, playoff games too), as an ordinary stored row with a note saying where it came from. A later MaxPreps read that differs is proposed and applies only after two reads (ADR 0031).
    Published files still carry no source and no note.
-3. **Missing-finals alert.** A bracket game of a night that is over and still blank after the fill is missing, unless the
-   league's bracket dates it today or later (it moved). Missing games are named in the run summary only, fail the step,
+3. **Moved games.** A blank late game of that league that its bracket dates later is moved to that date in playoffs.csv,
+   and the move is kept in the private store's `moved-games.csv`. Every read lays a game it finds on a moved game's old
+   date onto the new one, so MaxPreps's old date never puts the row back. The game then counts by its new date. A move
+   can also be added there by hand.
+4. **Missing-finals alert.** A bracket game of a night that is over and still blank after the fill and the moves is
+   missing. Missing games are named in the run summary only, fail the step,
    and raise the ops reason `missing-finals`; never on a page.
-4. **Map rows** for the second source are added only on an exact name and town match. Where there is none, no row is
-   added, and the league's bracket or a hand capture fills the game.
-5. **The page:** a past game with no score is under "Score not reported yet" on the scores board, not "Later". It is
+5. **Map rows** for the second source are added only on an exact name and town match. Where there is none, no row is
+   added, and the league's bracket or a hand capture fills the game. A school is the same when the town matches and the
+   repository's own MaxPreps alias already names that page as our school.
+6. **The page:** a past game with no score is under "Score not reported yet" on the scores board, not "Later". It is
    worked out in the browser at the time of viewing, as ADR 0036's kickoff status is.
 
 ## Consequences

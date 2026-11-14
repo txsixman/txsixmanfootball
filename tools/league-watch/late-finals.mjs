@@ -9,15 +9,17 @@
 //    the stored row's date.
 //    The fill goes through the store's own merge (store.mjs mergeStored), so it is an ordinary stored row: a later MaxPreps
 //    read can only propose a different score, which applies after two reads (ADR 0031).
-// 2. A bracket game of a night that is over and still has no score is missing, unless TAIAO's bracket dates it today or
-//    later (the game moved). Missing games are named in the run summary and in <file> (--missing), and raise the
+// 2. A blank late TAIAO game that TAIAO's bracket dates later (the game moved) is moved to that date in playoffs.csv, and
+//    the move is kept in moved-games.csv (store.mjs), which every later read applies, so the reader's old date never
+//    puts it back. It then counts by its new date: a game of tonight is due tonight, not missing.
+// 3. A bracket game of a night that is over and still has no score after that is missing. Missing games are named in the run summary and in <file> (--missing), and raise the
 //    ops reason "missing-finals" (ADR 0028), never on a page. A failed source read is counted and never stops the check.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient, finalOf, footballSeasons, liveAndUpcoming, matchGames, ORIGIN, raise, teamId, teamMaps } from "./davecampbells.mjs";
-import { centralDate, gameNight, slugify } from "./maxpreps.mjs";
-import { mergeStored, parseCsv, PENDING_FILE, pendingCsv, readPending, rowKey } from "./store.mjs";
+import { gameNight, slugify } from "./maxpreps.mjs";
+import { mergeStored, MOVES_FILE, movesCsv, parseCsv, PENDING_FILE, pendingCsv, readPending, rowKey } from "./store.mjs";
 import { PAGE as TAIAO_PAGE, readBrackets } from "./taiao.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -66,21 +68,47 @@ export function planLate(rows, { taiao = new Map(), second = new Map() }) {
   return { fill, disagree };
 }
 
-/** The planned fills written into the stored playoffs.csv through the store's merge; every one must come back as filled. */
-export function fillStore({ stored, fill, pending, now, sourceUrl = () => TAIAO_PAGE }) {
-  const { header, cols } = parseCsv(stored, "playoffs.csv");
-  const line = (r) => cols.map((c) => r[c] ?? "").join(",");
+/**
+ * The planned fills written through the store's merge into the stored playoffs.csv (every one must come back filled)
+ * and games.csv, which holds every played game, playoff games too, as round "season" (each must come back added, filled
+ * or the same). Nothing else may change; else it throws and nothing is written. `games`: the stored games.csv text.
+ */
+export function fillStore({ stored, games = "", fill, pending, now, sourceUrl = () => TAIAO_PAGE }) {
+  const csvOf = (text, file, rows, fallback) => {
+    const { header, cols } = parseCsv(text, file);
+    const h = header || fallback;
+    return [h, ...rows.map((r) => (cols.length ? cols : h.split(",")).map((c) => r[c] ?? "").join(","))].join("\n") + "\n";
+  };
   const rows = fill.map(({ row, home, away, from }) => ({ ...row, home_score: String(home), away_score: String(away), end_reason: "unknown", source_url: sourceUrl(row, from), notes: row.notes || NOTE[from] }));
   if (rows.some((r) => `${r.source_url}${r.notes}`.includes(","))) throw new Error("a filled row would hold a comma");
-  const merged = mergeStored({ file: "playoffs.csv", stored, fresh: [header, ...rows.map(line)].join("\n") + "\n", pending, readTeam: () => false, now: now.toISOString() });
-  if (merged.counts.filled !== fill.length || merged.changes.length || merged.counts.added) throw new Error(`the store's merge did not only fill: ${JSON.stringify(merged.counts)}`);
-  return merged;
+  const at = now.toISOString();
+  const playoffs = mergeStored({ file: "playoffs.csv", stored, fresh: csvOf(stored, "playoffs.csv", rows), pending, readTeam: () => false, now: at });
+  if (playoffs.counts.filled !== fill.length || playoffs.changes.length || playoffs.counts.added) throw new Error(`the store's merge did not only fill: ${JSON.stringify(playoffs.counts)}`);
+  const played = rows.map((r) => ({ ...r, round: "season", neutral: r.neutral || "false" }));
+  const gamesMerged = mergeStored({ file: "games.csv", stored: games, fresh: csvOf(games, "games.csv", played, GAMES_HEADER), pending: playoffs.pending, readTeam: () => false, now: at });
+  const c = gamesMerged.counts;
+  if (c.added + c.filled + c.same !== fill.length || gamesMerged.changes.length || c.proposed) throw new Error(`games.csv: the store's merge would change a stored score: ${JSON.stringify(c)}`);
+  return { playoffs, games: gamesMerged, pending: gamesMerged.pending };
+}
+const GAMES_HEADER = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes";
+
+/**
+ * Moves for late TAIAO rows the league's bracket dates later, with no final there: `{ row, to }`. A row whose new date
+ * would land on another stored row of the same two teams is left as it is.
+ */
+export function movesFor(late, games, rows) {
+  const have = new Set(rows.map(rowKey));
+  return late
+    .filter((r) => r.league === "TAIAO")
+    .map((r) => ({ row: r, to: taiaoFor(r, games)?.date ?? "" }))
+    .filter(({ row, to }) => to > row.game_date && !have.has(rowKey({ ...row, game_date: to })));
 }
 
-/** Late rows still blank after the fill, less those TAIAO dates today or later (moved, not missing). */
-export function missingRows(rows, { taiaoDates = new Map(), now }) {
-  const today = centralDate(now);
-  return rows.filter((r) => !((taiaoDates.get(rowKey(r)) ?? "") >= today));
+/** playoffs.csv with each move's row on its new date (the next read puts the file back in its order). */
+export function moveRows(text, moves) {
+  const { header, cols, rows } = parseCsv(text, "playoffs.csv");
+  const to = new Map(moves.map((m) => [rowKey(m.row), m.to]));
+  return [header, ...rows.map((r) => cols.map((c) => (c === "game_date" ? (to.get(rowKey(r)) ?? r.game_date) : r[c])).join(","))].join("\n") + "\n";
 }
 
 /** "2026-11-13 · TAIAO 2 quarterfinal · Away at Home": our own published names, for the run summary. */
@@ -118,25 +146,36 @@ async function main() {
   const now = new Date();
   const lines = [];
   const log = (s) => (console.log(s), lines.push(s));
-  const stored = readFileSync(file, "utf8");
-  const late = lateRows(parseCsv(stored, "playoffs.csv").rows, now);
-  log(`Late finals (ADR 0046): ${late.length} bracket games of past nights with no score after the read.`);
+  let stored = readFileSync(file, "utf8");
+  const late0 = lateRows(parseCsv(stored, "playoffs.csv").rows, now);
+  log(`Late finals (ADR 0046): ${late0.length} bracket games of past nights with no score after the read.`);
 
-  const taiao = new Map();
-  const taiaoDates = new Map();
-  if (late.some((r) => r.league === "TAIAO")) {
+  let games = null;
+  if (late0.some((r) => r.league === "TAIAO")) {
     try {
-      const games = await readBrackets();
-      for (const r of late.filter((x) => x.league === "TAIAO")) {
-        const t = taiaoFor(r, games);
-        if (t) taiaoDates.set(rowKey(r), t.date ?? "");
-        if (t?.final) taiao.set(rowKey(r), t.final);
-      }
-      log(`league bracket: ${games.length} games read, ${taiao.size} finals for these`);
+      games = await readBrackets();
+      log(`league bracket: ${games.length} games read`);
     } catch (e) {
       log(`league bracket: not read (${String(e.message).split("\n")[0]})`);
     }
   }
+  const moves = games ? movesFor(late0, games, parseCsv(stored, "playoffs.csv").rows) : [];
+  if (moves.length) {
+    stored = moveRows(stored, moves);
+    const movesFile = path.join(store, MOVES_FILE);
+    const add = moves.map(({ row, to }) => ({ from_date: row.game_date, home: row.home, away: row.away, to_date: to, source: "league bracket" }));
+    writeFileSync(movesFile, movesCsv(existsSync(movesFile) ? readFileSync(movesFile, "utf8") : "", add));
+    writeFileSync(file, stored);
+  }
+  log(`moved to the league bracket's later date: ${moves.length}`);
+  const late = lateRows(parseCsv(stored, "playoffs.csv").rows, now);
+
+  const taiao = new Map();
+  for (const r of games ? late.filter((x) => x.league === "TAIAO") : []) {
+    const t = taiaoFor(r, games);
+    if (t?.final) taiao.set(rowKey(r), t.final);
+  }
+  if (games) log(`league bracket: ${taiao.size} finals for these`);
   const second = new Map();
   if (process.argv.includes("--second") && late.length) {
     try {
@@ -151,23 +190,25 @@ async function main() {
   if (fill.length) {
     const { theirs } = teamMaps(JSON.parse(readFileSync(path.join(HERE, "davecampbells-teams.json"), "utf8")));
     const teamPage = (r) => theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away));
+    const gamesFile = path.join(store, "games.csv");
     const merged = fillStore({
       stored,
+      games: existsSync(gamesFile) ? readFileSync(gamesFile, "utf8") : "",
       fill,
       pending: readPending(existsSync(pendingFile) ? readFileSync(pendingFile, "utf8") : ""),
       now,
       sourceUrl: (r, from) => (from === "second" && teamPage(r) ? `${ORIGIN}/team/${teamPage(r)}` : TAIAO_PAGE),
     });
-    writeFileSync(file, merged.text);
+    writeFileSync(file, merged.playoffs.text);
+    writeFileSync(gamesFile, merged.games.text);
     writeFileSync(pendingFile, pendingCsv(merged.pending));
   }
   const count = (from) => fill.filter((f) => f.from === from).length;
   log(`filled ${fill.length} (league bracket ${count("taiao")}, second source ${count("second")}, both agreeing ${count("both")}); sources disagree on ${disagree.length}`);
 
   const filledKeys = new Set(fill.map((f) => rowKey(f.row)));
-  const missing = missingRows(late.filter((r) => !filledKeys.has(rowKey(r))), { taiaoDates, now });
-  const moved = late.filter((r) => !filledKeys.has(rowKey(r))).length - missing.length;
-  log(`Missing finals: ${missing.length}${moved ? ` (and ${moved} the league bracket dates today or later)` : ""}`);
+  const missing = late.filter((r) => !filledKeys.has(rowKey(r)));
+  log(`Missing finals: ${missing.length}`);
   for (const r of missing) log(`- ${missingLine(r)}`);
   const out = arg("--missing");
   if (out) writeFileSync(out, missing.map(missingLine).join("\n") + (missing.length ? "\n" : ""));
