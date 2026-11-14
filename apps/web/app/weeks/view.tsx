@@ -142,7 +142,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
         ))}
       </nav>
       <p className="mt-3 text-[13px] text-muted">
-        Scores are not confirmed here and may change, so no game below names a winner. Away team first. Rankings and projections use the
+        Away team first. Scores may be corrected if a mistake is found. Rankings and projections use the
         ratings at the end of the week before.
       </p>
 

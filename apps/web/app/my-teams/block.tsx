@@ -97,7 +97,6 @@ export function MyTeams() {
           </li>
         ))}
       </ul>
-      <p className="mt-1 text-[13px] text-muted">Scores are not confirmed here.</p>
     </section>
   );
 }

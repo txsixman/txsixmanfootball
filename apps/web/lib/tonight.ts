@@ -89,7 +89,7 @@ export async function loadNight(night = tonightsDate()): Promise<Night> {
           state: r.forfeit ? "forfeit" : "final",
           awayScore: r.forfeit ? null : r.awayScore,
           homeScore: r.forfeit ? null : r.homeScore,
-          unconfirmed: true,
+          unconfirmed: false, // a final is confirmed (ADR 0040)
         },
       });
     }

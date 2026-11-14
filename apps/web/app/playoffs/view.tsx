@@ -98,7 +98,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
         );
       })}
       <p className="mt-6 text-[13px] text-muted">
-        Away team first. Scores are not confirmed here and may change; a team&rsquo;s next game shows who went on.
+        Away team first. Scores may be corrected if a mistake is found. A team&rsquo;s next game shows who went on.
         {!past && " Projections and region and state title chances use the current ratings, on a neutral field unless the game is at a home site. A region\u2019s chances show once its two area games or its regional game are set."}
       </p>
     </section>

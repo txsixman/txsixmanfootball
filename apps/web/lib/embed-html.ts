@@ -109,7 +109,7 @@ export function renderEmbed(v: EmbedView): string {
     `<main>${v.recent.length ? `<section aria-labelledby="r"><h2 id="r">Latest results</h2><ul>${v.recent.map(gameRow).join("")}</ul></section>` : ""}` +
     `${v.next ? `<section aria-labelledby="n"><h2 id="n">${v.nextWaiting ? "Score not in yet" : "Next game"}</h2><ul>${gameRow(v.next)}</ul></section>` : ""}` +
     `${empty ? `<p class="fine">No ${v.season} games on record yet.</p>` : ""}` +
-    `${v.recent.length ? `<p class="fine">Scores are not confirmed here.</p>` : ""}</main>` +
+    `</main>` +
     `<footer><a href="${escapeHtml(href)}" target="_blank" rel="noopener">Full schedule on TX Six-Man Football</a></footer></body></html>`
   );
 }

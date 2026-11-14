@@ -16,7 +16,7 @@ export const UnconfirmedMark = () => (
 );
 
 /** The games of one round: away team first, a big score, the date and site, a status line and the projection for a game not yet played.
- * No row names a winner from an unconfirmed score (ADR 0004); `today` is a Central-time date (lib/playoff-status.ts).
+ * A final is confirmed (ADR 0040); `today` is a Central-time date (lib/playoff-status.ts).
  * `showStatus` is off for a past season, where every game is old and the page says once that its scores are unconfirmed
  * (a forfeit still says so). */
 export function GameList({ games, league, alignments, identities, today, showStatus = true }: {

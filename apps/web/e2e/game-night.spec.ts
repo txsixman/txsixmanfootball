@@ -120,7 +120,7 @@ test("a game not yet played has a preview: both teams, the projection, head-to-h
     await expect(links.nth(i)).toContainText(m.result.forfeit ? "Forfeit" : `${m.result.awayScore}-${m.result.homeScore}`);
     expect(m.result.date < g.date!).toBe(true);
   }
-  await expect(h2h).toContainText("Scores are not confirmed here and may change.");
+  await expect(h2h).not.toContainText("not confirmed");
 
   // Common opponents this season: the opponent links to its program, then each team's own score against it.
   const common = box.getByRole("region", { name: "Common opponents this season" });

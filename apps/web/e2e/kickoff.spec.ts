@@ -24,8 +24,8 @@ for (const url of ["/playoffs/this-round", "/scores", "/scores/tonight", "/playo
     if (n) await expect(page.locator('[data-kickoff-status="pending"]')).toHaveCount(0);
     for (const text of await statuses.allTextContents()) expect(text.trim()).toMatch(LABEL);
     expect(await page.locator("main").innerText()).not.toMatch(BETTING);
-    // Each game: the page's own notes may say that no game names a winner.
-    for (const text of await page.locator("main li").allInnerTexts()) expect(text).not.toMatch(NAMES_A_WINNER);
+    // Each game not yet played names no winner (a final may: ADR 0040).
+    for (const text of await page.locator("main li").filter({ has: page.locator("[data-kickoff-status]") }).allInnerTexts()) expect(text).not.toMatch(NAMES_A_WINNER);
     if (info.project.name === "phone") {
       mkdirSync(SHOTS, { recursive: true });
       await page.screenshot({ path: path.join(SHOTS, `kickoff-${url.replace(/\W+/g, "-")}-phone.png`), fullPage: true });

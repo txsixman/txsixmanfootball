@@ -94,7 +94,7 @@ export default async function SeriesPage({ params }: Props) {
           <b className="font-num text-[24px] tabular-nums">{record(total)}</b> for {a.school} against {b.school} since {since}
           <span className="text-muted">{` · ${games.length} meetings${playoffs > 0 ? `, ${playoffs} in the playoffs` : ""}`}</span>
         </p>
-        <p className="pt-1 text-[13px] text-muted">A forfeit counts as a win or a loss. Season scores, not confirmed here.</p>
+        <p className="pt-1 text-[13px] text-muted">A forfeit counts as a win or a loss.</p>
       </header>
 
       <section aria-labelledby="meetings" className="mt-4">
@@ -121,7 +121,7 @@ export default async function SeriesPage({ params }: Props) {
             );
           })}
         </ul>
-        <p className="px-3 pt-1 text-[13px] text-muted">Away team first. Season scores, not confirmed here. Playoff games name their round.</p>
+        <p className="px-3 pt-1 text-[13px] text-muted">Away team first. Playoff games name their round.</p>
       </section>
 
       {finals.length > 0 && (
