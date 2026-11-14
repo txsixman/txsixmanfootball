@@ -15,7 +15,7 @@ export type FillGame = { round: string; date: string; home: string; away: string
 type Feed = { team: string } | { bye: true } | { winnerOf: string };
 
 /** A place in the bracket: its round, and the two sides that meet there. `slot` is the source's own code ("SQ1", "SF2"). */
-export type Slot = { slot: string; round: string; a: Feed; b: Feed };
+export type Slot = { slot: string; round: string; a: Feed; b: Feed; group?: string; kickoff_utc?: string; site?: string };
 
 /** A side as far as it is known: the team, or the game whose winner it will be (listed or not), or a bye. */
 export type Side = { team: string } | { winnerOf: FillGame } | { pending: string } | { bye: true };
@@ -33,7 +33,7 @@ const loserOf = (g: FillGame) => {
   return w && (w === g.home ? g.away : g.home);
 };
 
-const gameId = (g: FillGame) => `game:${g.date}|${g.home}|${g.away}`;
+export const gameId = (g: Pick<FillGame, "date" | "home" | "away">) => `game:${g.date}|${g.home}|${g.away}`;
 
 /**
  * The slots the data closes by itself, beyond any source's: a bracket's two semifinals feed its final (`finalRound`: "state"
@@ -56,7 +56,7 @@ function closedSlots(games: FillGame[], finalRound: string, regionOf?: (team: st
 }
 
 /** Every team that could come out of `feed`: a team itself, or any team under the slot it names. */
-function candidates(feed: Feed, bySlot: Map<string, Slot>, seen = new Set<string>()): Set<string> {
+export function candidates(feed: Feed, bySlot: Map<string, Slot>, seen = new Set<string>()): Set<string> {
   if ("team" in feed) return new Set([feed.team]);
   if ("bye" in feed) return new Set();
   const s = bySlot.get(feed.winnerOf);
@@ -172,28 +172,62 @@ export const ROUND_ORDER = ["round-1", "bi-district", "area", "quarterfinal", "r
 
 /** A row of data/seed/brackets/<season>.csv (lib/data-schemas.ts BracketSlotRow), or of UIL's own bracket file with the
  * kickoff and site it lists, if any. */
-export type SlotRow = { league: string; division: string; round: string; slot: string; a: string; b: string; kickoff_utc?: string; site?: string };
+export type SlotRow = { league: string; division: string; round: string; slot: string; a: string; b: string; region?: string; kickoff_utc?: string; site?: string };
 
 /** UIL's bracket file rows (data/seed/uil-<span>/bracket-<year>.csv) as slot rows: seeds and region stay in the file. */
-export const uilSlotRows = (rows: { division: string; round: string; slot: string; a: string; b: string; kickoff_utc: string; site_name: string; site_city: string }[]): SlotRow[] =>
+export const uilSlotRows = (rows: { division: string; region: string; round: string; slot: string; a: string; b: string; kickoff_utc: string; site_name: string; site_city: string }[]): SlotRow[] =>
   rows.map((r) => ({
     league: "UIL", division: r.division, round: r.round, slot: r.slot, a: r.a, b: r.b,
+    ...(r.region ? { region: r.region } : {}),
     ...(r.kickoff_utc ? { kickoff_utc: r.kickoff_utc } : {}),
     ...(r.site_name ? { site: r.site_city ? `${r.site_name}, ${r.site_city}` : r.site_name } : {}),
   }));
 
 const feedOf = (x: string): Feed => (x === "bye" ? { bye: true } : x.startsWith("winner:") ? { winnerOf: x.slice("winner:".length) } : { team: x });
 
+/** The block of the bracket a first-round slot sits in, as the league names it: a UIL region, or TAIAO's North and South
+ * halves (its codes NR1, SQ2 are the North and South rounds). */
+const groupOf = (r: SlotRow) =>
+  r.region ? `Region ${r.region}` : r.league === "TAIAO" && /^[NS][RQ]\d/.test(r.slot) ? (r.slot[0] === "N" ? "North" : "South") : undefined;
+
+/** A league's own bracket from the file, or none. `rename` maps a bracket's spelling of a team to the pages' one. */
+export function ownSlots(rows: SlotRow[], { league, division, rename = (t) => t }: { league: string; division: string; rename?: (team: string) => string }): Slot[] {
+  return rows.filter((r) => r.league === league && r.division === division).map((r): Slot => {
+    const [a, b] = [feedOf(r.a), feedOf(r.b)].map((f) => ("team" in f ? { team: rename(f.team) } : f));
+    const group = groupOf(r);
+    return { slot: r.slot, round: r.round, a, b, ...(group ? { group } : {}), ...(r.kickoff_utc ? { kickoff_utc: r.kickoff_utc } : {}), ...(r.site ? { site: r.site } : {}) };
+  });
+}
+
 /**
  * One bracket's slots: the league's own bracket when the file has it, else only what the data closes by itself
- * (closedSlots; regions for UIL alone, ADR 0012). `rename` maps a bracket's spelling of a team to the pages' one.
+ * (closedSlots; regions for UIL alone, ADR 0012).
  */
-export function bracketSlots(rows: SlotRow[], games: FillGame[], { league, division, regionOf, rename = (t) => t }: {
+export function bracketSlots(rows: SlotRow[], games: FillGame[], { league, division, regionOf, rename }: {
   league: string; division: string; regionOf?: (team: string) => string | undefined; rename?: (team: string) => string;
 }): Slot[] {
-  const own = rows.filter((r) => r.league === league && r.division === division).map((r): Slot => {
-    const [a, b] = [feedOf(r.a), feedOf(r.b)].map((f) => ("team" in f ? { team: rename(f.team) } : f));
-    return { slot: r.slot, round: r.round, a, b };
-  });
+  const own = ownSlots(rows, { league, division, rename });
   return own.length ? own : closedSlots(games, league === "UIL" ? "state" : "final", league === "UIL" ? regionOf : undefined);
+}
+
+/**
+ * A bracket's shape from its listed games alone, for the tree view (ADR 0048) where no league file gives it: each listed
+ * game is a slot, and a side is the winner of that team's game in the round before, or the team itself when it has none
+ * (its first game here). Two listed semifinals with nothing after them feed the final (`finalRound`). Who meets whom
+ * further on is never guessed: a bracket whose later rounds are not listed stays a set of separate trees.
+ */
+export function derivedSlots(games: FillGame[], finalRound: string, order: readonly string[]): Slot[] {
+  const rank = (round: string) => order.indexOf(round);
+  const feed = (g: FillGame, team: string): Feed => {
+    const before = games.filter((h) => rank(h.round) < rank(g.round) && (h.home === team || h.away === team));
+    const last = Math.max(...before.map((h) => rank(h.round)));
+    const prev = before.filter((h) => rank(h.round) === last);
+    return prev.length === 1 ? { winnerOf: gameId(prev[0]) } : { team };
+  };
+  const out: Slot[] = games.map((g) => ({ slot: gameId(g), round: g.round, a: feed(g, g.home), b: feed(g, g.away) }));
+  const semis = games.filter((g) => g.round === "semifinal");
+  if (semis.length === 2 && !games.some((g) => rank(g.round) > rank("semifinal"))) {
+    out.push({ slot: "closed:final", round: finalRound, a: { winnerOf: gameId(semis[0]) }, b: { winnerOf: gameId(semis[1]) } });
+  }
+  return out;
 }

@@ -1,5 +1,6 @@
 import { heading, loadAlignments, programFor, type Alignment } from "./alignments";
-import { bracketSlots, builtGames, fill, type Side } from "./bracket-fill";
+import { bracketSlots, builtGames, derivedSlots, fill, ownSlots, type Side } from "./bracket-fill";
+import { treeGames, type TreeGame } from "./bracket-tree";
 import { loadSlotRows } from "./bracket-slots";
 import { memo } from "./memo";
 import { pairsOf, type Pair } from "./playoff-path";
@@ -19,10 +20,13 @@ export type BracketRow = PlayoffGame & { projection?: Projection };
 /** A next-round game no site lists yet (ADR 0047): its two sides, the team first when only one is known ("Team vs winner of
  * X–Y"), and the projection on a neutral field once both teams are known. No date or site: none is listed yet. */
 export type BuiltRow = { round: string; sides: [Side, Side]; projection?: Projection };
+/** A box of the tree view (ADR 0048): the slot, its round's label, and the projection of a game not yet played once both
+ * teams are known (a listed game at its own site, a game no site lists yet on a neutral field). */
+export type TreeRow = TreeGame<PlayoffGame> & { label: string; projection?: Projection };
 type BracketRound = { round: string; label: string; games: BracketRow[]; built: BuiltRow[] };
 /** `chances`: state title chances (the last four, or a template plus every region settled). `regionChances`: UIL region titles.
  * `pairs`: games whose winners meet next, so the next pairing is known (lib/playoff-path.ts). */
-export type Bracket = { name: string; league: string; rounds: BracketRound[]; pairs: Pair[]; chances?: Chance[]; regionChances?: RegionChances[] };
+export type Bracket = { name: string; league: string; rounds: BracketRound[]; tree: TreeRow[]; pairs: Pair[]; chances?: Chance[]; regionChances?: RegionChances[] };
 
 /** A bracket's own page (/playoffs/bracket/<slug>), and its name without the league ("Division II Large School"; a league's one bracket keeps the league). */
 export const bracketSlug = (name: string) => slugify(name);
@@ -83,7 +87,18 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
     // The next round's games before any site lists them: from the league's own bracket, or what the data closes (ADR 0047).
     const division = list[0].division;
     const regionOf = regionLookup(alignments, league, name);
-    const slots = bracketSlots(slotRows, list, { league, division, regionOf, rename: (t) => programFor(alignments, t, league)?.school ?? t });
+    const rename = (t: string) => programFor(alignments, t, league)?.school ?? t;
+    const slots = bracketSlots(slotRows, list, { league, division, regionOf, rename });
+    // The tree's shape: the league's own bracket, else what the listed games show (ADR 0048).
+    const own = ownSlots(slotRows, { league, division, rename });
+    const tree = treeGames(own.length ? own : derivedSlots(list, league === "UIL" ? "state" : "final", ROUNDS), list, ROUNDS).map((n): TreeRow => {
+      const [a, b] = n.sides;
+      const projection =
+        n.state === "upcoming" && n.game ? project(ratings, n.game.home, n.game.away, n.game.neutral)
+        : n.state === "open" && a.team && b.team ? project(ratings, a.team, b.team, true, true)
+        : undefined;
+      return { ...n, label: roundLabel(n.round, league), ...(projection ? { projection } : {}) };
+    });
     // Past seasons are all played: their pages stay as listed.
     const built = (season === CURRENT_SEASON ? builtGames(fill(slots, list, ROUNDS)) : []).map(({ round, sides }): BuiltRow => {
       const [a, b] = sides;
@@ -101,7 +116,7 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
     const found = bracketTitleChances(ratings, alignments, template, name, list);
     const chances = found.state?.chances;
     return {
-      name, league, rounds: ordered(rounds), pairs: pairsOf(rounds, regionLookup(alignments, league, name)),
+      name, league, rounds: ordered(rounds), tree, pairs: pairsOf(rounds, regionLookup(alignments, league, name)),
       ...(chances ? { chances } : {}),
       ...(found.regions.length ? { regionChances: found.regions } : {}),
     };
