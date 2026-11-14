@@ -131,3 +131,47 @@ test("the program page makes one live read a minute in the window, shared by its
   await page.clock.runFor(61_000);
   await expect.poll(() => seen.length).toBe(first + 1);
 });
+
+test("a game with no kickoff time is read through its game date's evening, 5:00 PM to midnight Central, and at no other time", async ({ page }) => {
+  const g = await untimed();
+  test.skip(!g, "every unplayed bracket game has a kickoff time");
+  // 5:00 PM Central on the game date, in UTC: the date's 17:00 Central, whatever the daylight offset.
+  const evening = (date: string, hour: number) => new Date(Date.parse(`${date}T${String(hour).padStart(2, "0")}:00:00Z`) + offsetHours(date) * 3600_000);
+  const nextDay = new Date(Date.parse(`${g!.date}T12:00:00Z`) + 86400_000).toISOString().slice(0, 10);
+  for (const [at, reads] of [
+    [evening(g!.date, 19), true],
+    [evening(g!.date, 15), false],
+    [evening(nextDay, 19), false],
+  ] as const) {
+    await page.unrouteAll();
+    const seen = await serveLive(page, { ...g!, kickoff: at.toISOString() }, { read_at: at.toISOString() }, at);
+    await page.goto(`/scores/${g!.id}`, { waitUntil: "networkidle" });
+    await page.clock.runFor(61_000);
+    if (reads) await expect.poll(() => seen.length, `${at.toISOString()}`).toBeGreaterThan(0);
+    else expect(seen, `${at.toISOString()}`).toHaveLength(0);
+  }
+});
+
+/** Hours Central is behind UTC on `date` (6 in standard time, 5 in daylight time). */
+const offsetHours = (date: string) => {
+  const noon = new Date(`${date}T12:00:00Z`);
+  return 12 - Number(noon.toLocaleString("en-US", { timeZone: "America/Chicago", hour: "numeric", hourCycle: "h23" }));
+};
+
+let untimedCache: Promise<Fixture | undefined> | undefined;
+/** A bracket game not yet played and with no kickoff time, from the loaders. */
+const untimed = () =>
+  (untimedCache ??= (async () => {
+    const was = process.cwd();
+    process.chdir(path.join(__dirname, ".."));
+    try {
+      const { loadAlignments } = await import("../lib/alignments");
+      const { loadGames } = await import("../lib/games");
+      const { liveKey } = await import("../lib/live-scores");
+      const { slugify } = await import("../lib/slug");
+      const g = (await loadGames(await loadAlignments())).find((x) => x.state === "scheduled" && x.date && !x.kickoff);
+      return g && { id: g.id, date: g.date!, kickoff: "", home: g.home.name, away: g.away.name, org: "", key: liveKey(g.date!, g.home.name, g.away.name), homeSlug: slugify(g.home.name), awaySlug: slugify(g.away.name) };
+    } finally {
+      process.chdir(was);
+    }
+  })());

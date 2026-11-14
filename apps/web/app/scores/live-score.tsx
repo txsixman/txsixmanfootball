@@ -6,14 +6,15 @@ import { checkedAt, fetchLiveRows, type LiveRow, type LiveView } from "@/lib/liv
 import { useNow } from "../kickoff-status";
 
 // Live scores during a game (ADR 0021). The pages are static; this reads the score of games under way through the public
-// function live_scores() in the browser, every minute while the tab is visible and a game on the page is in progress by its
-// kickoff (lib/kickoff.ts), re-checked every minute: it starts by itself at kickoff and stops when the window ends. It shows
+// function live_scores() in the browser, every minute while the tab is visible and a game on the page may be under way
+// (lib/kickoff.ts anyInProgress: kickoff to 4 hours after, or with no kickoff time its game date's evening, 5:00 PM to
+// midnight Central), re-checked every minute: it starts by itself and stops when the window ends. It shows
 // nothing when the request fails or no row matches. The score is the read's, so it says "Unconfirmed" and names no leader.
 const REFRESH_MS = 60_000;
 
 /** The live rows, refreshed every minute while the tab is visible. Empty until a read succeeds, and again when one fails.
- * `games` are the page's games with no final: nothing is asked unless one is in progress now (a game with no kickoff time
- * never is), and the rows are dropped when none is. */
+ * `games` are the page's games with no final: nothing is asked unless one may be under way now, and the rows are dropped
+ * when none is. */
 export function useLiveScores(games: { date: string; kickoff?: string }[]): LiveRow[] {
   const now = useNow();
   const enabled = now !== null && anyInProgress(games, now);
