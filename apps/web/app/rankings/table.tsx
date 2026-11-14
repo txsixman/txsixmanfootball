@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Identity } from "@/lib/identity";
 import { byRating, placeRows, rangeText, rankedOrder } from "@/lib/rank-range";
+import { ratedFromOutsideOnly, OUTSIDE_ONLY_NOTE } from "@/lib/outside-only";
 import { FEW_GAMES, movement, MOVE_THRESHOLD, record, signed, type RatingRow } from "@/lib/ratings";
 import { meetingScore, type Meeting, type TeamSchedule } from "@/lib/schedule-strength";
 import { CrestSlot, PageHeader } from "../ui";
@@ -79,6 +80,7 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
         {ordered.map((r, i) => {
           const place = placed.get(r.team)!;
           const few = r.rated < FEW_GAMES;
+          const outsideOnly = ratedFromOutsideOnly(r);
           const startsTier = place.tier != null && place.tier !== placed.get(ordered[i - 1]?.team)?.tier;
           const startsNR = few && (i === 0 || ordered[i - 1].rated >= FEW_GAMES);
           const name = (
@@ -86,6 +88,7 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
               <CrestSlot school={r.name} identity={r.identity} />
               <span className="flex min-w-0 flex-col">
                 <span className="line-clamp-3 min-w-0 text-[14.5px] leading-[1.15]">{r.name}</span>
+                {outsideOnly && <span className="text-[13px] leading-4 text-muted">{OUTSIDE_ONLY_NOTE}</span>}
                 {place.range && (
                   <span className="text-[13px] leading-4 text-muted">
                     <span className="sr-only">Rank range </span>
@@ -121,14 +124,25 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
                   <span className="flex min-h-12 items-center text-ink">{name}</span>
                 )}
               </th>
-              <td className="text-right font-num text-[17px] tabular-nums">{record(r)}</td>
+              <td className="text-right font-num text-[17px] tabular-nums">
+                {outsideOnly ? (
+                  <>
+                    <span aria-hidden="true">–</span>
+                    <span className="sr-only">No listed games</span>
+                  </>
+                ) : (
+                  record(r)
+                )}
+              </td>
               <td className="pr-1 text-right font-num tabular-nums">
                 {few ? (
                   <>
                     <span className="block text-[20px] font-bold text-muted">{signed(r.rating)}</span>
-                    <span className="block text-[13px] font-semibold uppercase tracking-wide text-muted">
-                      {r.rated} {r.rated === 1 ? "game" : "games"}
-                    </span>
+                    {!outsideOnly && (
+                      <span className="block text-[13px] font-semibold uppercase tracking-wide text-muted">
+                        {r.rated} {r.rated === 1 ? "game" : "games"}
+                      </span>
+                    )}
                   </>
                 ) : (
                   <>

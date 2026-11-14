@@ -48,8 +48,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
       <div className="mt-4 border-2 border-navy bg-panel px-3 py-2">
         <p className="font-num text-[22px] font-bold uppercase leading-tight tracking-wide text-navy">Scores as of {clock.label}</p>
         <p className="mt-1 text-[14px] leading-5 text-ink">
-          This page is rebuilt with the newest scores read, about every 30 minutes on playoff Friday nights. A score marked Unconfirmed may change, and no game
-          here names a winner from one.
+          This page is rebuilt with the newest scores read, about every 30 minutes on playoff Friday nights. Scores may be corrected if a mistake is found.
         </p>
       </div>
 

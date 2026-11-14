@@ -2,7 +2,7 @@
 // time known. Invented games only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { IN_PROGRESS_MS, kickoffState, kickoffTime } from "../lib/kickoff.ts";
+import { anyInProgress, IN_PROGRESS_MS, kickoffState, kickoffTime } from "../lib/kickoff.ts";
 
 // Friday Nov 13, 2026, 7:00 PM Central is 01:00 UTC on the 14th.
 const game = { date: "2026-11-13", kickoff: "2026-11-14T01:00:00Z" };
@@ -52,4 +52,30 @@ test("no status names a winner or uses a betting word", () => {
       }
     }
   }
+});
+
+test("live scores are read from kickoff to 4 hours after, and at no other time", () => {
+  assert.equal(anyInProgress([game], at("2026-11-14T00:59:00Z")), false);
+  assert.equal(anyInProgress([game], at("2026-11-14T01:00:00Z")), true);
+  assert.equal(anyInProgress([game], at("2026-11-14T04:59:00Z")), true);
+  assert.equal(anyInProgress([game], at("2026-11-14T05:00:00Z")), false);
+  // Its own evening does not count once the kickoff is known: 6:00 PM Central, an hour before kickoff.
+  assert.equal(anyInProgress([game], at("2026-11-14T00:00:00Z")), false);
+  assert.equal(anyInProgress([], at("2026-11-14T02:00:00Z")), false);
+});
+
+test("no kickoff time: live scores are read through the game date's evening, 5:00 PM to midnight Central", () => {
+  const noTime = { date: "2026-11-13" };
+  assert.equal(anyInProgress([noTime], at("2026-11-13T22:59:00Z")), false); // 4:59 PM Central
+  assert.equal(anyInProgress([noTime], at("2026-11-13T23:00:00Z")), true); // 5:00 PM
+  assert.equal(anyInProgress([noTime], at("2026-11-14T05:59:00Z")), true); // 11:59 PM
+  assert.equal(anyInProgress([noTime], at("2026-11-14T06:00:00Z")), false); // midnight: the next day
+  assert.equal(anyInProgress([noTime], at("2026-11-13T15:00:00Z")), false); // 9:00 AM on the day
+  assert.equal(anyInProgress([noTime], at("2026-11-12T23:30:00Z")), false); // the evening before
+  assert.equal(anyInProgress([{ date: "2026-11-13", kickoff: "not a time" }], at("2026-11-14T02:00:00Z")), true);
+  // In daylight time (CDT, UTC-5): 5:00 PM Central is 22:00 UTC.
+  assert.equal(anyInProgress([{ date: "2026-09-04" }], at("2026-09-04T21:59:00Z")), false);
+  assert.equal(anyInProgress([{ date: "2026-09-04" }], at("2026-09-04T22:00:00Z")), true);
+  // One timed game out of its window and one untimed game in its evening: the page reads.
+  assert.equal(anyInProgress([game, { date: "2026-11-14" }], at("2026-11-15T00:00:00Z")), true);
 });

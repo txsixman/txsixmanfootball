@@ -5,6 +5,7 @@ import { loadGames, loadSeasonResults, ROUNDS } from "./games";
 import { ORGS, orgOfLabel } from "./orgs";
 import { isForfeit } from "./score-display";
 import { CURRENT_SEASON } from "./season";
+import { isDisputed, loadDisputed } from "./disputed";
 
 // One game night's games for the "Tonight" scoreboard (/scores/tonight) and the home page's link to it: the bracket games
 // dated that night, and any other robot-read game of the season dated that night, by organization and round. Read when
@@ -71,6 +72,7 @@ export async function loadNight(night = tonightsDate()): Promise<Night> {
     });
   }
   // Any other robot-read game of the night (a playoff game is already above, under its bracket page): under each organization with a team in it.
+  const disputed = await loadDisputed(CURRENT_SEASON);
   for (const r of onNight(await loadSeasonResults(CURRENT_SEASON), night)) {
     if (r.href !== `/scores/${r.id}`) continue;
     const leagues = new Set([...programsFor(alignments, r.home), ...programsFor(alignments, r.away)].map((a) => a.league));
@@ -89,7 +91,7 @@ export async function loadNight(night = tonightsDate()): Promise<Night> {
           state: r.forfeit ? "forfeit" : "final",
           awayScore: r.forfeit ? null : r.awayScore,
           homeScore: r.forfeit ? null : r.homeScore,
-          unconfirmed: true,
+          unconfirmed: !r.forfeit && isDisputed(disputed, r.date, r.home, r.away), // a final is confirmed unless disputed (ADR 0040)
         },
       });
     }

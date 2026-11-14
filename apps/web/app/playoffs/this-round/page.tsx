@@ -41,8 +41,7 @@ export default async function ThisRoundPage() {
       <div className="mt-4 border-2 border-navy bg-panel px-3 py-2">
         <p className="font-num text-[22px] font-bold uppercase leading-tight tracking-wide text-navy">Scores as of {clock.label}</p>
         <p className="mt-1 text-[14px] leading-5 text-ink">
-          Each bracket&rsquo;s current round. Kickoff times are Central, and each game&rsquo;s status is as of when you opened this page. A score marked Unconfirmed may change, and no game here
-          names a winner from one.
+          Each bracket&rsquo;s current round. Kickoff times are Central, and each game&rsquo;s status is as of when you opened this page. Scores may be corrected if a mistake is found.
         </p>
       </div>
       {groups.length === 0 ? (

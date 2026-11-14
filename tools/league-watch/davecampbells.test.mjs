@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { DETAIL_COLUMNS, kickoffRows, mergeKickoffs } from "./davecampbells.mjs";
-import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
+import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLate, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
 
@@ -41,8 +41,8 @@ test("a 403 or 429 stops the read with no retry; other errors and bad bodies giv
   assert.equal(await teamId(client, "x", "s"), null);
 });
 
-test("periods become Q1 to Q4, Halftime or OT, never a clock", () => {
-  const cases = [[1, "Q1"], [4, "Q4"], [5, "OT"], [0, null], ["2", "Q2"], ["Q3", "Q3"], ["3rd", "Q3"], ["4th Quarter", "Q4"], ["Half", "Halftime"], ["HALFTIME", "Halftime"], ["OT", "OT"], ["Overtime 2", "OT"], ["Final", null], ["Q2 4:31", null], [null, null]];
+test("periods become Q1 to Q4, Halftime or OT in words, never a clock; a number above 4 is not OT", () => {
+  const cases = [[1, "Q1"], [2, "Q2"], [3, "Q3"], [4, "Q4"], [5, null], [6, null], [0, null], ["2", "Q2"], ["Q3", "Q3"], ["3rd", "Q3"], ["4th Quarter", "Q4"], ["Half", "Halftime"], ["HALFTIME", "Halftime"], ["OT", "OT"], ["Overtime 2", "OT"], ["Final", null], ["Q2 4:31", null], [null, null]];
   for (const [period, want] of cases) assert.equal(periodLabel({ period }), want, String(period));
   for (const label of cases.map(([p]) => periodLabel({ period: p })).filter(Boolean)) assert.match(label, /^[A-Za-z0-9 ]{1,12}$/);
 });
@@ -98,15 +98,29 @@ const readAt = new Date("2026-11-14T02:00:00Z");
 
 test("a live game becomes one row in the bracket row's own home and away order, with only the fields the site reads", () => {
   const rows = liveRowsFromItems([item(), item()], { date: "2026-11-13", due, ours, readAt });
-  assert.deepEqual(rows, [{ game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: "Q2", read_at: "2026-11-14T02:00:00.000Z" }]);
+  assert.deepEqual(rows, [{ game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: null, read_at: "2026-11-14T02:00:00.000Z" }]);
 });
 
-test("skips games not live, not tonight, not due, unmapped, forfeited, out of range, or 0-0 before kickoff", () => {
+test("a game the feed calls finished keeps its last score, marked finished, with no period (ADR 0042)", () => {
+  const opts = { date: "2026-11-13", due, ours, readAt };
+  for (const status of ["Finished", "Final", "Completed"]) {
+    assert.deepEqual(liveRowsFromItems([item({ status, summary: { period: 4, homeScore: 20, awayScore: 14 } })], opts), [
+      { game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: null, finished: true, late: true, read_at: "2026-11-14T02:00:00.000Z" },
+    ], status); // period 4: late too (ADR 0043)
+  }
+  // A live listing of the same game comes first in the answer: the row says under way (no finished field).
+  assert.equal(liveRowsFromItems([item(), item({ status: "Finished" })], opts)[0].finished, undefined);
+});
+
+test("skips games not live or finished, not tonight, not due, unmapped, forfeited, out of range, 0-0 before kickoff or a finished 0-0", () => {
   const opts = { date: "2026-11-13", due, ours, readAt };
   const [h, a] = item().participants;
   const skipped = [
     item({ status: "Upcoming" }),
-    item({ status: "Finished" }),
+    item({ status: "Forfeit" }),
+    item({ status: "Double Forfeit" }),
+    item({ status: "Finished", participants: [{ ...item().participants[0], forfeited: true }, item().participants[1]] }),
+    item({ status: "Final", participants: [{ ...item().participants[0], score: 0 }, { ...item().participants[1], score: 0 }] }),
     item({ scheduledKickoff: "2026-11-14T07:00:00Z" }), // 1 AM Central on Nov 14
     item({ scheduledKickoff: "not a date" }),
     item({ participants: [h, { ...a, websiteUrl: "https://www.davecampbells.com/team/robin-robins" }] }),
@@ -118,8 +132,10 @@ test("skips games not live, not tonight, not due, unmapped, forfeited, out of ra
     item({ participants: [h] }),
   ];
   for (const it of skipped) assert.deepEqual(liveRowsFromItems([it], opts), [], JSON.stringify(it));
-  // 0-0 with a period is a game under way.
-  assert.equal(liveRowsFromItems([item({ participants: [{ ...h, score: 0 }, { ...a, score: 0 }], summary: { period: 1 } })], opts)[0].period, "Q1");
+  // 0-0 is skipped even with a period: the feed's period is not trusted to say kickoff has passed (ADR 0042).
+  assert.deepEqual(liveRowsFromItems([item({ participants: [{ ...h, score: 0 }, { ...a, score: 0 }], summary: { period: 1 } })], opts), []);
+  // No row carries the feed's period, whatever it says.
+  for (const period of [1, 4, 5, "Q3", "Halftime", "OT"]) assert.equal(liveRowsFromItems([item({ summary: { period, homeScore: 20, awayScore: 14 } })], opts)[0].period, null, String(period));
   // The summary's scores stand in when a participant has none.
   assert.equal(liveRowsFromItems([item({ participants: [{ ...h, score: undefined }, { ...a, score: undefined }] })], opts)[0].away_score, 20);
 });
@@ -472,4 +488,47 @@ test("kickoffs: a bracket game still to play gets the feed's kickoff in UTC, the
   // A fresh value wins over a kept one, a blank keeps it; other kept rows stay.
   const kept = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`;
   assert.equal(mergeKickoffs(kept, rows), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
+});
+
+test("merging the two sources: on the same score, the row that says finished wins, then the one with a period", () => {
+  const r = (over) => ({ game_key: "2026-11-13|a|b", home: "a", away: "b", home_score: 28, away_score: 14, period: null, read_at: "2026-11-14T02:00:00.000Z", ...over });
+  assert.equal(mergeLive([r({ period: "Q4" })], [r({ finished: true })])[0].finished, true);
+  assert.equal(mergeLive([r({ finished: true })], [r({ period: "Q4" })])[0].finished, true);
+  // A higher score is the newer read, finished or not.
+  assert.equal(mergeLive([r({ finished: true })], [r({ home_score: 34, period: "Q4" })])[0].home_score, 34);
+  assert.equal(mergeLive([r({})], [r({ period: "Q2" })])[0].period, "Q2");
+});
+
+test("the period log counts the feed's period by minutes since kickoff, games under way only, never a team or score", () => {
+  const now = new Date("2026-11-14T02:26:00Z");
+  const at = (minutes, period, status = "Live") => item({ status, scheduledKickoff: new Date(now - minutes * 60_000).toISOString(), summary: { period, homeScore: 75, awayScore: 6 } });
+  assert.equal(periodByMinutes([], now), "no game under way");
+  const line = periodByMinutes([at(10, 1), at(20, 1), at(86, 1), at(116, 5), at(116, 5), at(45, null), at(130, 4, "Finished"), at(5, "Q<2>")], now);
+  assert.equal(line, "0-30 min: 1 x2, Q2 x1; 30-60 min: none x1; 60-90 min: 1 x1; 90-120 min: 5 x2");
+  assert.ok(!/75|6\b|wren|lark/i.test(line));
+});
+
+test("late (ADR 0043): the raw period is 4 or more, or 2 hours since kickoff; with no kickoff, the period alone", () => {
+  const kickoff = "2026-11-14T01:00:00Z";
+  const at = (minutes) => new Date(Date.parse(kickoff) + minutes * 60_000);
+  assert.equal(isLate(item({ summary: { period: 4 } }), at(40)), true, "late by period");
+  assert.equal(isLate(item({ summary: { period: 5 } }), at(40)), true, "past the fourth quarter");
+  assert.equal(isLate(item({ summary: { period: "4" } }), at(40)), true, "a period given as text");
+  assert.equal(isLate(item({ summary: { period: 2 } }), at(120)), true, "late by time: 2 hours since kickoff");
+  assert.equal(isLate(item({ summary: { period: 2 } }), at(119)), false, "not late");
+  assert.equal(isLate(item({ summary: { period: null } }), at(60)), false);
+  assert.equal(isLate(item({ scheduledKickoff: undefined, summary: { period: 2 } }), at(600)), false, "no kickoff: period alone");
+  assert.equal(isLate(item({ scheduledKickoff: undefined, summary: { period: 4 } }), at(0)), true);
+  // The row carries the flag only when late; the period itself is never stored.
+  const opts = { date: "2026-11-13", due, ours };
+  const [late] = liveRowsFromItems([item({ summary: { period: 2, homeScore: 20, awayScore: 14 } })], { ...opts, readAt: at(130) });
+  assert.deepEqual([late.late, late.period], [true, null]);
+  assert.equal(liveRowsFromItems([item()], { ...opts, readAt: at(60) })[0].late, undefined);
+});
+
+test("mergeLive keeps late when either source's row says so (ADR 0043)", () => {
+  const r = (total, late) => ({ game_key: "2026-11-13|a|b", home: "a", away: "b", home_score: total, away_score: 0, period: null, ...(late && { late: true }), read_at: "2026-11-14T03:00:00.000Z" });
+  assert.equal(mergeLive([r(28)], [r(21, true)])[0].late, true, "the higher score wins, the late flag is kept");
+  assert.equal(mergeLive([r(28)], [r(21, true)])[0].home_score, 28);
+  assert.equal(mergeLive([r(28)], [r(21)])[0].late, undefined);
 });

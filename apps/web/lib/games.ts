@@ -13,6 +13,7 @@ import { applyToGame } from "./corrections";
 import { buildSeasonResults, type SeasonResult } from "./season-results";
 import { loadCorrections } from "./correction-files";
 import { kickoffOf, loadKickoffs } from "./kickoffs";
+import { isDisputed, loadDisputed } from "./disputed";
 
 // Hand-captured games (data/seed/*/playoffs-*.csv), read at build time. Same columns as packages/db/games.mjs, checked
 // row by row in lib/data-schemas.ts: a bad row fails the build.
@@ -40,8 +41,7 @@ const readOptional = (file: string) =>
     throw e;
   });
 
-/** `corrected`: a person fixed this game's score (data/corrections, lib/corrections.ts): never "confirmed" (ADR 0011). */
-type Row = { r: Record<string, string>; league: string; season: number; file: string; line: number; robot: boolean; corrected: boolean };
+type Row = { r: Record<string, string>; league: string; season: number; file: string; line: number; robot: boolean };
 
 /** Rows left out on purpose, reported once per file in the build log (never silently). */
 const reported = new Set<string>();
@@ -59,7 +59,7 @@ async function playoffRows(seasons = [CURRENT_SEASON]): Promise<Row[]> {
     const text = await readFile(path.join(process.cwd(), "../../data/seed", c.file), "utf8");
     for (const { row, line } of parseCsv(`data/seed/${c.file}`, text, GAME_COLUMNS, PlayoffRow)) {
       const fixed = applyToGame(fixes, row);
-      if (fixed) rows.push({ r: fixed.row, league: c.league, season: c.season, file: c.file, line, robot: false, corrected: fixed.corrected });
+      if (fixed) rows.push({ r: fixed.row, league: c.league, season: c.season, file: c.file, line, robot: false });
     }
   }
   const seen = new Set(rows.map(({ r }) => [r.game_date, ...[r.home, r.away].sort()].join("|")));
@@ -80,7 +80,7 @@ async function playoffRows(seasons = [CURRENT_SEASON]): Promise<Row[]> {
         skipped += 1;
         continue;
       }
-      rows.push({ r, league: r.league, season, file, line, robot: true, corrected: fixed.corrected });
+      rows.push({ r, league: r.league, season, file, line, robot: true });
     }
     reportSkipped(`data/seed/${file}`, skipped, "already captured by hand");
     reportSkipped(`data/seed/${file}#voided`, voided, "voided by a correction");
@@ -99,15 +99,18 @@ export async function playoffLeagueSet(season: number): Promise<Set<string>> {
 
 export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
   const [rows, ratings, kickoffs] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON)]);
-  return rows.map(({ r, league, season, file, line: i, robot, corrected }) => {
+  const disputedBy = new Map(await Promise.all([...new Set(rows.map((x) => x.season))].map(async (s) => [s, await loadDisputed(s)] as const)));
+  return rows.map(({ r, league, season, file, line: i, robot }) => {
     const team = (name: string): Team => {
       const known = programFor(alignments, name, league);
       if (!known) throw new Error(`${file} row ${i}: unknown team ${name}`);
       return { name: known.school, mascot: "", initials: initials(known.school), color: "#0a2a5e", record: "" };
     };
-    const played = r.home_score !== "";
+    // A 0-0 is how a source writes a game it has no score for: no score, never a final (ADR 0034's store rule).
+    const played = r.home_score !== "" && r.away_score !== "" && !(r.home_score === "0" && r.away_score === "0");
     const home = team(r.home);
     const away = team(r.away);
+    const disputed = played && isDisputed(disputedBy.get(season)!, r.game_date, r.home, r.away);
     // Playoff sites are mostly neutral; a row that does not say gets no home edge.
     const projection = !played && ratings.season === season ? project(ratings, home.name, away.name, r.neutral !== "false", r.neutral === "true") : undefined;
     return {
@@ -120,15 +123,16 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
       homeScore: played ? Number(r.home_score) : null,
       awayScore: played ? Number(r.away_score) : null,
       state: played ? "final" : "scheduled",
-      status: played ? "Final" : shortDate(r.game_date),
+      status: played ? (disputed ? "Score reported" : "Final") : shortDate(r.game_date),
       ...(!played && season === CURRENT_SEASON && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
       // A robot-read 1-0 or 2-0 is how the source records a forfeit: shown as one, never as a score (ADR 0004).
       endReason: played
         ? endReason(robot && forfeitScore(Number(r.home_score), Number(r.away_score)) ? "forfeit" : r.end_reason, r.end_period)
         : undefined,
-      // A robot-read score is the site's, not ours: unconfirmed, so no winner is named (ADR 0004, ADR 0008). A score a person
-      // fixed stays unconfirmed too: confirmation comes from agreeing sources, not from us (ADR 0011).
-      verification: played ? (robot || corrected ? "unconfirmed" : "confirmed") : "none",
+      // A final score is confirmed, whether read by the robot, captured by hand or corrected (ADR 0040). Only a live score is
+      // unconfirmed, and a forfeit still shows the word, never its 1-0 or 2-0 (ADR 0004). A final the sources give different
+      // winners is disputed (data/seed/disputed): its score shows, no winner is marked.
+      verification: played ? (disputed ? "disputed" : "confirmed") : "none",
       projected: projection && projectionText(projection),
       projectedMargin: projection?.margin,
       venue: r.neutral === "true" ? "Neutral site" : r.neutral === "false" ? `${home.name} (home)` : "Site not listed",
@@ -141,17 +145,17 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
 export type PlayoffGame = {
   league: string; bracket: string; round: string; date: string; home: string; away: string;
   homeScore?: number; awayScore?: number; forfeit: boolean; neutral: boolean;
-  /** A played game whose score only the robot or a correction gave: false, so no row names a winner from it (ADR 0004, ADR 0011). */
+  /** A played game: its final score is confirmed, however it was read, unless the sources give it different winners (ADR 0040). */
   confirmed: boolean;
   /** Kickoff in UTC, for a game not yet played, when known (lib/kickoffs.ts, ADR 0036). */
   kickoff?: string;
 };
 
 export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT_SEASON): Promise<PlayoffGame[]> {
-  const kickoffs = await loadKickoffs(season);
-  return (await playoffRows([season])).map(({ r, league, robot, corrected }) => {
+  const [kickoffs, disputed] = await Promise.all([loadKickoffs(season), loadDisputed(season)]);
+  return (await playoffRows([season])).map(({ r, league }) => {
     const name = (n: string) => programFor(alignments, n, league)?.school ?? n;
-    const played = r.home_score !== "" && r.away_score !== "";
+    const played = r.home_score !== "" && r.away_score !== "" && !(r.home_score === "0" && r.away_score === "0");
     const [h, a] = [Number(r.home_score), Number(r.away_score)];
     return {
       league,
@@ -163,7 +167,7 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
       ...(played ? { homeScore: h, awayScore: a } : {}),
       forfeit: r.end_reason === "forfeit" || (played && forfeitScore(h, a)),
       neutral: r.neutral !== "false",
-      confirmed: played && !robot && !corrected,
+      confirmed: played && !isDisputed(disputed, r.game_date, r.home, r.away), // a final is confirmed unless disputed (ADR 0040)
       ...(!played && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
     };
   });
@@ -220,7 +224,8 @@ export const loadSeasonResults = memo(async (season: number): Promise<SeasonResu
   });
   if (!text) return [];
   const playoffPages = new Map(season === CURRENT_SEASON ? (await playoffRows([season])).map(({ r }) => [gameKey(r.game_date, r.home, r.away), playoffGameId(season, r)]) : []);
-  const { results, voided } = buildSeasonResults(season, text, await loadCorrections(), playoffPages, gameKey);
+  const { results, voided, duplicates } = buildSeasonResults(season, text, await loadCorrections(), playoffPages, gameKey);
   reportSkipped(`data/seed/maxpreps-${season}/games.csv#voided`, voided, "voided by a correction");
+  reportSkipped(`data/seed/maxpreps-${season}/games.csv#duplicates`, duplicates, "one game listed twice");
   return results;
 });

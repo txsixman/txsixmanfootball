@@ -47,6 +47,10 @@ export const PlayedGameRow = gameChecks(z.object(resultFields)).refine((r) => r.
 
 /** data/seed/game-details/<year>.csv (ADR 0036): a game's kickoff in UTC and its site, the teams as the bracket spells
  * them; no source. A blank field is not known. */
+/** data/seed/disputed/<season>.csv: finals whose winner the sources disagree on (ADR 0040). */
+export const DISPUTED_COLUMNS = ["game_date", "home", "away"];
+export const DisputedRow = z.object({ game_date: isoDate, home: z.string().min(1).max(80), away: z.string().min(1).max(80) });
+
 export const DETAIL_COLUMNS = ["date", "home", "away", "kickoff_utc", "site_name", "site_city"];
 export const DetailRow = z.object({
   date: isoDate,

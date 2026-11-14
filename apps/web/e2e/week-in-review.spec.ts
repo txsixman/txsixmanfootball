@@ -2,6 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 import { noLiveScores } from "./live-route";
+import { ORGS } from "../lib/orgs";
+import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season";
 import { SITE_NAME } from "../lib/site";
 
 // The week in review (/weeks, /weeks/<season>/<week>[/<org>]): every expectation comes from the same lib the site is built from.
@@ -141,7 +143,7 @@ test("the latest week has every section, each with rows or a plain empty message
   );
   for (const g of review.games.slice(0, 20)) {
     const link = page.getByRole("region", { name: "Every game", exact: true }).locator(`a[href="${g.href}"]`);
-    await expect(link).toHaveAttribute("aria-label", `${g.away} at ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`);
+    await expect(link).toHaveAttribute("aria-label", `${g.away} vs ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`);
   }
 
   // Closest games and biggest margins: the lib's order, never a forfeit, the figure is the points between the scores.
@@ -213,7 +215,7 @@ test("a forfeit shows the word, never the recorded score, in every list", async 
   const f = withForfeit!.games.find((g) => g.forfeit)!;
   const link = page.getByRole("region", { name: "Every game", exact: true }).locator(`a[href="${f.href}"]`);
   await expect(link).toContainText("Forfeit");
-  await expect(link).toHaveAttribute("aria-label", `${f.away} at ${f.home}, forfeit, game page`);
+  await expect(link).toHaveAttribute("aria-label", `${f.away} vs ${f.home}, forfeit, game page`);
   expect(await link.innerText()).not.toMatch(/\d/);
   for (const name of ["Closest games", "Biggest margins", "Furthest from the projection"]) {
     await expect(page.getByRole("region", { name, exact: true }).locator(`a[href="${f.href}"]`)).toHaveCount(0);
@@ -257,7 +259,7 @@ test("the home page and Scores link to the latest week in review", async ({ page
 
 test("share cards: one per organization and season, never one per week", async ({ page, request }) => {
   const { latest, seasonCards, pageCount } = await fixtures();
-  expect(seasonCards.length).toBeLessThan(40);
+  expect(seasonCards.length).toBeLessThanOrEqual(ORGS.length * (CURRENT_SEASON - FIRST_SEASON + 1)); // at most one per organization and season
   expect(seasonCards.length).toBeLessThan(pageCount);
   console.info(`week in review: ${pageCount} pages, ${seasonCards.length} share images`);
   await page.goto(`/weeks/${latest.season}/${latest.week}`);
