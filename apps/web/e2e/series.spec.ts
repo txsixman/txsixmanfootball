@@ -38,7 +38,7 @@ test("the page names both teams, shows both crests, and links each to its progra
     // The logo, or the badge in the school's colors where it has none: either way the crest is drawn.
     await expect(link.locator("img, span[aria-hidden=true]").first()).toBeVisible();
   }
-  await expect(page.getByText("Season scores, not confirmed here.").first()).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("not confirmed"); // a final is confirmed (ADR 0040)
   await expect(page.getByText("A forfeit counts as a win or a loss.")).toBeVisible();
 });
 
@@ -64,7 +64,7 @@ for (const pair of [JAYTON, FORFEIT, LONG]) {
     const labels = await list.getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("aria-label")!));
     let [w, l, t, forfeits] = [0, 0, 0, 0];
     for (const label of labels) {
-      const m = label.match(/^[A-Za-z]+ \d+, \d{4}, (.+) at (.+?), (forfeit|(\d+)-(\d+)), game page$/)!;
+      const m = label.match(/^[A-Za-z]+ \d+, \d{4}, (.+) vs (.+?), (forfeit|(\d+)-(\d+)), game page$/)!;
       expect(m, label).not.toBeNull();
       if (m[3] === "forfeit") {
         forfeits += 1;
@@ -225,6 +225,6 @@ test("each meeting's game page has a title of its own: the teams and the date", 
     titles.push(await page.title());
   }
   expect(titles.length).toBeGreaterThanOrEqual(3);
-  for (const t of titles) expect(t).toMatch(/^(Guthrie at Jayton|Jayton at Guthrie), [A-Z][a-z]{2} \d{1,2}, \d{4} \| TX Six-Man Football$/);
+  for (const t of titles) expect(t).toMatch(/^(Guthrie vs Jayton|Jayton vs Guthrie), [A-Z][a-z]{2} \d{1,2}, \d{4} \| TX Six-Man Football$/);
   expect(new Set(titles).size).toBe(titles.length);
 });

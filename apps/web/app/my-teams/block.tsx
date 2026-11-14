@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { fetchMe, signedInHint } from "@/lib/account/follows";
 import { followedHere } from "@/lib/push";
 import type { MyGame, MyTeam } from "@/lib/my-teams";
+import { lead } from "@/lib/program-games";
 import { Crest } from "../programs/crest";
 
 /** One game line: "Last" or "Next", date, opponent, and the score or the projection. A playoff game links to its page. */
@@ -14,7 +15,7 @@ function Line({ label, game }: { label: string; game: MyGame }) {
       <span className="w-11 shrink-0 text-[13px] font-bold uppercase tracking-wider text-red">{label}</span>
       <span className="min-w-0 flex-1 text-[15px] leading-5 text-ink">
         <span className="block">
-          {game.status} · {game.home ? "vs" : "at"}{" "}
+          {game.status} · {lead(game)}{" "}
           {game.opponentSlug && !game.href ? (
             <Link href={`/programs/${game.opponentSlug}`} className="name-link">
               {game.opponent}
@@ -96,7 +97,6 @@ export function MyTeams() {
           </li>
         ))}
       </ul>
-      <p className="mt-1 text-[13px] text-muted">Scores are not confirmed here.</p>
     </section>
   );
 }

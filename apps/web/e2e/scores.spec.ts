@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { noLiveScores } from "./live-route";
+import { skipReason, upcoming } from "./upcoming";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { demoGames } from "../lib/demo-games";
@@ -229,10 +230,21 @@ test("the home page shows title chances for brackets down to their last four", a
 });
 
 test("upcoming playoff games show a projected margin and win probability, never betting words", async ({ page }) => {
-  await page.goto("/scores");
+  // Games still to play come from the season's data (e2e/upcoming.ts): each game night uses some up, the offseason has none.
+  const { projectedGames } = await upcoming();
+  if (!projectedGames) return test.skip(true, skipReason("no playoff game is still to play with a projection"));
+  await page.goto("/scores", { waitUntil: "networkidle" });
   const projected = page.getByText(/^Projected: .+ by \d+\+? · (>99|\d{2})% win probability$/);
-  expect(await projected.count()).toBeGreaterThan(5);
-  await expect(page.locator("body")).not.toContainText(/\b(spread|odds|lines?|bets?|betting|favorite)\b/i);
+  // The board shows one organization at a time: count each one's, and check each for betting words.
+  const buttons = page.getByRole("group", { name: "Show games from" }).getByRole("button");
+  let seen = await projected.count();
+  for (let i = 0, n = await buttons.count(); i < n; i++) {
+    await buttons.nth(i).click();
+    await expect(buttons.nth(i)).toHaveAttribute("aria-pressed", "true");
+    if (i > 0) seen += await projected.count();
+    await expect(page.locator("body")).not.toContainText(/\b(spread|odds|lines?|bets?|betting|favorite)\b/i);
+  }
+  expect(seen, "unplayed games with a projection on the board").toBeGreaterThan(0);
 });
 
 test("old ratings and champions links land on the new pages", async ({ page }) => {
@@ -318,15 +330,16 @@ test("the programs list and a program page pass", async ({ page }, info) => {
   await checkPage(page, "/programs/odonnell", `odonnell-${info.project.name}`);
 });
 
-test("the 2026 playoffs crown no one and name no source (ADR 0004, ADR 0009)", async ({ page }) => {
+test("a 2026 playoff final is confirmed and names no source (ADR 0040, ADR 0009)", async ({ page }) => {
   await page.goto("/scores");
   await expect(page.getByText(/UIL DI · Bi-district/).first()).toBeVisible();
-  await page.getByRole("group", { name: "Show games from" }).getByRole("button", { name: "TAPPS" }).click(); // robot-read, so unconfirmed
-  await expect(page.getByText(/^Unconfirmed\s*Score may change\.$/).first()).toBeAttached(); // played, unconfirmed: no winner
+  await page.getByRole("group", { name: "Show games from" }).getByRole("button", { name: "TAPPS" }).click(); // robot-read finals
+  await expect(page.locator("#final").getByText("confirmed", { exact: true }).first()).toBeAttached(); // a final: confirmed
+  await expect(page.getByText(/^Unconfirmed\s*Score may change\.$/)).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText(/maxpreps|bracket\./i);
 });
 
-test("a program page lists its season, marked unconfirmed, naming no source (ADR 0009, ADR 0010)", async ({ page }) => {
+test("a program page lists its season, naming no source (ADR 0009, ADR 0010)", async ({ page }) => {
   for (const url of ["/programs/odonnell", "/rankings"]) {
     await page.goto(url);
     await expect(page.locator("body"), url).not.toContainText(/maxpreps|sources|bracket\./i);
@@ -334,7 +347,7 @@ test("a program page lists its season, marked unconfirmed, naming no source (ADR
   await page.goto("/programs/odonnell");
   const games = page.getByRole("region", { name: "2026 games" });
   await expect(games.getByRole("listitem").first()).toContainText(/\d+-\d+/);
-  await expect(games).toContainText("not confirmed here");
+  await expect(page.locator("main")).not.toContainText("not confirmed here");
 });
 
 test("program pages cover every league, link rivals, and 404 when unknown", async ({ page }) => {
@@ -433,6 +446,12 @@ test("only a confirmed final names a winner", async ({ page }) => {
   for (const id of ["g3", "g5", "g6", "g7"]) await expect(crowned(id)).toHaveCount(0);
   await expect(row("g3")).toContainText("Unconfirmed");
   await expect(row("g7")).toContainText("Disputed");
+  // "Final" only for a confirmed score; an unconfirmed or disputed one sits under "Score reported" and never says Final.
+  await expect(page.locator("#final").locator('[data-game="g4"]')).toHaveCount(1);
+  for (const id of ["g3", "g7"]) {
+    await expect(page.locator("#reported").locator(`[data-game="${id}"]`)).toContainText("Score reported");
+    await expect(row(id)).not.toContainText(/\bFinal\b/);
+  }
 });
 
 test("a forfeit shows W and L, never a score", async ({ page }) => {

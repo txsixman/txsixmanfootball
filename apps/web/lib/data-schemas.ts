@@ -45,6 +45,22 @@ export const RobotPlayoffRow = gameChecks(z.object({ league: z.enum(["UIL", "TAP
 /** games.csv holds played games only: both scores are required. */
 export const PlayedGameRow = gameChecks(z.object(resultFields)).refine((r) => r.home_score !== "", "games.csv holds played games only");
 
+/** data/seed/game-details/<year>.csv (ADR 0036): a game's kickoff in UTC and its site, the teams as the bracket spells
+ * them; no source. A blank field is not known. */
+/** data/seed/disputed/<season>.csv: finals whose winner the sources disagree on (ADR 0040). */
+export const DISPUTED_COLUMNS = ["game_date", "home", "away"];
+export const DisputedRow = z.object({ game_date: isoDate, home: z.string().min(1).max(80), away: z.string().min(1).max(80) });
+
+export const DETAIL_COLUMNS = ["date", "home", "away", "kickoff_utc", "site_name", "site_city"];
+export const DetailRow = z.object({
+  date: isoDate,
+  home: z.string().min(1).max(80),
+  away: z.string().min(1).max(80),
+  kickoff_utc: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, "a UTC time, 2026-11-14T01:00:00Z")]),
+  site_name: z.string().max(80),
+  site_city: z.string().max(60),
+});
+
 export const ALIGNMENT_COLUMNS = ["league", "division", "region", "district", "school", "source_url"];
 export const AlignmentRow = z.object({
   league: z.enum(["UIL", "TAPPS", "TAIAO", "TCAF", "TCAL", "TCSAAL", "Independent"]),

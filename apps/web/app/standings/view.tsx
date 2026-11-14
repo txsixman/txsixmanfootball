@@ -88,8 +88,8 @@ export async function StandingsView({ group }: { group: Group }) {
         title="Standings"
         note={
           districtPlay
-            ? `${districts.length} districts. District records count regular-season games only; overall records include playoff games. Ordered by district record, then overall; league tiebreakers are not applied. Scores are not confirmed here and may change.`
-            : `${districts.length} groups. ${group.org.label} has no districts, so teams are grouped by division and region and ordered by overall record. Scores are not confirmed here and may change.`
+            ? `${districts.length} districts. District records count regular-season games only; overall records include playoff games. Ordered by district record, then overall; league tiebreakers are not applied. Scores may be corrected if a mistake is found.`
+            : `${districts.length} groups. ${group.org.label} has no districts, so teams are grouped by division and region and ordered by overall record. Scores may be corrected if a mistake is found.`
         }
       />
       {/* Organization tabs first; UIL has a second row for its two divisions (four tabs fit a phone, five would not). */}

@@ -76,7 +76,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 ))}
               </nav>
               <p className="mt-3 max-w-prose text-[13px] text-white/75">
-                Ratings, projected margins and win probabilities are estimates. A score marked unconfirmed may change.
+                Ratings, projected margins and win probabilities are estimates. Scores may be corrected if a mistake is found.
               </p>
             </div>
           </footer>
