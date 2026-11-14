@@ -14,12 +14,12 @@ import type { TreeGame, TreeState } from "@/lib/bracket-tree";
 // the projection of a game not yet played, and the address of its game page.
 
 /** `chance`: the side's chance to win a game not yet played ("74%"), shown where its score will go. */
-export type BoxSide = { text: string; key?: string; program?: string; score?: number; won?: boolean; bye?: true; chance?: string };
+export type BoxSide = { text: string; title?: string; key?: string; program?: string; score?: number; won?: boolean; bye?: true; chance?: string };
 export type Box = {
   id: string; col: number; row: number; half: "left" | "right" | "center";
   label: string; code?: string; state: TreeState; sides: [BoxSide, BoxSide];
-  /** "Fri, Nov 20 · 7:00 PM CT", or the date alone, when known. */
-  when?: string; site?: string; href?: string; forfeit?: boolean;
+  /** "Nov 20", when known; `time` is the kickoff ("7:00 PM") of a game not yet played. */
+  when?: string; time?: string; site?: string; href?: string; forfeit?: boolean;
   projection?: { margin: string; chance: string };
   /** The game this one's winner goes on to. */
   to?: string;
@@ -82,6 +82,7 @@ export function buildTree(name: string, league: string, tree: Node[], info: (n: 
         const chance = p && s.team ? chanceText(p.favorite === s.team ? p.winProbability : 1 - p.winProbability) : undefined;
         return {
           text: s.text,
+          ...(s.title ? { title: s.title } : {}),
           ...(chance ? { chance } : {}),
           ...(s.team ? { key: slugify(s.team) } : {}),
           ...(slug ? { program: slug } : {}),
@@ -91,8 +92,9 @@ export function buildTree(name: string, league: string, tree: Node[], info: (n: 
         };
       }) as [BoxSide, BoxSide],
       ...(n.code ? { code: n.code } : {}),
+      ...(date ? { when: day(date) } : {}),
       // A played game's time no longer matters: its date alone.
-      ...(date ? { when: [day(date), kickoff && n.state !== "final" && n.state !== "disputed" && kickoffTime(kickoff).replace(/ CT$/, "")].filter(Boolean).join(" · ") } : {}),
+      ...(kickoff && n.state !== "final" && n.state !== "disputed" ? { time: kickoffTime(kickoff).replace(/ CT$/, "") } : {}),
       ...(site ? { site } : {}),
       ...(href ? { href } : {}),
       ...(g?.forfeit ? { forfeit: true } : {}),

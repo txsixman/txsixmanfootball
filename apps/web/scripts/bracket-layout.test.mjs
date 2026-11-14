@@ -69,11 +69,13 @@ test("a bracket of its last four, a shorter half, a one-sided tree, and a game o
   assert.deepEqual(layoutTree([]), { cols: 0, rows: 0, placed: [], links: [], groups: [] });
 });
 
-test("pixels: UIL's nine columns fit a 1440px screen, every team row is 44px, connectors join box edges", async () => {
+test("pixels: UIL's nine columns fit a 1600px screen, every team row is 44px, the side labels have their own gutter, connectors join box edges", async () => {
   const { geometry } = await import("../lib/bracket-layout.ts");
   const nine = geometry({ cols: 9, rows: 8, groups: [{}] });
-  assert.ok(nine.width <= 1440 - 32, `${nine.width}px`);
-  assert.equal(nine.boxH - nine.caption - 18, 88);
+  assert.ok(nine.width <= 1600 - 32, `${nine.width}px`);
+  assert.equal(nine.boxH - nine.caption - nine.foot, 88);
+  assert.ok(nine.foot >= 32, "two lines under the teams");
+  assert.ok(nine.gutter >= 32 && nine.x(0) === nine.gutter, "a group label never sits under a box or at the frame's edge");
   const g = geometry({ cols: 3, rows: 2, groups: [] });
   assert.equal(g.gutter, 0);
   assert.equal(g.width, 3 * g.boxW + 2 * g.gap);

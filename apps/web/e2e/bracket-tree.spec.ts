@@ -25,7 +25,23 @@ const BETTING = /\b(spreads?|odds|lines?|bets?|betting|underdogs?|favou?rites?)\
 const tree = (page: Page) => page.locator("[data-tree-scroll]");
 const rounds = (page: Page) => page.locator("[data-rounds]");
 
+/** Nothing in a box is cut short: every piece of text inside its box, none wider or taller than its own space. */
+async function nothingCut(page: Page) {
+  const cut = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("[data-box]")].filter((b) => b.offsetParent).flatMap((box) => {
+      const r = box.getBoundingClientRect();
+      return [...box.querySelectorAll<HTMLElement>("p, span, button")].filter((el) => {
+        const e = el.getBoundingClientRect();
+        const out = e.left < r.left - 1 || e.right > r.right + 1 || e.top < r.top - 1 || e.bottom > r.bottom + 1;
+        return out || el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+      }).map((el) => `${box.dataset.box}: ${el.textContent}`);
+    }),
+  );
+  expect(cut).toEqual([]);
+}
+
 async function noProblems(page: Page) {
+  await nothingCut(page);
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations.map((v) => `${v.id}: ${v.nodes[0]?.target}`)).toEqual([]);
   const m = await page.evaluate(() => ({
@@ -46,6 +62,7 @@ test("every bracket of the season: a tree when its games connect to one final, r
     const shown = info.project.name === "desktop" && whole ? tree(page) : rounds(page);
     await expect(shown, b.name).toBeVisible();
     await expect(shown.locator("[data-box]"), b.name).toHaveCount(b.tree.length);
+    await nothingCut(page);
     if (!whole) await expect(tree(page), `${b.name} has no tree`).toHaveCount(0);
   }
 });
@@ -53,7 +70,7 @@ test("every bracket of the season: a tree when its games connect to one final, r
 test.describe("desktop", () => {
   test.beforeEach(({}, info) => test.skip(info.project.name !== "desktop", "wide screens open on the tree"));
 
-  test("UIL Division I: the final in the middle, its semifinals either side, regions labeled, nothing wider than the page", async ({ page }) => {
+  test("UIL Division I: the final in the middle, its semifinals either side, regions labeled beside the boxes, nothing wider than the page", async ({ page }) => {
     const { b } = (await brackets()).find((x) => x.b.name === "UIL Division I")!;
     await page.goto(bracketHref(b.name));
     const box = async (id: string) => (await tree(page).locator(`[data-box="${id}"]`).boundingBox())!;
@@ -61,7 +78,16 @@ test.describe("desktop", () => {
     expect(left.x).toBeLessThan(final.x);
     expect(right.x).toBeGreaterThan(final.x);
     expect(Math.abs(left.y - final.y)).toBeLessThan(1);
-    for (const r of ["Region 1", "Region 2", "Region 3", "Region 4"]) await expect(tree(page).getByText(r, { exact: true })).toBeVisible();
+    // Each region's label wholly inside the drawing, in a gutter of its own beside the outer boxes, under none of them.
+    const drawing = (await tree(page).locator(":scope > div").boundingBox())!;
+    const [outerLeft, outerRight] = [await box("G1"), await box("G9")];
+    for (const r of ["Region 1", "Region 2", "Region 3", "Region 4"]) {
+      const label = (await tree(page).getByText(r, { exact: true }).boundingBox())!;
+      expect(label.x, r).toBeGreaterThanOrEqual(drawing.x);
+      expect(label.x + label.width, r).toBeLessThanOrEqual(drawing.x + drawing.width);
+      if (r === "Region 1" || r === "Region 2") expect(label.x + label.width, r).toBeLessThanOrEqual(outerLeft.x);
+      else expect(label.x, r).toBeGreaterThanOrEqual(outerRight.x + outerRight.width);
+    }
     await expect(tree(page).locator("svg path")).toHaveCount(30);
     await noProblems(page);
   });
@@ -88,7 +114,7 @@ test.describe("desktop", () => {
     const link = tree(page).locator("[data-box] > a[href^='/scores/']").first();
     const href = (await link.getAttribute("href"))!;
     await link.click({ position: { x: 20, y: 6 } }); // the code line, above the team buttons
-    await expect(page).toHaveURL(href);
+    await expect(page).toHaveURL(href, { timeout: 30_000 }); // a dev server builds the game page on first request
   });
 
   test("fit to screen shrinks a tree wider than the window to the frame", async ({ page }) => {

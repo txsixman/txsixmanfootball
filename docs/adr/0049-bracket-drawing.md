@@ -17,14 +17,17 @@
    tree (`derivedSlots` in `lib/bracket-fill.ts`).
 2. **The layout** (`lib/bracket-layout.ts`, pure, tested): rounds as columns, the final's two halves mirrored so they meet
    in the middle, each game halfway between the two games that feed it, a shorter half centered. UIL's regions and
-   TAIAO's North and South run down the outer edges. Pixel sizes come from one function the page and the image share.
-3. **Each box** (`lib/bracket-tree.ts`): its code (G17, NQ1) and date (time while not played), two team rows, and a
-   line for the result or the projection.
+   TAIAO's North and South run down the outer edges, in a gutter of their own. Pixel sizes come from one function the
+   page and the image share.
+3. **Each box** (`lib/bracket-tree.ts`): its code (G17, NQ1) and date, two team rows, and two lines for the result or
+   the projection and the kickoff. Nothing in a box is cut short: a name takes two lines when it needs them, and the page
+   tests fail on any text wider or taller than its space. The site is in the box's title and on the game page.
    - Played: both scores, the winner of a confirmed final in bold (ADR 0040); a forfeit says the word; a disputed final
      names no winner.
    - Under way: the live score in place, "Live · Q3 · Unconfirmed" (ADR 0021).
-   - Not played: the two teams, or "Winner of G17" ("Winner of Kress–Jayton" where the bracket has no codes); each
-     team's chance to win where its score will go; the projected margin and the site, when listed.
+   - Not played: the two teams, or "Winner of G17" ("Winner of Kress–Jayton" where the bracket has no codes,
+     "Semifinal winner" when those two names are too long for the box); each team's chance to win where its score will
+     go; the projected margin and the kickoff, when listed.
 4. **On the page** (`app/playoffs/tree/`, one client component, no chart library): wide screens open on the whole tree,
    phones on one round at a time (columns that snap, with the round names held at the top). Either view can switch; the
    phone's whole bracket opens fitted to the screen and pinches like any page. Tapping a team lights its games and
@@ -33,7 +36,9 @@
    frame, never the page.
 5. **Export.** "Download image": `/playoffs/bracket/<slug>/image/share.png` (1200 by 630, names and scores) and
    `full.png` (the page's drawing at full size), drawn at build time from the same data, with the site's name and
-   address. "Print" fits the drawing on one landscape page. "Copy link" and "Share" (the phone's share sheet).
+   address. A name too long for the share size's box takes two smaller lines; past that, its short form (the words
+   before any parenthesis, then whole words that fit), never a word cut with "…" (`fitName`). "Print" fits the
+   drawing on one landscape page. "Copy link" and "Share" (the phone's share sheet).
 
 ## Consequences
 - The bracket is as current as the page: rebuilt with each results commit, live scores in the browser only.

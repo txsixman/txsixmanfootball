@@ -6,7 +6,8 @@ import { centralClock } from "@/lib/playoff-status";
 import { CURRENT_SEASON } from "@/lib/season";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { brandFont } from "../../mark";
-import type { Box, BoxSide, TreeData } from "./data";
+import type { BoxSide, TreeData } from "./data";
+import { boxLines, fitName, lineWidth } from "./lines";
 
 // The bracket as a picture to download and share (ADR 0049), drawn on the server from the same data and layout as the
 // page, so it matches what the page shows when it was built: "share" at 1200 by 630, the size link previews use, in
@@ -37,17 +38,11 @@ function shareSizes(data: TreeData): Sizes {
   const g = geometry(data, { caption: 0, foot: 0, team: 1, rowGap: 0, gap: 12, header: 22, gutter: 18, boxW: 100 });
   const room = { w: SHARE.width - 2 * MARGIN, h: SHARE.height - BAND.share.top - BAND.share.bottom - 2 * MARGIN };
   const gaps = data.cols - 1;
-  const boxW = Math.min(200, Math.floor((room.w - 2 * g.gutter - gaps * 12) / Math.max(1, data.cols)));
+  const boxW = Math.min(230, Math.floor((room.w - 2 * g.gutter - gaps * 12) / Math.max(1, data.cols)));
   // Each row is a box of two team lines and a gap of a third of a line.
-  const team = Math.min(26, Math.floor((room.h - 22) / Math.max(1, (data.rows - 1) * (2 + 1 / 3) + 2)));
+  // A bracket of few rows gets taller rows, so its long names take two lines at a readable size.
+  const team = Math.min(40, Math.floor((room.h - 22) / Math.max(1, (data.rows - 1) * (2 + 1 / 3) + 2)));
   return { caption: 0, foot: 0, team, rowGap: Math.round(team / 3), gap: 12, header: 22, gutter: 18, boxW };
-}
-
-function boxFooter(b: Box): string {
-  if (b.state === "final") return b.forfeit ? "Forfeit" : "Final";
-  if (b.state === "disputed") return "Final · Disputed";
-  if (b.state === "bye") return "Bye";
-  return [b.projection?.margin, b.site].filter(Boolean).join(" · ") || (b.state === "open" ? "Not listed yet" : "Not played yet");
 }
 
 export async function treeImage(data: TreeData, kind: ImageKind): Promise<ImageResponse> {
@@ -56,14 +51,19 @@ export async function treeImage(data: TreeData, kind: ImageKind): Promise<ImageR
   const width = kind === "share" ? SHARE.width : geo.width + 2 * MARGIN;
   const height = kind === "share" ? SHARE.height : geo.height + BAND.full.top + BAND.full.bottom + 2 * MARGIN;
   const band = BAND[kind];
-  const text = Math.max(11, Math.round(geo.team * (kind === "share" ? 0.62 : 0.34)));
+  const text = Math.max(11, Math.min(18, Math.round(geo.team * (kind === "share" ? 0.62 : 0.34))));
   const byId = new Map(data.boxes.map((b) => [b.id, b]));
   const side = (s: BoxSide, other: BoxSide) => {
     const right = s.score ?? s.chance;
     const lost = other.won && !s.won;
+    // The room the name has: the box less its padding and whatever stands at the right.
+    const room = geo.boxW - 12 - (right == null ? 0 : lineWidth(String(right), typeof right === "string" ? text - 1 : text + 2) + 4);
+    const name = fitName(s.text, room, geo.team, s.key ? text : text - 1);
     return (
-      <div style={{ display: "flex", alignItems: "center", height: geo.team, padding: "0 6px", fontSize: s.key ? text : text - 1, color: s.won ? INK : lost || !s.key ? MUTED : INK, fontWeight: s.won ? 600 : 400 }}>
-        <div style={{ display: "block", flex: 1, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{s.text}</div>
+      <div style={{ display: "flex", alignItems: "center", height: geo.team, padding: "0 6px", color: s.won ? INK : lost || !s.key ? MUTED : INK, fontWeight: s.won ? 600 : 400 }}>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, fontSize: name.size, lineHeight: 1.05 }}>
+          {name.lines.map((l, i) => <div key={i} style={{ display: "flex" }}>{l}</div>)}
+        </div>
         {right != null && <div style={{ display: "flex", marginLeft: 4, fontWeight: 600, color: typeof right === "string" ? NAVY : s.won ? INK : MUTED, fontSize: typeof right === "string" ? text - 1 : text + 2 }}>{String(right)}</div>}
       </div>
     );
@@ -108,8 +108,8 @@ export async function treeImage(data: TreeData, kind: ImageKind): Promise<ImageR
           {side(b.sides[0], b.sides[1])}
           {side(b.sides[1], b.sides[0])}
           {geo.foot > 0 && (
-            <div style={{ display: "flex", alignItems: "center", height: geo.foot, padding: "0 6px", fontSize: small, color: b.projection ? NAVY : MUTED, borderTop: `1px solid ${LINE}`, overflow: "hidden", whiteSpace: "nowrap" }}>
-              {boxFooter(b)}
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: geo.foot, padding: "0 6px", fontSize: small, lineHeight: 1.1, color: MUTED, borderTop: `1px solid ${LINE}` }}>
+              {boxLines(b, Math.floor((geo.boxW - 12) / (small * 0.5))).filter(Boolean).map((l, i) => <div key={i} style={{ display: "flex", ...(i === 0 && b.projection ? { color: NAVY, fontWeight: 600 } : {}) }}>{l}</div>)}
             </div>
           )}
         </div>

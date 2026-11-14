@@ -9,6 +9,7 @@ import { derivedSlots, ownSlots, ROUND_ORDER, uilSlotRows } from "../lib/bracket
 import { layoutTree } from "../lib/bracket-layout.ts";
 import { treeGames } from "../lib/bracket-tree.ts";
 import { parseCsv, UIL_BRACKET_COLUMNS, UilBracketRow } from "../lib/data-schemas.ts";
+import { boxLines, fitName } from "../app/playoffs/tree/lines.ts";
 
 const STRUCTURE = parseCsv("b.csv", readFileSync(new URL("../../../data/seed/uil-2026-28/bracket-2026.csv", import.meta.url), "utf8"), UIL_BRACKET_COLUMNS, UilBracketRow).map(({ row }) => row);
 const [header, ...lines] = readFileSync(new URL("fixtures/uil-2026-playoffs-nov14.csv", import.meta.url), "utf8").trim().split("\n");
@@ -68,6 +69,10 @@ test("no league file: the listed games give the shape, two semifinals close the 
   const final = byId(tree).get("closed:final");
   assert.equal(final.code, undefined);
   assert.deepEqual(texts(final), ["Winner of D–A", "Winner of G–E"]);
+  // Two long names: the box names the round, the whole text is its title.
+  const long = [game("semifinal", "2026-11-20", "First Baptist Christian Academy-Pasadena", "The Emery/Weiner School-Houston"), game("semifinal", "2026-11-20", "E", "G")];
+  const longFinal = treeGames(derivedSlots(long, "final", ROUND_ORDER), long, ROUND_ORDER).find((n) => n.id === "closed:final");
+  assert.deepEqual(longFinal.sides.map((s) => [s.text, s.title]), [["Semifinal winner", "Winner of The Emery/Weiner School-Houston–First Baptist Christian Academy-Pasadena"], ["Winner of G–E", undefined]]);
   // A forfeit names its winner and shows no score.
   const forfeit = tree.find((n) => n.game?.forfeit);
   assert.deepEqual(forfeit.sides.map((s) => [s.text, s.score, s.won]), [["G", undefined, true], ["H", undefined, undefined]]);
@@ -94,4 +99,22 @@ test("TAIAO: a bye is its own box, the team goes on, North and South label the h
   assert.deepEqual(texts(at.get("SQ1")), ["Winner of SR1", "Winner of SR2"]);
   assert.deepEqual([at.get("NR2").group, at.get("SR1").group, at.get("FINAL").group], ["North", "South", undefined]);
   assert.deepEqual(layoutTree(tree).groups.map((g) => [g.label, g.half]), [["North", "left"], ["South", "right"]]);
+});
+
+test("a box's lines and an image's names are never cut mid-word", () => {
+  // Under the teams: the result, or the projection with the kickoff on a line of its own (the site is in the title).
+  assert.deepEqual(boxLines({ state: "final", forfeit: true }), ["Forfeit", ""]);
+  assert.deepEqual(boxLines({ state: "upcoming", projection: { margin: "Borden County by 22" }, time: "6:00 PM", site: "Sterling City" }), ["Borden County by 22", "6:00 PM"]);
+  assert.deepEqual(boxLines({ state: "open" }), ["Not listed yet", ""]);
+  // A margin too long for the line: the margin alone (the chances on the team rows say whose).
+  assert.deepEqual(boxLines({ state: "upcoming", projection: { margin: "Harvest Christian Academy-Keller by 4" }, time: "7:00 PM" }, 18), ["Projected margin 4", "7:00 PM"]);
+  // A short name keeps its size; a long one takes two lines, split where the lines come out most even.
+  assert.deepEqual(fitName("Jayton", 100, 26, 16), { lines: ["Jayton"], size: 16 });
+  const two = fitName("Brazos Valley Lions Athletics", 120, 26, 16);
+  assert.deepEqual(two.lines, ["Brazos Valley", "Lions Athletics"]);
+  assert.ok(two.size >= 10 && two.size <= 12);
+  // Too long even for two lines: the short form, whole words only, never an ellipsis.
+  const short = fitName("Sherman Grayson Christian School (Sherman)", 40, 12, 16);
+  assert.deepEqual(short.lines, ["Sherman"]);
+  assert.ok(!short.lines.join(" ").includes("…"));
 });

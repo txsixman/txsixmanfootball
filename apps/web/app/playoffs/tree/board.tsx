@@ -7,6 +7,7 @@ import { liveView, type LiveView } from "@/lib/live-scores";
 import { useLiveScores } from "../../scores/live-score";
 import { ShareButton } from "../../share-button";
 import type { Box, BoxSide, TreeData } from "./data";
+import { boxLines } from "./lines";
 
 // The bracket drawn (ADR 0049). Two views of the same boxes: the whole tree (rounds as columns, both halves meeting at the
 // final, connectors from each pair of games to the one they feed) and one round at a time (columns that snap, with the
@@ -17,14 +18,10 @@ import type { Box, BoxSide, TreeData } from "./data";
 
 type View = "auto" | "tree" | "rounds";
 
-/** What the line under the teams says. */
-function footer(b: Box, live: LiveView | null): string {
-  if (live) return live.finished ? "Final · Unconfirmed" : ["Live", live.period, "Unconfirmed"].filter(Boolean).join(" · ");
-  if (b.state === "final") return b.forfeit ? "Forfeit" : "Final";
-  if (b.state === "disputed") return "Final · Disputed";
-  if (b.state === "bye") return "Bye";
-  const parts = [b.projection?.margin, b.site];
-  return parts.filter(Boolean).join(" · ") || (b.state === "open" ? "Not listed yet" : "Not played yet");
+/** The two lines under the teams: a game under way says so, unconfirmed (ADR 0021). */
+function footer(b: Box, live: LiveView | null, max: number): [string, string] {
+  if (live) return live.finished ? ["Final · Unconfirmed", ""] : [["Live", live.period].filter(Boolean).join(" · "), "Unconfirmed"];
+  return boxLines(b, max);
 }
 
 function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; other: BoxSide; live?: number; lit: boolean; onTeam: (key: string) => void }) {
@@ -32,7 +29,7 @@ function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; other: Box
   const lost = other.won && !side.won;
   const text = (
     <>
-      <span className={`min-w-0 flex-1 truncate ${side.won ? "font-bold text-ink" : lost ? "text-muted" : "text-ink"}`}>{side.text}</span>
+      <span className={`min-w-0 flex-1 break-words leading-[15px] ${side.won ? "font-bold text-ink" : lost ? "text-muted" : "text-ink"}`}>{side.text}</span>
       {right != null && (
         <span className={`shrink-0 font-num tabular-nums ${typeof right === "string" ? "text-[13px] font-semibold text-navy" : `text-[19px] font-bold ${live != null ? "text-red" : ""}`}`}>
           {right}
@@ -41,7 +38,7 @@ function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; other: Box
     </>
   );
   if (!side.key) {
-    return <span title={side.text} className={`relative flex h-11 items-center gap-1 px-1.5 text-[13px] ${side.bye ? "text-muted" : "italic text-muted"}`}>{text}</span>;
+    return <span title={side.title ?? side.text} className={`relative flex h-11 items-center gap-1 px-1.5 text-[13px] ${side.bye ? "text-muted" : "italic text-muted"}`}>{text}</span>;
   }
   return (
     <button
@@ -56,10 +53,12 @@ function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; other: Box
   );
 }
 
-function BoxView({ box, live, team, dim, onTeam, style }: { box: Box; live: LiveView | null; team: string | null; dim: boolean; onTeam: (key: string) => void; style?: CSSProperties }) {
+/** `max`: the characters of 13px semibold text that fit on a line of the box. */
+function BoxView({ box, live, team, dim, onTeam, max, style }: { box: Box; live: LiveView | null; team: string | null; dim: boolean; onTeam: (key: string) => void; max: number; style?: CSSProperties }) {
   const scoreOf = (s: BoxSide) => (live ? (live.home.name === s.text ? live.home.score : live.away.name === s.text ? live.away.score : undefined) : undefined);
   const mine = team !== null && box.sides.some((s) => s.key === team);
-  const title = [box.code, box.label, box.when, box.site].filter(Boolean).join(" · ");
+  const title = [box.code, box.label, box.when, box.time, box.site].filter(Boolean).join(" · ");
+  const lines = footer(box, live, max);
   return (
     <div
       data-box={box.id}
@@ -71,14 +70,15 @@ function BoxView({ box, live, team, dim, onTeam, style }: { box: Box; live: Live
       {box.href && (
         <Link href={box.href} className="absolute inset-0 hover:bg-panel/60" aria-label={`${box.code ? `${box.code}, ` : ""}${box.label}: ${box.sides.map((s) => s.text).join(" vs ")}. Game page`} />
       )}
-      <p className="pointer-events-none relative flex h-[18px] items-center justify-between gap-1 border-b border-line px-1.5 leading-none text-muted">
-        <span className="shrink-0 text-[12px] font-bold uppercase tracking-wider">{box.code}</span>
-        <span className="truncate text-[12px] uppercase tracking-wider">{box.when}</span>
+      <p className="pointer-events-none relative flex h-[18px] items-center justify-between gap-1 whitespace-nowrap border-b border-line px-1.5 leading-none text-muted">
+        <span className="text-[12px] font-bold uppercase tracking-wider">{box.code}</span>
+        <span className="text-[12px] uppercase tracking-wider">{box.when}</span>
       </p>
       <SideRow side={box.sides[0]} other={box.sides[1]} live={scoreOf(box.sides[0])} lit={team === box.sides[0].key} onTeam={onTeam} />
       <SideRow side={box.sides[1]} other={box.sides[0]} live={scoreOf(box.sides[1])} lit={team === box.sides[1].key} onTeam={onTeam} />
-      <p className={`pointer-events-none relative flex h-[18px] items-center truncate border-t border-line px-1.5 text-[13px] leading-none ${live ? "font-bold text-red" : box.projection ? "font-semibold text-navy" : "text-muted"}`}>
-        <span className="truncate">{footer(box, live)}</span>
+      <p data-foot className="pointer-events-none relative flex h-[36px] flex-col justify-center border-t border-line px-1.5 text-[13px] leading-4">
+        <span className={live ? "font-bold text-red" : box.projection ? "font-semibold text-navy" : "text-muted"}>{lines[0]}</span>
+        {lines[1] && <span className="text-muted">{lines[1]}</span>}
       </p>
     </div>
   );
@@ -110,6 +110,7 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
   const treeBox = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);
   const geo = useMemo(() => geometry(data), [data]);
+  const max = Math.floor((geo.boxW - 12) / 7); // the tree's boxes; the rounds' are wider
   const byId = useMemo(() => new Map(data.boxes.map((b) => [b.id, b])), [data]);
   const liveRows = useLiveScores(data.boxes.flatMap((b) => (b.live ? [b.live] : [])));
   const liveOf = (b: Box) => (b.live ? liveView(liveRows, b.live) : null);
@@ -262,7 +263,7 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
               })}
             </svg>
             {data.boxes.map((b) => (
-              <BoxView key={b.id} box={b} live={liveOf(b)} team={team} dim={!onPath(b.id)} onTeam={onTeam} style={{ position: "absolute", left: geo.x(b.col), top: geo.y(b.row), width: geo.boxW }} />
+              <BoxView key={b.id} box={b} live={liveOf(b)} team={team} dim={!onPath(b.id)} onTeam={onTeam} max={max} style={{ position: "absolute", left: geo.x(b.col), top: geo.y(b.row), width: geo.boxW }} />
             ))}
           </div>
         </div>
@@ -283,7 +284,7 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
               <ul className="grid gap-3">
                 {r.ids.map((id) => (
                   <li key={id}>
-                    <BoxView box={byId.get(id)!} live={liveOf(byId.get(id)!)} team={team} dim={!onPath(id)} onTeam={onTeam} />
+                    <BoxView box={byId.get(id)!} live={liveOf(byId.get(id)!)} team={team} dim={!onPath(id)} onTeam={onTeam} max={max} />
                   </li>
                 ))}
               </ul>

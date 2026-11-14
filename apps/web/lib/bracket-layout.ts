@@ -103,20 +103,21 @@ export type Sizes = { boxW?: number; team?: number; caption?: number; foot?: num
 
 /**
  * The tree in pixels: on the page every team row is a 44px tap target (the site's rule), so a box is two team rows, a line
- * above for its code and date and a line below for its result or projection. Narrow boxes when the tree has nine columns
- * (UIL), so it fits a 1440px screen; wider ones otherwise. `x`/`y` are a box's top-left corner; the connectors run between
- * box edges, level with the line between the two teams.
+ * above for its code and date and two lines below for its result or projection and kickoff. A name takes two lines
+ * when it needs them; nothing in a box is cut short. Narrower boxes when the tree has nine columns (UIL), wider ones
+ * otherwise; the group labels have a gutter of their own down each outer side. `x`/`y` are a box's top-left corner; the
+ * connectors run between box edges, level with the line between the two teams.
  */
 export function geometry(layout: Pick<TreeLayout, "cols" | "rows" | "groups">, s: Sizes = {}) {
-  const boxW = s.boxW ?? (layout.cols >= 9 ? 134 : 176);
+  const boxW = s.boxW ?? (layout.cols >= 9 ? 148 : 176);
   const team = s.team ?? 44;
   const caption = s.caption ?? 18; // the code-and-date line above the teams
-  const foot = s.foot ?? 18;
+  const foot = s.foot ?? 36; // two lines: the result or projection, then the kickoff
   const gap = s.gap ?? 18; // between columns, where the connectors run
   const boxH = caption + 2 * team + foot;
   const rowPitch = boxH + (s.rowGap ?? 12);
   const header = s.header ?? 30; // the round names over the columns
-  const gutter = layout.groups.length ? (s.gutter ?? 24) : 0; // the group labels down each outer side
+  const gutter = layout.groups.length ? (s.gutter ?? 36) : 0; // the group labels down each outer side
   const x = (col: number) => gutter + col * (boxW + gap);
   const y = (row: number) => header + row * rowPitch;
   const width = layout.cols ? 2 * gutter + layout.cols * boxW + (layout.cols - 1) * gap : 0;

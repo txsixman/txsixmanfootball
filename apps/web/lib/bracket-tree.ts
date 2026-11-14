@@ -5,8 +5,9 @@
 import { candidates, fill, type FillGame, type Slot } from "./bracket-fill.ts";
 import type { TreeNode } from "./bracket-layout.ts";
 
-/** One side of a box. `text` is what it reads: the team, "Winner of G17", "To be decided" or "Bye". */
-type TreeSide = { text: string; team?: string; score?: number; won?: boolean; bye?: true };
+/** One side of a box. `text` is what it reads: the team, "Winner of G17", "To be decided" or "Bye". `title`: the whole of
+ * a waiting side too long for a box ("Winner of" two long names), whose `text` is then the round ("Semifinal winner"). */
+type TreeSide = { text: string; title?: string; team?: string; score?: number; won?: boolean; bye?: true };
 
 /**
  * final: a confirmed final (ADR 0040; a forfeit shows the word, never its score). disputed: a final the sources give
@@ -27,6 +28,8 @@ export type TreeGame<G extends FillGame = FillGame> = TreeNode & {
 };
 
 /** A league's own code, not one the data made up for a listed game or the closing final. */
+/** The longest "Winner of A–B" a box shows (two lines of a narrow box); a longer one names the round. */
+const WAITING_MAX = 34;
 const ownCode = (slot: string) => !slot.startsWith("game:") && !slot.startsWith("closed:");
 
 /** Each slot of a bracket as a box of the tree, in `order` of rounds (first to last). */
@@ -37,8 +40,12 @@ export function treeGames<G extends FillGame>(slots: Slot[], games: G[], order: 
   /** What a side fed by another slot reads before its team is known. */
   const waiting = (id: string): TreeSide => {
     if (ownCode(id)) return { text: `Winner of ${id}` };
-    const g = byId.get(id)?.game;
-    return { text: g ? `Winner of ${g.away}–${g.home}` : "To be decided" };
+    const f = byId.get(id);
+    if (!f?.game) return { text: "To be decided" };
+    const whole = `Winner of ${f.game.away}–${f.game.home}`;
+    if (whole.length <= WAITING_MAX) return { text: whole };
+    const round = f.slot.round.replace(/-/g, " ");
+    return { text: `${round[0].toUpperCase()}${round.slice(1)} winner`, title: whole };
   };
   return filled.map((f): TreeGame<G> => {
     const s = f.slot;
