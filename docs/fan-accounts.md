@@ -1,7 +1,8 @@
 # Fan accounts and following
 
 ADR 0018. Fans sign in with an emailed link or Google, pick a display name and give a birth year, and can follow teams on
-their account. Posts, score reports and comments come in later rounds and sit on the same profile.
+their account. Forums, game comments and score reports sit on the same profile and have their own switch, `FAN_POSTS`
+(ADR 0052), so they can open about a week after sign-in and follows.
 
 Sign-in itself is the shared foundation (`apps/web/lib/auth/`, `/sign-in`, `/auth/callback`, `proxy.ts`); the admin console
 uses it too (`docs/admin-console.md`). Every Supabase call is made on the server with the visitor's own session cookie
@@ -12,10 +13,37 @@ uses it too (`docs/admin-console.md`). Every Supabase call is made on the server
 Fan accounts are **off by default**. With `FAN_SIGNIN` missing (or anything but exactly `on`) the site is as it was:
 no "Sign in" link in the header, `/sign-in` is only the email form for accounts that already exist (the owner's way into
 `/admin`; no Google button, no sign-up wording), `/account` and `/account/welcome` send everyone home, `/privacy`, `/terms` and `/account/too-young` answer 404, `/api/follows`
-answers 404, the Follow button is the browser-only button, and `/api/me` answers `{ enabled: false, me: null }` without
+answers 404, the Follow button is the browser-only button, and `/api/me` answers `{ enabled: false, posts: false, me: null }` without
 asking Supabase (except for a request that comes from an `/admin` page). The flag is read per request on the server and
 handed to the pages' scripts through `/api/me`, never a `NEXT_PUBLIC` constant: set it in Vercel and redeploy, no rebuild
 of the pages is needed. Everything below describes the "on" state.
+
+### The second switch: FAN_POSTS (ADR 0052)
+
+Forums, game comments and score reports are behind `FAN_POSTS`, which must be exactly `on` **and means nothing unless
+`FAN_SIGNIN` is on too** (`fanPosts()` in `lib/auth/config.ts`; server-only, read per request, never `NEXT_PUBLIC`).
+
+| `FAN_SIGNIN` | `FAN_POSTS` | What exists |
+|---|---|---|
+| not `on` | anything | The site as it was. `FAN_POSTS` alone opens nothing |
+| `on` | not `on` | Sign-in, the profile, `/account`, `/privacy`, `/terms`, follows and `/api/me`. Every posts surface answers as it does with fan accounts off: `/forums/**` and every `/api/fan/**` and `/api/games/[id]/comments`, `/score-report` route is a bare 404, and the game page has no comment or score-report block |
+| `on` | `on` | Everything in this document, posts included |
+
+- A game page is static, so it reads `FAN_POSTS` when it is built (flip it and redeploy, as for `FAN_SIGNIN`). A page built with
+  posts on and served after the flag goes off hides both blocks itself, because their routes then answer 404.
+- `/api/me` answers `{ enabled, posts, me }`: `posts` is `FAN_POSTS` for the page scripts, never true while `enabled` is false.
+- **`/admin/moderation` stays open to the owner** whichever way the switch is set, so he can ban an account or show a post again
+  after turning posts off. With posts off it says so in one sentence and shows a post's place as text, not a link.
+- **The database has its own switch.** The site's routes are not the only way in: the posting functions are granted to signed-in
+  users, and the anon key and the project's address are public, so a fan can call them straight at Supabase with their own
+  session. Migration 0024 adds the one-row table `site_switch` (row `posts`, closed by default, no policy and no grant for the API
+  roles, every change written to `audit_log`) and `fan_actor()`, which every function that writes a post, thread, reply, flag, edit
+  or score report calls first, raises `posts_closed` while it is closed. Public reads and the owner's `admin_*` functions are not
+  behind it.
+- **To open posts, in this order:** (1) Supabase dashboard, SQL editor, run
+  `update site_switch set is_on = true where name = 'posts';` (2) Vercel, set `FAN_POSTS` to `on` (Production) and redeploy. To close
+  them, undo either one (`is_on = false`, or remove `FAN_POSTS` and redeploy); the closed one wins. Only the database closed: the
+  routes answer `posts_closed` ("Posting is not open yet."). Only the site closed: 404. Either way nothing is posted.
 
 ## What a fan sees
 
@@ -28,6 +56,8 @@ of the pages is needed. Everything below describes the "on" state.
 | Header | "Sign in", or the display name. Filled in by the page's own script from `/api/me`, so static pages stay static |
 | Program page | The Follow button: signed out, push alerts on this browser as before; signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) |
 | Home, My teams | The account's follows when signed in, else this browser's |
+| `/forums`, a board, a thread | Only while `FAN_POSTS` is on (otherwise 404). Anyone reads; a signed-in fan with a profile posts, replies, edits their own and flags others |
+| A game page | Only while `FAN_POSTS` is on: the comments block, and for a game with no score yet the fan score-report block. With it off the page is as it was |
 
 No age, birth year, email or school is shown anywhere. The birth year is stored in `profile.birth_year` and no function returns it.
 
@@ -40,7 +70,7 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
   The three functions are in `SIGNED_IN_FUNCTIONS` (`packages/db/load.mjs`): CI checks anon cannot run them.
 - **Server checks, then the database checks again.** Server actions and `/api/follows` validate with Zod, check the session
   (`getUser()` asks Supabase; never `getSession()`), and the database re-checks age, name shape, uniqueness, slug shape and the cap.
-- `/api/me` (GET) answers `{ enabled, me }`: `enabled` is `FAN_SIGNIN`; `me` is `null` when signed out, else
+- `/api/me` (GET) answers `{ enabled, posts, me }`: `enabled` is `FAN_SIGNIN`, `posts` is `FAN_POSTS` (and `FAN_SIGNIN`); `me` is `null` when signed out, else
   `{ displayName | null, follows, admin? }` (`null` name = sign-up unfinished; `admin` marks the owner's account, which is never
   sent to fan sign-up). No email, id or birth year. `/api/follows` (POST: follow, unfollow, import up to 100) needs a same-site
   `Origin`, a JSON body and a session. Both are in `proxy.ts`'s matcher (session refresh, `no-store`, `noindex`); the service
@@ -55,6 +85,8 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
 |---|---|---|
 | `FAN_SIGNIN` | server only | `on` turns fan accounts on (everything in this document). Missing or anything else: off, see "The switch" above. Redeploy after changing |
 | `FAN_EMAIL_SIGNIN` | server only | `on` (and `FAN_SIGNIN` on) lets the emailed link make NEW fan accounts. Missing or anything else: the link works for existing accounts only (it is how the owner signs in to `/admin`) and new fans see only "Continue with Google". Google is never behind it, only behind `FAN_SIGNIN`. **Turn it on after custom SMTP works** (below). Redeploy after changing |
+
+| `FAN_POSTS` | server only | `on` (and `FAN_SIGNIN` on) turns on forums, game comments and score reports. Missing or anything else, or `FAN_SIGNIN` off: they do not exist and sign-in and follows work as before. **Open the database switch first** (`site_switch`, see "The second switch" above). Redeploy after changing |
 
 The Supabase variables are in `docs/admin-console.md`. Google needs no variable on the site: its client id and secret live in Supabase.
 

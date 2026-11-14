@@ -25,6 +25,7 @@ before(async () => {
 });
 beforeEach(() => {
   process.env.FAN_SIGNIN = "on";
+  process.env.FAN_POSTS = "on";
   signOut();
   calls.length = 0;
 });
@@ -50,6 +51,61 @@ test("fan accounts off: every fan write is a bare 404 and nothing asks the datab
     assert.equal(r.cache, "no-store, private", name);
   }
   assert.deepEqual(calls, []);
+});
+
+test("posts off with sign-in on (FAN_POSTS not exactly on): every fan write is a bare 404 and nothing asks the database", async () => {
+  signIn(await fan(d, "Posts Off"), { fail: { code: "XX000", message: "must not be called" } });
+  for (const posts of [undefined, "", "off", "ON", "true", " on"]) {
+    if (posts === undefined) delete process.env.FAN_POSTS;
+    else process.env.FAN_POSTS = posts;
+    for (const [name, call] of WRITES) {
+      const r = await read(await call());
+      assert.equal(r.status, 404, `${name} with FAN_POSTS=${posts}`);
+      assert.equal(r.body, null, name);
+      assert.equal(r.cache, "no-store, private", name);
+    }
+    assert.equal((await read(await fanMe.GET(request("/api/fan/me", { method: "GET" })))).status, 404, `me with FAN_POSTS=${posts}`);
+  }
+  assert.deepEqual(calls, []);
+});
+
+test("FAN_POSTS alone opens nothing: with sign-in off the writes are still 404", async () => {
+  process.env.FAN_SIGNIN = "off";
+  process.env.FAN_POSTS = "on";
+  signIn(await fan(d, "Posts Alone"), { fail: { code: "XX000", message: "must not be called" } });
+  for (const [name, call] of WRITES) assert.equal((await read(await call())).status, 404, name);
+  assert.deepEqual(calls, []);
+});
+
+test("posts off with sign-in on: /api/me and the follows route work as ever, and /api/me says posts: false", async () => {
+  delete process.env.FAN_POSTS;
+  const follower = await fan(d, "Quiet Follower");
+  signIn(follower);
+  const known = await read(await me.GET(request("/api/me", { method: "GET", cookie: "sb-localhost-auth-token=base64-test" })));
+  assert.deepEqual(known.body, { enabled: true, posts: false, me: { displayName: "Quiet Follower", follows: [] } });
+  const followed = await read(await follows.POST(request("/api/follows", { body: { op: "follow", slug: "jayton" } })));
+  assert.equal(followed.status, 200);
+  assert.deepEqual(followed.body.follows, ["jayton"]);
+  assert.equal((await read(await me.GET(request("/api/me", { method: "GET", cookie: "sb-localhost-auth-token=base64-test" })))).body.posts, false);
+  process.env.FAN_POSTS = "on";
+  assert.equal((await read(await me.GET(request("/api/me", { method: "GET", cookie: "sb-localhost-auth-token=base64-test" })))).body.posts, true);
+});
+
+/** Flips the database's posts switch without a log row (a DO block is one statement; PGlite's query() takes one). */
+const setSwitch = (on) =>
+  sudoRows(`do $$ begin alter table site_switch disable trigger site_switch_change; update site_switch set is_on = ${on} where name = 'posts'; alter table site_switch enable trigger site_switch_change; end $$`);
+
+test("the database's own switch: open on the site but closed in the database answers posts_closed, with no wording of the database's", async () => {
+  const closedFan = await fan(d, "Closed Db");
+  signIn(closedFan);
+  await setSwitch(false);
+  try {
+    const r = await read(await comments.POST(request("/api/fan/comments", { body: { gameKey: KEYS.regular, body: "Hello there." } })));
+    assert.deepEqual([r.status, r.body.error], [403, "posts_closed"]);
+    noInternals(r);
+  } finally {
+    await setSwitch(true);
+  }
 });
 
 test("signed out: every fan write is 401 sign_in_required", async () => {
@@ -289,20 +345,20 @@ test("/api/me: off, no cookie, or nobody signed in answers without the database;
   const get = async (opts = {}) => read(await me.GET(request("/api/me", { method: "GET", ...opts })));
   process.env.FAN_SIGNIN = "off";
   signIn(await fan(d, "Off Fan"), { fail: { code: "XX000", message: "must not be called" } });
-  assert.deepEqual((await get({ cookie: SESSION })).body, { enabled: false, me: null });
+  assert.deepEqual((await get({ cookie: SESSION })).body, { enabled: false, posts: false, me: null });
   process.env.FAN_SIGNIN = "on";
-  assert.deepEqual((await get()).body, { enabled: true, me: null });
+  assert.deepEqual((await get()).body, { enabled: true, posts: true, me: null });
   assert.deepEqual(calls, []);
   signOut();
-  assert.deepEqual((await get({ cookie: SESSION })).body, { enabled: true, me: null });
+  assert.deepEqual((await get({ cookie: SESSION })).body, { enabled: true, posts: true, me: null });
   const follower = await fan(d, "Follower");
   signIn(follower);
   await rpc(follower, "follow_program", { p_slug: "jayton" });
   const r = await get({ cookie: SESSION });
-  assert.deepEqual(r.body, { enabled: true, me: { displayName: "Follower", follows: ["jayton"] } });
+  assert.deepEqual(r.body, { enabled: true, posts: true, me: { displayName: "Follower", follows: ["jayton"] } });
   assert.equal(r.cache, "no-store, private");
   signIn(newId());
-  assert.deepEqual((await get({ cookie: SESSION })).body, { enabled: true, me: { displayName: null, follows: [] } });
+  assert.deepEqual((await get({ cookie: SESSION })).body, { enabled: true, posts: true, me: { displayName: null, follows: [] } });
 });
 
 test("/api/me: the admin is marked, also from an admin page while fan accounts are off; a failure is 503", async () => {
@@ -310,10 +366,11 @@ test("/api/me: the admin is marked, also from an admin page while fan accounts a
   process.env.FAN_SIGNIN = "off";
   assert.deepEqual((await read(await me.GET(request("/api/me", { method: "GET", cookie: SESSION, referer: `${ORIGIN}/admin/posts` })))).body, {
     enabled: false,
+    posts: false,
     me: { displayName: null, follows: [], admin: true },
   });
   // Another site's /admin is not an admin page.
-  assert.deepEqual((await read(await me.GET(request("/api/me", { method: "GET", cookie: SESSION, referer: "https://evil.example/admin" })))).body, { enabled: false, me: null });
+  assert.deepEqual((await read(await me.GET(request("/api/me", { method: "GET", cookie: SESSION, referer: "https://evil.example/admin" })))).body, { enabled: false, posts: false, me: null });
   process.env.FAN_SIGNIN = "on";
   signIn(await fan(d, "Plain Supporter"));
   assert.equal((await read(await me.GET(request("/api/me", { method: "GET", cookie: SESSION })))).body.me.admin, undefined);

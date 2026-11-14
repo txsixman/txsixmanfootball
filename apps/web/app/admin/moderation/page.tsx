@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fanPosts } from "@/lib/auth/config";
 import { requireAdmin } from "@/lib/auth/admin";
 import { moderationOverview } from "@/lib/admin/moderation";
 import { AdminNav } from "../nav";
@@ -9,17 +10,25 @@ export const dynamic = "force-dynamic";
 
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
 
-/** The owner's overrides (ADR 0018): hidden posts to show again, and muted or banned accounts. */
+/**
+ * The owner's overrides (ADR 0018): hidden posts to show again, and muted or banned accounts. Behind the admin gate, so not a
+ * public page: it stays open while posts are off (FAN_POSTS, ADR 0052), because cleaning up and banning must work whichever way
+ * the switch is set. It then says so, and shows a post's place as plain text, since the forum and game pages answer 404.
+ */
 export default async function ModerationPage() {
   const g = await gate();
   if (!g.ok) return g.page;
   const { supabase } = await requireAdmin();
   const overview = await moderationOverview(supabase);
+  const postsOn = fanPosts();
   return (
     <section aria-labelledby="admin-title" className="max-w-prose">
       <AdminNav />
       <h1 id="admin-title" className="font-num text-[44px] font-bold uppercase leading-none tracking-wide text-navy">Moderation</h1>
       <p className="mt-2 text-[15px] text-muted">Posts hide themselves after enough flags; accounts mute after three hidden posts in 30 days. Every change here goes in the audit log with your reason.</p>
+      {!postsOn && (
+        <p className="mt-2 text-[15px] font-semibold text-navy">Posts are switched off on the site (FAN_POSTS), so the forum and game pages are closed. This page still works.</p>
+      )}
       {!overview ? (
         <p className="mt-6 text-[15px] font-semibold text-red">The database refused the list. Sign in again, and check that your id is in admin_user.</p>
       ) : (
@@ -34,9 +43,9 @@ export default async function ModerationPage() {
                   <p className="text-[13px] text-muted">
                     {p.author} · {when(p.hidden_at)} · {p.flags} {p.flags === 1 ? "flag" : "flags"} ·{" "}
                     {p.game_key ? (
-                      <Link href={`/scores/${encodeURIComponent(p.game_key)}`} className="text-navy underline">Game comment</Link>
+                      postsOn ? <Link href={`/scores/${encodeURIComponent(p.game_key)}`} className="text-navy underline">Game comment</Link> : "Game comment"
                     ) : p.thread_id ? (
-                      <Link href={`/forums/thread/${encodeURIComponent(p.thread_id)}`} className="text-navy underline">Forum post</Link>
+                      postsOn ? <Link href={`/forums/thread/${encodeURIComponent(p.thread_id)}`} className="text-navy underline">Forum post</Link> : "Forum post"
                     ) : (
                       "Post"
                     )}

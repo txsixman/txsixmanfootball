@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
 import { gameDescription } from "@/lib/descriptions";
-import { fanSignIn } from "@/lib/auth/config";
+import { fanPosts } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
 import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, playoffLabels, resolveGame } from "@/lib/game-pages";
@@ -139,8 +139,9 @@ export default async function GamePage({ params }: Props) {
   // The two programs' series page, when they have met often enough to have one (lib/series.ts).
   const [awaySlug, homeSlug] = [programOf(g.away)?.slug, programOf(g.home)?.slug];
   const series = !sample && awaySlug && homeSlug && (await seriesPartners()).get(awaySlug)?.has(homeSlug) ? seriesHref(awaySlug, homeSlug) : undefined;
-  // Fan comments and score reports exist only while FAN_SIGNIN is "on" (read when the page is built; flip it and redeploy).
-  const fan = fanSignIn();
+  // Fan comments and score reports exist only while FAN_POSTS (and FAN_SIGNIN) is "on" (read when the page is built; flip it and
+  // redeploy). If a page built with them on is served after the flag goes off, their routes answer 404 and the blocks hide themselves.
+  const fan = fanPosts();
   const live = g.state === "live";
   const back = sample ? { href: "/scores/sample", name: "Scoreboard" } : own ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, name: own.season === CURRENT_SEASON ? "Results" : `${own.season} results` } : { href: "/scores", name: "Scoreboard" };
   const places = [
