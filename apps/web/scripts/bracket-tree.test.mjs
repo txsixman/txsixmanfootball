@@ -1,4 +1,4 @@
-// What each box of the tree view holds (ADR 0048; lib/bracket-tree.ts): UIL Division I from its own bracket and the live
+// What each box of the tree view holds (ADR 0049; lib/bracket-tree.ts): UIL Division I from its own bracket and the live
 // rows of Nov 14, 2026 (fixtures/uil-2026-playoffs-nov14.csv), a bracket with no league file (its shape from the listed
 // games alone), and TAIAO's byes. Each tree is also laid out (lib/bracket-layout.ts), so every box has a place.
 //   node --test apps/web/scripts/

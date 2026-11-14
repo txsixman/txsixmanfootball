@@ -56,9 +56,6 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
       </div>
       </div>
 
-      <a href="#games-by-round" className="sr-only focus:not-sr-only focus:inline-flex focus:min-h-11 focus:items-center focus:px-2 focus:font-semibold focus:text-navy">
-        Skip the drawing: the games round by round
-      </a>
       <BracketBoard data={tree} imageBase={`${bracketHref(b.name)}/image`} />
 
       <div id="games-by-round" className="scroll-mt-4 print:hidden">

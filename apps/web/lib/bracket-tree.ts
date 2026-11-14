@@ -1,4 +1,4 @@
-// What each box of the tree view holds (ADR 0048): every slot of a bracket with its two sides, filled as far as the games
+// What each box of the tree view holds (ADR 0049): every slot of a bracket with its two sides, filled as far as the games
 // go: a team (with its score once played, bold when it won a confirmed final), the winner of an earlier game ("Winner of
 // G17", or "Winner of Kress–Jayton" where the bracket has no codes), or a bye. Pure, no imports beyond the bracket math:
 // the page, the exported image and the node tests all run it as it is.
@@ -6,7 +6,7 @@ import { candidates, fill, type FillGame, type Slot } from "./bracket-fill.ts";
 import type { TreeNode } from "./bracket-layout.ts";
 
 /** One side of a box. `text` is what it reads: the team, "Winner of G17", "To be decided" or "Bye". */
-export type TreeSide = { text: string; team?: string; score?: number; won?: boolean; bye?: true };
+type TreeSide = { text: string; team?: string; score?: number; won?: boolean; bye?: true };
 
 /**
  * final: a confirmed final (ADR 0040; a forfeit shows the word, never its score). disputed: a final the sources give

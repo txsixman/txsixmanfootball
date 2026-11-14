@@ -1,4 +1,4 @@
-// The tree view's layout math (ADR 0048; lib/bracket-layout.ts): UIL's 31-game bracket from its own file, TAIAO's shape
+// The tree view's layout math (ADR 0049; lib/bracket-layout.ts): UIL's 31-game bracket from its own file, TAIAO's shape
 // with byes and crossover semifinals, a bracket that is only its last four, and a one-sided tree.   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

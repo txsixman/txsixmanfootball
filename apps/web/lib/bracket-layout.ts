@@ -1,4 +1,4 @@
-// Where each game of a bracket sits in the tree view (ADR 0048): rounds as columns, the two halves meeting at the final in
+// Where each game of a bracket sits in the tree view (ADR 0049): rounds as columns, the two halves meeting at the final in
 // the middle, each game halfway between the two games that feed it. Pure, no imports: the page, the exported image and the
 // node tests all run it as it is. Units are columns and rows; the renderer turns them into pixels.
 
@@ -98,30 +98,36 @@ export function layoutTree(nodes: TreeNode[]): TreeLayout {
   return { cols, rows, placed, links, groups };
 }
 
+/** Sizes in pixels; the page's are the defaults. The share image draws smaller boxes with no caption or footer line. */
+export type Sizes = { boxW?: number; team?: number; caption?: number; foot?: number; gap?: number; rowGap?: number; header?: number; gutter?: number };
+
 /**
- * The tree in pixels: every team row is a 44px tap target (the site's rule), so a box is two team rows, a line above for its
- * code and date and a line below for its result or projection. Narrow boxes when the tree has nine columns (UIL), so it fits
- * a 1440px screen; wider ones otherwise. `x`/`y` are a box's top-left corner; the connectors run between box edges.
+ * The tree in pixels: on the page every team row is a 44px tap target (the site's rule), so a box is two team rows, a line
+ * above for its code and date and a line below for its result or projection. Narrow boxes when the tree has nine columns
+ * (UIL), so it fits a 1440px screen; wider ones otherwise. `x`/`y` are a box's top-left corner; the connectors run between
+ * box edges, level with the line between the two teams.
  */
-export function geometry(layout: Pick<TreeLayout, "cols" | "rows" | "groups">) {
-  const boxW = layout.cols >= 9 ? 134 : 176;
-  const gap = 18; // between columns, where the connectors run
-  const caption = 18; // the code-and-date line above the teams
-  const boxH = caption + 44 + 44 + 18;
-  const rowPitch = boxH + 12;
-  const header = 30; // the round names over the columns
-  const gutter = layout.groups.length ? 24 : 0; // the group labels down each outer side
+export function geometry(layout: Pick<TreeLayout, "cols" | "rows" | "groups">, s: Sizes = {}) {
+  const boxW = s.boxW ?? (layout.cols >= 9 ? 134 : 176);
+  const team = s.team ?? 44;
+  const caption = s.caption ?? 18; // the code-and-date line above the teams
+  const foot = s.foot ?? 18;
+  const gap = s.gap ?? 18; // between columns, where the connectors run
+  const boxH = caption + 2 * team + foot;
+  const rowPitch = boxH + (s.rowGap ?? 12);
+  const header = s.header ?? 30; // the round names over the columns
+  const gutter = layout.groups.length ? (s.gutter ?? 24) : 0; // the group labels down each outer side
   const x = (col: number) => gutter + col * (boxW + gap);
   const y = (row: number) => header + row * rowPitch;
   const width = layout.cols ? 2 * gutter + layout.cols * boxW + (layout.cols - 1) * gap : 0;
   const height = layout.rows ? header + (layout.rows - 1) * rowPitch + boxH : 0;
   /** The elbow from a game to the one it feeds: out of the side facing the final, down or up, into the next box. */
-  const link = (from: Placed, to: Placed) => {
+  const link = (from: Pick<Placed, "col" | "row">, to: Pick<Placed, "col" | "row">) => {
     const rightward = from.col < to.col;
     const [x1, x2] = rightward ? [x(from.col) + boxW, x(to.col)] : [x(from.col), x(to.col) + boxW];
-    const [y1, y2] = [y(from.row) + caption + 44, y(to.row) + caption + 44]; // between the two team rows
+    const [y1, y2] = [y(from.row) + caption + team, y(to.row) + caption + team];
     const mid = (x1 + x2) / 2;
     return `M${x1} ${y1}H${mid}V${y2}H${x2}`;
   };
-  return { boxW, boxH, gap, caption, header, gutter, rowPitch, x, y, width, height, link };
+  return { boxW, boxH, team, caption, foot, gap, header, gutter, rowPitch, x, y, width, height, link };
 }

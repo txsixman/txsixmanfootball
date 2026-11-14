@@ -33,7 +33,7 @@ const loserOf = (g: FillGame) => {
   return w && (w === g.home ? g.away : g.home);
 };
 
-export const gameId = (g: Pick<FillGame, "date" | "home" | "away">) => `game:${g.date}|${g.home}|${g.away}`;
+const gameId = (g: Pick<FillGame, "date" | "home" | "away">) => `game:${g.date}|${g.home}|${g.away}`;
 
 /**
  * The slots the data closes by itself, beyond any source's: a bracket's two semifinals feed its final (`finalRound`: "state"
@@ -211,7 +211,7 @@ export function bracketSlots(rows: SlotRow[], games: FillGame[], { league, divis
 }
 
 /**
- * A bracket's shape from its listed games alone, for the tree view (ADR 0048) where no league file gives it: each listed
+ * A bracket's shape from its listed games alone, for the tree view (ADR 0049) where no league file gives it: each listed
  * game is a slot, and a side is the winner of that team's game in the round before, or the team itself when it has none
  * (its first game here). Two listed semifinals with nothing after them feed the final (`finalRound`). Who meets whom
  * further on is never guessed: a bracket whose later rounds are not listed stays a set of separate trees.

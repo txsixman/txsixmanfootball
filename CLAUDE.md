@@ -74,6 +74,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   wrong; `contact-sheet.mjs` draws every logo on white and navy
 - `apps/web`: Next.js site (Vercel, Root Directory `apps/web`); `lib/score-display.ts` holds the winner and
   verification rules (ADR 0004); `lib/demo-games.ts` is invented schools only
+- `apps/web/app/playoffs/tree/`: the bracket drawing on each bracket page (ADR 0049): `board.tsx` (tree and by-round views),
+  `data.ts`, `image.tsx` (the share and full-size PNGs); layout math in `lib/bracket-layout.ts`, box content in
+  `lib/bracket-tree.ts`; `/playoffs/bracket/sample` is invented schools only (`lib/demo-bracket.ts`)
 - `apps/web/app/embed/`: the embeddable scoreboard, `/embed/programs/<slug>` (ADR 0023): the only route that may be framed; its page and CSP are built in `lib/embed-html.ts`
 - `tools/push/`: score alerts (web-push), sent by `results-watch.yml` after it pushes new finals; subscriptions in
   Supabase `push_subscription` (migration 0008)

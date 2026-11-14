@@ -8,7 +8,7 @@ import { useLiveScores } from "../../scores/live-score";
 import { ShareButton } from "../../share-button";
 import type { Box, BoxSide, TreeData } from "./data";
 
-// The bracket drawn (ADR 0048). Two views of the same boxes: the whole tree (rounds as columns, both halves meeting at the
+// The bracket drawn (ADR 0049). Two views of the same boxes: the whole tree (rounds as columns, both halves meeting at the
 // final, connectors from each pair of games to the one they feed) and one round at a time (columns that snap, with the
 // round names held at the top). Wide screens open on the tree, phones on the rounds; either can switch. Tapping a team
 // lights its path, games played and the route ahead; tapping a game opens its page. A game under way shows its live
@@ -41,7 +41,7 @@ function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; other: Box
     </>
   );
   if (!side.key) {
-    return <span title={side.text} className={`relative flex h-11 items-center gap-1 px-1.5 text-[12px] ${side.bye ? "text-muted" : "italic text-muted"}`}>{text}</span>;
+    return <span title={side.text} className={`relative flex h-11 items-center gap-1 px-1.5 text-[13px] ${side.bye ? "text-muted" : "italic text-muted"}`}>{text}</span>;
   }
   return (
     <button
@@ -71,13 +71,13 @@ function BoxView({ box, live, team, dim, onTeam, style }: { box: Box; live: Live
       {box.href && (
         <Link href={box.href} className="absolute inset-0 hover:bg-panel/60" aria-label={`${box.code ? `${box.code}, ` : ""}${box.label}: ${box.sides.map((s) => s.text).join(" vs ")}. Game page`} />
       )}
-      <p className="pointer-events-none relative flex h-[18px] items-center justify-between gap-1 border-b border-line px-1.5 text-[11px] leading-none text-muted">
-        <span className="shrink-0 font-bold uppercase tracking-wide">{box.code}</span>
-        <span className="truncate">{box.when}</span>
+      <p className="pointer-events-none relative flex h-[18px] items-center justify-between gap-1 border-b border-line px-1.5 leading-none text-muted">
+        <span className="shrink-0 text-[12px] font-bold uppercase tracking-wider">{box.code}</span>
+        <span className="truncate text-[12px] uppercase tracking-wider">{box.when}</span>
       </p>
       <SideRow side={box.sides[0]} other={box.sides[1]} live={scoreOf(box.sides[0])} lit={team === box.sides[0].key} onTeam={onTeam} />
       <SideRow side={box.sides[1]} other={box.sides[0]} live={scoreOf(box.sides[1])} lit={team === box.sides[1].key} onTeam={onTeam} />
-      <p className={`pointer-events-none relative flex h-[18px] items-center truncate border-t border-line px-1.5 text-[11px] leading-none ${live ? "font-bold text-red" : box.projection ? "font-semibold text-navy" : "text-muted"}`}>
+      <p className={`pointer-events-none relative flex h-[18px] items-center truncate border-t border-line px-1.5 text-[13px] leading-none ${live ? "font-bold text-red" : box.projection ? "font-semibold text-navy" : "text-muted"}`}>
         <span className="truncate">{footer(box, live)}</span>
       </p>
     </div>
@@ -97,7 +97,9 @@ function pathOf(boxes: Box[], team: string | null) {
   return { path, ahead };
 }
 
-export function BracketBoard({ data, imageBase }: { data: TreeData; imageBase: string }) {
+/** `imageBase`: where the downloadable images are, or null for a page that has none (the sample). `list`: the page has the
+ * games as a list below (#games-by-round). */
+export function BracketBoard({ data, imageBase, list = true }: { data: TreeData; imageBase: string | null; list?: boolean }) {
   const [view, setView] = useState<View>(data.whole ? "auto" : "rounds");
   const [team, setTeam] = useState<string | null>(null);
   const [fit, setFit] = useState(false);
@@ -181,10 +183,12 @@ export function BracketBoard({ data, imageBase }: { data: TreeData; imageBase: s
             {fit ? "Full size" : "Fit to screen"}
           </button>
         )}
-        <a href={`${imageBase}/share.png`} download className="btn">
-          Download image
-        </a>
-        {data.whole && (
+        {imageBase && (
+          <a href={`${imageBase}/share.png`} download className="btn">
+            Download image
+          </a>
+        )}
+        {imageBase && data.whole && (
           <a href={`${imageBase}/full.png`} download className="btn">
             Full-size image
           </a>
@@ -200,6 +204,12 @@ export function BracketBoard({ data, imageBase }: { data: TreeData; imageBase: s
           {copied ? "Link copied" : "Copy link"}
         </button>
         <ShareButton title={`${data.name} bracket`} className="[&>p]:sr-only" />
+        {/* The same games as a plain list, below the drawing: the way past it with a keyboard or a screen reader. */}
+        {list && (
+          <a href="#games-by-round" className="btn">
+            Games as a list
+          </a>
+        )}
       </div>
       <p data-print-hide className="mt-2 min-h-5 text-[13px] text-muted" aria-live="polite">
         {teamName ? (
@@ -252,7 +262,7 @@ export function BracketBoard({ data, imageBase }: { data: TreeData; imageBase: s
       )}
 
       <div data-rounds className={`${roundsShown} mt-2 print:hidden`}>
-        <nav aria-label={`${data.name} rounds`} className="sticky top-0 z-20 -mx-4 flex overflow-x-auto border-b-2 border-navy bg-page px-4">
+        <nav aria-label="Rounds of the drawing" className="sticky top-0 z-20 -mx-4 flex overflow-x-auto border-b-2 border-navy bg-page px-4">
           {data.rounds.map((r, i) => (
             <button key={r.round} type="button" aria-current={i === current ? "true" : undefined} onClick={() => goRound(i)} className={`${btn(i === current)} shrink-0 font-num text-[16px] uppercase tracking-wide`}>
               {r.label}
@@ -261,7 +271,7 @@ export function BracketBoard({ data, imageBase }: { data: TreeData; imageBase: s
         </nav>
         <div ref={strip} onScroll={onStrip} className="relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-3">
           {data.rounds.map((r) => (
-            <section key={r.round} aria-label={r.label} className="w-[85%] max-w-[360px] shrink-0 snap-start">
+            <div key={r.round} role="group" aria-label={r.label} className="w-[85%] max-w-[360px] shrink-0 snap-start">
               <h3 className="sr-only">{r.label}</h3>
               <ul className="grid gap-3">
                 {r.ids.map((id) => (
@@ -270,7 +280,7 @@ export function BracketBoard({ data, imageBase }: { data: TreeData; imageBase: s
                   </li>
                 ))}
               </ul>
-            </section>
+            </div>
           ))}
         </div>
       </div>
