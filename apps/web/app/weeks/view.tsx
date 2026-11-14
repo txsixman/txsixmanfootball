@@ -46,7 +46,7 @@ function GameLink({ g }: { g: Games }) {
     <Link
       href={g.href}
       prefetch={false}
-      aria-label={`${g.away} at ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
+      aria-label={`${g.away} vs ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
       className="block min-h-11 py-0.5 text-ink hover:text-navy"
     >
       {line(g.away, g.awayScore)}
@@ -125,10 +125,10 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
           .map(([o, played]) => ({ href: played.some((w) => w.number === week) ? weekHref(season, week, o) : weekHref(season, played.at(-1)!.number, o), label: o.label }))}
         current={weekHref(season, week, org)}
       />
-      {seasons.length > 1 && <TabNav label="Season" tabs={seasonTabs} current={weekHref(season, week, org)} />}
+      {seasons.length > 1 && <TabNav label="Season" wrap tabs={seasonTabs} current={weekHref(season, week, org)} />}
       <WeekStrip prefetch={false} weeks={weeks.map((w) => ({ number: w.number, href: weekHref(season, w.number, org), label: `Week ${w.number}, from ${weekLabel(w.monday)}`, current: w.number === week }))} />
       <p className="mt-3 text-[13px] text-muted">
-        Scores are not confirmed here and may change, so no game below names a winner. Away team first. Rankings and projections use the
+        Away team first. Scores may be corrected if a mistake is found. Rankings and projections use the
         ratings at the end of the week before.
       </p>
 

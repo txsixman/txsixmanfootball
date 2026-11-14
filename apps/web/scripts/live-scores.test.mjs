@@ -14,6 +14,9 @@ const REFERENCE = z.object({
   home_score: z.number().int().min(0).max(200),
   away_score: z.number().int().min(0).max(200),
   period: z.string().min(1).max(12).regex(/^[A-Za-z0-9 ]+$/).nullable(),
+  // Anything but m:ss is no clock (null): a bad clock never drops the row.
+  clock: z.preprocess((v) => (typeof v === "string" && v.length <= 5 && /^\d{1,2}:[0-5]\d$/.test(v) ? v : null), z.string().nullable()).optional(),
+  finished: z.boolean().optional(),
   read_at: z.iso.datetime({ offset: true }),
 });
 
@@ -28,6 +31,8 @@ test("the hand-written check keeps and drops exactly the rows the Zod schema did
     home_score: [0, 200, 201, -1, 1.5, -0, NaN, Infinity, "28", null, 2 ** 53, true],
     away_score: [0, 199, 200.0001, -0.5, undefined],
     period: [null, "", " ", "OT", "Q4 0 12", "x".repeat(12), "x".repeat(13), "<b>", "Q3\n", "Ⅲ", 3, undefined, false],
+    finished: [true, false, "true", 1, 0, null],
+    clock: [null, "4:12", "0:09", "12:00", "99:59", "4:60", "412", "4:1", "123:00", ":12", "4:12 ", "4:12\n", "", "Q3", 412, false],
     read_at: [
       "2026-11-13T23:40:00Z", "2026-11-13T23:40:00.1Z", "2026-11-13T23:40:00.123456789-05:00", "2026-11-13T23:40Z",
       "2026-11-13T23:40:00", "2026-11-13T24:00:00Z", "2026-11-13T23:60:00Z", "2026-11-13T23:40:60Z", "2026-11-13t23:40:00Z",
@@ -128,4 +133,69 @@ test("the request calls the live_scores function with the public key, the one pu
   } finally {
     globalThis.fetch = real;
   }
+});
+
+test("the board shows a live game as Live: the read's period and scores in its own cells, unconfirmed, its projection kept", async () => {
+  const { asLive } = await import("../lib/live-scores.ts");
+  const { winnerOf } = await import("../lib/score-display.ts");
+  const game = {
+    id: "g", date: "2026-11-13", league: "UIL DI · Bi-district", home: { name: "Salt Fork" }, away: { name: "Cedar Gap" },
+    homeScore: null, awayScore: null, state: "scheduled", status: "Fri 11/13", kickoff: "2026-11-14T01:00:00Z",
+    verification: "none", projected: "Salt Fork by 3", projectedMargin: 3, venue: "",
+  };
+  const live = { away: { name: "Cedar Gap", score: 47 }, home: { name: "Salt Fork", score: 45 }, period: "OT", readAt: new Date() };
+  const shown = asLive(game, live);
+  assert.equal(shown.state, "live");
+  assert.equal(shown.status, "OT");
+  assert.deepEqual([shown.awayScore, shown.homeScore], [47, 45]);
+  assert.equal(shown.verification, "unconfirmed");
+  assert.equal(shown.projected, "Salt Fork by 3", "the projection from before the game stays beside the score (ADR 0044)");
+  assert.equal(shown.projectedMargin, 3);
+  assert.equal(winnerOf(shown), null, "a live score names no winner");
+  assert.equal(shown.kickoff, game.kickoff, "the rest of the game is kept");
+  assert.equal(game.state, "scheduled", "the game itself is not changed");
+  assert.equal(asLive(game, { ...live, period: null }).status, "", "no period: the status cell reads Live alone");
+});
+
+test("the live status beside the score: period, time left when read, and when it was read, in Central", async () => {
+  const { liveStatus } = await import("../lib/live-scores.ts");
+  const game = { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" };
+  const at = "2026-11-14T01:42:30Z"; // 7:42 PM in Central
+  const view = (over) => liveView(parseLiveRows([row({ read_at: at, ...over })]), game, Date.parse(at));
+  assert.equal(liveStatus(view({})), "Q3 · as of 7:42 PM CT", "no clock column yet: the time left is left out");
+  assert.equal(liveStatus(view({ clock: null })), "Q3 · as of 7:42 PM CT");
+  assert.equal(liveStatus(view({ clock: "4:12" })), "Q3 · 4:12 left · as of 7:42 PM CT");
+  assert.equal(liveStatus(view({ period: null, clock: "0:09" })), "Live · 0:09 left · as of 7:42 PM CT");
+  // A clock that fails, whatever way, is no clock: the row and its score stay, the time left is left out.
+  for (const bad of ["", "4:60", "412", "4:12 ", "<b>", "Q3", 412, false, {}]) {
+    assert.equal(liveStatus(view({ clock: bad })), "Q3 · as of 7:42 PM CT", JSON.stringify(bad));
+  }
+  // A bad score or team still drops the row.
+  assert.equal(view({ clock: "4:12", home_score: 500 }), null);
+  assert.equal(view({ clock: "4:12", home: "someone-else" }), null);
+});
+
+test("a finished live row is a final: Final with the winner marked, as of the read, never Live (ADR 0043)", async () => {
+  const { asLive, liveStatus } = await import("../lib/live-scores.ts");
+  const { winnerOf } = await import("../lib/score-display.ts");
+  const at = "2026-11-14T03:45:00Z"; // 9:45 PM in Central
+  const live = liveView(parseLiveRows([row({ read_at: at, period: null, finished: true })]), { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" }, Date.parse(at));
+  assert.equal(live.finished, true);
+  assert.equal(liveStatus(live), "Final · as of 9:45 PM CT");
+  const game = {
+    id: "g", date: "2026-11-13", league: "UIL DI · Bi-district", home: { name: "Salt Fork" }, away: { name: "Cedar Gap" },
+    homeScore: null, awayScore: null, state: "scheduled", status: "Fri 11/13", verification: "none", projected: "Salt Fork by 3", projectedMargin: 3,
+  };
+  const shown = asLive(game, live);
+  assert.equal(shown.state, "final", "it sits with the finals, not under Live");
+  assert.equal(shown.status, "Final");
+  assert.equal(shown.verification, "confirmed", "a final is confirmed (ADR 0040)");
+  assert.deepEqual([shown.awayScore, shown.homeScore], [14, 28]);
+  assert.equal(shown.projected, "Salt Fork by 3", "the projection stays, beside the final (ADR 0044)");
+  assert.equal(winnerOf(shown), "home", "the winner is marked");
+  // A game under way stays unconfirmed with no winner, its projection kept too.
+  const under = asLive(game, { ...live, finished: false });
+  assert.deepEqual([under.state, under.verification, winnerOf(under), under.projected], ["live", "unconfirmed", null, "Salt Fork by 3"]);
+  // A row with no flag (the MaxPreps reader's, or one written before migration 0019) is under way.
+  assert.equal(liveView(parseLiveRows([row({ read_at: at })]), { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" }, Date.parse(at)).finished, false);
 });

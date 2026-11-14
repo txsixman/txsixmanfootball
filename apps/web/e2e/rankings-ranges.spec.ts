@@ -155,8 +155,8 @@ test("the scorecard on /rankings/how: said versus happened by season, phase and 
   await page.goto("/rankings/how");
   const scorecard = page.getByRole("region", { name: "Said versus happened" });
   await expect(scorecard.getByRole("img")).toBeVisible();
-  const table = scorecard.getByRole("table", { name: /chance the ratings gave, against how often the favorite won/ });
-  await expect(table.getByRole("columnheader")).toHaveText(["Group", "Games", "Ratings said", "Favorite won"]);
+  const table = scorecard.getByRole("table", { name: /chance the ratings gave, against how often the projected team won/ });
+  await expect(table.getByRole("columnheader")).toHaveText(["Group", "Games", "Ratings said", "Projected team won"]);
   for (const label of ["2022", "2026", "Regular season", "Playoffs", "UIL", "TAPPS"]) await expect(table.getByRole("rowheader", { name: label, exact: true })).toBeVisible();
   for (const r of await table.locator("tbody tr").all()) {
     const cells = (await r.locator("th, td").allInnerTexts()).map((t) => t.trim());
@@ -166,7 +166,7 @@ test("the scorecard on /rankings/how: said versus happened by season, phase and 
     expect(Math.abs(said - won), cells[0]).toBeLessThan(12); // honest within a loose margin, even for the smallest group
   }
   await scorecard.getByText("Regular season and playoffs, by band").click();
-  const bands = scorecard.getByRole("table", { name: /by band of the favorite.s chance, regular season and playoffs/i });
+  const bands = scorecard.getByRole("table", { name: /by band of the projected team.s chance, regular season and playoffs/i });
   await expect(bands.getByRole("columnheader")).toHaveText(["Chance said", "Regular season", "Playoffs"]);
   await expect(bands.getByRole("row")).toHaveCount(7); // header and six bands
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);

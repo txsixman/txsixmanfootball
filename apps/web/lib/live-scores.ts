@@ -4,7 +4,8 @@ import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-public.ts";
 // Live scores during a game (migration 0016, ADR 0021). Results watch writes the score of each game under way to the
 // table live_score every 10 minutes; the browser reads it through the function live_scores() with Supabase's public key
 // (lib/supabase-public.ts, the one push uses; no sign-in setting is involved) and shows it beside the
-// game. It is the read's score, not a result: always "Unconfirmed", never a winner or leader. Imports two plain files
+// game. While under way it is the read's score, not a result: "Unconfirmed", never a winner or leader. Once the read
+// says it is over (`finished`, ADR 0043) it is a final: "Final", the winner marked (ADR 0040). Imports two plain files
 // only, so the node tests run it as it is.
 
 /** One row of live_score, checked. A row that fails is dropped, never shown. */
@@ -15,6 +16,11 @@ export type LiveRow = {
   home_score: number;
   away_score: number;
   period: string | null;
+  /** Time left in the period ("4:12"), when the reader has it; absent until it does (the page then leaves it out). */
+  clock?: string | null;
+  /** The game is over (live_scores(), migrations 0019 and 0020, ADR 0043): the feed says finished, or it is late and its
+   * score has not changed for an hour. Shown as "Final" with the winner marked until the stored final replaces it. */
+  finished?: boolean;
   read_at: string;
 };
 
@@ -24,6 +30,9 @@ export type LiveRow = {
 const text = (v: unknown, max: number): v is string => typeof v === "string" && v.length <= max;
 const score = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 0 && v <= 200;
 const period = (v: unknown): v is string | null => v === null || (text(v, 12) && /^[A-Za-z0-9 ]+$/.test(v));
+/** Minutes and seconds ("4:12", "0:09", "12:00"), or null for anything else: a clock that fails (empty, malformed, not a
+ * string) is no clock, so it never hides the score; only the time left is left out. */
+const clockOf = (v: unknown): string | null => (text(v, 5) && /^\d{1,2}:[0-5]\d$/.test(v) ? v : null);
 /** An RFC 3339 time with seconds and a Z or ±hh:mm offset, on a real calendar day (Zod's `z.iso.datetime({ offset: true })`). */
 const ISO_TIME = /^(\d{4})-(\d\d)-(\d\d)T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
 function isoTime(v: unknown): v is string {
@@ -37,9 +46,9 @@ function isoTime(v: unknown): v is string {
 /** The row's own fields when every one passes (anything else on it is dropped), else null. */
 function liveRow(r: unknown): LiveRow | null {
   if (typeof r !== "object" || r === null || Array.isArray(r)) return null;
-  const { game_key, home, away, home_score, away_score, period: p, read_at } = r as Record<string, unknown>;
-  if (!text(game_key, 200) || !text(home, 80) || !text(away, 80) || !score(home_score) || !score(away_score) || !period(p) || !isoTime(read_at)) return null;
-  return { game_key, home, away, home_score, away_score, period: p, read_at };
+  const { game_key, home, away, home_score, away_score, period: p, clock, finished, read_at } = r as Record<string, unknown>;
+  if (!text(game_key, 200) || !text(home, 80) || !text(away, 80) || !score(home_score) || !score(away_score) || !period(p) || !(finished === undefined || typeof finished === "boolean") || !isoTime(read_at)) return null;
+  return { game_key, home, away, home_score, away_score, period: p, ...(clock !== undefined && { clock: clockOf(clock) }), ...(finished !== undefined && { finished }), read_at };
 }
 
 /** A row read longer ago than this is not shown: the writer replaces rows every 10 minutes, so an older one means the
@@ -70,7 +79,7 @@ export async function fetchLiveRows(signal?: AbortSignal, supabase = { url: SUPA
 }
 
 /** What a page shows for one game under way: the two scores in the page's own order (away listed first, as the pages do). */
-export type LiveView = { away: { name: string; score: number }; home: { name: string; score: number }; period: string | null; readAt: Date };
+export type LiveView = { away: { name: string; score: number }; home: { name: string; score: number }; period: string | null; clock: string | null; finished: boolean; readAt: Date };
 
 /** The live row for a game, with each score on the right team (the row's home and away may differ from the page's: a
  * neutral site has no real home), or null when there is none, or the row is too old, its teams are not this game's, or it is 0-0 with no period. */
@@ -85,9 +94,48 @@ export function liveView(rows: LiveRow[], game: { date?: string; home: string; a
   if (h === null || a === null || home === away) return null;
   // 0-0 with no period may be a game that has not kicked off: not shown as live (the reader skips it too, maxpreps.mjs liveRows).
   if (h === 0 && a === 0 && row.period === null) return null;
-  return { away: { name: game.away, score: a }, home: { name: game.home, score: h }, period: row.period, readAt };
+  return { away: { name: game.away, score: a }, home: { name: game.home, score: h }, period: row.period, clock: row.clock ?? null, finished: row.finished === true, readAt };
 }
 
 /** "7:42 PM CT": when the read was made, in the time zone the games are played in. */
 export const checkedAt = (at: Date) =>
   `${new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" }).format(at)} CT`;
+
+/** Where a game under way stands, beside its score: "Q3 · 4:12 left · as of 7:42 PM CT". The period reads "Live" when the
+ * read has none, and the time left is left out until the reader has it. A finished game: "Final · as of 9:45 PM CT"
+ * (ADR 0043), never "In progress". */
+export const liveStatus = (live: LiveView) =>
+  live.finished
+    ? `Final · as of ${checkedAt(live.readAt)}`
+    : [live.period ?? "Live", live.clock && `${live.clock} left`, `as of ${checkedAt(live.readAt)}`].filter(Boolean).join(" · ");
+
+/** The fields of a game the board needs to show it live (lib/demo-games.ts Game; named here so this file stays plain). */
+type BoardGame = {
+  state: "live" | "final" | "scheduled" | "postponed";
+  status: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  verification: "confirmed" | "unconfirmed" | "disputed" | "none";
+  projected?: string;
+  projectedMargin?: number;
+};
+
+/**
+ * A game with no final as the scores board shows it while a live row says it is under way: Live, the read's period as its
+ * status, the read's scores in its own score cells (each on the right team), and unconfirmed, so it is dashed and names no
+  * winner (lib/score-display.ts winnerOf). A finished row is a final (ADR 0043): "Final", confirmed, the winner marked
+  * (ADR 0040). Its projection from before the game stays either way, beside the outcome (ADR 0044): "Projected: … · Now:
+  * 14–28 · Unconfirmed" under way, "Projected: … · Final: <team> by 14" once finished.
+ */
+export function asLive<G extends BoardGame>(g: G, live: LiveView): G {
+  return {
+    ...g,
+    // A finished game is a final (ADR 0043): it sits with the other finals, "Final" with the winner marked, until the
+    // stored final replaces it. If the two differ, the stored final wins: the game then has a final and takes no live row.
+    state: live.finished ? "final" : "live",
+    status: live.finished ? "Final" : (live.period ?? ""),
+    homeScore: live.home.score,
+    awayScore: live.away.score,
+    verification: live.finished ? "confirmed" : "unconfirmed",
+  };
+}

@@ -3,7 +3,7 @@ import type { SeasonResult } from "./season-results";
 
 // The week in review's pure rules: which games are closest, which results sit furthest from the week-before projection,
 // which ratings moved most, and which teams a playoff round sent on. No file access, so the node tests run it as it is.
-// Words (ADRs 0004, 0011, 0013): a game row never names a winner from a robot-read score, so a result is described by how far
+// Words (ADRs 0004, 0013): a result is described by how far
 // it sits from the projection, never by who won; advancement is read from the later round's own games, as the bracket pages
 // show it. Ratings, projected margin and win probability are the only numbers.
 

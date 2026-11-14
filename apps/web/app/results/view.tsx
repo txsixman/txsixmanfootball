@@ -3,7 +3,9 @@ import Link from "next/link";
 import { loadAlignments, programFor } from "@/lib/alignments";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
-import { pregame } from "@/lib/pregame";
+import { isDisputed, loadDisputed } from "@/lib/disputed";
+import { projectedLine, resultOutcome } from "@/lib/outcome";
+import { pregameShown } from "@/lib/pregame";
 import { projectionText } from "@/lib/projection";
 import { loadWeeks, resultSeasons, weekLabel, type Week } from "@/lib/weeks";
 import { TabNav } from "../tab-nav";
@@ -14,12 +16,13 @@ import { seasonHref, weekHref } from "./paths";
 /** One week of one organization's results: the games with a team in it, whoever the other team is (ADR 0012). Robot-read
  * scores are unconfirmed, so no row names a winner (ADR 0004, ADR 0008). */
 export async function ResultsWeek({ org, season, week }: { org: Org; season: number; week: number }) {
-  const [weeks, seasons, alignments, identities, before, orgSeasons] = await Promise.all([
+  const [weeks, seasons, alignments, identities, { byId: before }, disputed, orgSeasons] = await Promise.all([
     loadWeeks(season, org),
     resultSeasons(org),
     loadAlignments(),
     loadIdentities(),
-    pregame(season),
+    pregameShown(season),
+    loadDisputed(season),
     Promise.all(ORGS.map(async (o) => [o, await resultSeasons(o)] as const)),
   ]);
   const shown = weeks.find((w) => w.number === week) as Week;
@@ -44,7 +47,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
   const scores = (g: (typeof shown.games)[number]) => (
     <Link
       href={g.href}
-      aria-label={`${g.away} at ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
+      aria-label={`${g.away} vs ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
       className="flex shrink-0 items-center gap-1 pl-2 hover:bg-panel"
     >
       <span className="flex flex-col text-right font-num text-[20px] font-bold tabular-nums">
@@ -67,6 +70,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
       {seasons.length > 1 && (
         <TabNav
           label="Season"
+          wrap
           tabs={seasons.map((s) => ({ href: seasonHref(s, seasons[0], org), label: String(s) }))}
           current={seasonHref(season, seasons[0], org)}
         />
@@ -87,15 +91,19 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
                   {scores(g)}
                 </div>
                 {g.forfeit && <p className="pb-1 pl-[3rem] text-[13px] font-semibold text-muted">Forfeit</p>}
-                {/* What the ratings said the week before; it names no winner of this game (ADR 0004). */}
-                {before.has(g.id) && <p className="pb-1 pl-[3rem] text-[13px] text-muted">Projected: {projectionText(before.get(g.id)!)}</p>}
+                {/* What the ratings said the week before, beside what happened (ADR 0044). */}
+                {before.has(g.id) && (
+                  <p data-projected className="pb-1 pl-[3rem] text-[13px] text-muted">
+                    {projectedLine(projectionText(before.get(g.id)!), resultOutcome(g, isDisputed(disputed, g.date, g.home, g.away)))}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
         </section>
       ))}
       <p className="mt-4 text-[13px] text-muted">
-        Away team first. Scores are not confirmed here and may change. Projections use both teams&rsquo; ratings from the week
+        Away team first. Scores may be corrected if a mistake is found. Projections use both teams&rsquo; ratings from the week
         before, once each has played four games.
       </p>
     </section>
