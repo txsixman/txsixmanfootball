@@ -83,9 +83,18 @@ test("a game under way shows its live line on the game page and the board: Live,
   // The page still names nobody: no winner mark anywhere on it.
   await expect(page.locator("body")).not.toContainText(/winner/i);
 
+  // The board lists it under Live, counted in the jump bar, its score in its own cells (dashed), Unconfirmed, no projection.
   const row = await openBoard(page, f);
-  await expect(row.locator("[data-live-score]")).toContainText("Live · Q3 · 14–28 · Unconfirmed");
-  expect((await row.innerText()).toLowerCase()).not.toMatch(/\bwinner\b/);
+  await expect(page.locator("#live").locator(`li[data-game="${f.id}"]`)).toBeVisible();
+  await expect(page.locator("#later").locator(`li[data-game="${f.id}"]`)).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Jump to" }).getByRole("link", { name: /Live\s*1/ })).toBeVisible();
+  const text = (await row.innerText()).replace(/\s+/g, " ");
+  expect(text).toMatch(/^Live Q3 /i);
+  await expect(row.locator(".decoration-dashed")).toHaveText(["14", "28"]);
+  expect(text).toMatch(/Unconfirmed/i);
+  expect(text).not.toMatch(/Projected|no score|In progress/i);
+  await expect(row.locator("[data-live-score]")).toHaveText(/^Checked \d{1,2}:\d{2} (AM|PM) CT$/);
+  expect(text.toLowerCase()).not.toMatch(/\bwinner\b/);
   await expect(row.locator("[aria-hidden='true']", { hasText: "◀" })).toHaveCount(0);
 });
 

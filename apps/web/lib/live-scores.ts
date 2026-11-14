@@ -91,3 +91,35 @@ export function liveView(rows: LiveRow[], game: { date?: string; home: string; a
 /** "7:42 PM CT": when the read was made, in the time zone the games are played in. */
 export const checkedAt = (at: Date) =>
   `${new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" }).format(at)} CT`;
+
+/** The fields of a game the board needs to show it live (lib/demo-games.ts Game; named here so this file stays plain). */
+type BoardGame = {
+  state: "live" | "final" | "scheduled" | "postponed";
+  status: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  verification: "confirmed" | "unconfirmed" | "disputed" | "none";
+  projected?: string;
+  projectedMargin?: number;
+  upset?: boolean;
+};
+
+/**
+ * A game with no final as the scores board shows it while a live row says it is under way: Live, the read's period as its
+ * status, the read's scores in its own score cells (each on the right team), and unconfirmed, so it is dashed and names no
+ * winner (lib/score-display.ts winnerOf). Its projection is dropped: a pre-game estimate beside a score under way would
+ * read as a second answer.
+ */
+export function asLive<G extends BoardGame>(g: G, live: LiveView): G {
+  return {
+    ...g,
+    state: "live",
+    status: live.period ?? "",
+    homeScore: live.home.score,
+    awayScore: live.away.score,
+    verification: "unconfirmed",
+    projected: undefined,
+    projectedMargin: undefined,
+    upset: undefined,
+  };
+}

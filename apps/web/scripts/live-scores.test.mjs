@@ -129,3 +129,26 @@ test("the request calls the live_scores function with the public key, the one pu
     globalThis.fetch = real;
   }
 });
+
+test("the board shows a live game as Live: the read's period and scores in its own cells, unconfirmed, no projection", async () => {
+  const { asLive } = await import("../lib/live-scores.ts");
+  const { winnerOf } = await import("../lib/score-display.ts");
+  const game = {
+    id: "g", date: "2026-11-13", league: "UIL DI · Bi-district", home: { name: "Salt Fork" }, away: { name: "Cedar Gap" },
+    homeScore: null, awayScore: null, state: "scheduled", status: "Fri 11/13", kickoff: "2026-11-14T01:00:00Z",
+    verification: "none", projected: "Salt Fork by 3", projectedMargin: 3, upset: true, venue: "",
+  };
+  const live = { away: { name: "Cedar Gap", score: 47 }, home: { name: "Salt Fork", score: 45 }, period: "OT", readAt: new Date() };
+  const shown = asLive(game, live);
+  assert.equal(shown.state, "live");
+  assert.equal(shown.status, "OT");
+  assert.deepEqual([shown.awayScore, shown.homeScore], [47, 45]);
+  assert.equal(shown.verification, "unconfirmed");
+  assert.equal(shown.projected, undefined);
+  assert.equal(shown.projectedMargin, undefined);
+  assert.equal(shown.upset, undefined);
+  assert.equal(winnerOf(shown), null, "a live score names no winner");
+  assert.equal(shown.kickoff, game.kickoff, "the rest of the game is kept");
+  assert.equal(game.state, "scheduled", "the game itself is not changed");
+  assert.equal(asLive(game, { ...live, period: null }).status, "", "no period: the status cell reads Live alone");
+});
