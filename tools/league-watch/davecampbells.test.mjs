@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { DETAIL_COLUMNS, kickoffRows, mergeKickoffs, missingDetails } from "./davecampbells.mjs";
+import { DETAIL_COLUMNS, kickoffRows, mergeKickoffs, missingDetails, opponentRows, placeFields } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLate, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -585,4 +585,17 @@ test("mergeLive keeps late when either source's row says so (ADR 0043)", () => {
   assert.equal(mergeLive([r(28)], [r(21, true)])[0].late, true, "the higher score wins, the late flag is kept");
   assert.equal(mergeLive([r(28)], [r(21, true)])[0].home_score, 28);
   assert.equal(mergeLive([r(28)], [r(21)])[0].late, undefined);
+});
+
+test("--opponents lists a team's opponents by slug and school name, once each, never the team itself", () => {
+  const game = (a, b) => ({ participants: [{ websiteUrl: `/team/${a}`, schoolName: a.toUpperCase(), score: 7 }, { websiteUrl: `https://x.test/team/${b}/`, schoolName: "Wren Academy" }] });
+  const rows = opponentRows([game("lark-owls", "wren-academy-wrens"), game("lark-owls", "wren-academy-wrens"), game("finch-falcons", "lark-owls"), { participants: null }, { participants: [{ websiteUrl: "/team/lark-owls" }, { schoolName: "Robin Prep" }, {}] }], "lark-owls");
+  assert.deepEqual(rows, [{ slug: "", school: "Robin Prep" }, { slug: "finch-falcons", school: "FINCH-FALCONS" }, { slug: "wren-academy-wrens", school: "Wren Academy" }]);
+  assert.ok(!JSON.stringify(rows).includes("7"), "no score");
+});
+
+test("--about shows only a team answer's name and place fields", () => {
+  const answer = { teamId: "t1", schoolName: "Wren Academy", logoUrl: "https://x.test/l.png", school: { name: "Wren Academy", city: "Lark", state: "TX", websiteUrl: "https://x.test" }, ranking: 3, records: [{ city: "no" }] };
+  assert.deepEqual(placeFields(answer), ["schoolName: Wren Academy", "school.name: Wren Academy", "school.city: Lark", "school.state: TX"]);
+  assert.deepEqual(placeFields(null), []);
 });

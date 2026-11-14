@@ -34,7 +34,6 @@ export type Game = {
   projected?: string;
   /** The projected margin in points, for ordering games by how close they look. */
   projectedMargin?: number;
-  upset?: boolean;
   stream?: string;
   venue: string;
   quarters?: { home: number[]; away: number[] };
@@ -82,7 +81,7 @@ export const demoGames: Game[] = [
   },
   {
     id: "g4", league: "UIL DII · Bi-District", home: lonePost, away: stillwater, homeScore: 38, awayScore: 34,
-    state: "final", status: "Final", verification: "confirmed", sources: "2 sources: coach, reporter", upset: true,
+    state: "final", status: "Final", verification: "confirmed", sources: "2 sources: coach, reporter",
     projected: "Stillwater Draw by 18", venue: "Panther Field, Lone Post",
     quarters: { home: [8, 14, 8, 8], away: [12, 6, 8, 8] },
   },

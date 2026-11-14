@@ -121,7 +121,7 @@ test("a state final between the two shows in its own section, and a pair with no
   await expect(page.locator("section[aria-labelledby=finals]")).toHaveCount(0);
 });
 
-test("the projection uses the words rating, projected margin and win probability, and links to Matchup", async ({ page }) => {
+test("the projection uses the words rating, projected margin and chance to win, and links to Matchup", async ({ page }) => {
   await open(page, JAYTON);
   const section = page.getByRole("region", { name: "If they met now" });
   await expect(section).toContainText(/Projected margin: (Guthrie|Jayton) by (\d+|45\+|less than 1) · (>99%|<1%|\d+%) chance to win/);
