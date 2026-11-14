@@ -73,3 +73,8 @@ Not in an ADR:
   (7-7) stands, and a forfeit is still written 1-0 or 2-0. Before this, 0 to 4 such rows a season (2016 to 2026) were
   read as finals (Nov 13, 2026). The store (ADR 0031) removes such a row from `games.csv`, which holds played games
   only, and writes it blank in `playoffs.csv`, which keeps unplayed bracket games (Nov 13, 2026).
+- **Push alerts tied to the account** (ADR 0054, migration 0023): a signed-in fan's browser subscription is linked to the
+  account (`/api/push/link`, on the fan's own session), its own follows merge onto the account, and the sender alerts a
+  linked browser for the account's follows, one alert a browser. Sign-out deletes that browser's subscription (kept,
+  unlinked, only for follows that did not fit); deleting the account deletes them too. Signed-out browsers unchanged
+  (Nov 14, 2026).
