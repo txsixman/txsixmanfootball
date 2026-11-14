@@ -62,6 +62,7 @@ function setup() {
   exe(path.join(bin, "node"), `#!/usr/bin/env bash
 case "$1" in
   tools/league-watch/publish.mjs) mkdir -p "$3" && cp "$2/games.csv" "$3/games.csv" ;;
+  tools/league-watch/davecampbells.mjs) [ "$2" = --merge-details ] && [ "$4" = --out ] && cp "$3" "$5" ;;
   apps/web/scripts/check-data.mjs)
     if [ -n "\${STUB_INTEGRITY:-}" ]; then echo "$STUB_INTEGRITY" >> "$INTEGRITY_REPORT"; fi
     exit "\${STUB_CHECK_EXIT:-0}" ;;
@@ -258,4 +259,22 @@ test("only games.csv and playoffs.csv are staged: a stray capture in the public 
   assert.equal(readFileSync(t.log, "utf8"), "private\npublic\n");
   const pushed = git(t.root, "--git-dir", path.join(t.root, "public.git"), "ls-tree", "-r", "--name-only", "main", `data/seed/${DIR}`);
   assert.deepEqual(pushed.split("\n"), [`data/seed/${DIR}/games.csv`]);
+});
+
+test("game details read earlier in the run are merged into the newest main's file and committed with the results", () => {
+  const t = setup();
+  const details = path.join(t.root, "details.csv");
+  writeFileSync(details, "date,home,away,kickoff_utc,site_name,site_city\n2026-11-13,Kress,Spur,2026-11-14T01:00:00Z,Bird Field,Lark\n");
+  const r = run(t, { DETAILS: details });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(remoteFile(t, "public", `data/seed/game-details/${YEAR}.csv`), /Kress,Spur,2026-11-14T01:00:00Z,Bird Field,Lark/);
+  assert.equal(readFileSync(t.log, "utf8"), "public\n", "nothing new for the private repo");
+});
+
+test("no game details read: no details file is written", () => {
+  const t = setup();
+  newCapture(t);
+  const r = run(t, { DETAILS: path.join(t.root, "absent.csv") });
+  assert.equal(r.status, 0, r.stderr);
+  assert.throws(() => remoteFile(t, "public", `data/seed/game-details/${YEAR}.csv`));
 });

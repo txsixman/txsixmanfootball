@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { DETAIL_COLUMNS, kickoffRows, mergeKickoffs } from "./davecampbells.mjs";
+import { DETAIL_COLUMNS, kickoffRows, mergeKickoffs, missingDetails } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLate, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -485,9 +485,63 @@ test("kickoffs: a bracket game still to play gets the feed's kickoff in UTC, the
   const text = mergeKickoffs("", rows);
   assert.equal(text, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,,\n`);
   assert.doesNotMatch(text, /davecampbells|https?:/i);
-  // A fresh value wins over a kept one, a blank keeps it; other kept rows stay.
+  // A filled value is never overwritten (ADR 0041): a fresh value only fills a blank; other kept rows stay.
   const kept = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`;
-  assert.equal(mergeKickoffs(kept, rows), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
+  assert.equal(mergeKickoffs(kept, rows), kept);
+  const blank = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,,,\n`;
+  const sited = [{ ...rows[0], site_name: "Bird Field", site_city: "Lark" }];
+  assert.equal(mergeKickoffs(blank, sited), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n`);
+});
+
+test("kickoffs: the site is the feed's venue name and city, plain words only, or blank", () => {
+  const due = [{ game_date: "2026-11-13", home: "Lark", away: "Wren", home_score: "", away_score: "" }];
+  const at = (venue) =>
+    kickoffRows([finalItem("wren-wrens", "lark-owls", null, null, { status: "Upcoming", scheduledKickoff: "2026-11-14T01:00:00Z", venue })], { due, ours: oursMap })[0];
+  const site = (venue) => [at(venue).site_name, at(venue).site_city];
+  assert.deepEqual(site({ locationName: "Bird Field", city: "Lark", state: "TX" }), ["Bird Field", "Lark"]);
+  // No location name: the site label; a bad location name falls back the same way. Nothing else of the venue is kept.
+  assert.deepEqual(site({ siteLabel: "Wren Stadium", city: "Lark" }), ["Wren Stadium", "Lark"]);
+  assert.deepEqual(site({ locationName: "<b>x</b>", siteLabel: "Wren Stadium", city: "Lark" }), ["Wren Stadium", "Lark"]);
+  const full = at({ locationName: "Bird Field", siteLabel: "Wren Stadium", addressLine1: "1 Main St", city: "Lark", postalCode: "79999", latitude: 33.1, longitude: -100.2 });
+  assert.deepEqual(Object.keys(full), ["date", "home", "away", "kickoff_utc", "site_name", "site_city"]);
+  assert.doesNotMatch(Object.values(full).join(","), /Main St|79999|33\.1|-100/);
+  assert.deepEqual(site({ locationName: "  Shotwell   Stadium ", city: "Abilene" }), ["Shotwell Stadium", "Abilene"]);
+  assert.deepEqual(site({ locationName: "Field 2, North Campus", city: "Lark" }), ["Field 2 - North Campus", "Lark"], "the file has no quoting");
+  assert.deepEqual(site({ locationName: "St. Mary's (Annex) / Field & Track", city: "San Angelo" }), ["St. Mary's (Annex) / Field & Track", "San Angelo"]);
+  for (const bad of [undefined, null, {}, { city: "Lark" }, { locationName: "<b>Field</b>", city: "Lark" }, { locationName: "x".repeat(81), city: "Lark" }, { locationName: 5, city: "Lark" }]) {
+    assert.deepEqual(site(bad), ["", ""], JSON.stringify(bad));
+  }
+  assert.deepEqual(site({ locationName: "Bird Field", city: "Lark<br>" }), ["Bird Field", ""], "a bad city leaves the name");
+  // The kickoff stands either way, and the file still names no source.
+  assert.equal(at({ locationName: "Bird Field", city: "Lark" }).kickoff_utc, "2026-11-14T01:00:00Z");
+  assert.doesNotMatch(mergeKickoffs("", [at({ locationName: "Bird Field", city: "Lark" })]), /davecampbells|https?:|venue/i);
+});
+
+test("kickoffs: what is still missing is counted by league, never naming a school", () => {
+  const due = [
+    { league: "TAPPS", game_date: "2026-11-13", home: "Lark", away: "Wren", home_score: "" },
+    { league: "TAPPS", game_date: "2026-11-13", home: "Finch", away: "Heron", home_score: "" },
+    { league: "TCAF", game_date: "2026-11-14", home: "Owl", away: "Crane", home_score: "" },
+  ];
+  const text = `${DETAIL_COLUMNS}\n2026-11-13,Wren,Lark,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Owl,Crane,2026-11-14T19:00:00Z,,\n`;
+  const line = missingDetails(due, text);
+  assert.equal(line, "Still missing: a kickoff 1 (TAPPS 1); a site 2 (TAPPS 1, TCAF 1).");
+  assert.doesNotMatch(line, /Lark|Wren|Finch|Heron|Owl|Crane/);
+  assert.equal(missingDetails(due.slice(0, 1), text), "Still missing: a kickoff 0; a site 0.");
+  assert.equal(missingDetails(due, ""), "Still missing: a kickoff 3 (TAPPS 2, TCAF 1); a site 3 (TAPPS 2, TCAF 1).");
+});
+
+test("--merge-details lays an earlier read over the file without overwriting a filled value, and reads no feed", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const dir = mkdtempSync(path.join(tmpdir(), "merge-details-"));
+  const fresh = path.join(dir, "fresh.csv");
+  const out = path.join(dir, "2026.csv");
+  writeFileSync(fresh, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
+  writeFileSync(out, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:30:00Z,,\n`);
+  // No network: the feed's host is unreachable here, so a read would fail the run.
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "davecampbells.mjs"), "--merge-details", fresh, "--out", out], { encoding: "utf8", env: { ...process.env, HTTPS_PROXY: "http://127.0.0.1:9" } });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(out, "utf8"), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:30:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
 });
 
 test("merging the two sources: on the same score, the row that says finished wins, then the one with a period", () => {

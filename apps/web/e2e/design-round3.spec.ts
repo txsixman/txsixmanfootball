@@ -27,7 +27,7 @@ test("playoffs: state title chances are linked, ranked rows with the percent rea
 
 test("playoffs: a projection reads on its own line, the words rating, projected margin and win probability only", async ({ page }) => {
   await page.goto("/playoffs");
-  const first = page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|\d+)% win probability$/).first();
+  const first = page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|\d+)% chance to win$/).first();
   await expect(first).toBeVisible();
   await expect(page.locator("main")).not.toContainText(/\b(spread|odds|lines?|bets?|betting)\b/i);
 });
