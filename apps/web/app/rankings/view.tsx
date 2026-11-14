@@ -9,7 +9,6 @@ import { loadSeasonResults } from "@/lib/games";
 import { coverageLine, seasonCoverage } from "@/lib/season-coverage";
 import { rankedOrder } from "@/lib/rank-range";
 import { placeTeams } from "@/lib/rankings";
-import { loadSeasonResults } from "@/lib/games";
 import { loadRatings, ratingSeasons } from "@/lib/ratings";
 import { schedulesFor } from "@/lib/schedule-strength";
 import { playedCounts } from "@/lib/season-results";
