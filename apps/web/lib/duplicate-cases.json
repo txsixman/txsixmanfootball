@@ -1,0 +1,16 @@
+{
+  "_note": "One game listed twice (lib/duplicate-game.ts, services/ratings/rows.py classify): each case is rows [date, home, away, home score, away score] and the indexes of the rows that are later copies. Both languages are tested against this table (scripts/duplicate-game.test.mjs, services/ratings/test_duplicates.py).",
+  "cases": [
+    { "name": "same day, same score", "rows": [["2021-09-10", "Happy", "Springlake-Earth", 36, 68], ["2021-09-10", "Happy", "Springlake-Earth", 36, 68]], "duplicates": [1] },
+    { "name": "a day apart", "rows": [["2021-09-09", "Happy", "Springlake-Earth", 36, 68], ["2021-09-10", "Happy", "Springlake-Earth", 36, 68]], "duplicates": [1] },
+    { "name": "two days apart is still one game", "rows": [["2018-11-22", "Ira", "White Deer", 42, 68], ["2018-11-24", "Ira", "White Deer", 42, 68]], "duplicates": [1] },
+    { "name": "three days apart is two games", "rows": [["2018-10-19", "Bronte", "Veribest", 24, 52], ["2018-10-22", "Bronte", "Veribest", 24, 52]], "duplicates": [] },
+    { "name": "home and away swapped, each team keeps its own score", "rows": [["2022-11-25", "Abilene Christian", "Covenant Classical", 16, 26], ["2022-11-26", "Covenant Classical", "Abilene Christian", 26, 16]], "duplicates": [1] },
+    { "name": "the same scores the other way round are not the same game", "rows": [["2022-11-25", "Abilene Christian", "Covenant Classical", 16, 26], ["2022-11-26", "Covenant Classical", "Abilene Christian", 16, 26]], "duplicates": [] },
+    { "name": "a different score is a different game", "rows": [["2021-09-09", "Happy", "Springlake-Earth", 36, 68], ["2021-09-10", "Happy", "Springlake-Earth", 36, 66]], "duplicates": [] },
+    { "name": "other teams with the same score are not copies", "rows": [["2021-09-10", "Happy", "Springlake-Earth", 36, 68], ["2021-09-10", "Hart", "Kress", 36, 68]], "duplicates": [] },
+    { "name": "the earlier date stays, wherever it sits in the file", "rows": [["2021-09-10", "Happy", "Springlake-Earth", 36, 68], ["2021-09-09", "Happy", "Springlake-Earth", 36, 68]], "duplicates": [0] },
+    { "name": "a copy is judged against rows that stayed, so a run folds into its first and the next one is a new game", "rows": [["2021-09-01", "A", "B", 1, 2], ["2021-09-03", "A", "B", 1, 2], ["2021-09-05", "A", "B", 1, 2]], "duplicates": [1] },
+    { "name": "three copies a day apart fold into one", "rows": [["2021-09-01", "A", "B", 1, 2], ["2021-09-02", "A", "B", 1, 2], ["2021-09-03", "A", "B", 1, 2]], "duplicates": [1, 2] }
+  ]
+}

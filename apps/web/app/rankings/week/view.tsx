@@ -60,7 +60,7 @@ export async function WeekRankings({ wanted, org }: { wanted: string; org: Org }
         </Link>
       </nav>
       <RatingsTable rows={rows} />
-      <p className="mt-3 text-[13px] text-muted">Scores are not confirmed here and may change. Records count forfeits; ratings leave them out.</p>
+      <p className="mt-3 text-[13px] text-muted">Scores may be corrected if a mistake is found. Records count forfeits; ratings leave them out.</p>
     </section>
   );
 }

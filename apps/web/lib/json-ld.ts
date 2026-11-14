@@ -56,7 +56,7 @@ export function gameJsonLd(g: Game, { url, home, away }: { url: string; home?: {
   return {
     "@context": CONTEXT,
     "@type": "SportsEvent",
-    name: `${g.away.name} at ${g.home.name}`,
+    name: `${g.away.name} vs ${g.home.name}`,
     url,
     sport: SPORT,
     ...(g.date && { startDate: g.date }),

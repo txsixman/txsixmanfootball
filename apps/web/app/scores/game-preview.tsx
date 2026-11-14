@@ -76,7 +76,7 @@ export function GamePreviewSection({ preview, detail, projected, programs }: { p
         <Team side={away} programs={programs} />
         <Team side={home} programs={programs} />
       </div>
-      <p className="pt-1 text-[13px] leading-4 text-muted">Away team first. Records are from season scores, not confirmed here. Rank is within the team&rsquo;s organization.</p>
+      <p className="pt-1 text-[13px] leading-4 text-muted">Away team first. Rank is within the team&rsquo;s organization.</p>
       {projected && (
         <p className="pt-2 text-[17px] font-semibold leading-6 text-ink">
           {projected} <span className="block text-[13px] font-normal leading-4 text-muted">A projection, not a result.</span>
@@ -113,7 +113,7 @@ export function GamePreviewSection({ preview, detail, projected, programs }: { p
               ))}
             </ul>
             <p className="pt-1 text-[13px] leading-4 text-muted">
-              {common.rest > 0 ? `${common.shown.length} of ${common.shown.length + common.rest} common opponents shown. ` : ""}Each team&rsquo;s own score first. Scores are not confirmed here and may change.
+              {common.rest > 0 ? `${common.shown.length} of ${common.shown.length + common.rest} common opponents shown. ` : ""}Each team&rsquo;s own score first.
             </p>
           </>
         )}

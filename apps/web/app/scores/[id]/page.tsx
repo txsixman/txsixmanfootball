@@ -22,8 +22,8 @@ import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
 import { GamePreviewSection } from "../game-preview";
-import { LiveScore } from "../live-score";
-import { BigLine, Fact, Verification, type Program } from "../game-parts";
+import { GameKickoffStatus, GameLiveRead, GameScore } from "../live-game";
+import { Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 import { hasCard } from "./card/ids";
 
@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // An invented sample game stays out of search (its schools are not real).
   return {
     // The date keeps each meeting's title its own: the same two teams at the same field meet again in later seasons.
-    title: teams ? `${teams.away} at ${teams.home}${date ? `, ${mediumDate(date)}` : ""}` : "Game",
+    title: teams ? `${teams.away} vs ${teams.home}${date ? `, ${mediumDate(date)}` : ""}` : "Game",
     ...(teams && { description: gameDescription({ away: teams.away, home: teams.home, date: date && mediumDate(date), season, playoff, scheduled: !found && g?.state === "scheduled", sample }) }),
     alternates: { canonical: `/scores/${id}` },
     ...card,
@@ -138,32 +138,38 @@ export default async function GamePage({ params }: Props) {
 
   return (
     <article aria-labelledby="game-title">
-      <Breadcrumbs trail={[{ name: "Home", href: "/" }, back, { name: `${g.away.name} at ${g.home.name}`, href: `/scores/${id}` }]} />
+      <Breadcrumbs trail={[{ name: "Home", href: "/" }, back, { name: `${g.away.name} vs ${g.home.name}`, href: `/scores/${id}` }]} />
       {!sample && <JsonLd data={gameJsonLd(g, { url: `${SITE_URL}/scores/${id}`, home: programOf(g.home), away: programOf(g.away) })} />}
 
+      <GameLiveRead date={g.date} kickoff={g.kickoff} watch={!sample && !!g.date && g.state === "scheduled"}>
       <header>
         <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-red" : "bg-navy"}`}>
-          <span>{live ? "Live" : g.status}</span>
+          <span>
+            {live ? "Live" : g.status}
+            {/* A real game not yet played: its kickoff status at the moment of viewing (ADR 0036). */}
+            {!live && !sample && g.state === "scheduled" && g.date && (
+              <>
+                {" · "}
+                <GameKickoffStatus g={{ ...g, date: g.date }} />
+              </>
+            )}
+          </span>
           {live && <span>{g.status}</span>}
         </div>
         <VerifyBar g={g} />
         <h1 id="game-title" className="sr-only">
-          {g.away.name} at {g.home.name}
+          {g.away.name} vs {g.home.name}
         </h1>
         <p className="px-3 pt-2 text-[12px] font-bold uppercase tracking-wider text-muted">
           {g.league}
           {sample && ". Sample game, invented schools."}
         </p>
-        <ShareButton title={`${g.away.name} at ${g.home.name} | ${SITE_NAME}`} className="px-3 pt-1" />
+        <ShareButton title={`${g.away.name} vs ${g.home.name} | ${SITE_NAME}`} className="px-3 pt-1" />
       </header>
 
-      {/* A game with no final yet may be under way: its live score is read in the browser (ADR 0021). */}
-      {!sample && g.date && g.state === "scheduled" && <LiveScore date={g.date} home={g.home.name} away={g.away.name} />}
-
-      <section aria-label="Score" className="px-3">
-        <BigLine g={g} side="away" program={programOf(g.away)} neutral={neutral} />
-        <BigLine g={g} side="home" program={programOf(g.home)} neutral={neutral} />
-      </section>
+      {/* A game with no final yet may be under way: its live score is read in the browser and shown in the big score (ADR 0021). */}
+      <GameScore g={g} away={programOf(g.away)} home={programOf(g.home)} neutral={neutral} watch={!sample && !!g.date && g.state === "scheduled"} />
+      </GameLiveRead>
 
       <Linescore g={g} />
 
