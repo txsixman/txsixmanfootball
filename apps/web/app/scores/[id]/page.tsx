@@ -20,6 +20,7 @@ import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
 import { ShareButton } from "../../share-button";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { Follow } from "../../programs/follow";
 import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
@@ -139,6 +140,11 @@ export default async function GamePage({ params }: Props) {
   };
   // The two programs' series page, when they have met often enough to have one (lib/series.ts).
   const [awaySlug, homeSlug] = [programOf(g.away)?.slug, programOf(g.home)?.slug];
+  // Score alerts for each team that has a program page (the page's own Follow button, as it is there).
+  const followable = [
+    { school: g.away.name, slug: awaySlug },
+    { school: g.home.name, slug: homeSlug },
+  ].flatMap(({ school, slug }) => (slug ? [{ school, slug }] : []));
   const series = !sample && awaySlug && homeSlug && (await seriesPartners()).get(awaySlug)?.has(homeSlug) ? seriesHref(awaySlug, homeSlug) : undefined;
   // Where the game sits: its bracket and next round, its results week, each team's season (lib/neighbours.ts).
   const around = sample ? [] : await gameNeighbours({ season: found?.season ?? CURRENT_SEASON, date: g.date, home: g.home.name, away: g.away.name, resultId: found?.result.id });
@@ -187,6 +193,22 @@ export default async function GamePage({ params }: Props) {
       </GameLiveRead>
 
       <Linescore g={g} />
+
+      {followable.length > 0 && (
+        <section aria-labelledby="game-alerts" data-pagefind-ignore className="mt-5 px-3">
+          <h2 id="game-alerts" className="font-num text-[14px] font-bold uppercase tracking-wider text-navy">
+            Get score alerts
+          </h2>
+          <div className="mt-2 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap">
+            {followable.map((t) => (
+              <Follow key={t.slug} slug={t.slug} school={t.school} compact />
+            ))}
+          </div>
+          <p className="mt-1 text-[13px] text-muted">
+            Alerts use only this browser&apos;s push address and the teams you follow; no name, email or phone. On an iPhone, add this site to your Home Screen first.
+          </p>
+        </section>
+      )}
 
       <section aria-labelledby="details" className="mt-5 px-3 pb-1">
         <h2 id="details" className="mb-0.5 border-b-2 border-navy pb-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">
