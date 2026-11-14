@@ -3,6 +3,11 @@
 // the page (rankings, seeds, athlete counts) is kept. It never calls TAIAO's data server directly.
 // It rewrites only the TAIAO rows of data/seed/private-2026/alignments.csv; TCAF rows there stay as entered.
 // Usage: node taiao.mjs [alignments.csv]
+// The same page's bracket tabs give TAIAO's own date and score for each playoff game (ADR 0046): readBrackets() clicks
+// each "Division N Bracket" tab and parses its text (parseBracket); tools/league-watch/late-finals.mjs reads them for a
+// bracket game still blank the morning after. `node taiao.mjs --text "Division 2 Bracket"` prints a tab's text only.
+// The bracket tabs also give each division's slots and what feeds them (ADR 0047): main() writes them to
+// data/seed/brackets/<season>.csv (parseBracketSlots, bracketRows).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,7 +68,7 @@ const ORDER = ["round-1", "quarterfinal", "semifinal", "final"];
 
 /** One division's bracket tab as its text renders: each slot code, then its two sides (a seeded team, "Winner <slot>" or
  * BYE). Everything else on the tab (scores, dates, sites, seeds) is passed over. */
-export function parseBracket(text, division) {
+export function parseBracketSlots(text, division) {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
   const start = lines.indexOf(`Division ${division} Playoffs`);
   if (start < 0) throw new Error(`no "Division ${division} Playoffs" on the bracket tab`);
@@ -122,22 +127,29 @@ export function mergeBrackets(csv, rows) {
   return `${[BRACKET_HEADER, ...rows.map((r) => [r.league, r.division, r.round, r.slot, r.a, r.b].join(",")), ...others].join("\n")}\n`;
 }
 
-async function main() {
-  const file = process.argv[2] ?? fileURLToPath(new URL("../../data/seed/private-2026/alignments.csv", import.meta.url));
-  const bracketFile = process.argv[3] ?? fileURLToPath(new URL(`../../data/seed/brackets/${SEASON}.csv`, import.meta.url));
-
+/** Loads the football page as a visitor's browser does, once robots.txt allows it, and runs `read` on it. */
+async function withPage(read) {
   const robots = await fetch("https://taiao.org/robots.txt", { headers: { "user-agent": USER_AGENT } });
   if (!robots.ok) throw new Error(`robots.txt answered ${robots.status}; not reading without it`);
   if (!robotsAllows(await robots.text(), new URL(PAGE).pathname)) {
     throw new Error("taiao.org robots.txt now disallows the football page. Stop and switch to asking TAIAO (ADR 0005).");
   }
-
   const { chromium } = await import("playwright");
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({ userAgent: USER_AGENT });
     await page.goto(PAGE, { waitUntil: "networkidle", timeout: 60_000 });
     await page.locator("main table thead th", { hasText: HEADING }).first().waitFor({ timeout: 30_000 });
+    return await read(page);
+  } finally {
+    await browser.close();
+  }
+}
+
+async function main() {
+  const file = process.argv[2] ?? fileURLToPath(new URL("../../data/seed/private-2026/alignments.csv", import.meta.url));
+  const bracketFile = process.argv[3] ?? fileURLToPath(new URL(`../../data/seed/brackets/${SEASON}.csv`, import.meta.url));
+  await withPage(async (page) => {
     const title = (await page.locator("h1").first().innerText()).trim();
     const tables = await page.$$eval("main table", (all) =>
       all
@@ -156,14 +168,79 @@ async function main() {
     for (const division of ["1", "2", "3"]) {
       await page.locator("button", { hasText: `Division ${division} Bracket` }).first().click();
       await page.getByText(`Division ${division} Playoffs`, { exact: true }).waitFor({ timeout: 30_000 });
-      slots.push(...bracketRows(division, parseBracket(await page.locator("main").innerText(), division)));
+      slots.push(...bracketRows(division, parseBracketSlots(await page.locator("main").innerText(), division)));
     }
     mkdirSync(path.dirname(bracketFile), { recursive: true });
     writeFileSync(bracketFile, mergeBrackets(existsSync(bracketFile) ? readFileSync(bracketFile, "utf8") : "", slots));
     console.log(`TAIAO ${SEASON} brackets: ${slots.length} slots in 3 divisions`);
-  } finally {
-    await browser.close();
-  }
+  });
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await main();
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** A game's code on the bracket: NR1 to SR4 (round 1), NQ1 to SQ2 (quarterfinals), SF1 and SF2, FINAL. */
+const CODE = /^(?:[NS][RQ]\d|SF\d|FINAL)$/;
+/** A team line, "1. Grace Academy Griffins" (an unseeded team reads "—."); "Winner NQ2" and "BYE" are not teams. */
+const TEAM = /^(?:\d{1,2}|—)\.\s+(.+)$/;
+/** A game's day, "Fri, Nov 13 · 7:00 PM"; "Date / Time TBD" has none. */
+const WHEN = /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), ([A-Z][a-z]{2}) (\d{1,2})\b/;
+
+/**
+ * One division's bracket, from the text its tab shows (after the "Division N Playoffs" heading): each game's code, its
+ * named teams (home marked "(H)") with any score, its date ("YYYY-MM-DD", the season's year; January the next), and
+ * whether its text says forfeit. A game with a "Winner …" or "BYE" side has fewer than two teams. Nothing else is kept.
+ */
+export function parseBracket(text, season = Number(SEASON)) {
+  const lines = text.split("\n").map((l) => l.trim());
+  const start = lines.findIndex((l) => /^Division \d Playoffs$/.test(l));
+  const games = [];
+  let g = null;
+  for (const line of start < 0 ? [] : lines.slice(start + 1)) {
+    if (!line) continue;
+    if (CODE.test(line)) {
+      g = { code: line, teams: [], date: null, forfeit: false };
+      games.push(g);
+      continue;
+    }
+    if (!g) continue;
+    let m;
+    if (/forfeit/i.test(line)) g.forfeit = true;
+    if (g.date) continue; // after the date: the site and its links
+    if ((m = TEAM.exec(line)) && g.teams.length < 2) g.teams.push({ name: m[1].trim(), home: false, score: null });
+    else if (line === "(H)" && g.teams.length) g.teams.at(-1).home = true;
+    else if (/^\d{1,3}$/.test(line) && g.teams.length && g.teams.at(-1).score === null) g.teams.at(-1).score = Number(line);
+    else if ((m = WHEN.exec(line)) && MONTHS.includes(m[1])) {
+      const month = MONTHS.indexOf(m[1]) + 1;
+      g.date = `${month < 7 ? season + 1 : season}-${String(month).padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+    }
+  }
+  return games;
+}
+
+/** Every division's bracket games, as parseBracket gives them, each with its division. A tab that parses to no game fails. */
+export async function readBrackets(divisions = ["1", "2", "3"]) {
+  return withPage(async (page) => {
+    const out = [];
+    for (const d of divisions) {
+      await page.getByText(`Division ${d} Bracket`, { exact: true }).first().click();
+      await page.getByText(`Division ${d} Playoffs`, { exact: true }).first().waitFor({ timeout: 30_000 });
+      const games = parseBracket(await page.locator("main").innerText());
+      if (!games.length) throw new Error(`TAIAO Division ${d} bracket: no game read; the page changed shape`);
+      out.push(...games.map((g) => ({ ...g, division: d })));
+    }
+    return out;
+  });
+}
+
+/** `--text [tab name]`: the page's main text as a visitor sees it, after clicking the named tab ("Division 2 Bracket"),
+ * printed only (nothing saved): how its bracket is read by hand. */
+const text = () =>
+  withPage(async (page) => {
+    const tab = process.argv[process.argv.indexOf("--text") + 1];
+    if (tab && !tab.startsWith("--")) {
+      await page.getByText(tab, { exact: true }).first().click();
+      await page.waitForLoadState("networkidle");
+    }
+    console.log(await page.locator("main").innerText());
+  });
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--text") ? text() : main());

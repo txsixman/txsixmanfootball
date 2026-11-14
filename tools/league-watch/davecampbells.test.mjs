@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { bracketFields, positionProblems, DETAIL_COLUMNS, kickoffRows, mergeKickoffs, missingDetails, opponentRows, placeFields } from "./davecampbells.mjs";
+import { bracketFields, DETAIL_COLUMNS, gamesOnLines, kickoffRows, mergeKickoffs, missingDetails, opponentRows, placeFields, positionProblems } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLate, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -627,4 +627,17 @@ test("the feed's UIL bracket positions are checked against UIL's bracket: G(firs
   // Not UIL, no position or an unknown round: not checked.
   const skipped = positionProblems([game("Area", 1, "Owl Creek", "Salt Fork", "TAPPS"), game("Area", null, "Owl Creek", "Salt Fork"), game("Playoffs", 1, "Owl Creek", "Salt Fork")], structure);
   assert.deepEqual(skipped, { checked: 0, misfits: [] });
+});
+
+test("games on a Central date: each side's name, score and forfeit flag, never the spread or the winner flag (ADR 0046)", () => {
+  const items = [
+    finalItem("lark-owls", "wren-wrens", 68, 0), // 7 PM Central on Nov 12
+    finalItem("lark-owls", "jay-jays", null, null, { status: "Upcoming", scheduledKickoff: "2026-11-14T23:00:00Z" }),
+    finalItem("lark-owls", "kite-kites", 2, 0, { participants: [{ participantType: "HOME", schoolName: "lark", score: 2 }, { participantType: "AWAY", schoolName: "kite", score: 0, forfeited: true }] }),
+    { status: "Final" }, // no kickoff: not listed
+  ];
+  assert.deepEqual(gamesOnLines(items, "2026-11-12"), ["2026-11-12 | Final | AWAY wren 0 | HOME lark 68", "2026-11-12 | Final | AWAY kite 0 (forfeited) | HOME lark 2"]);
+  assert.deepEqual(gamesOnLines(items, "2026-11-14"), ["2026-11-14 | Upcoming | AWAY jay - | HOME lark -"]);
+  assert.equal(gamesOnLines(items, "all").length, 3);
+  assert.ok(!gamesOnLines(items, "all").join("\n").match(/-10|winner/i));
 });

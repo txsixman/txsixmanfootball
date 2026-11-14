@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { changeLines, CHANGE_COLUMNS, countsLine, mergeStored, parseCsv, pendingCsv, readPending, rowKey } from "./store.mjs";
+import { changeLines, CHANGE_COLUMNS, countsLine, mergeStored, movedDate, movesCsv, MOVES_COLUMNS, parseCsv, pendingCsv, readMoves, readPending, rowKey } from "./store.mjs";
 import { COLUMNS } from "./maxpreps.mjs";
 
 // The store's merge rules (ADR 0031), on invented schools.
@@ -193,4 +193,15 @@ test("a targeted read names playoff rounds from the whole stored bracket, not on
   const rows = parseCsv(playoffsCsv([...stored, fresh], bySlug)).rows;
   assert.equal(rows.find((r) => r.game_date === "2026-11-13").round, "area");
   assert.equal(parseCsv(playoffsCsv([fresh], bySlug)).rows[0].round !== "area", true, "alone, the one game would be named wrongly");
+});
+
+test("a moved game: every game listed on its old date between its two teams is laid on its new date (ADR 0046)", () => {
+  const text = movesCsv("", [{ from_date: "2026-11-13", home: "Cedar Gap", away: "Salt Fork", to_date: "2026-11-14", source: "league bracket" }]);
+  assert.equal(text.split("\n")[0], MOVES_COLUMNS);
+  assert.equal(movesCsv(text, [{ from_date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap", to_date: "2026-11-14", source: "by hand" }]), text, "a move already there is not repeated");
+  const moves = readMoves(text);
+  assert.equal(movedDate(moves, "2026-11-13", "salt-fork", "cedar-gap"), "2026-11-14", "either order, slugs or names");
+  assert.equal(movedDate(moves, "2026-11-13", "cedar-gap", "dry-wash"), "2026-11-13");
+  assert.equal(movedDate(moves, "2026-11-20", "cedar-gap", "salt-fork"), "2026-11-20", "another date is another game");
+  assert.throws(() => movesCsv("", [{ from_date: "2026-11-13", home: "A, B", away: "C", to_date: "2026-11-14", source: "" }]), /comma/);
 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { BRACKET_HEADER, bracketRows, checkTaiao, mergeBrackets, mergeInto, PAGE, parseBracket, parseTaiao } from "./taiao.mjs";
+import { BRACKET_HEADER, bracketRows, checkTaiao, mergeBrackets, mergeInto, PAGE, parseBracket, parseBracketSlots, parseTaiao } from "./taiao.mjs";
 
 // Invented teams, in the table shape taiao.org rendered on Nov 10, 2026 (ADR 0005).
 const regions = ["North", "South"];
@@ -54,7 +54,7 @@ function tab(d) {
 }
 
 test("a bracket tab gives each slot and what fills its two sides: a team, a bye, or the slot that feeds it", () => {
-  const rows = bracketRows("1", parseBracket(tab("1"), "1"));
+  const rows = bracketRows("1", parseBracketSlots(tab("1"), "1"));
   assert.equal(rows.length, 15);
   assert.deepEqual(rows[0], { league: "TAIAO", division: "1", round: "round-1", slot: "NR1", a: "Team 1NR11", b: "bye" });
   assert.deepEqual(rows[1], { league: "TAIAO", division: "1", round: "round-1", slot: "NR2", a: "Team 1NR21", b: "Team 1NR28" });
@@ -65,17 +65,17 @@ test("a bracket tab gives each slot and what fills its two sides: a team, a bye,
 });
 
 test("a tab of another shape fails loudly instead of writing a bad bracket", () => {
-  assert.throws(() => parseBracket("Division 2 Playoffs", "1"), /no "Division 1 Playoffs"/);
+  assert.throws(() => parseBracketSlots("Division 2 Playoffs", "1"), /no "Division 1 Playoffs"/);
   const short = tab("1").replace(/\nSR4\n[\s\S]*?QUARTERFINALS/, "\nQUARTERFINALS");
-  assert.throws(() => bracketRows("1", parseBracket(short, "1")), /8 round-1 slots expected, 7 read/);
+  assert.throws(() => bracketRows("1", parseBracketSlots(short, "1")), /8 round-1 slots expected, 7 read/);
   const orphan = tab("1").replace("NQ1\nNORTH\n1. Team 1NR11", "NQ1\nNORTH\n1. Team Nowhere");
-  assert.throws(() => bracketRows("1", parseBracket(orphan, "1")), /NQ1: Team Nowhere is in no round-1 slot/);
+  assert.throws(() => bracketRows("1", parseBracketSlots(orphan, "1")), /NQ1: Team Nowhere is in no round-1 slot/);
   const comma = tab("1").replace("1. Team 1NR21", "1. Team, Inc");
-  assert.throws(() => bracketRows("1", parseBracket(comma, "1")), /not a usable name/);
+  assert.throws(() => bracketRows("1", parseBracketSlots(comma, "1")), /not a usable name/);
 });
 
 test("the bracket file keeps every other league's rows and replaces TAIAO's", () => {
-  const rows = bracketRows("1", parseBracket(tab("1"), "1"));
+  const rows = bracketRows("1", parseBracketSlots(tab("1"), "1"));
   const before = `${BRACKET_HEADER}\nTAIAO,1,final,FINAL,winner:SF1,winner:SF2\nTAPPS,I,final,F,winner:S1,winner:S2\n`;
   const out = mergeBrackets(before, rows).trim().split("\n");
   assert.equal(out[0], BRACKET_HEADER);
@@ -83,4 +83,74 @@ test("the bracket file keeps every other league's rows and replaces TAIAO's", ()
   assert.equal(out.at(-1), "TAPPS,I,final,F,winner:S1,winner:S2");
   assert.equal(mergeBrackets("", rows).trim().split("\n").length, 16);
   assert.throws(() => mergeBrackets("a,b\n", rows), /unexpected header/);
+});
+
+// A bracket tab's text in the shape taiao.org showed on Nov 14, 2026 (ADR 0046); invented teams and places.
+const BRACKET = `Teams & Weekly Rankings
+Division 2 Bracket
+Division 2 Playoffs
+ROUND 1
+NR1
+NORTH
+1. Lark Owls
+ (H)
+70
+8. Wren Academy
+6
+Thu, Nov 5 · 6:00 PM
+Lark Field, 100 Main St
+SR1
+SOUTH
+1. Finch Falcons
+ (H)
+BYE
+Bye · advances to Quarterfinals
+NR3
+NORTH
+3. Robin Prep
+ (H)
+2
+—. Jay Home School
+0
+Sat, Nov 7 · 5:00 PM
+Forfeit
+NQ1
+1. Lark Owls
+ (H)
+68
+4. Heron Homeschool
+0
+Fri, Nov 13 · 7:00 PM
+Pacer Field 12
+NQ2
+3. Robin Prep
+2. Crane Christian
+ (H)
+Sat, Nov 14 · 5:00 PM
+SF2
+1. Finch Falcons
+ (H)
+Winner NQ2
+Date / Time TBD
+FINAL
+Winner SF1
+Winner SF2
+Jan 2 · TBD`;
+
+test("a bracket tab gives each game's teams, home side, scores, date and forfeit word, and nothing else", () => {
+  const games = parseBracket(BRACKET, 2026);
+  assert.deepEqual(games.map((g) => g.code), ["NR1", "SR1", "NR3", "NQ1", "NQ2", "SF2", "FINAL"]);
+  assert.deepEqual(games[0], { code: "NR1", date: "2026-11-05", forfeit: false, teams: [{ name: "Lark Owls", home: true, score: 70 }, { name: "Wren Academy", home: false, score: 6 }] });
+  assert.equal(games[1].teams.length, 1, "a bye has one team");
+  assert.equal(games[2].forfeit, true);
+  assert.equal(games[2].teams[1].name, "Jay Home School", "an unseeded team");
+  assert.deepEqual(games[3].teams.map((t) => t.score), [68, 0]);
+  assert.equal(games[3].date, "2026-11-13");
+  assert.equal(games[3].teams[1].score, 0, "the site's digits after the date are not a score");
+  assert.deepEqual(games[4].teams.map((t) => [t.name, t.home, t.score]), [["Robin Prep", false, null], ["Crane Christian", true, null]]);
+  assert.equal(games[4].date, "2026-11-14");
+  assert.equal(games[5].teams.length, 1, "a Winner side is not a team");
+  assert.equal(games[5].date, null);
+  assert.equal(games[6].teams.length, 0);
+  assert.deepEqual(parseBracket("no heading here\nNQ1\n1. Lark Owls"), [], "nothing before the Playoffs heading");
 });
