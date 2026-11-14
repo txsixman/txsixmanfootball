@@ -1,9 +1,9 @@
 {
  "season": 2026,
- "games": 1234,
+ "games": 1240,
  "games_outside": 71,
- "home_field": 4.4,
- "sigma": 20.0,
+ "home_field": 4.6,
+ "sigma": 20.2,
  "playoff_edge": 1.0,
  "calibration": {
   "family": "logistic",
@@ -17,13 +17,13 @@
   "prior_season": true
  },
  "group_means": {
-  "Independent": -13.5,
-  "Outside": -42.3,
+  "Independent": -13.4,
+  "Outside": -42.2,
   "TAIAO": -19.3,
-  "TAPPS": 7.6,
+  "TAPPS": 7.7,
   "TCAF": -25.7,
-  "UIL I": 22.0,
-  "UIL II": -19.0
+  "UIL I": 22.1,
+  "UIL II": -19.2
  },
  "report": {
   "forfeits": 30,
@@ -37,11 +37,11 @@
  "teams": [
   {
    "team": "Whiteface",
-   "rating": 130.8,
-   "sd": 12.2,
-   "rated": 9,
+   "rating": 132.6,
+   "sd": 11.8,
+   "rated": 10,
    "rated_outside": 1,
-   "won": 8,
+   "won": 9,
    "lost": 1,
    "tied": 0,
    "was": 130.2,
@@ -55,7 +55,7 @@
     120.8,
     122.9,
     130.2,
-    130.8
+    132.6
    ],
    "rated_trend": [
     3,
@@ -67,12 +67,12 @@
     7,
     8,
     9,
-    9
+    10
    ]
   },
   {
    "team": "Borden County",
-   "rating": 130.0,
+   "rating": 130.6,
    "sd": 9.3,
    "rated": 11,
    "rated_outside": 0,
@@ -90,7 +90,7 @@
     119.9,
     123.2,
     128.5,
-    130.0
+    130.6
    ],
    "rated_trend": [
     3,
@@ -106,44 +106,9 @@
    ]
   },
   {
-   "team": "Aquilla",
-   "rating": 116.8,
-   "sd": 12.3,
-   "rated": 9,
-   "rated_outside": 0,
-   "won": 10,
-   "lost": 0,
-   "tied": 0,
-   "was": 117.1,
-   "trend": [
-    67.2,
-    95.5,
-    103.1,
-    104.1,
-    103.4,
-    105.6,
-    112.6,
-    113.3,
-    117.1,
-    116.8
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    7,
-    8,
-    8,
-    9,
-    9
-   ]
-  },
-  {
    "team": "Menard",
-   "rating": 116.7,
-   "sd": 13.7,
+   "rating": 116.9,
+   "sd": 13.8,
    "rated": 10,
    "rated_outside": 0,
    "won": 11,
@@ -160,7 +125,7 @@
     117.3,
     116.5,
     117.7,
-    116.7
+    116.9
    ],
    "rated_trend": [
     3,
@@ -176,12 +141,47 @@
    ]
   },
   {
-   "team": "Gilmer Union Hill",
-   "rating": 111.1,
-   "sd": 11.2,
-   "rated": 10,
+   "team": "Aquilla",
+   "rating": 116.5,
+   "sd": 12.4,
+   "rated": 9,
    "rated_outside": 0,
    "won": 10,
+   "lost": 0,
+   "tied": 0,
+   "was": 117.1,
+   "trend": [
+    67.2,
+    95.5,
+    103.1,
+    104.1,
+    103.4,
+    105.6,
+    112.6,
+    113.3,
+    117.1,
+    116.5
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    7,
+    8,
+    8,
+    9,
+    9
+   ]
+  },
+  {
+   "team": "Gilmer Union Hill",
+   "rating": 114.5,
+   "sd": 10.9,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 11,
    "lost": 0,
    "tied": 0,
    "was": 110.3,
@@ -195,7 +195,7 @@
     102.5,
     107.9,
     110.3,
-    111.1
+    114.5
    ],
    "rated_trend": [
     3,
@@ -207,12 +207,12 @@
     8,
     9,
     10,
-    10
+    11
    ]
   },
   {
    "team": "Covenant Classical-Fort Worth",
-   "rating": 99.8,
+   "rating": 99.9,
    "sd": 9.6,
    "rated": 8,
    "rated_outside": 0,
@@ -230,7 +230,7 @@
     94.0,
     98.1,
     100.2,
-    99.8
+    99.9
    ],
    "rated_trend": [
     1,
@@ -247,8 +247,8 @@
   },
   {
    "team": "Jayton",
-   "rating": 99.6,
-   "sd": 9.8,
+   "rating": 99.7,
+   "sd": 9.9,
    "rated": 11,
    "rated_outside": 0,
    "won": 10,
@@ -265,7 +265,7 @@
     96.3,
     96.9,
     98.9,
-    99.6
+    99.7
    ],
    "rated_trend": [
     3,
@@ -282,7 +282,7 @@
   },
   {
    "team": "Water Valley",
-   "rating": 97.9,
+   "rating": 98.3,
    "sd": 8.2,
    "rated": 10,
    "rated_outside": 0,
@@ -300,7 +300,7 @@
     93.7,
     93.3,
     95.4,
-    97.9
+    98.3
    ],
    "rated_trend": [
     3,
@@ -317,7 +317,7 @@
   },
   {
    "team": "Hermleigh",
-   "rating": 97.2,
+   "rating": 97.1,
    "sd": 10.1,
    "rated": 11,
    "rated_outside": 0,
@@ -335,7 +335,7 @@
     91.5,
     92.1,
     94.5,
-    97.2
+    97.1
    ],
    "rated_trend": [
     3,
@@ -352,8 +352,8 @@
   },
   {
    "team": "Nazarene Christian Academy-Crowley",
-   "rating": 97.0,
-   "sd": 8.7,
+   "rating": 97.1,
+   "sd": 8.8,
    "rated": 11,
    "rated_outside": 0,
    "won": 10,
@@ -370,7 +370,7 @@
     96.4,
     98.8,
     100.6,
-    97.0
+    97.1
    ],
    "rated_trend": [
     3,
@@ -387,7 +387,7 @@
   },
   {
    "team": "Lamesa Klondike",
-   "rating": 90.1,
+   "rating": 90.7,
    "sd": 8.5,
    "rated": 10,
    "rated_outside": 1,
@@ -405,7 +405,7 @@
     79.3,
     87.5,
     89.6,
-    90.1
+    90.7
    ],
    "rated_trend": [
     2,
@@ -422,8 +422,8 @@
   },
   {
    "team": "Rankin",
-   "rating": 88.6,
-   "sd": 7.9,
+   "rating": 89.0,
+   "sd": 8.0,
    "rated": 11,
    "rated_outside": 0,
    "won": 9,
@@ -440,7 +440,7 @@
     80.5,
     86.5,
     88.0,
-    88.6
+    89.0
    ],
    "rated_trend": [
     3,
@@ -457,8 +457,8 @@
   },
   {
    "team": "Newcastle",
-   "rating": 87.7,
-   "sd": 9.7,
+   "rating": 88.1,
+   "sd": 9.8,
    "rated": 9,
    "rated_outside": 1,
    "won": 7,
@@ -475,7 +475,7 @@
     80.0,
     83.1,
     87.5,
-    87.7
+    88.1
    ],
    "rated_trend": [
     3,
@@ -492,7 +492,7 @@
   },
   {
    "team": "Texas Wind",
-   "rating": 86.5,
+   "rating": 86.6,
    "sd": 9.1,
    "rated": 9,
    "rated_outside": 0,
@@ -510,7 +510,7 @@
     83.1,
     84.3,
     86.8,
-    86.5
+    86.6
    ],
    "rated_trend": [
     3,
@@ -526,8 +526,43 @@
    ]
   },
   {
+   "team": "Strawn",
+   "rating": 82.0,
+   "sd": 9.1,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 9,
+   "lost": 2,
+   "tied": 0,
+   "was": 78.7,
+   "trend": [
+    81.6,
+    69.3,
+    58.6,
+    59.7,
+    67.0,
+    72.5,
+    73.8,
+    76.5,
+    78.7,
+    82.0
+   ],
+   "rated_trend": [
+    3,
+    4,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
    "team": "The Emery/Weiner School-Houston",
-   "rating": 81.8,
+   "rating": 81.9,
    "sd": 7.6,
    "rated": 10,
    "rated_outside": 0,
@@ -545,7 +580,7 @@
     81.6,
     81.4,
     81.8,
-    81.8
+    81.9
    ],
    "rated_trend": [
     3,
@@ -562,8 +597,8 @@
   },
   {
    "team": "Gordon",
-   "rating": 81.4,
-   "sd": 8.8,
+   "rating": 81.7,
+   "sd": 8.9,
    "rated": 9,
    "rated_outside": 0,
    "won": 9,
@@ -580,7 +615,7 @@
     78.2,
     76.8,
     78.4,
-    81.4
+    81.7
    ],
    "rated_trend": [
     3,
@@ -596,114 +631,9 @@
    ]
   },
   {
-   "team": "Strawn",
-   "rating": 81.2,
-   "sd": 9.0,
-   "rated": 11,
-   "rated_outside": 0,
-   "won": 9,
-   "lost": 2,
-   "tied": 0,
-   "was": 78.7,
-   "trend": [
-    81.6,
-    69.3,
-    58.6,
-    59.7,
-    67.0,
-    72.5,
-    73.8,
-    76.5,
-    78.7,
-    81.2
-   ],
-   "rated_trend": [
-    3,
-    4,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11
-   ]
-  },
-  {
-   "team": "Vanguard College Preparatory-Waco",
-   "rating": 80.9,
-   "sd": 7.7,
-   "rated": 11,
-   "rated_outside": 0,
-   "won": 9,
-   "lost": 2,
-   "tied": 0,
-   "was": 80.6,
-   "trend": [
-    41.9,
-    40.8,
-    52.3,
-    56.2,
-    59.1,
-    67.8,
-    75.9,
-    78.0,
-    80.6,
-    80.9
-   ],
-   "rated_trend": [
-    4,
-    5,
-    6,
-    7,
-    7,
-    8,
-    9,
-    10,
-    11,
-    11
-   ]
-  },
-  {
-   "team": "Medina",
-   "rating": 80.6,
-   "sd": 10.3,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 10,
-   "lost": 0,
-   "tied": 0,
-   "was": 75.6,
-   "trend": [
-    55.1,
-    65.3,
-    65.0,
-    63.1,
-    67.8,
-    70.1,
-    74.0,
-    74.5,
-    75.6,
-    80.6
-   ],
-   "rated_trend": [
-    3,
-    4,
-    4,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10
-   ]
-  },
-  {
    "team": "Westbrook",
-   "rating": 80.6,
-   "sd": 8.2,
+   "rating": 81.1,
+   "sd": 8.3,
    "rated": 10,
    "rated_outside": 0,
    "won": 4,
@@ -720,7 +650,7 @@
     75.6,
     77.5,
     79.8,
-    80.6
+    81.1
    ],
    "rated_trend": [
     3,
@@ -736,9 +666,79 @@
    ]
   },
   {
+   "team": "Vanguard College Preparatory-Waco",
+   "rating": 81.0,
+   "sd": 7.8,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 9,
+   "lost": 2,
+   "tied": 0,
+   "was": 80.6,
+   "trend": [
+    41.9,
+    40.8,
+    52.3,
+    56.2,
+    59.1,
+    67.8,
+    75.9,
+    78.0,
+    80.6,
+    81.0
+   ],
+   "rated_trend": [
+    4,
+    5,
+    6,
+    7,
+    7,
+    8,
+    9,
+    10,
+    11,
+    11
+   ]
+  },
+  {
+   "team": "Medina",
+   "rating": 80.7,
+   "sd": 10.4,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 10,
+   "lost": 0,
+   "tied": 0,
+   "was": 75.6,
+   "trend": [
+    55.1,
+    65.3,
+    65.0,
+    63.1,
+    67.8,
+    70.1,
+    74.0,
+    74.5,
+    75.6,
+    80.7
+   ],
+   "rated_trend": [
+    3,
+    4,
+    4,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+   ]
+  },
+  {
    "team": "Bracken Christian School-Bulverde",
-   "rating": 77.6,
-   "sd": 9.8,
+   "rating": 77.7,
+   "sd": 9.9,
    "rated": 11,
    "rated_outside": 0,
    "won": 10,
@@ -755,7 +755,7 @@
     74.0,
     76.8,
     77.6,
-    77.6
+    77.7
    ],
    "rated_trend": [
     3,
@@ -772,7 +772,7 @@
   },
   {
    "team": "Oglesby",
-   "rating": 76.6,
+   "rating": 76.3,
    "sd": 8.4,
    "rated": 11,
    "rated_outside": 0,
@@ -790,7 +790,7 @@
     74.2,
     76.9,
     77.9,
-    76.6
+    76.3
    ],
    "rated_trend": [
     3,
@@ -842,7 +842,7 @@
   },
   {
    "team": "Ackerly Sands",
-   "rating": 73.3,
+   "rating": 73.4,
    "sd": 8.4,
    "rated": 10,
    "rated_outside": 0,
@@ -860,7 +860,7 @@
     78.7,
     72.8,
     72.5,
-    73.3
+    73.4
    ],
    "rated_trend": [
     3,
@@ -878,7 +878,7 @@
   {
    "team": "First Baptist Christian Academy-Pasadena",
    "rating": 73.3,
-   "sd": 7.6,
+   "sd": 7.7,
    "rated": 9,
    "rated_outside": 0,
    "won": 7,
@@ -912,7 +912,7 @@
   },
   {
    "team": "Grace Academy Griffins",
-   "rating": 72.8,
+   "rating": 72.9,
    "sd": 11.8,
    "rated": 10,
    "rated_outside": 0,
@@ -930,7 +930,7 @@
     80.1,
     72.3,
     72.4,
-    72.8
+    72.9
    ],
    "rated_trend": [
     3,
@@ -947,8 +947,8 @@
   },
   {
    "team": "Nazareth",
-   "rating": 72.0,
-   "sd": 8.8,
+   "rating": 72.1,
+   "sd": 8.9,
    "rated": 10,
    "rated_outside": 0,
    "won": 7,
@@ -965,7 +965,7 @@
     70.9,
     72.6,
     71.7,
-    72.0
+    72.1
    ],
    "rated_trend": [
     3,
@@ -982,7 +982,7 @@
   },
   {
    "team": "Valor Preparatory Academy-Waco",
-   "rating": 70.9,
+   "rating": 71.2,
    "sd": 8.4,
    "rated": 11,
    "rated_outside": 0,
@@ -1000,7 +1000,7 @@
     63.4,
     66.2,
     69.8,
-    70.9
+    71.2
    ],
    "rated_trend": [
     3,
@@ -1017,8 +1017,8 @@
   },
   {
    "team": "Lenorah Grady",
-   "rating": 69.4,
-   "sd": 10.3,
+   "rating": 69.6,
+   "sd": 10.4,
    "rated": 11,
    "rated_outside": 0,
    "won": 9,
@@ -1035,7 +1035,7 @@
     85.3,
     70.7,
     71.1,
-    69.4
+    69.6
    ],
    "rated_trend": [
     3,
@@ -1052,8 +1052,8 @@
   },
   {
    "team": "Heritage School-Fredericksburg",
-   "rating": 66.9,
-   "sd": 8.9,
+   "rating": 67.0,
+   "sd": 9.0,
    "rated": 8,
    "rated_outside": 0,
    "won": 7,
@@ -1070,7 +1070,7 @@
     58.8,
     60.0,
     66.7,
-    66.9
+    67.0
    ],
    "rated_trend": [
     3,
@@ -1087,8 +1087,8 @@
   },
   {
    "team": "Lucas Christian Academy",
-   "rating": 65.5,
-   "sd": 7.0,
+   "rating": 65.3,
+   "sd": 7.1,
    "rated": 12,
    "rated_outside": 0,
    "won": 7,
@@ -1105,7 +1105,7 @@
     60.1,
     63.9,
     63.5,
-    65.5
+    65.3
    ],
    "rated_trend": [
     4,
@@ -1121,8 +1121,43 @@
    ]
   },
   {
+   "team": "Fort Bend Chargers",
+   "rating": 65.0,
+   "sd": 7.9,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 10,
+   "lost": 1,
+   "tied": 0,
+   "was": 66.8,
+   "trend": [
+    57.4,
+    61.1,
+    64.0,
+    55.3,
+    54.5,
+    59.6,
+    64.8,
+    66.1,
+    66.8,
+    65.0
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
    "team": "Matador Motley County",
-   "rating": 65.5,
+   "rating": 64.8,
    "sd": 9.0,
    "rated": 11,
    "rated_outside": 0,
@@ -1140,77 +1175,7 @@
     67.2,
     67.2,
     64.8,
-    65.5
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11
-   ]
-  },
-  {
-   "team": "Abbott",
-   "rating": 65.3,
-   "sd": 9.7,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 8,
-   "lost": 2,
-   "tied": 0,
-   "was": 65.0,
-   "trend": [
-    45.6,
-    66.6,
-    70.6,
-    72.8,
-    68.0,
-    64.4,
-    63.8,
-    66.2,
-    65.0,
-    65.3
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    8,
-    9,
-    10,
-    10
-   ]
-  },
-  {
-   "team": "Fort Bend Chargers",
-   "rating": 64.9,
-   "sd": 7.8,
-   "rated": 11,
-   "rated_outside": 0,
-   "won": 10,
-   "lost": 1,
-   "tied": 0,
-   "was": 66.8,
-   "trend": [
-    57.4,
-    61.1,
-    64.0,
-    55.3,
-    54.5,
-    59.6,
-    64.8,
-    66.1,
-    66.8,
-    64.9
+    64.8
    ],
    "rated_trend": [
     3,
@@ -1227,7 +1192,7 @@
   },
   {
    "team": "Richland Springs",
-   "rating": 64.6,
+   "rating": 64.7,
    "sd": 8.0,
    "rated": 10,
    "rated_outside": 0,
@@ -1245,7 +1210,7 @@
     66.2,
     65.8,
     65.7,
-    64.6
+    64.7
    ],
    "rated_trend": [
     3,
@@ -1262,8 +1227,8 @@
   },
   {
    "team": "Boys Ranch",
-   "rating": 63.8,
-   "sd": 8.8,
+   "rating": 63.6,
+   "sd": 8.9,
    "rated": 9,
    "rated_outside": 0,
    "won": 9,
@@ -1280,7 +1245,7 @@
     62.9,
     61.3,
     63.7,
-    63.8
+    63.6
    ],
    "rated_trend": [
     3,
@@ -1296,9 +1261,44 @@
    ]
   },
   {
+   "team": "Abbott",
+   "rating": 63.0,
+   "sd": 9.3,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 8,
+   "lost": 3,
+   "tied": 0,
+   "was": 65.0,
+   "trend": [
+    45.6,
+    66.6,
+    70.6,
+    72.8,
+    68.0,
+    64.4,
+    63.8,
+    66.2,
+    65.0,
+    63.0
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
    "team": "Azle Christian School",
-   "rating": 62.6,
-   "sd": 8.5,
+   "rating": 62.7,
+   "sd": 8.6,
    "rated": 8,
    "rated_outside": 0,
    "won": 6,
@@ -1315,7 +1315,7 @@
     55.4,
     55.0,
     62.3,
-    62.6
+    62.7
    ],
    "rated_trend": [
     3,
@@ -1332,7 +1332,7 @@
   },
   {
    "team": "Paducah",
-   "rating": 62.3,
+   "rating": 61.9,
    "sd": 8.8,
    "rated": 10,
    "rated_outside": 0,
@@ -1350,7 +1350,7 @@
     58.8,
     59.2,
     62.0,
-    62.3
+    61.9
    ],
    "rated_trend": [
     2,
@@ -1367,8 +1367,8 @@
   },
   {
    "team": "Covenant Christian School-Conroe",
-   "rating": 61.4,
-   "sd": 7.8,
+   "rating": 61.5,
+   "sd": 7.9,
    "rated": 11,
    "rated_outside": 0,
    "won": 7,
@@ -1385,7 +1385,7 @@
     61.0,
     60.4,
     61.1,
-    61.4
+    61.5
    ],
    "rated_trend": [
     3,
@@ -1402,12 +1402,12 @@
   },
   {
    "team": "Claude",
-   "rating": 60.7,
-   "sd": 8.6,
-   "rated": 10,
+   "rating": 59.9,
+   "sd": 8.5,
+   "rated": 11,
    "rated_outside": 0,
    "won": 5,
-   "lost": 5,
+   "lost": 6,
    "tied": 0,
    "was": 60.4,
    "trend": [
@@ -1420,7 +1420,7 @@
     56.3,
     57.3,
     60.4,
-    60.7
+    59.9
    ],
    "rated_trend": [
     3,
@@ -1432,7 +1432,7 @@
     9,
     9,
     10,
-    10
+    11
    ]
   },
   {
@@ -1472,7 +1472,7 @@
   },
   {
    "team": "Austin Royals",
-   "rating": 58.4,
+   "rating": 58.5,
    "sd": 9.0,
    "rated": 8,
    "rated_outside": 0,
@@ -1490,7 +1490,7 @@
     56.2,
     57.4,
     58.6,
-    58.4
+    58.5
    ],
    "rated_trend": [
     2,
@@ -1507,8 +1507,8 @@
   },
   {
    "team": "Chester",
-   "rating": 56.3,
-   "sd": 9.1,
+   "rating": 56.6,
+   "sd": 9.2,
    "rated": 10,
    "rated_outside": 0,
    "won": 8,
@@ -1525,7 +1525,7 @@
     57.7,
     55.3,
     56.0,
-    56.3
+    56.6
    ],
    "rated_trend": [
     3,
@@ -1543,7 +1543,7 @@
   {
    "team": "Zephyr",
    "rating": 55.3,
-   "sd": 8.1,
+   "sd": 8.2,
    "rated": 10,
    "rated_outside": 0,
    "won": 8,
@@ -1577,7 +1577,7 @@
   },
   {
    "team": "Alpha Omega Academy-Huntsville",
-   "rating": 54.9,
+   "rating": 55.1,
    "sd": 7.9,
    "rated": 10,
    "rated_outside": 0,
@@ -1595,7 +1595,7 @@
     55.4,
     56.4,
     54.9,
-    54.9
+    55.1
    ],
    "rated_trend": [
     3,
@@ -1612,8 +1612,8 @@
   },
   {
    "team": "Milford",
-   "rating": 54.1,
-   "sd": 8.0,
+   "rating": 54.2,
+   "sd": 8.1,
    "rated": 9,
    "rated_outside": 0,
    "won": 8,
@@ -1630,7 +1630,7 @@
     52.3,
     51.6,
     52.5,
-    54.1
+    54.2
    ],
    "rated_trend": [
     3,
@@ -1647,7 +1647,7 @@
   },
   {
    "team": "Texas Home Educator's Sports Association (THESA)",
-   "rating": 53.4,
+   "rating": 53.5,
    "sd": 7.4,
    "rated": 11,
    "rated_outside": 0,
@@ -1665,7 +1665,7 @@
     46.5,
     51.5,
     53.3,
-    53.4
+    53.5
    ],
    "rated_trend": [
     3,
@@ -1678,41 +1678,6 @@
     10,
     11,
     11
-   ]
-  },
-  {
-   "team": "Coolidge",
-   "rating": 53.2,
-   "sd": 8.0,
-   "rated": 9,
-   "rated_outside": 0,
-   "won": 7,
-   "lost": 3,
-   "tied": 0,
-   "was": 52.9,
-   "trend": [
-    25.8,
-    39.5,
-    43.8,
-    53.6,
-    54.5,
-    50.1,
-    49.9,
-    51.3,
-    52.9,
-    53.2
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    9,
-    9,
-    9
    ]
   },
   {
@@ -1751,8 +1716,43 @@
    ]
   },
   {
+   "team": "Coolidge",
+   "rating": 52.9,
+   "sd": 8.1,
+   "rated": 9,
+   "rated_outside": 0,
+   "won": 7,
+   "lost": 3,
+   "tied": 0,
+   "was": 52.9,
+   "trend": [
+    25.8,
+    39.5,
+    43.8,
+    53.6,
+    54.5,
+    50.1,
+    49.9,
+    51.3,
+    52.9,
+    52.9
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    9,
+    9,
+    9
+   ]
+  },
+  {
    "team": "Knox City",
-   "rating": 52.6,
+   "rating": 52.4,
    "sd": 9.3,
    "rated": 11,
    "rated_outside": 0,
@@ -1770,7 +1770,7 @@
     55.2,
     52.0,
     50.9,
-    52.6
+    52.4
    ],
    "rated_trend": [
     3,
@@ -1787,8 +1787,8 @@
   },
   {
    "team": "Hill Country Christian School-San Marcos",
-   "rating": 50.7,
-   "sd": 11.6,
+   "rating": 50.9,
+   "sd": 11.7,
    "rated": 7,
    "rated_outside": 1,
    "won": 6,
@@ -1805,7 +1805,7 @@
     46.5,
     46.9,
     50.5,
-    50.7
+    50.9
    ],
    "rated_trend": [
     2,
@@ -1856,43 +1856,8 @@
    ]
   },
   {
-   "team": "Turkey Valley",
-   "rating": 48.8,
-   "sd": 9.0,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 7,
-   "lost": 3,
-   "tied": 0,
-   "was": 48.8,
-   "trend": [
-    -3.8,
-    21.2,
-    26.9,
-    29.4,
-    33.9,
-    46.5,
-    46.1,
-    47.5,
-    48.8,
-    48.8
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    10
-   ]
-  },
-  {
    "team": "Robert Lee",
-   "rating": 48.6,
+   "rating": 48.9,
    "sd": 8.2,
    "rated": 11,
    "rated_outside": 0,
@@ -1910,7 +1875,42 @@
     55.3,
     50.3,
     50.8,
-    48.6
+    48.9
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
+   "team": "Turkey Valley",
+   "rating": 46.8,
+   "sd": 8.4,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 8,
+   "lost": 3,
+   "tied": 0,
+   "was": 48.8,
+   "trend": [
+    -3.8,
+    21.2,
+    26.9,
+    29.4,
+    33.9,
+    46.5,
+    46.1,
+    47.5,
+    48.8,
+    46.8
    ],
    "rated_trend": [
     3,
@@ -1927,8 +1927,8 @@
   },
   {
    "team": "Grandfalls-Royalty",
-   "rating": 45.8,
-   "sd": 8.2,
+   "rating": 46.0,
+   "sd": 8.3,
    "rated": 11,
    "rated_outside": 0,
    "won": 9,
@@ -1945,7 +1945,7 @@
     44.9,
     44.9,
     46.1,
-    45.8
+    46.0
    ],
    "rated_trend": [
     3,
@@ -1963,7 +1963,7 @@
   {
    "team": "Faith Academy of Marble Falls",
    "rating": 44.6,
-   "sd": 7.9,
+   "sd": 8.0,
    "rated": 11,
    "rated_outside": 0,
    "won": 7,
@@ -1997,8 +1997,8 @@
   },
   {
    "team": "Jonesboro",
-   "rating": 43.6,
-   "sd": 8.4,
+   "rating": 43.7,
+   "sd": 8.5,
    "rated": 11,
    "rated_outside": 0,
    "won": 4,
@@ -2015,7 +2015,7 @@
     36.4,
     39.6,
     46.4,
-    43.6
+    43.7
    ],
    "rated_trend": [
     3,
@@ -2031,9 +2031,44 @@
    ]
   },
   {
+   "team": "May",
+   "rating": 43.5,
+   "sd": 8.2,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 3,
+   "lost": 7,
+   "tied": 0,
+   "was": 44.0,
+   "trend": [
+    66.8,
+    53.0,
+    36.5,
+    38.2,
+    38.3,
+    41.7,
+    43.4,
+    43.0,
+    44.0,
+    43.5
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    9,
+    10,
+    10
+   ]
+  },
+  {
    "team": "Vernon Northside",
    "rating": 43.4,
-   "sd": 8.4,
+   "sd": 8.5,
    "rated": 10,
    "rated_outside": 0,
    "won": 8,
@@ -2066,44 +2101,9 @@
    ]
   },
   {
-   "team": "May",
-   "rating": 43.3,
-   "sd": 8.2,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 3,
-   "lost": 7,
-   "tied": 0,
-   "was": 44.0,
-   "trend": [
-    66.8,
-    53.0,
-    36.5,
-    38.2,
-    38.3,
-    41.7,
-    43.4,
-    43.0,
-    44.0,
-    43.3
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    9,
-    10,
-    10
-   ]
-  },
-  {
    "team": "Blackwell",
-   "rating": 42.5,
-   "sd": 8.2,
+   "rating": 42.6,
+   "sd": 8.3,
    "rated": 11,
    "rated_outside": 0,
    "won": 9,
@@ -2120,7 +2120,7 @@
     37.5,
     39.7,
     39.9,
-    42.5
+    42.6
    ],
    "rated_trend": [
     3,
@@ -2137,7 +2137,7 @@
   },
   {
    "team": "Abilene Christian School",
-   "rating": 40.5,
+   "rating": 40.9,
    "sd": 7.2,
    "rated": 11,
    "rated_outside": 0,
@@ -2155,7 +2155,7 @@
     41.0,
     39.0,
     40.2,
-    40.5
+    40.9
    ],
    "rated_trend": [
     4,
@@ -2172,7 +2172,7 @@
   },
   {
    "team": "Rocksprings",
-   "rating": 40.1,
+   "rating": 40.2,
    "sd": 7.3,
    "rated": 11,
    "rated_outside": 0,
@@ -2190,7 +2190,7 @@
     43.8,
     45.7,
     43.8,
-    40.1
+    40.2
    ],
    "rated_trend": [
     3,
@@ -2242,7 +2242,7 @@
   },
   {
    "team": "Sterling City",
-   "rating": 38.6,
+   "rating": 38.8,
    "sd": 8.2,
    "rated": 9,
    "rated_outside": 0,
@@ -2260,7 +2260,7 @@
     38.7,
     38.8,
     38.6,
-    38.6
+    38.8
    ],
    "rated_trend": [
     3,
@@ -2278,7 +2278,7 @@
   {
    "team": "Founders Classical Academy of Leander",
    "rating": 37.9,
-   "sd": 7.9,
+   "sd": 8.0,
    "rated": 10,
    "rated_outside": 0,
    "won": 5,
@@ -2304,6 +2304,41 @@
     6,
     7,
     7,
+    8,
+    9,
+    10,
+    10
+   ]
+  },
+  {
+   "team": "Faith Academy of Bellville",
+   "rating": 37.8,
+   "sd": 8.3,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 7,
+   "lost": 3,
+   "tied": 0,
+   "was": 37.7,
+   "trend": [
+    37.8,
+    42.4,
+    39.3,
+    36.3,
+    39.4,
+    37.0,
+    38.3,
+    39.5,
+    37.7,
+    37.8
+   ],
+   "rated_trend": [
+    4,
+    5,
+    6,
+    7,
+    7,
+    8,
     8,
     9,
     10,
@@ -2346,79 +2381,9 @@
    ]
   },
   {
-   "team": "Faith Academy of Bellville",
-   "rating": 37.6,
-   "sd": 8.3,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 7,
-   "lost": 3,
-   "tied": 0,
-   "was": 37.7,
-   "trend": [
-    37.8,
-    42.4,
-    39.3,
-    36.3,
-    39.4,
-    37.0,
-    38.3,
-    39.5,
-    37.7,
-    37.6
-   ],
-   "rated_trend": [
-    4,
-    5,
-    6,
-    7,
-    7,
-    8,
-    8,
-    9,
-    10,
-    10
-   ]
-  },
-  {
-   "team": "Happy",
-   "rating": 36.5,
-   "sd": 7.5,
-   "rated": 11,
-   "rated_outside": 0,
-   "won": 7,
-   "lost": 4,
-   "tied": 0,
-   "was": 37.8,
-   "trend": [
-    -0.3,
-    16.5,
-    26.0,
-    26.6,
-    35.1,
-    38.7,
-    35.3,
-    39.8,
-    37.8,
-    36.5
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    7,
-    8,
-    9,
-    10,
-    11
-   ]
-  },
-  {
    "team": "Garden City",
-   "rating": 36.4,
-   "sd": 8.0,
+   "rating": 36.8,
+   "sd": 8.1,
    "rated": 10,
    "rated_outside": 0,
    "won": 4,
@@ -2435,7 +2400,7 @@
     35.9,
     35.0,
     36.2,
-    36.4
+    36.8
    ],
    "rated_trend": [
     3,
@@ -2451,9 +2416,44 @@
    ]
   },
   {
+   "team": "Happy",
+   "rating": 36.4,
+   "sd": 7.6,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 7,
+   "lost": 4,
+   "tied": 0,
+   "was": 37.8,
+   "trend": [
+    -0.3,
+    16.5,
+    26.0,
+    26.6,
+    35.1,
+    38.7,
+    35.3,
+    39.8,
+    37.8,
+    36.4
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
    "team": "Balmorhea",
-   "rating": 35.1,
-   "sd": 9.1,
+   "rating": 35.2,
+   "sd": 9.2,
    "rated": 9,
    "rated_outside": 0,
    "won": 7,
@@ -2470,7 +2470,7 @@
     35.9,
     34.9,
     34.8,
-    35.1
+    35.2
    ],
    "rated_trend": [
     3,
@@ -2488,7 +2488,7 @@
   {
    "team": "Veribest",
    "rating": 33.9,
-   "sd": 8.8,
+   "sd": 8.9,
    "rated": 9,
    "rated_outside": 0,
    "won": 5,
@@ -2522,7 +2522,7 @@
   },
   {
    "team": "Kingdom Preparatory Academy-Lubbock",
-   "rating": 33.4,
+   "rating": 33.7,
    "sd": 8.4,
    "rated": 11,
    "rated_outside": 0,
@@ -2540,7 +2540,7 @@
     37.7,
     37.9,
     33.3,
-    33.4
+    33.7
    ],
    "rated_trend": [
     4,
@@ -2557,7 +2557,7 @@
   },
   {
    "team": "Gustine",
-   "rating": 32.3,
+   "rating": 32.4,
    "sd": 8.4,
    "rated": 10,
    "rated_outside": 0,
@@ -2575,7 +2575,7 @@
     32.8,
     32.4,
     35.6,
-    32.3
+    32.4
    ],
    "rated_trend": [
     3,
@@ -2592,8 +2592,8 @@
   },
   {
    "team": "Tyler Heat (Home Education Athletics of Tyler)",
-   "rating": 31.9,
-   "sd": 8.6,
+   "rating": 32.0,
+   "sd": 8.7,
    "rated": 10,
    "rated_outside": 1,
    "won": 8,
@@ -2610,7 +2610,7 @@
     18.8,
     27.6,
     31.2,
-    31.9
+    32.0
    ],
    "rated_trend": [
     3,
@@ -2626,8 +2626,43 @@
    ]
   },
   {
+   "team": "Founders Christian School-Spring",
+   "rating": 31.3,
+   "sd": 9.2,
+   "rated": 8,
+   "rated_outside": 0,
+   "won": 5,
+   "lost": 3,
+   "tied": 0,
+   "was": 31.3,
+   "trend": [
+    14.9,
+    33.9,
+    38.4,
+    31.3,
+    31.5,
+    33.6,
+    39.0,
+    38.4,
+    31.3,
+    31.3
+   ],
+   "rated_trend": [
+    2,
+    2,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    8
+   ]
+  },
+  {
    "team": "White Deer",
-   "rating": 31.6,
+   "rating": 31.2,
    "sd": 8.3,
    "rated": 10,
    "rated_outside": 0,
@@ -2645,7 +2680,7 @@
     35.0,
     36.1,
     31.8,
-    31.6
+    31.2
    ],
    "rated_trend": [
     3,
@@ -2661,79 +2696,9 @@
    ]
   },
   {
-   "team": "Founders Christian School-Spring",
-   "rating": 31.2,
-   "sd": 9.1,
-   "rated": 8,
-   "rated_outside": 0,
-   "won": 5,
-   "lost": 3,
-   "tied": 0,
-   "was": 31.3,
-   "trend": [
-    14.9,
-    33.9,
-    38.4,
-    31.3,
-    31.5,
-    33.6,
-    39.0,
-    38.4,
-    31.3,
-    31.2
-   ],
-   "rated_trend": [
-    2,
-    2,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    8
-   ]
-  },
-  {
-   "team": "Mount Calm",
-   "rating": 30.7,
-   "sd": 8.0,
-   "rated": 11,
-   "rated_outside": 0,
-   "won": 10,
-   "lost": 1,
-   "tied": 0,
-   "was": 24.0,
-   "trend": [
-    35.0,
-    18.1,
-    27.3,
-    21.7,
-    28.9,
-    25.6,
-    25.3,
-    23.0,
-    24.0,
-    30.7
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    10,
-    11
-   ]
-  },
-  {
    "team": "Wylie Preparatory Academy HS",
    "rating": 30.7,
-   "sd": 7.8,
+   "sd": 7.9,
    "rated": 11,
    "rated_outside": 0,
    "won": 7,
@@ -2766,9 +2731,44 @@
    ]
   },
   {
+   "team": "Mount Calm",
+   "rating": 30.6,
+   "sd": 8.0,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 10,
+   "lost": 1,
+   "tied": 0,
+   "was": 24.0,
+   "trend": [
+    35.0,
+    18.1,
+    27.3,
+    21.7,
+    28.9,
+    25.6,
+    25.3,
+    23.0,
+    24.0,
+    30.6
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    10,
+    11
+   ]
+  },
+  {
    "team": "Harvest Lantana",
-   "rating": 30.0,
-   "sd": 8.6,
+   "rating": 30.2,
+   "sd": 8.7,
    "rated": 10,
    "rated_outside": 0,
    "won": 7,
@@ -2785,7 +2785,7 @@
     21.4,
     28.4,
     30.1,
-    30.0
+    30.2
    ],
    "rated_trend": [
     2,
@@ -2802,7 +2802,7 @@
   },
   {
    "team": "Bluff Dale",
-   "rating": 29.7,
+   "rating": 29.8,
    "sd": 7.9,
    "rated": 9,
    "rated_outside": 0,
@@ -2820,7 +2820,7 @@
     38.6,
     29.0,
     30.0,
-    29.7
+    29.8
    ],
    "rated_trend": [
     3,
@@ -2837,7 +2837,7 @@
   },
   {
    "team": "Heritage Christian Academy-Rockwall",
-   "rating": 29.6,
+   "rating": 29.4,
    "sd": 8.1,
    "rated": 10,
    "rated_outside": 0,
@@ -2855,7 +2855,7 @@
     30.9,
     27.8,
     29.3,
-    29.6
+    29.4
    ],
    "rated_trend": [
     4,
@@ -2871,9 +2871,44 @@
    ]
   },
   {
+   "team": "McLean",
+   "rating": 28.7,
+   "sd": 8.6,
+   "rated": 9,
+   "rated_outside": 1,
+   "won": 6,
+   "lost": 4,
+   "tied": 0,
+   "was": 27.6,
+   "trend": [
+    41.8,
+    28.5,
+    13.3,
+    19.8,
+    21.3,
+    27.0,
+    26.1,
+    28.6,
+    27.6,
+    28.7
+   ],
+   "rated_trend": [
+    2,
+    3,
+    4,
+    5,
+    5,
+    6,
+    6,
+    7,
+    8,
+    9
+   ]
+  },
+  {
    "team": "Lone Star High School Southeast - Giddings",
-   "rating": 27.5,
-   "sd": 9.7,
+   "rating": 27.7,
+   "sd": 9.8,
    "rated": 6,
    "rated_outside": 1,
    "won": 2,
@@ -2890,7 +2925,7 @@
     24.1,
     25.6,
     28.3,
-    27.5
+    27.7
    ],
    "rated_trend": [
     1,
@@ -2908,7 +2943,7 @@
   {
    "team": "Roby",
    "rating": 27.3,
-   "sd": 8.4,
+   "sd": 8.5,
    "rated": 10,
    "rated_outside": 0,
    "won": 5,
@@ -2938,41 +2973,6 @@
     9,
     10,
     10
-   ]
-  },
-  {
-   "team": "McLean",
-   "rating": 27.2,
-   "sd": 9.1,
-   "rated": 8,
-   "rated_outside": 1,
-   "won": 6,
-   "lost": 3,
-   "tied": 0,
-   "was": 27.6,
-   "trend": [
-    41.8,
-    28.5,
-    13.3,
-    19.8,
-    21.3,
-    27.0,
-    26.1,
-    28.6,
-    27.6,
-    27.2
-   ],
-   "rated_trend": [
-    2,
-    3,
-    4,
-    5,
-    5,
-    6,
-    6,
-    7,
-    8,
-    8
    ]
   },
   {
@@ -3011,8 +3011,43 @@
    ]
   },
   {
+   "team": "Christ The King Diocesan High School-Lubbock",
+   "rating": 26.5,
+   "sd": 9.3,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 8,
+   "lost": 2,
+   "tied": 0,
+   "was": 25.1,
+   "trend": [
+    8.1,
+    11.1,
+    11.7,
+    26.1,
+    22.8,
+    22.0,
+    23.9,
+    23.9,
+    25.1,
+    26.5
+   ],
+   "rated_trend": [
+    3,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    10
+   ]
+  },
+  {
    "team": "Trinity School-Midland",
-   "rating": 25.8,
+   "rating": 26.0,
    "sd": 8.1,
    "rated": 10,
    "rated_outside": 0,
@@ -3030,48 +3065,13 @@
     29.2,
     27.5,
     25.9,
-    25.8
+    26.0
    ],
    "rated_trend": [
     3,
     4,
     5,
     6,
-    6,
-    7,
-    8,
-    9,
-    10,
-    10
-   ]
-  },
-  {
-   "team": "Christ The King Diocesan High School-Lubbock",
-   "rating": 25.1,
-   "sd": 9.2,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 8,
-   "lost": 2,
-   "tied": 0,
-   "was": 25.1,
-   "trend": [
-    8.1,
-    11.1,
-    11.7,
-    26.1,
-    22.8,
-    22.0,
-    23.9,
-    23.9,
-    25.1,
-    25.1
-   ],
-   "rated_trend": [
-    3,
-    3,
-    4,
-    5,
     6,
     7,
     8,
@@ -3082,8 +3082,8 @@
   },
   {
    "team": "Williamson County Homeschool (WILCO)",
-   "rating": 25.0,
-   "sd": 8.4,
+   "rating": 25.2,
+   "sd": 8.5,
    "rated": 10,
    "rated_outside": 0,
    "won": 5,
@@ -3100,7 +3100,7 @@
     21.4,
     21.6,
     22.7,
-    25.0
+    25.2
    ],
    "rated_trend": [
     3,
@@ -3117,7 +3117,7 @@
   },
   {
    "team": "Lone Star High School North-Gainesville",
-   "rating": 24.9,
+   "rating": 25.0,
    "sd": 8.1,
    "rated": 10,
    "rated_outside": 0,
@@ -3135,7 +3135,7 @@
     21.4,
     22.6,
     24.8,
-    24.9
+    25.0
    ],
    "rated_trend": [
     2,
@@ -3151,43 +3151,8 @@
    ]
   },
   {
-   "team": "Hart",
-   "rating": 24.8,
-   "sd": 9.5,
-   "rated": 9,
-   "rated_outside": 0,
-   "won": 9,
-   "lost": 1,
-   "tied": 0,
-   "was": 25.0,
-   "trend": [
-    45.6,
-    37.3,
-    36.1,
-    33.3,
-    36.8,
-    33.3,
-    32.4,
-    22.3,
-    25.0,
-    24.8
-   ],
-   "rated_trend": [
-    3,
-    4,
-    4,
-    5,
-    6,
-    7,
-    7,
-    8,
-    9,
-    9
-   ]
-  },
-  {
    "team": "Harvest Christian Academy-Keller",
-   "rating": 24.6,
+   "rating": 24.7,
    "sd": 8.0,
    "rated": 10,
    "rated_outside": 0,
@@ -3205,7 +3170,7 @@
     25.4,
     21.1,
     24.6,
-    24.6
+    24.7
    ],
    "rated_trend": [
     3,
@@ -3222,7 +3187,7 @@
   },
   {
    "team": "BVCHEA",
-   "rating": 24.5,
+   "rating": 24.6,
    "sd": 7.8,
    "rated": 9,
    "rated_outside": 0,
@@ -3240,7 +3205,7 @@
     25.2,
     25.1,
     24.3,
-    24.5
+    24.6
    ],
    "rated_trend": [
     3,
@@ -3292,7 +3257,7 @@
   },
   {
    "team": "Stephenville Faith Knights",
-   "rating": 24.2,
+   "rating": 24.3,
    "sd": 7.1,
    "rated": 11,
    "rated_outside": 0,
@@ -3310,7 +3275,7 @@
     20.2,
     18.8,
     20.7,
-    24.2
+    24.3
    ],
    "rated_trend": [
     3,
@@ -3327,7 +3292,7 @@
   },
   {
    "team": "Lubbock Titans",
-   "rating": 23.7,
+   "rating": 23.8,
    "sd": 7.9,
    "rated": 9,
    "rated_outside": 0,
@@ -3345,7 +3310,7 @@
     22.3,
     21.8,
     23.2,
-    23.7
+    23.8
    ],
    "rated_trend": [
     3,
@@ -3397,8 +3362,8 @@
   },
   {
    "team": "East Texas Homeschool Sports",
-   "rating": 22.2,
-   "sd": 8.4,
+   "rating": 22.3,
+   "sd": 8.5,
    "rated": 9,
    "rated_outside": 0,
    "won": 4,
@@ -3415,7 +3380,7 @@
     16.3,
     21.0,
     22.2,
-    22.2
+    22.3
    ],
    "rated_trend": [
     3,
@@ -3431,26 +3396,26 @@
    ]
   },
   {
-   "team": "Lometa",
-   "rating": 21.9,
-   "sd": 7.6,
-   "rated": 10,
+   "team": "Wellman-Union",
+   "rating": 22.3,
+   "sd": 8.2,
+   "rated": 11,
    "rated_outside": 0,
-   "won": 3,
-   "lost": 7,
+   "won": 8,
+   "lost": 3,
    "tied": 0,
-   "was": 22.6,
+   "was": 17.4,
    "trend": [
-    36.7,
-    31.9,
-    21.7,
+    -2.3,
+    6.5,
+    7.6,
+    11.4,
+    12.9,
+    14.8,
     16.9,
-    25.2,
-    26.4,
-    30.7,
-    27.0,
-    22.6,
-    21.9
+    17.7,
+    17.4,
+    22.3
    ],
    "rated_trend": [
     3,
@@ -3458,17 +3423,17 @@
     5,
     6,
     7,
-    7,
     8,
     9,
     10,
-    10
+    10,
+    11
    ]
   },
   {
    "team": "San Antonio Patriots",
-   "rating": 21.9,
-   "sd": 7.4,
+   "rating": 22.1,
+   "sd": 7.5,
    "rated": 10,
    "rated_outside": 1,
    "won": 5,
@@ -3485,7 +3450,7 @@
     21.3,
     22.4,
     21.8,
-    21.9
+    22.1
    ],
    "rated_trend": [
     3,
@@ -3501,8 +3466,43 @@
    ]
   },
   {
+   "team": "Lometa",
+   "rating": 21.8,
+   "sd": 7.7,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 3,
+   "lost": 7,
+   "tied": 0,
+   "was": 22.6,
+   "trend": [
+    36.7,
+    31.9,
+    21.7,
+    16.9,
+    25.2,
+    26.4,
+    30.7,
+    27.0,
+    22.6,
+    21.8
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    7,
+    8,
+    9,
+    10,
+    10
+   ]
+  },
+  {
    "team": "Harrold",
-   "rating": 21.7,
+   "rating": 21.6,
    "sd": 8.0,
    "rated": 10,
    "rated_outside": 0,
@@ -3520,7 +3520,7 @@
     6.9,
     14.4,
     19.6,
-    21.7
+    21.6
    ],
    "rated_trend": [
     2,
@@ -3573,7 +3573,7 @@
   {
    "team": "Brazosport Christian School-Lake Jackson",
    "rating": 21.4,
-   "sd": 8.5,
+   "sd": 8.6,
    "rated": 8,
    "rated_outside": 0,
    "won": 3,
@@ -3603,6 +3603,41 @@
     8,
     8,
     8
+   ]
+  },
+  {
+   "team": "Mertzon Irion County",
+   "rating": 21.4,
+   "sd": 8.7,
+   "rated": 9,
+   "rated_outside": 0,
+   "won": 4,
+   "lost": 5,
+   "tied": 0,
+   "was": 20.4,
+   "trend": [
+    3.1,
+    18.5,
+    21.9,
+    23.2,
+    25.3,
+    23.3,
+    20.8,
+    20.4,
+    20.4,
+    21.4
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    5,
+    6,
+    7,
+    8,
+    9,
+    9,
+    9
    ]
   },
   {
@@ -3641,44 +3676,9 @@
    ]
   },
   {
-   "team": "Mertzon Irion County",
-   "rating": 21.2,
-   "sd": 8.7,
-   "rated": 9,
-   "rated_outside": 0,
-   "won": 4,
-   "lost": 5,
-   "tied": 0,
-   "was": 20.4,
-   "trend": [
-    3.1,
-    18.5,
-    21.9,
-    23.2,
-    25.3,
-    23.3,
-    20.8,
-    20.4,
-    20.4,
-    21.2
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    5,
-    6,
-    7,
-    8,
-    9,
-    9,
-    9
-   ]
-  },
-  {
    "team": "Runge",
-   "rating": 21.2,
-   "sd": 8.2,
+   "rating": 21.0,
+   "sd": 8.3,
    "rated": 11,
    "rated_outside": 0,
    "won": 9,
@@ -3695,7 +3695,7 @@
     15.0,
     17.3,
     20.7,
-    21.2
+    21.0
    ],
    "rated_trend": [
     3,
@@ -3712,8 +3712,8 @@
   },
   {
    "team": "Second Baptist School UM-Memorial",
-   "rating": 19.0,
-   "sd": 8.6,
+   "rating": 19.1,
+   "sd": 8.7,
    "rated": 8,
    "rated_outside": 1,
    "won": 4,
@@ -3730,7 +3730,7 @@
     25.5,
     25.3,
     19.1,
-    19.0
+    19.1
    ],
    "rated_trend": [
     3,
@@ -3782,7 +3782,7 @@
   },
   {
    "team": "Booker",
-   "rating": 17.6,
+   "rating": 17.5,
    "sd": 8.5,
    "rated": 10,
    "rated_outside": 0,
@@ -3800,7 +3800,7 @@
     20.8,
     20.8,
     17.7,
-    17.6
+    17.5
    ],
    "rated_trend": [
     3,
@@ -3886,44 +3886,9 @@
    ]
   },
   {
-   "team": "Wellman-Union",
-   "rating": 17.3,
-   "sd": 8.4,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 7,
-   "lost": 3,
-   "tied": 0,
-   "was": 17.4,
-   "trend": [
-    -2.3,
-    6.5,
-    7.6,
-    11.4,
-    12.9,
-    14.8,
-    16.9,
-    17.7,
-    17.4,
-    17.3
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    10,
-    10
-   ]
-  },
-  {
    "team": "Roscoe Highland",
-   "rating": 16.4,
-   "sd": 7.9,
+   "rating": 17.2,
+   "sd": 8.0,
    "rated": 11,
    "rated_outside": 0,
    "won": 7,
@@ -3940,7 +3905,7 @@
     15.6,
     18.9,
     16.5,
-    16.4
+    17.2
    ],
    "rated_trend": [
     2,
@@ -3958,7 +3923,7 @@
   {
    "team": "Baytown Christian Academy",
    "rating": 15.6,
-   "sd": 9.0,
+   "sd": 9.1,
    "rated": 7,
    "rated_outside": 1,
    "won": 5,
@@ -3991,9 +3956,44 @@
    ]
   },
   {
+   "team": "Hart",
+   "rating": 14.9,
+   "sd": 8.9,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 9,
+   "lost": 2,
+   "tied": 0,
+   "was": 25.0,
+   "trend": [
+    45.6,
+    37.3,
+    36.1,
+    33.3,
+    36.8,
+    33.3,
+    32.4,
+    22.3,
+    25.0,
+    14.9
+   ],
+   "rated_trend": [
+    3,
+    4,
+    4,
+    5,
+    6,
+    7,
+    7,
+    8,
+    9,
+    10
+   ]
+  },
+  {
    "team": "Allen Academy-Bryan",
    "rating": 13.2,
-   "sd": 7.5,
+   "sd": 7.6,
    "rated": 10,
    "rated_outside": 1,
    "won": 6,
@@ -4023,6 +4023,41 @@
     9,
     10,
     10
+   ]
+  },
+  {
+   "team": "Meadow",
+   "rating": 10.3,
+   "sd": 8.1,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 7,
+   "lost": 4,
+   "tied": 0,
+   "was": 4.0,
+   "trend": [
+    11.5,
+    19.0,
+    14.4,
+    7.2,
+    9.4,
+    4.4,
+    4.7,
+    1.5,
+    4.0,
+    10.3
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    8,
+    9,
+    10,
+    11
    ]
   },
   {
@@ -4096,9 +4131,44 @@
    ]
   },
   {
+   "team": "O'Donnell",
+   "rating": 8.2,
+   "sd": 8.6,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 3,
+   "lost": 7,
+   "tied": 0,
+   "was": 7.7,
+   "trend": [
+    11.8,
+    12.1,
+    10.2,
+    6.9,
+    7.4,
+    6.5,
+    8.7,
+    7.2,
+    7.7,
+    8.2
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    10
+   ]
+  },
+  {
    "team": "Knippa",
    "rating": 7.9,
-   "sd": 8.8,
+   "sd": 8.9,
    "rated": 11,
    "rated_outside": 0,
    "won": 6,
@@ -4131,43 +4201,43 @@
    ]
   },
   {
-   "team": "O'Donnell",
-   "rating": 7.9,
-   "sd": 8.5,
-   "rated": 10,
+   "team": "Imperial Buena Vista",
+   "rating": 6.5,
+   "sd": 8.4,
+   "rated": 9,
    "rated_outside": 0,
-   "won": 3,
-   "lost": 7,
+   "won": 4,
+   "lost": 6,
    "tied": 0,
-   "was": 7.7,
+   "was": 5.3,
    "trend": [
-    11.8,
-    12.1,
-    10.2,
-    6.9,
-    7.4,
-    6.5,
-    8.7,
-    7.2,
-    7.7,
-    7.9
+    -4.8,
+    3.8,
+    2.5,
+    6.1,
+    8.1,
+    7.0,
+    8.8,
+    5.8,
+    5.3,
+    6.5
    ],
    "rated_trend": [
+    2,
     3,
     4,
     5,
-    5,
+    6,
     6,
     7,
     8,
     9,
-    10,
-    10
+    9
    ]
   },
   {
    "team": "Kress",
-   "rating": 6.5,
+   "rating": 6.3,
    "sd": 8.1,
    "rated": 11,
    "rated_outside": 0,
@@ -4185,7 +4255,7 @@
     4.2,
     4.9,
     6.8,
-    6.5
+    6.3
    ],
    "rated_trend": [
     3,
@@ -4201,148 +4271,8 @@
    ]
   },
   {
-   "team": "Imperial Buena Vista",
-   "rating": 6.4,
-   "sd": 8.3,
-   "rated": 9,
-   "rated_outside": 0,
-   "won": 4,
-   "lost": 6,
-   "tied": 0,
-   "was": 5.3,
-   "trend": [
-    -4.8,
-    3.8,
-    2.5,
-    6.1,
-    8.1,
-    7.0,
-    8.8,
-    5.8,
-    5.3,
-    6.4
-   ],
-   "rated_trend": [
-    2,
-    3,
-    4,
-    5,
-    6,
-    6,
-    7,
-    8,
-    9,
-    9
-   ]
-  },
-  {
-   "team": "Petersburg",
-   "rating": 5.7,
-   "sd": 7.4,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 3,
-   "lost": 7,
-   "tied": 0,
-   "was": 6.0,
-   "trend": [
-    -5.1,
-    -0.8,
-    4.5,
-    2.6,
-    3.3,
-    2.4,
-    5.7,
-    4.7,
-    6.0,
-    5.7
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    7,
-    8,
-    9,
-    10,
-    10
-   ]
-  },
-  {
-   "team": "Anton",
-   "rating": 5.2,
-   "sd": 8.8,
-   "rated": 8,
-   "rated_outside": 0,
-   "won": 7,
-   "lost": 1,
-   "tied": 0,
-   "was": 5.4,
-   "trend": [
-    -29.3,
-    -4.1,
-    2.9,
-    5.6,
-    4.0,
-    3.4,
-    5.6,
-    6.7,
-    5.4,
-    5.2
-   ],
-   "rated_trend": [
-    2,
-    3,
-    4,
-    5,
-    5,
-    5,
-    6,
-    7,
-    8,
-    8
-   ]
-  },
-  {
-   "team": "Perrin-Whitt",
-   "rating": 5.0,
-   "sd": 8.4,
-   "rated": 9,
-   "rated_outside": 0,
-   "won": 4,
-   "lost": 5,
-   "tied": 0,
-   "was": 5.3,
-   "trend": [
-    23.0,
-    26.8,
-    31.0,
-    20.7,
-    13.3,
-    10.4,
-    9.9,
-    8.6,
-    5.3,
-    5.0
-   ],
-   "rated_trend": [
-    3,
-    3,
-    4,
-    5,
-    6,
-    7,
-    7,
-    8,
-    9,
-    9
-   ]
-  },
-  {
    "team": "Ira",
-   "rating": 4.9,
+   "rating": 6.2,
    "sd": 8.9,
    "rated": 10,
    "rated_outside": 0,
@@ -4360,7 +4290,7 @@
     6.2,
     4.2,
     4.6,
-    4.9
+    6.2
    ],
    "rated_trend": [
     3,
@@ -4376,8 +4306,78 @@
    ]
   },
   {
+   "team": "Petersburg",
+   "rating": 6.2,
+   "sd": 7.4,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 3,
+   "lost": 7,
+   "tied": 0,
+   "was": 6.0,
+   "trend": [
+    -5.1,
+    -0.8,
+    4.5,
+    2.6,
+    3.3,
+    2.4,
+    5.7,
+    4.7,
+    6.0,
+    6.2
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    7,
+    8,
+    9,
+    10,
+    10
+   ]
+  },
+  {
+   "team": "Perrin-Whitt",
+   "rating": 4.9,
+   "sd": 8.5,
+   "rated": 9,
+   "rated_outside": 0,
+   "won": 4,
+   "lost": 5,
+   "tied": 0,
+   "was": 5.3,
+   "trend": [
+    23.0,
+    26.8,
+    31.0,
+    20.7,
+    13.3,
+    10.4,
+    9.9,
+    8.6,
+    5.3,
+    4.9
+   ],
+   "rated_trend": [
+    3,
+    3,
+    4,
+    5,
+    6,
+    7,
+    7,
+    8,
+    9,
+    9
+   ]
+  },
+  {
    "team": "Penelope",
-   "rating": 4.3,
+   "rating": 4.1,
    "sd": 8.5,
    "rated": 10,
    "rated_outside": 0,
@@ -4395,7 +4395,7 @@
     3.9,
     3.9,
     4.1,
-    4.3
+    4.1
    ],
    "rated_trend": [
     3,
@@ -4406,41 +4406,6 @@
     8,
     9,
     10,
-    10,
-    10
-   ]
-  },
-  {
-   "team": "Meadow",
-   "rating": 4.0,
-   "sd": 8.2,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 6,
-   "lost": 4,
-   "tied": 0,
-   "was": 4.0,
-   "trend": [
-    11.5,
-    19.0,
-    14.4,
-    7.2,
-    9.4,
-    4.4,
-    4.7,
-    1.5,
-    4.0,
-    4.0
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    8,
-    9,
     10,
     10
    ]
@@ -4448,7 +4413,7 @@
   {
    "team": "Saint Jo",
    "rating": 3.8,
-   "sd": 8.0,
+   "sd": 8.1,
    "rated": 10,
    "rated_outside": 0,
    "won": 6,
@@ -4483,7 +4448,7 @@
   {
    "team": "Rochelle",
    "rating": 3.5,
-   "sd": 8.2,
+   "sd": 8.3,
    "rated": 10,
    "rated_outside": 0,
    "won": 5,
@@ -4516,44 +4481,9 @@
    ]
   },
   {
-   "team": "Silverton",
-   "rating": 2.9,
-   "sd": 8.1,
-   "rated": 9,
-   "rated_outside": 0,
-   "won": 3,
-   "lost": 6,
-   "tied": 0,
-   "was": 3.4,
-   "trend": [
-    -7.9,
-    1.2,
-    6.7,
-    10.0,
-    16.3,
-    17.5,
-    12.1,
-    6.2,
-    3.4,
-    2.9
-   ],
-   "rated_trend": [
-    2,
-    3,
-    4,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    9
-   ]
-  },
-  {
    "team": "Sidney",
-   "rating": 2.7,
-   "sd": 8.2,
+   "rating": 2.8,
+   "sd": 8.3,
    "rated": 9,
    "rated_outside": 0,
    "won": 3,
@@ -4570,7 +4500,7 @@
     -7.4,
     -5.4,
     -6.2,
-    2.7
+    2.8
    ],
    "rated_trend": [
     3,
@@ -4587,7 +4517,7 @@
   },
   {
    "team": "Oakwood",
-   "rating": 2.6,
+   "rating": 2.5,
    "sd": 8.5,
    "rated": 10,
    "rated_outside": 0,
@@ -4605,7 +4535,7 @@
     8.2,
     1.1,
     1.0,
-    2.6
+    2.5
    ],
    "rated_trend": [
     3,
@@ -4621,8 +4551,43 @@
    ]
   },
   {
+   "team": "Prestonwood Christian Academy North-Prosper",
+   "rating": 2.5,
+   "sd": 8.6,
+   "rated": 8,
+   "rated_outside": 0,
+   "won": 2,
+   "lost": 6,
+   "tied": 0,
+   "was": 2.5,
+   "trend": [
+    1.2,
+    10.8,
+    12.5,
+    15.2,
+    4.7,
+    -1.6,
+    -5.9,
+    0.7,
+    2.5,
+    2.5
+   ],
+   "rated_trend": [
+    3,
+    4,
+    4,
+    4,
+    5,
+    6,
+    7,
+    8,
+    8,
+    8
+   ]
+  },
+  {
    "team": "Trinidad",
-   "rating": 2.6,
+   "rating": 2.5,
    "sd": 7.8,
    "rated": 9,
    "rated_outside": 1,
@@ -4640,7 +4605,7 @@
     -3.2,
     -0.2,
     1.4,
-    2.6
+    2.5
    ],
    "rated_trend": [
     3,
@@ -4656,43 +4621,43 @@
    ]
   },
   {
-   "team": "Prestonwood Christian Academy North-Prosper",
-   "rating": 2.4,
-   "sd": 8.5,
-   "rated": 8,
+   "team": "Silverton",
+   "rating": 2.2,
+   "sd": 8.2,
+   "rated": 9,
    "rated_outside": 0,
-   "won": 2,
+   "won": 3,
    "lost": 6,
    "tied": 0,
-   "was": 2.5,
+   "was": 3.4,
    "trend": [
+    -7.9,
     1.2,
-    10.8,
-    12.5,
-    15.2,
-    4.7,
-    -1.6,
-    -5.9,
-    0.7,
-    2.5,
-    2.4
+    6.7,
+    10.0,
+    16.3,
+    17.5,
+    12.1,
+    6.2,
+    3.4,
+    2.2
    ],
    "rated_trend": [
+    2,
     3,
-    4,
     4,
     4,
     5,
     6,
     7,
     8,
-    8,
-    8
+    9,
+    9
    ]
   },
   {
    "team": "Earth Springlake",
-   "rating": 0.6,
+   "rating": 0.5,
    "sd": 8.3,
    "rated": 10,
    "rated_outside": 0,
@@ -4710,7 +4675,7 @@
     0.8,
     0.5,
     0.8,
-    0.6
+    0.5
    ],
    "rated_trend": [
     3,
@@ -4761,43 +4726,43 @@
    ]
   },
   {
-   "team": "Bowie Gold-Burg",
-   "rating": -1.5,
-   "sd": 8.1,
-   "rated": 10,
+   "team": "Anton",
+   "rating": -0.8,
+   "sd": 8.4,
+   "rated": 9,
    "rated_outside": 0,
-   "won": 3,
-   "lost": 7,
+   "won": 7,
+   "lost": 2,
    "tied": 0,
-   "was": -1.0,
+   "was": 5.4,
    "trend": [
-    -1.6,
-    -0.5,
-    1.4,
-    5.9,
-    6.2,
-    3.8,
-    2.1,
+    -29.3,
+    -4.1,
     2.9,
-    -1.0,
-    -1.5
+    5.6,
+    4.0,
+    3.4,
+    5.6,
+    6.7,
+    5.4,
+    -0.8
    ],
    "rated_trend": [
+    2,
     3,
     4,
+    5,
+    5,
     5,
     6,
     7,
     8,
-    8,
-    9,
-    10,
-    10
+    9
    ]
   },
   {
    "team": "Johnson County Sports Association (JCSA)",
-   "rating": -1.5,
+   "rating": -1.4,
    "sd": 7.6,
    "rated": 10,
    "rated_outside": 1,
@@ -4815,7 +4780,7 @@
     -7.2,
     -4.0,
     -2.0,
-    -1.5
+    -1.4
    ],
    "rated_trend": [
     2,
@@ -4831,9 +4796,44 @@
    ]
   },
   {
+   "team": "Bowie Gold-Burg",
+   "rating": -1.6,
+   "sd": 8.2,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 3,
+   "lost": 7,
+   "tied": 0,
+   "was": -1.0,
+   "trend": [
+    -1.6,
+    -0.5,
+    1.4,
+    5.9,
+    6.2,
+    3.8,
+    2.1,
+    2.9,
+    -1.0,
+    -1.6
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    8,
+    9,
+    10,
+    10
+   ]
+  },
+  {
    "team": "Legacy Christian Academy-Beaumont",
-   "rating": -1.8,
-   "sd": 8.5,
+   "rating": -1.7,
+   "sd": 8.6,
    "rated": 8,
    "rated_outside": 1,
    "won": 1,
@@ -4850,7 +4850,7 @@
     2.4,
     0.7,
     -1.6,
-    -1.8
+    -1.7
    ],
    "rated_trend": [
     3,
@@ -4903,7 +4903,7 @@
   {
    "team": "Annapolis Christian Academy-Corpus Christi",
    "rating": -3.2,
-   "sd": 9.2,
+   "sd": 9.3,
    "rated": 7,
    "rated_outside": 0,
    "won": 5,
@@ -4937,8 +4937,8 @@
   },
   {
    "team": "Cornerstone Christian Academy-McKinney",
-   "rating": -5.5,
-   "sd": 8.4,
+   "rating": -5.4,
+   "sd": 8.5,
    "rated": 10,
    "rated_outside": 0,
    "won": 6,
@@ -4955,7 +4955,7 @@
     -4.5,
     -5.3,
     -5.5,
-    -5.5
+    -5.4
    ],
    "rated_trend": [
     3,
@@ -4972,7 +4972,7 @@
   },
   {
    "team": "Rotan",
-   "rating": -5.6,
+   "rating": -5.7,
    "sd": 8.3,
    "rated": 10,
    "rated_outside": 0,
@@ -4990,7 +4990,7 @@
     -4.2,
     -4.5,
     -5.8,
-    -5.6
+    -5.7
    ],
    "rated_trend": [
     3,
@@ -5007,7 +5007,7 @@
   },
   {
    "team": "Grace Classical Academy",
-   "rating": -6.7,
+   "rating": -6.6,
    "sd": 8.4,
    "rated": 7,
    "rated_outside": 1,
@@ -5025,7 +5025,7 @@
     -18.7,
     -7.2,
     -6.7,
-    -6.7
+    -6.6
    ],
    "rated_trend": [
     3,
@@ -5042,8 +5042,8 @@
   },
   {
    "team": "Woodson",
-   "rating": -6.7,
-   "sd": 7.4,
+   "rating": -6.9,
+   "sd": 7.5,
    "rated": 11,
    "rated_outside": 0,
    "won": 7,
@@ -5060,7 +5060,7 @@
     -3.6,
     -7.6,
     -5.2,
-    -6.7
+    -6.9
    ],
    "rated_trend": [
     3,
@@ -5073,41 +5073,6 @@
     9,
     10,
     11
-   ]
-  },
-  {
-   "team": "Vitoria Gators",
-   "rating": -7.9,
-   "sd": 8.4,
-   "rated": 8,
-   "rated_outside": 1,
-   "won": 7,
-   "lost": 1,
-   "tied": 0,
-   "was": -8.0,
-   "trend": [
-    -3.7,
-    -18.5,
-    -17.4,
-    -14.2,
-    -13.3,
-    -13.8,
-    -8.3,
-    -7.7,
-    -8.0,
-    -7.9
-   ],
-   "rated_trend": [
-    2,
-    3,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    8,
-    8
    ]
   },
   {
@@ -5147,7 +5112,7 @@
   },
   {
    "team": "Baird",
-   "rating": -9.4,
+   "rating": -9.2,
    "sd": 8.7,
    "rated": 8,
    "rated_outside": 0,
@@ -5165,7 +5130,7 @@
     -14.4,
     -10.1,
     -8.3,
-    -9.4
+    -9.2
    ],
    "rated_trend": [
     2,
@@ -5181,43 +5146,43 @@
    ]
   },
   {
-   "team": "Crowell",
-   "rating": -9.8,
-   "sd": 7.6,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 5,
-   "lost": 5,
+   "team": "Vitoria Gators",
+   "rating": -9.3,
+   "sd": 8.1,
+   "rated": 9,
+   "rated_outside": 1,
+   "won": 8,
+   "lost": 1,
    "tied": 0,
-   "was": -9.5,
+   "was": -8.0,
    "trend": [
-    -12.4,
-    -9.1,
-    -11.8,
-    -18.0,
-    -6.5,
-    -8.8,
-    -6.9,
-    -8.4,
-    -9.5,
-    -9.8
+    -3.7,
+    -18.5,
+    -17.4,
+    -14.2,
+    -13.3,
+    -13.8,
+    -8.3,
+    -7.7,
+    -8.0,
+    -9.3
    ],
    "rated_trend": [
+    2,
     3,
-    4,
+    3,
     4,
     5,
     6,
     7,
     8,
-    9,
-    10,
-    10
+    8,
+    9
    ]
   },
   {
    "team": "Grace Perrin",
-   "rating": -9.8,
+   "rating": -9.7,
    "sd": 9.1,
    "rated": 6,
    "rated_outside": 2,
@@ -5235,7 +5200,7 @@
     -11.3,
     -8.5,
     -9.6,
-    -9.8
+    -9.7
    ],
    "rated_trend": [
     1,
@@ -5251,43 +5216,43 @@
    ]
   },
   {
-   "team": "Lazbuddie",
-   "rating": -10.2,
-   "sd": 9.9,
-   "rated": 8,
+   "team": "Crowell",
+   "rating": -10.1,
+   "sd": 7.7,
+   "rated": 10,
    "rated_outside": 0,
    "won": 5,
-   "lost": 4,
+   "lost": 5,
    "tied": 0,
-   "was": -10.0,
+   "was": -9.5,
    "trend": [
-    -2.3,
-    -16.9,
-    -17.1,
-    -18.4,
-    -18.3,
-    -17.1,
-    -18.2,
-    -11.5,
-    -10.0,
-    -10.2
+    -12.4,
+    -9.1,
+    -11.8,
+    -18.0,
+    -6.5,
+    -8.8,
+    -6.9,
+    -8.4,
+    -9.5,
+    -10.1
    ],
    "rated_trend": [
     3,
     4,
-    5,
-    5,
+    4,
     5,
     6,
     7,
     8,
-    8,
-    8
+    9,
+    10,
+    10
    ]
   },
   {
    "team": "Barksdale Nueces Canyon",
-   "rating": -11.5,
+   "rating": -11.6,
    "sd": 8.9,
    "rated": 9,
    "rated_outside": 0,
@@ -5305,7 +5270,7 @@
     -14.6,
     -15.0,
     -10.9,
-    -11.5
+    -11.6
    ],
    "rated_trend": [
     2,
@@ -5322,7 +5287,7 @@
   },
   {
    "team": "Jubilee Brownsville",
-   "rating": -11.5,
+   "rating": -11.7,
    "sd": 10.4,
    "rated": 6,
    "rated_outside": 0,
@@ -5340,7 +5305,7 @@
     -10.3,
     -6.8,
     -10.4,
-    -11.5
+    -11.7
    ],
    "rated_trend": [
     2,
@@ -5356,37 +5321,37 @@
    ]
   },
   {
-   "team": "Lefors",
-   "rating": -12.1,
-   "sd": 9.2,
+   "team": "El Paso Leadership Academy",
+   "rating": -12.2,
+   "sd": 11.9,
    "rated": 8,
-   "rated_outside": 1,
+   "rated_outside": 0,
    "won": 4,
-   "lost": 5,
+   "lost": 4,
    "tied": 0,
-   "was": -11.6,
+   "was": -14.8,
    "trend": [
-    -30.6,
-    -20.0,
-    -17.3,
-    -16.7,
-    -7.5,
-    -12.4,
-    -8.4,
-    -9.9,
-    -11.6,
-    -12.1
+    16.0,
+    6.9,
+    -1.4,
+    -11.3,
+    -9.4,
+    -5.9,
+    -9.2,
+    -9.5,
+    -14.8,
+    -12.2
    ],
    "rated_trend": [
-    3,
+    2,
     3,
     4,
-    4,
+    5,
     5,
     6,
     7,
     7,
-    7,
+    8,
     8
    ]
   },
@@ -5426,44 +5391,9 @@
    ]
   },
   {
-   "team": "El Paso Leadership Academy",
-   "rating": -12.4,
-   "sd": 11.8,
-   "rated": 8,
-   "rated_outside": 0,
-   "won": 4,
-   "lost": 4,
-   "tied": 0,
-   "was": -14.8,
-   "trend": [
-    16.0,
-    6.9,
-    -1.4,
-    -11.3,
-    -9.4,
-    -5.9,
-    -9.2,
-    -9.5,
-    -14.8,
-    -12.4
-   ],
-   "rated_trend": [
-    2,
-    3,
-    4,
-    5,
-    5,
-    6,
-    7,
-    7,
-    8,
-    8
-   ]
-  },
-  {
    "team": "Weatherford Christian School",
    "rating": -12.6,
-   "sd": 8.6,
+   "sd": 8.7,
    "rated": 9,
    "rated_outside": 0,
    "won": 4,
@@ -5498,7 +5428,7 @@
   {
    "team": "Morgan",
    "rating": -12.7,
-   "sd": 9.1,
+   "sd": 9.2,
    "rated": 9,
    "rated_outside": 0,
    "won": 6,
@@ -5532,8 +5462,8 @@
   },
   {
    "team": "Sherman Grayson Christian School",
-   "rating": -13.1,
-   "sd": 8.6,
+   "rating": -13.0,
+   "sd": 8.7,
    "rated": 9,
    "rated_outside": 1,
    "won": 5,
@@ -5550,7 +5480,7 @@
     -17.5,
     -16.6,
     -9.2,
-    -13.1
+    -13.0
    ],
    "rated_trend": [
     1,
@@ -5567,7 +5497,7 @@
   },
   {
    "team": "Benjamin",
-   "rating": -13.3,
+   "rating": -13.5,
    "sd": 9.3,
    "rated": 9,
    "rated_outside": 1,
@@ -5585,7 +5515,7 @@
     -12.4,
     -7.2,
     -9.8,
-    -13.3
+    -13.5
    ],
    "rated_trend": [
     2,
@@ -5601,9 +5531,44 @@
    ]
   },
   {
+   "team": "Lefors",
+   "rating": -13.6,
+   "sd": 9.2,
+   "rated": 8,
+   "rated_outside": 1,
+   "won": 4,
+   "lost": 5,
+   "tied": 0,
+   "was": -11.6,
+   "trend": [
+    -30.6,
+    -20.0,
+    -17.3,
+    -16.7,
+    -7.5,
+    -12.4,
+    -8.4,
+    -9.9,
+    -11.6,
+    -13.6
+   ],
+   "rated_trend": [
+    3,
+    3,
+    4,
+    4,
+    5,
+    6,
+    7,
+    7,
+    7,
+    8
+   ]
+  },
+  {
    "team": "Rising Star",
    "rating": -14.0,
-   "sd": 8.0,
+   "sd": 8.1,
    "rated": 10,
    "rated_outside": 0,
    "won": 4,
@@ -5636,8 +5601,43 @@
    ]
   },
   {
+   "team": "Lazbuddie",
+   "rating": -14.6,
+   "sd": 9.9,
+   "rated": 8,
+   "rated_outside": 0,
+   "won": 5,
+   "lost": 4,
+   "tied": 0,
+   "was": -10.0,
+   "trend": [
+    -2.3,
+    -16.9,
+    -17.1,
+    -18.4,
+    -18.3,
+    -17.1,
+    -18.2,
+    -11.5,
+    -10.0,
+    -14.6
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    5,
+    5,
+    6,
+    7,
+    8,
+    8,
+    8
+   ]
+  },
+  {
    "team": "Town East",
-   "rating": -14.9,
+   "rating": -14.8,
    "sd": 8.2,
    "rated": 8,
    "rated_outside": 2,
@@ -5655,7 +5655,7 @@
     -15.3,
     -18.2,
     -18.6,
-    -14.9
+    -14.8
    ],
    "rated_trend": [
     2,
@@ -5672,8 +5672,8 @@
   },
   {
    "team": "Guthrie",
-   "rating": -15.3,
-   "sd": 8.8,
+   "rating": -15.7,
+   "sd": 8.9,
    "rated": 10,
    "rated_outside": 0,
    "won": 2,
@@ -5690,7 +5690,7 @@
     -12.8,
     -13.9,
     -15.1,
-    -15.3
+    -15.7
    ],
    "rated_trend": [
     3,
@@ -5708,7 +5708,7 @@
   {
    "team": "Ovilla Christian High School-Red Oak",
    "rating": -15.7,
-   "sd": 8.2,
+   "sd": 8.3,
    "rated": 11,
    "rated_outside": 0,
    "won": 4,
@@ -5778,7 +5778,7 @@
   {
    "team": "Divine Savior Academy-Missouri City",
    "rating": -17.1,
-   "sd": 8.1,
+   "sd": 8.2,
    "rated": 10,
    "rated_outside": 0,
    "won": 3,
@@ -5847,7 +5847,7 @@
   },
   {
    "team": "Burkeville",
-   "rating": -18.2,
+   "rating": -18.1,
    "sd": 9.6,
    "rated": 8,
    "rated_outside": 1,
@@ -5865,7 +5865,7 @@
     -13.5,
     -14.7,
     -17.7,
-    -18.2
+    -18.1
    ],
    "rated_trend": [
     2,
@@ -5883,7 +5883,7 @@
   {
    "team": "Blanket",
    "rating": -18.6,
-   "sd": 8.4,
+   "sd": 8.5,
    "rated": 9,
    "rated_outside": 0,
    "won": 3,
@@ -5917,7 +5917,7 @@
   },
   {
    "team": "Arlington Heights Christian School",
-   "rating": -18.9,
+   "rating": -19.0,
    "sd": 8.4,
    "rated": 10,
    "rated_outside": 0,
@@ -5935,7 +5935,7 @@
     -7.1,
     -13.4,
     -14.9,
-    -18.9
+    -19.0
    ],
    "rated_trend": [
     2,
@@ -5987,7 +5987,7 @@
   },
   {
    "team": "Covington",
-   "rating": -19.8,
+   "rating": -19.9,
    "sd": 8.5,
    "rated": 9,
    "rated_outside": 0,
@@ -6005,7 +6005,7 @@
     -21.7,
     -20.1,
     -20.0,
-    -19.8
+    -19.9
    ],
    "rated_trend": [
     2,
@@ -6022,7 +6022,7 @@
   },
   {
    "team": "Marfa",
-   "rating": -20.4,
+   "rating": -20.3,
    "sd": 8.8,
    "rated": 9,
    "rated_outside": 1,
@@ -6040,7 +6040,7 @@
     -24.7,
     -25.6,
     -26.0,
-    -20.4
+    -20.3
    ],
    "rated_trend": [
     2,
@@ -6057,7 +6057,7 @@
   },
   {
    "team": "Garland Christian Academy",
-   "rating": -21.0,
+   "rating": -21.1,
    "sd": 8.6,
    "rated": 9,
    "rated_outside": 0,
@@ -6075,7 +6075,7 @@
     -16.9,
     -22.9,
     -21.6,
-    -21.0
+    -21.1
    ],
    "rated_trend": [
     3,
@@ -6092,8 +6092,8 @@
   },
   {
    "team": "Evant",
-   "rating": -21.6,
-   "sd": 8.7,
+   "rating": -21.7,
+   "sd": 8.8,
    "rated": 10,
    "rated_outside": 0,
    "won": 5,
@@ -6110,7 +6110,7 @@
     -17.8,
     -20.0,
     -21.1,
-    -21.6
+    -21.7
    ],
    "rated_trend": [
     3,
@@ -6127,7 +6127,7 @@
   },
   {
    "team": "Santa Anna",
-   "rating": -22.4,
+   "rating": -22.2,
    "sd": 8.0,
    "rated": 10,
    "rated_outside": 0,
@@ -6145,7 +6145,7 @@
     -23.7,
     -23.2,
     -22.3,
-    -22.4
+    -22.2
    ],
    "rated_trend": [
     3,
@@ -6162,8 +6162,8 @@
   },
   {
    "team": "Westlake Academy",
-   "rating": -22.9,
-   "sd": 12.2,
+   "rating": -22.8,
+   "sd": 12.3,
    "rated": 7,
    "rated_outside": 0,
    "won": 2,
@@ -6180,7 +6180,7 @@
     -19.9,
     -23.1,
     -22.8,
-    -22.9
+    -22.8
    ],
    "rated_trend": [
     2,
@@ -6197,8 +6197,8 @@
   },
   {
    "team": "Kings Academy Tyler",
-   "rating": -23.1,
-   "sd": 7.6,
+   "rating": -23.0,
+   "sd": 7.7,
    "rated": 9,
    "rated_outside": 1,
    "won": 4,
@@ -6215,7 +6215,7 @@
     -26.5,
     -27.3,
     -23.1,
-    -23.1
+    -23.0
    ],
    "rated_trend": [
     2,
@@ -6232,7 +6232,7 @@
   },
   {
    "team": "Miami",
-   "rating": -23.5,
+   "rating": -23.6,
    "sd": 16.1,
    "rated": 3,
    "rated_outside": 0,
@@ -6250,7 +6250,7 @@
     -22.2,
     -21.5,
     -23.4,
-    -23.5
+    -23.6
    ],
    "rated_trend": [
     2,
@@ -6267,7 +6267,7 @@
   },
   {
    "team": "Chillicothe",
-   "rating": -23.7,
+   "rating": -24.1,
    "sd": 9.2,
    "rated": 10,
    "rated_outside": 0,
@@ -6285,7 +6285,7 @@
     -25.3,
     -24.5,
     -23.5,
-    -23.7
+    -24.1
    ],
    "rated_trend": [
     2,
@@ -6302,8 +6302,8 @@
   },
   {
    "team": "Austin Classical High School",
-   "rating": -24.4,
-   "sd": 8.1,
+   "rating": -24.3,
+   "sd": 8.2,
    "rated": 10,
    "rated_outside": 0,
    "won": 6,
@@ -6320,7 +6320,7 @@
     -21.0,
     -22.7,
     -24.1,
-    -24.4
+    -24.3
    ],
    "rated_trend": [
     4,
@@ -6337,8 +6337,8 @@
   },
   {
    "team": "New Braunfels Thunder",
-   "rating": -25.0,
-   "sd": 8.7,
+   "rating": -24.9,
+   "sd": 8.8,
    "rated": 7,
    "rated_outside": 2,
    "won": 5,
@@ -6355,7 +6355,7 @@
     -19.2,
     -22.8,
     -25.3,
-    -25.0
+    -24.9
    ],
    "rated_trend": [
     2,
@@ -6372,8 +6372,8 @@
   },
   {
    "team": "Christian Heritage Classical School-Longview",
-   "rating": -26.0,
-   "sd": 8.5,
+   "rating": -25.9,
+   "sd": 8.6,
    "rated": 7,
    "rated_outside": 2,
    "won": 3,
@@ -6390,7 +6390,7 @@
     -28.0,
     -27.3,
     -26.0,
-    -26.0
+    -25.9
    ],
    "rated_trend": [
     2,
@@ -6407,7 +6407,7 @@
   },
   {
    "team": "Brazos Valley Lions Athletics",
-   "rating": -26.7,
+   "rating": -26.5,
    "sd": 7.4,
    "rated": 9,
    "rated_outside": 1,
@@ -6425,7 +6425,7 @@
     -23.7,
     -25.3,
     -26.2,
-    -26.7
+    -26.5
    ],
    "rated_trend": [
     4,
@@ -6442,7 +6442,7 @@
   },
   {
    "team": "Wildorado",
-   "rating": -27.0,
+   "rating": -27.3,
    "sd": 9.2,
    "rated": 8,
    "rated_outside": 1,
@@ -6460,7 +6460,7 @@
     -25.1,
     -24.3,
     -26.7,
-    -27.0
+    -27.3
    ],
    "rated_trend": [
     2,
@@ -6477,7 +6477,7 @@
   },
   {
    "team": "Bronte",
-   "rating": -27.6,
+   "rating": -27.4,
    "sd": 8.4,
    "rated": 10,
    "rated_outside": 0,
@@ -6495,7 +6495,7 @@
     -27.2,
     -26.7,
     -27.6,
-    -27.6
+    -27.4
    ],
    "rated_trend": [
     3,
@@ -6513,7 +6513,7 @@
   {
    "team": "Valera Panther Creek",
    "rating": -27.7,
-   "sd": 8.6,
+   "sd": 8.7,
    "rated": 10,
    "rated_outside": 0,
    "won": 5,
@@ -6548,7 +6548,7 @@
   {
    "team": "Second Baptist School UM-North",
    "rating": -27.9,
-   "sd": 10.1,
+   "sd": 10.2,
    "rated": 6,
    "rated_outside": 1,
    "won": 0,
@@ -6583,7 +6583,7 @@
   {
    "team": "Benavides",
    "rating": -28.1,
-   "sd": 8.8,
+   "sd": 8.9,
    "rated": 8,
    "rated_outside": 0,
    "won": 5,
@@ -6617,7 +6617,7 @@
   },
   {
    "team": "Lakehill Prep School-Dallas",
-   "rating": -28.5,
+   "rating": -28.2,
    "sd": 12.5,
    "rated": 3,
    "rated_outside": 0,
@@ -6635,7 +6635,7 @@
     -31.1,
     -28.4,
     -28.2,
-    -28.5
+    -28.2
    ],
    "rated_trend": [
     1,
@@ -6687,8 +6687,8 @@
   },
   {
    "team": "Groom",
-   "rating": -29.2,
-   "sd": 9.0,
+   "rating": -29.6,
+   "sd": 9.1,
    "rated": 8,
    "rated_outside": 0,
    "won": 3,
@@ -6705,7 +6705,7 @@
     -24.5,
     -25.9,
     -28.4,
-    -29.2
+    -29.6
    ],
    "rated_trend": [
     3,
@@ -6722,7 +6722,7 @@
   },
   {
    "team": "Texas School for the Deaf-Austin",
-   "rating": -29.7,
+   "rating": -29.8,
    "sd": 8.7,
    "rated": 6,
    "rated_outside": 2,
@@ -6740,7 +6740,7 @@
     -29.9,
     -30.8,
     -29.8,
-    -29.7
+    -29.8
    ],
    "rated_trend": [
     2,
@@ -6753,6 +6753,41 @@
     6,
     6,
     6
+   ]
+  },
+  {
+   "team": "New Braunfels Spartans",
+   "rating": -30.9,
+   "sd": 8.9,
+   "rated": 9,
+   "rated_outside": 1,
+   "won": 2,
+   "lost": 7,
+   "tied": 0,
+   "was": -33.6,
+   "trend": [
+    -27.2,
+    -56.7,
+    -54.7,
+    -44.2,
+    -43.4,
+    -46.4,
+    -39.3,
+    -40.4,
+    -33.6,
+    -30.9
+   ],
+   "rated_trend": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    7,
+    7,
+    8,
+    9
    ]
   },
   {
@@ -6792,7 +6827,7 @@
   },
   {
    "team": "Fort Hancock",
-   "rating": -32.0,
+   "rating": -31.9,
    "sd": 12.1,
    "rated": 7,
    "rated_outside": 0,
@@ -6810,7 +6845,7 @@
     -29.9,
     -31.2,
     -34.5,
-    -32.0
+    -31.9
    ],
    "rated_trend": [
     1,
@@ -6827,7 +6862,7 @@
   },
   {
    "team": "Summit Christian Academy-Cedar Park",
-   "rating": -32.1,
+   "rating": -32.0,
    "sd": 8.3,
    "rated": 7,
    "rated_outside": 1,
@@ -6845,7 +6880,7 @@
     -35.3,
     -30.9,
     -31.9,
-    -32.1
+    -32.0
    ],
    "rated_trend": [
     1,
@@ -6863,7 +6898,7 @@
   {
    "team": "NYOS",
    "rating": -32.5,
-   "sd": 8.2,
+   "sd": 8.3,
    "rated": 7,
    "rated_outside": 1,
    "won": 4,
@@ -6897,8 +6932,8 @@
   },
   {
    "team": "West Texas Tornadoes",
-   "rating": -32.5,
-   "sd": 9.6,
+   "rating": -32.6,
+   "sd": 9.7,
    "rated": 9,
    "rated_outside": 0,
    "won": 5,
@@ -6915,7 +6950,7 @@
     -30.1,
     -31.3,
     -32.5,
-    -32.5
+    -32.6
    ],
    "rated_trend": [
     3,
@@ -6932,8 +6967,8 @@
   },
   {
    "team": "Rule",
-   "rating": -32.7,
-   "sd": 9.4,
+   "rating": -32.8,
+   "sd": 9.5,
    "rated": 8,
    "rated_outside": 0,
    "won": 4,
@@ -6950,50 +6985,15 @@
     -33.7,
     -34.9,
     -31.7,
-    -32.7
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    5,
-    6,
-    6,
-    7,
-    7,
-    8,
-    8
-   ]
-  },
-  {
-   "team": "New Braunfels Spartans",
-   "rating": -32.8,
-   "sd": 9.3,
-   "rated": 8,
-   "rated_outside": 1,
-   "won": 2,
-   "lost": 6,
-   "tied": 0,
-   "was": -33.6,
-   "trend": [
-    -27.2,
-    -56.7,
-    -54.7,
-    -44.2,
-    -43.4,
-    -46.4,
-    -39.3,
-    -40.4,
-    -33.6,
     -32.8
    ],
    "rated_trend": [
-    2,
     3,
     4,
     5,
+    5,
     6,
-    7,
+    6,
     7,
     7,
     8,
@@ -7037,8 +7037,8 @@
   },
   {
    "team": "Loop",
-   "rating": -33.3,
-   "sd": 8.1,
+   "rating": -33.7,
+   "sd": 8.2,
    "rated": 9,
    "rated_outside": 0,
    "won": 2,
@@ -7055,7 +7055,7 @@
     -33.2,
     -36.4,
     -33.3,
-    -33.3
+    -33.7
    ],
    "rated_trend": [
     2,
@@ -7073,7 +7073,7 @@
   {
    "team": "Trinity School of Texas-Longview",
    "rating": -33.8,
-   "sd": 8.0,
+   "sd": 8.1,
    "rated": 9,
    "rated_outside": 0,
    "won": 3,
@@ -7107,7 +7107,7 @@
   },
   {
    "team": "Kopperl",
-   "rating": -34.7,
+   "rating": -34.8,
    "sd": 8.7,
    "rated": 10,
    "rated_outside": 0,
@@ -7125,7 +7125,7 @@
     -24.7,
     -28.7,
     -33.7,
-    -34.7
+    -34.8
    ],
    "rated_trend": [
     3,
@@ -7134,41 +7134,6 @@
     5,
     6,
     7,
-    8,
-    9,
-    10,
-    10
-   ]
-  },
-  {
-   "team": "Blum",
-   "rating": -35.1,
-   "sd": 8.4,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 2,
-   "lost": 8,
-   "tied": 0,
-   "was": -35.9,
-   "trend": [
-    -45.0,
-    -30.2,
-    -34.5,
-    -34.0,
-    -32.3,
-    -32.9,
-    -32.6,
-    -36.6,
-    -35.9,
-    -35.1
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
     8,
     9,
     10,
@@ -7177,7 +7142,7 @@
   },
   {
    "team": "Eden",
-   "rating": -35.1,
+   "rating": -34.9,
    "sd": 10.2,
    "rated": 5,
    "rated_outside": 0,
@@ -7195,7 +7160,7 @@
     -33.5,
     -34.4,
     -35.1,
-    -35.1
+    -34.9
    ],
    "rated_trend": [
     3,
@@ -7211,44 +7176,44 @@
    ]
   },
   {
-   "team": "Sanderson",
-   "rating": -35.1,
-   "sd": 9.5,
-   "rated": 9,
+   "team": "Blum",
+   "rating": -35.2,
+   "sd": 8.5,
+   "rated": 10,
    "rated_outside": 0,
-   "won": 4,
-   "lost": 5,
+   "won": 2,
+   "lost": 8,
    "tied": 0,
-   "was": -36.4,
+   "was": -35.9,
    "trend": [
-    -57.0,
-    -44.5,
-    -38.6,
-    -35.4,
-    -33.6,
-    -30.9,
-    -33.9,
-    -35.2,
-    -36.4,
-    -35.1
+    -45.0,
+    -30.2,
+    -34.5,
+    -34.0,
+    -32.3,
+    -32.9,
+    -32.6,
+    -36.6,
+    -35.9,
+    -35.2
    ],
    "rated_trend": [
     3,
-    3,
-    4,
     4,
     5,
     6,
     7,
     8,
+    8,
     9,
-    9
+    10,
+    10
    ]
   },
   {
    "team": "Greenville Homeschool Athletics",
    "rating": -35.2,
-   "sd": 7.8,
+   "sd": 7.9,
    "rated": 10,
    "rated_outside": 0,
    "won": 2,
@@ -7281,9 +7246,44 @@
    ]
   },
   {
+   "team": "Sanderson",
+   "rating": -35.2,
+   "sd": 9.6,
+   "rated": 9,
+   "rated_outside": 0,
+   "won": 4,
+   "lost": 5,
+   "tied": 0,
+   "was": -36.4,
+   "trend": [
+    -57.0,
+    -44.5,
+    -38.6,
+    -35.4,
+    -33.6,
+    -30.9,
+    -33.9,
+    -35.2,
+    -36.4,
+    -35.2
+   ],
+   "rated_trend": [
+    3,
+    3,
+    4,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    9
+   ]
+  },
+  {
    "team": "Loraine",
-   "rating": -36.1,
-   "sd": 7.6,
+   "rating": -36.2,
+   "sd": 7.7,
    "rated": 10,
    "rated_outside": 0,
    "won": 3,
@@ -7300,7 +7300,7 @@
     -31.7,
     -32.3,
     -36.2,
-    -36.1
+    -36.2
    ],
    "rated_trend": [
     3,
@@ -7387,8 +7387,8 @@
   },
   {
    "team": "Prairie Lea",
-   "rating": -38.5,
-   "sd": 8.9,
+   "rating": -38.6,
+   "sd": 9.0,
    "rated": 9,
    "rated_outside": 0,
    "won": 4,
@@ -7405,7 +7405,7 @@
     -37.3,
     -37.9,
     -38.0,
-    -38.5
+    -38.6
    ],
    "rated_trend": [
     3,
@@ -7422,7 +7422,7 @@
   },
   {
    "team": "Methodist Children's",
-   "rating": -39.3,
+   "rating": -39.2,
    "sd": 9.1,
    "rated": 9,
    "rated_outside": 0,
@@ -7440,7 +7440,7 @@
     -35.5,
     -41.1,
     -38.5,
-    -39.3
+    -39.2
    ],
    "rated_trend": [
     3,
@@ -7457,8 +7457,8 @@
   },
   {
    "team": "Temple Christian School-Fort Worth",
-   "rating": -39.6,
-   "sd": 9.4,
+   "rating": -39.5,
+   "sd": 9.5,
    "rated": 9,
    "rated_outside": 0,
    "won": 3,
@@ -7475,7 +7475,7 @@
     -40.9,
     -39.2,
     -39.4,
-    -39.6
+    -39.5
    ],
    "rated_trend": [
     3,
@@ -7492,8 +7492,8 @@
   },
   {
    "team": "CenTex Chargers Homeschool Sports Association",
-   "rating": -40.7,
-   "sd": 7.8,
+   "rating": -40.4,
+   "sd": 7.9,
    "rated": 8,
    "rated_outside": 2,
    "won": 1,
@@ -7510,7 +7510,7 @@
     -47.0,
     -48.7,
     -40.9,
-    -40.7
+    -40.4
    ],
    "rated_trend": [
     3,
@@ -7527,8 +7527,8 @@
   },
   {
    "team": "Southland",
-   "rating": -42.7,
-   "sd": 8.3,
+   "rating": -43.0,
+   "sd": 8.4,
    "rated": 10,
    "rated_outside": 0,
    "won": 3,
@@ -7545,7 +7545,7 @@
     -40.8,
     -40.1,
     -42.5,
-    -42.7
+    -43.0
    ],
    "rated_trend": [
     3,
@@ -7562,8 +7562,8 @@
   },
   {
    "team": "Midland Texas Leadership Charter Academy",
-   "rating": -43.6,
-   "sd": 10.0,
+   "rating": -43.8,
+   "sd": 10.1,
    "rated": 7,
    "rated_outside": 1,
    "won": 3,
@@ -7580,7 +7580,7 @@
     -41.4,
     -42.3,
     -44.0,
-    -43.6
+    -43.8
    ],
    "rated_trend": [
     3,
@@ -7597,8 +7597,8 @@
   },
   {
    "team": "Follett",
-   "rating": -44.1,
-   "sd": 10.3,
+   "rating": -44.4,
+   "sd": 10.4,
    "rated": 7,
    "rated_outside": 1,
    "won": 2,
@@ -7615,7 +7615,7 @@
     -40.5,
     -40.9,
     -43.5,
-    -44.1
+    -44.4
    ],
    "rated_trend": [
     1,
@@ -7633,7 +7633,7 @@
   {
    "team": "Lutheran High School-San Antonio",
    "rating": -44.5,
-   "sd": 10.6,
+   "sd": 10.7,
    "rated": 6,
    "rated_outside": 0,
    "won": 1,
@@ -7667,8 +7667,8 @@
   },
   {
    "team": "Founders Classical Academy of Conroe",
-   "rating": -45.1,
-   "sd": 13.3,
+   "rating": -45.0,
+   "sd": 13.4,
    "rated": 3,
    "rated_outside": 1,
    "won": 0,
@@ -7685,7 +7685,7 @@
     -55.0,
     -55.2,
     -44.9,
-    -45.1
+    -45.0
    ],
    "rated_trend": [
     null,
@@ -7702,7 +7702,7 @@
   },
   {
    "team": "Valor North Austin",
-   "rating": -45.1,
+   "rating": -45.0,
    "sd": 9.8,
    "rated": 9,
    "rated_outside": 1,
@@ -7720,7 +7720,7 @@
     -47.2,
     -43.1,
     -44.7,
-    -45.1
+    -45.0
    ],
    "rated_trend": [
     3,
@@ -7737,7 +7737,7 @@
   },
   {
    "team": "Valor South Austin",
-   "rating": -45.2,
+   "rating": -45.1,
    "sd": 8.7,
    "rated": 10,
    "rated_outside": 0,
@@ -7755,7 +7755,7 @@
     -39.9,
     -41.0,
     -45.6,
-    -45.2
+    -45.1
    ],
    "rated_trend": [
     3,
@@ -7772,7 +7772,7 @@
   },
   {
    "team": "Cranfills Gap",
-   "rating": -45.4,
+   "rating": -45.5,
    "sd": 9.7,
    "rated": 10,
    "rated_outside": 0,
@@ -7790,7 +7790,7 @@
     -38.6,
     -46.0,
     -44.6,
-    -45.4
+    -45.5
    ],
    "rated_trend": [
     3,
@@ -7842,7 +7842,7 @@
   },
   {
    "team": "San Juan Diego Catholic HS-Austin",
-   "rating": -47.6,
+   "rating": -47.5,
    "sd": 10.7,
    "rated": 4,
    "rated_outside": 0,
@@ -7860,7 +7860,7 @@
     -44.5,
     -46.3,
     -47.4,
-    -47.6
+    -47.5
    ],
    "rated_trend": [
     2,
@@ -7878,7 +7878,7 @@
   {
    "team": "St. Mary's",
    "rating": -48.3,
-   "sd": 7.9,
+   "sd": 8.0,
    "rated": 8,
    "rated_outside": 1,
    "won": 4,
@@ -7912,8 +7912,8 @@
   },
   {
    "team": "Mullin",
-   "rating": -49.0,
-   "sd": 9.6,
+   "rating": -49.1,
+   "sd": 9.7,
    "rated": 9,
    "rated_outside": 0,
    "won": 4,
@@ -7930,7 +7930,7 @@
     -48.4,
     -48.9,
     -48.9,
-    -49.0
+    -49.1
    ],
    "rated_trend": [
     3,
@@ -7948,7 +7948,7 @@
   {
    "team": "Lingleville",
    "rating": -49.8,
-   "sd": 9.2,
+   "sd": 9.3,
    "rated": 10,
    "rated_outside": 0,
    "won": 3,
@@ -7982,7 +7982,7 @@
   },
   {
    "team": "Denton Calvary Academy",
-   "rating": -50.4,
+   "rating": -50.2,
    "sd": 10.2,
    "rated": 7,
    "rated_outside": 0,
@@ -8000,7 +8000,7 @@
     -50.3,
     -50.2,
     -50.3,
-    -50.4
+    -50.2
    ],
    "rated_trend": [
     2,
@@ -8017,8 +8017,8 @@
   },
   {
    "team": "Holy Cross Catholic Academy-Amarillo",
-   "rating": -50.4,
-   "sd": 9.2,
+   "rating": -50.5,
+   "sd": 9.3,
    "rated": 7,
    "rated_outside": 0,
    "won": 4,
@@ -8035,7 +8035,7 @@
     -47.0,
     -47.5,
     -50.3,
-    -50.4
+    -50.5
    ],
    "rated_trend": [
     2,
@@ -8052,8 +8052,8 @@
   },
   {
    "team": "Paint Rock",
-   "rating": -50.8,
-   "sd": 8.9,
+   "rating": -50.7,
+   "sd": 9.0,
    "rated": 10,
    "rated_outside": 0,
    "won": 1,
@@ -8070,7 +8070,7 @@
     -41.5,
     -47.0,
     -50.6,
-    -50.8
+    -50.7
    ],
    "rated_trend": [
     3,
@@ -8087,8 +8087,8 @@
   },
   {
    "team": "Welch Dawson",
-   "rating": -50.9,
-   "sd": 9.4,
+   "rating": -51.6,
+   "sd": 9.5,
    "rated": 8,
    "rated_outside": 0,
    "won": 3,
@@ -8105,7 +8105,7 @@
     -57.5,
     -50.3,
     -50.8,
-    -50.9
+    -51.6
    ],
    "rated_trend": [
     3,
@@ -8123,7 +8123,7 @@
   {
    "team": "Dallas Academy",
    "rating": -52.3,
-   "sd": 9.0,
+   "sd": 9.1,
    "rated": 10,
    "rated_outside": 0,
    "won": 3,
@@ -8157,7 +8157,7 @@
   },
   {
    "team": "Forestburg",
-   "rating": -53.2,
+   "rating": -53.4,
    "sd": 9.0,
    "rated": 8,
    "rated_outside": 0,
@@ -8175,7 +8175,7 @@
     -53.7,
     -52.8,
     -53.0,
-    -53.2
+    -53.4
    ],
    "rated_trend": [
     2,
@@ -8193,7 +8193,7 @@
   {
    "team": "Newman Academy",
    "rating": -53.5,
-   "sd": 8.3,
+   "sd": 8.4,
    "rated": 9,
    "rated_outside": 2,
    "won": 1,
@@ -8226,44 +8226,9 @@
    ]
   },
   {
-   "team": "San Jacinto Christian Academy-Amarillo",
-   "rating": -53.9,
-   "sd": 8.7,
-   "rated": 9,
-   "rated_outside": 1,
-   "won": 3,
-   "lost": 6,
-   "tied": 0,
-   "was": -53.7,
-   "trend": [
-    -14.3,
-    -34.9,
-    -52.4,
-    -48.9,
-    -43.3,
-    -40.6,
-    -50.7,
-    -51.3,
-    -53.7,
-    -53.9
-   ],
-   "rated_trend": [
-    4,
-    5,
-    6,
-    7,
-    8,
-    8,
-    8,
-    9,
-    9,
-    9
-   ]
-  },
-  {
    "team": "Holy Cross Catholic High School-Midland",
-   "rating": -54.1,
-   "sd": 11.8,
+   "rating": -53.9,
+   "sd": 11.9,
    "rated": 8,
    "rated_outside": 0,
    "won": 0,
@@ -8280,7 +8245,7 @@
     -49.6,
     -52.0,
     -53.9,
-    -54.1
+    -53.9
    ],
    "rated_trend": [
     3,
@@ -8293,6 +8258,41 @@
     8,
     8,
     8
+   ]
+  },
+  {
+   "team": "San Jacinto Christian Academy-Amarillo",
+   "rating": -54.0,
+   "sd": 8.8,
+   "rated": 9,
+   "rated_outside": 1,
+   "won": 3,
+   "lost": 6,
+   "tied": 0,
+   "was": -53.7,
+   "trend": [
+    -14.3,
+    -34.9,
+    -52.4,
+    -48.9,
+    -43.3,
+    -40.6,
+    -50.7,
+    -51.3,
+    -53.7,
+    -54.0
+   ],
+   "rated_trend": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    8,
+    8,
+    9,
+    9,
+    9
    ]
   },
   {
@@ -8333,7 +8333,7 @@
   {
    "team": "Providence Academy-Royse City",
    "rating": -56.9,
-   "sd": 11.0,
+   "sd": 11.1,
    "rated": 3,
    "rated_outside": 1,
    "won": 0,
@@ -8367,7 +8367,7 @@
   },
   {
    "team": "Community School of Mesquite",
-   "rating": -57.7,
+   "rating": -57.5,
    "sd": 13.3,
    "rated": 4,
    "rated_outside": 1,
@@ -8385,7 +8385,7 @@
     -56.1,
     -59.6,
     -57.7,
-    -57.7
+    -57.5
    ],
    "rated_trend": [
     2,
@@ -8398,41 +8398,6 @@
     4,
     4,
     4
-   ]
-  },
-  {
-   "team": "Spur",
-   "rating": -57.7,
-   "sd": 11.9,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 1,
-   "lost": 9,
-   "tied": 0,
-   "was": -57.8,
-   "trend": [
-    -48.7,
-    -46.6,
-    -53.0,
-    -54.8,
-    -54.0,
-    -59.6,
-    -56.9,
-    -57.2,
-    -57.8,
-    -57.7
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    10
    ]
   },
   {
@@ -8471,9 +8436,44 @@
    ]
   },
   {
+   "team": "Spur",
+   "rating": -57.9,
+   "sd": 12.0,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 1,
+   "lost": 9,
+   "tied": 0,
+   "was": -57.8,
+   "trend": [
+    -48.7,
+    -46.6,
+    -53.0,
+    -54.8,
+    -54.0,
+    -59.6,
+    -56.9,
+    -57.2,
+    -57.8,
+    -57.9
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    10
+   ]
+  },
+  {
    "team": "Coastal Christian Homeschool",
    "rating": -59.0,
-   "sd": 8.9,
+   "sd": 9.0,
    "rated": 9,
    "rated_outside": 0,
    "won": 4,
@@ -8506,8 +8506,43 @@
    ]
   },
   {
+   "team": "Lueders-Avoca",
+   "rating": -60.0,
+   "sd": 10.0,
+   "rated": 7,
+   "rated_outside": 0,
+   "won": 4,
+   "lost": 5,
+   "tied": 0,
+   "was": -59.9,
+   "trend": [
+    -7.2,
+    -40.3,
+    -34.8,
+    -51.6,
+    -53.3,
+    -55.0,
+    -57.4,
+    -58.3,
+    -59.9,
+    -60.0
+   ],
+   "rated_trend": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    6,
+    6,
+    7,
+    7,
+    7
+   ]
+  },
+  {
    "team": "Panhandle Christian Home Educ (PCHEA)",
-   "rating": -59.8,
+   "rating": -60.2,
    "sd": 8.5,
    "rated": 10,
    "rated_outside": 0,
@@ -8525,7 +8560,7 @@
     -56.8,
     -57.1,
     -59.6,
-    -59.8
+    -60.2
    ],
    "rated_trend": [
     3,
@@ -8541,44 +8576,9 @@
    ]
   },
   {
-   "team": "Lueders-Avoca",
-   "rating": -59.9,
-   "sd": 9.9,
-   "rated": 7,
-   "rated_outside": 0,
-   "won": 4,
-   "lost": 5,
-   "tied": 0,
-   "was": -59.9,
-   "trend": [
-    -7.2,
-    -40.3,
-    -34.8,
-    -51.6,
-    -53.3,
-    -55.0,
-    -57.4,
-    -58.3,
-    -59.9,
-    -59.9
-   ],
-   "rated_trend": [
-    2,
-    3,
-    4,
-    5,
-    6,
-    6,
-    6,
-    7,
-    7,
-    7
-   ]
-  },
-  {
    "team": "Bruni",
-   "rating": -60.4,
-   "sd": 8.9,
+   "rating": -60.6,
+   "sd": 9.0,
    "rated": 10,
    "rated_outside": 0,
    "won": 0,
@@ -8595,7 +8595,7 @@
     -56.6,
     -59.8,
     -60.0,
-    -60.4
+    -60.6
    ],
    "rated_trend": [
     3,
@@ -8612,8 +8612,8 @@
   },
   {
    "team": "Buckholts",
-   "rating": -61.3,
-   "sd": 9.3,
+   "rating": -61.4,
+   "sd": 9.4,
    "rated": 8,
    "rated_outside": 1,
    "won": 1,
@@ -8630,7 +8630,7 @@
     -66.4,
     -60.7,
     -60.9,
-    -61.3
+    -61.4
    ],
    "rated_trend": [
     3,
@@ -8647,8 +8647,8 @@
   },
   {
    "team": "Trent",
-   "rating": -61.5,
-   "sd": 8.8,
+   "rating": -61.6,
+   "sd": 8.9,
    "rated": 10,
    "rated_outside": 0,
    "won": 2,
@@ -8665,7 +8665,7 @@
     -56.7,
     -56.7,
     -61.6,
-    -61.5
+    -61.6
    ],
    "rated_trend": [
     3,
@@ -8682,8 +8682,8 @@
   },
   {
    "team": "Throckmorton",
-   "rating": -63.0,
-   "sd": 8.1,
+   "rating": -63.1,
+   "sd": 8.2,
    "rated": 10,
    "rated_outside": 0,
    "won": 3,
@@ -8700,7 +8700,7 @@
     -63.2,
     -62.0,
     -62.9,
-    -63.0
+    -63.1
    ],
    "rated_trend": [
     3,
@@ -8718,7 +8718,7 @@
   {
    "team": "Jubilee Lake View",
    "rating": -63.4,
-   "sd": 9.0,
+   "sd": 9.1,
    "rated": 6,
    "rated_outside": 3,
    "won": 0,
@@ -8751,43 +8751,8 @@
    ]
   },
   {
-   "team": "Bynum",
-   "rating": -63.9,
-   "sd": 8.4,
-   "rated": 9,
-   "rated_outside": 1,
-   "won": 1,
-   "lost": 8,
-   "tied": 0,
-   "was": -64.2,
-   "trend": [
-    -72.6,
-    -70.5,
-    -67.9,
-    -67.1,
-    -64.9,
-    -63.5,
-    -63.0,
-    -65.1,
-    -64.2,
-    -63.9
-   ],
-   "rated_trend": [
-    3,
-    3,
-    4,
-    5,
-    6,
-    7,
-    7,
-    8,
-    9,
-    9
-   ]
-  },
-  {
    "team": "O'Connell College Preparatory HS-Galveston",
-   "rating": -64.0,
+   "rating": -63.9,
    "sd": 12.0,
    "rated": 4,
    "rated_outside": 1,
@@ -8805,7 +8770,7 @@
     -56.8,
     -61.8,
     -63.6,
-    -64.0
+    -63.9
    ],
    "rated_trend": [
     2,
@@ -8821,9 +8786,44 @@
    ]
   },
   {
+   "team": "Bynum",
+   "rating": -64.0,
+   "sd": 8.5,
+   "rated": 9,
+   "rated_outside": 1,
+   "won": 1,
+   "lost": 8,
+   "tied": 0,
+   "was": -64.2,
+   "trend": [
+    -72.6,
+    -70.5,
+    -67.9,
+    -67.1,
+    -64.9,
+    -63.5,
+    -63.0,
+    -65.1,
+    -64.2,
+    -64.0
+   ],
+   "rated_trend": [
+    3,
+    3,
+    4,
+    5,
+    6,
+    7,
+    7,
+    8,
+    9,
+    9
+   ]
+  },
+  {
    "team": "Texas Empowerment Academy",
-   "rating": -65.5,
-   "sd": 8.3,
+   "rating": -65.4,
+   "sd": 8.4,
    "rated": 6,
    "rated_outside": 2,
    "won": 0,
@@ -8840,7 +8840,7 @@
     -64.6,
     -64.4,
     -65.4,
-    -65.5
+    -65.4
    ],
    "rated_trend": [
     2,
@@ -8858,7 +8858,7 @@
   {
    "team": "Ranger",
    "rating": -66.3,
-   "sd": 9.6,
+   "sd": 9.7,
    "rated": 9,
    "rated_outside": 0,
    "won": 1,
@@ -8892,7 +8892,7 @@
   },
   {
    "team": "Immanuel Christian School-El Paso",
-   "rating": -69.8,
+   "rating": -69.5,
    "sd": 13.6,
    "rated": 4,
    "rated_outside": 0,
@@ -8910,7 +8910,7 @@
     -68.5,
     -68.7,
     -72.4,
-    -69.8
+    -69.5
    ],
    "rated_trend": [
     1,
@@ -8926,43 +8926,8 @@
    ]
   },
   {
-   "team": "Lorenzo",
-   "rating": -71.5,
-   "sd": 9.6,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 2,
-   "lost": 9,
-   "tied": 0,
-   "was": -71.4,
-   "trend": [
-    -56.8,
-    -76.8,
-    -86.3,
-    -84.0,
-    -84.8,
-    -85.7,
-    -79.9,
-    -78.5,
-    -71.4,
-    -71.5
-   ],
-   "rated_trend": [
-    3,
-    4,
-    5,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    10
-   ]
-  },
-  {
    "team": "Dell City",
-   "rating": -71.8,
+   "rating": -71.7,
    "sd": 12.0,
    "rated": 7,
    "rated_outside": 0,
@@ -8980,7 +8945,7 @@
     -67.9,
     -68.4,
     -74.1,
-    -71.8
+    -71.7
    ],
    "rated_trend": [
     null,
@@ -8996,9 +8961,44 @@
    ]
   },
   {
+   "team": "Lorenzo",
+   "rating": -72.2,
+   "sd": 9.6,
+   "rated": 10,
+   "rated_outside": 0,
+   "won": 2,
+   "lost": 9,
+   "tied": 0,
+   "was": -71.4,
+   "trend": [
+    -56.8,
+    -76.8,
+    -86.3,
+    -84.0,
+    -84.8,
+    -85.7,
+    -79.9,
+    -78.5,
+    -71.4,
+    -72.2
+   ],
+   "rated_trend": [
+    3,
+    4,
+    5,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    10
+   ]
+  },
+  {
    "team": "Fruitvale",
    "rating": -81.7,
-   "sd": 10.2,
+   "sd": 10.3,
    "rated": 8,
    "rated_outside": 0,
    "won": 1,
@@ -9032,8 +9032,8 @@
   },
   {
    "team": "Valor Kyle",
-   "rating": -81.8,
-   "sd": 9.3,
+   "rating": -81.7,
+   "sd": 9.4,
    "rated": 6,
    "rated_outside": 1,
    "won": 0,
@@ -9050,7 +9050,7 @@
     -75.7,
     -79.8,
     -81.5,
-    -81.8
+    -81.7
    ],
    "rated_trend": [
     2,
@@ -9067,7 +9067,7 @@
   },
   {
    "team": "Lohn",
-   "rating": -85.8,
+   "rating": -86.0,
    "sd": 10.6,
    "rated": 10,
    "rated_outside": 0,
@@ -9085,7 +9085,7 @@
     -86.0,
     -86.2,
     -85.8,
-    -85.8
+    -86.0
    ],
    "rated_trend": [
     3,
@@ -9102,8 +9102,8 @@
   },
   {
    "team": "Gholson",
-   "rating": -86.2,
-   "sd": 11.9,
+   "rating": -86.3,
+   "sd": 12.0,
    "rated": 7,
    "rated_outside": 0,
    "won": 1,
@@ -9120,7 +9120,7 @@
     -85.3,
     -85.9,
     -85.7,
-    -86.2
+    -86.3
    ],
    "rated_trend": [
     2,
@@ -9137,8 +9137,8 @@
   },
   {
    "team": "Amherst",
-   "rating": -86.4,
-   "sd": 14.0,
+   "rating": -86.5,
+   "sd": 14.1,
    "rated": 6,
    "rated_outside": 0,
    "won": 1,
@@ -9155,7 +9155,7 @@
     -63.1,
     -64.5,
     -86.4,
-    -86.4
+    -86.5
    ],
    "rated_trend": [
     4,
@@ -9206,9 +9206,44 @@
    ]
   },
   {
+   "team": "Wilson",
+   "rating": -90.0,
+   "sd": 20.0,
+   "rated": 1,
+   "rated_outside": 0,
+   "won": 0,
+   "lost": 1,
+   "tied": 0,
+   "was": -90.0,
+   "trend": [
+    null,
+    null,
+    null,
+    null,
+    -91.0,
+    -88.5,
+    -88.6,
+    -88.4,
+    -90.0,
+    -90.0
+   ],
+   "rated_trend": [
+    null,
+    null,
+    null,
+    null,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  {
    "team": "Big Springs Charter School",
    "rating": -90.1,
-   "sd": 10.9,
+   "sd": 11.0,
    "rated": 7,
    "rated_outside": 1,
    "won": 1,
@@ -9238,41 +9273,6 @@
     6,
     7,
     7
-   ]
-  },
-  {
-   "team": "Wilson",
-   "rating": -90.1,
-   "sd": 20.0,
-   "rated": 1,
-   "rated_outside": 0,
-   "won": 0,
-   "lost": 1,
-   "tied": 0,
-   "was": -90.0,
-   "trend": [
-    null,
-    null,
-    null,
-    null,
-    -91.0,
-    -88.5,
-    -88.6,
-    -88.4,
-    -90.0,
-    -90.1
-   ],
-   "rated_trend": [
-    null,
-    null,
-    null,
-    null,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1
    ]
   },
   {
@@ -9312,8 +9312,8 @@
   },
   {
    "team": "Valor Leander",
-   "rating": -92.4,
-   "sd": 10.2,
+   "rating": -92.3,
+   "sd": 10.3,
    "rated": 8,
    "rated_outside": 0,
    "won": 1,
@@ -9330,7 +9330,7 @@
     -89.8,
     -89.4,
     -92.1,
-    -92.4
+    -92.3
    ],
    "rated_trend": [
     2,
@@ -9347,7 +9347,7 @@
   },
   {
    "team": "Westhoff Academy",
-   "rating": -94.7,
+   "rating": -94.6,
    "sd": 12.6,
    "rated": 5,
    "rated_outside": 0,
@@ -9365,7 +9365,7 @@
     -110.4,
     -90.0,
     -94.2,
-    -94.7
+    -94.6
    ],
    "rated_trend": [
     2,
@@ -9382,8 +9382,8 @@
   },
   {
    "team": "Community Christian",
-   "rating": -95.2,
-   "sd": 12.4,
+   "rating": -95.1,
+   "sd": 12.5,
    "rated": 4,
    "rated_outside": 0,
    "won": 0,
@@ -9400,7 +9400,7 @@
     -96.5,
     -94.5,
     -95.0,
-    -95.2
+    -95.1
    ],
    "rated_trend": [
     1,
@@ -9417,7 +9417,7 @@
   },
   {
    "team": "Haskell Paint Creek",
-   "rating": -98.1,
+   "rating": -98.2,
    "sd": 9.3,
    "rated": 10,
    "rated_outside": 0,
@@ -9435,7 +9435,7 @@
     -98.3,
     -97.6,
     -98.0,
-    -98.1
+    -98.2
    ],
    "rated_trend": [
     3,
@@ -9452,8 +9452,8 @@
   },
   {
    "team": "Olfen",
-   "rating": -100.9,
-   "sd": 9.7,
+   "rating": -101.1,
+   "sd": 9.8,
    "rated": 9,
    "rated_outside": 0,
    "won": 1,
@@ -9470,7 +9470,7 @@
     -105.4,
     -104.8,
     -101.0,
-    -100.9
+    -101.1
    ],
    "rated_trend": [
     3,
@@ -9487,8 +9487,8 @@
   },
   {
    "team": "Plainview Classical Academy",
-   "rating": -101.2,
-   "sd": 10.4,
+   "rating": -101.4,
+   "sd": 10.5,
    "rated": 10,
    "rated_outside": 1,
    "won": 0,
@@ -9505,7 +9505,7 @@
     -93.9,
     -94.9,
     -101.0,
-    -101.2
+    -101.4
    ],
    "rated_trend": [
     4,
@@ -9523,7 +9523,7 @@
   {
    "team": "St. Paul's Prep",
    "rating": -111.5,
-   "sd": 15.7,
+   "sd": 15.8,
    "rated": 5,
    "rated_outside": 1,
    "won": 0,
@@ -9557,8 +9557,8 @@
   },
   {
    "team": "Walnut Springs",
-   "rating": -113.5,
-   "sd": 13.1,
+   "rating": -113.6,
+   "sd": 13.2,
    "rated": 10,
    "rated_outside": 0,
    "won": 0,
@@ -9575,7 +9575,7 @@
     -112.3,
     -112.4,
     -113.3,
-    -113.5
+    -113.6
    ],
    "rated_trend": [
     3,
@@ -9592,7 +9592,7 @@
   },
   {
    "team": "Sierra Blanca",
-   "rating": -115.6,
+   "rating": -115.7,
    "sd": 15.4,
    "rated": 6,
    "rated_outside": 0,
@@ -9610,7 +9610,7 @@
     -113.3,
     -114.5,
     -117.2,
-    -115.6
+    -115.7
    ],
    "rated_trend": [
     1,
@@ -9627,8 +9627,8 @@
   },
   {
    "team": "Moran",
-   "rating": -131.4,
-   "sd": 12.8,
+   "rating": -131.5,
+   "sd": 12.9,
    "rated": 9,
    "rated_outside": 0,
    "won": 0,
@@ -9645,7 +9645,7 @@
     -132.8,
     -132.4,
     -131.4,
-    -131.4
+    -131.5
    ],
    "rated_trend": [
     3,
@@ -9683,7 +9683,7 @@
   18.9,
   19.6,
   19.8,
-  20.0
+  20.2
  ],
  "week_home_field": [
   6.7,
@@ -9695,6 +9695,6 @@
   4.5,
   4.6,
   4.5,
-  4.4
+  4.6
  ]
 }
