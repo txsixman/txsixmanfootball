@@ -1,3 +1,4 @@
+import type { Outcome } from "./outcome";
 import type { Game } from "./demo-games";
 
 export type Side = "home" | "away";
@@ -34,3 +35,15 @@ export function playedPeriods(g: Game): number {
   const quarter = /Q(\d)/.exec(text);
   return quarter ? Number(quarter[1]) : 4;
 }
+
+/** A scoreboard game's outcome so far, for its "Projected: … · Final: …" line (lib/outcome.ts). */
+export const outcomeOf = (g: Game): Outcome => ({
+  home: g.home.name,
+  away: g.away.name,
+  homeScore: g.homeScore,
+  awayScore: g.awayScore,
+  state: g.state,
+  disputed: g.verification === "disputed",
+  forfeit: isForfeit(g),
+  unconfirmed: g.verification === "unconfirmed",
+});

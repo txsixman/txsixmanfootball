@@ -66,6 +66,12 @@ test("a confirmed final carries its score in the markup; an unconfirmed score, a
   expect(unlisted).not.toHaveProperty("location");
   expect(unlisted).not.toHaveProperty("homeTeam");
   expect(unlisted.competitor).toHaveLength(2);
+  // A bracket game's site, once known, is its place (ADR 0041); one not listed yet is left out.
+  const sited = gameJsonLd({ ...g("g2"), venue: "Mesa Field, Red Bluff" }, { url: `${SITE}/scores/x` }) as Record<string, unknown>;
+  expect(sited.location).toEqual({ "@type": "Place", name: "Mesa Field, Red Bluff" });
+  expect(sited).not.toHaveProperty("homeTeam");
+  const notYet = gameJsonLd({ ...g("g2"), venue: "Site not listed yet" }, { url: `${SITE}/scores/x` }) as Record<string, unknown>;
+  expect(notYet).not.toHaveProperty("location");
 });
 
 test("text in the data cannot close the script tag", () => {

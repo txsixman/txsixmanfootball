@@ -14,7 +14,8 @@ const REFERENCE = z.object({
   home_score: z.number().int().min(0).max(200),
   away_score: z.number().int().min(0).max(200),
   period: z.string().min(1).max(12).regex(/^[A-Za-z0-9 ]+$/).nullable(),
-  clock: z.string().max(5).regex(/^\d{1,2}:[0-5]\d$/).nullable().optional(),
+  // Anything but m:ss is no clock (null): a bad clock never drops the row.
+  clock: z.preprocess((v) => (typeof v === "string" && v.length <= 5 && /^\d{1,2}:[0-5]\d$/.test(v) ? v : null), z.string().nullable()).optional(),
   finished: z.boolean().optional(),
   read_at: z.iso.datetime({ offset: true }),
 });
@@ -134,7 +135,7 @@ test("the request calls the live_scores function with the public key, the one pu
   }
 });
 
-test("the board shows a live game as Live: the read's period and scores in its own cells, unconfirmed, no projection", async () => {
+test("the board shows a live game as Live: the read's period and scores in its own cells, unconfirmed, its projection kept", async () => {
   const { asLive } = await import("../lib/live-scores.ts");
   const { winnerOf } = await import("../lib/score-display.ts");
   const game = {
@@ -148,8 +149,8 @@ test("the board shows a live game as Live: the read's period and scores in its o
   assert.equal(shown.status, "OT");
   assert.deepEqual([shown.awayScore, shown.homeScore], [47, 45]);
   assert.equal(shown.verification, "unconfirmed");
-  assert.equal(shown.projected, undefined);
-  assert.equal(shown.projectedMargin, undefined);
+  assert.equal(shown.projected, "Salt Fork by 3", "the projection from before the game stays beside the score (ADR 0044)");
+  assert.equal(shown.projectedMargin, 3);
   assert.equal(shown.upset, undefined);
   assert.equal(winnerOf(shown), null, "a live score names no winner");
   assert.equal(shown.kickoff, game.kickoff, "the rest of the game is kept");
@@ -166,7 +167,13 @@ test("the live status beside the score: period, time left when read, and when it
   assert.equal(liveStatus(view({ clock: null })), "Q3 · as of 7:42 PM CT");
   assert.equal(liveStatus(view({ clock: "4:12" })), "Q3 · 4:12 left · as of 7:42 PM CT");
   assert.equal(liveStatus(view({ period: null, clock: "0:09" })), "Live · 0:09 left · as of 7:42 PM CT");
-  assert.equal(view({ clock: "4:60" }), null, "a bad clock drops the row, as a bad period does");
+  // A clock that fails, whatever way, is no clock: the row and its score stay, the time left is left out.
+  for (const bad of ["", "4:60", "412", "4:12 ", "<b>", "Q3", 412, false, {}]) {
+    assert.equal(liveStatus(view({ clock: bad })), "Q3 · as of 7:42 PM CT", JSON.stringify(bad));
+  }
+  // A bad score or team still drops the row.
+  assert.equal(view({ clock: "4:12", home_score: 500 }), null);
+  assert.equal(view({ clock: "4:12", home: "someone-else" }), null);
 });
 
 test("a finished live row is a final: Final with the winner marked, as of the read, never Live (ADR 0043)", async () => {
@@ -185,11 +192,11 @@ test("a finished live row is a final: Final with the winner marked, as of the re
   assert.equal(shown.status, "Final");
   assert.equal(shown.verification, "confirmed", "a final is confirmed (ADR 0040)");
   assert.deepEqual([shown.awayScore, shown.homeScore], [14, 28]);
-  assert.equal(shown.projected, undefined);
+  assert.equal(shown.projected, "Salt Fork by 3", "the projection stays, beside the final (ADR 0044)");
   assert.equal(winnerOf(shown), "home", "the winner is marked");
-  // A game under way stays unconfirmed with no winner.
+  // A game under way stays unconfirmed with no winner, its projection kept too.
   const under = asLive(game, { ...live, finished: false });
-  assert.deepEqual([under.state, under.verification, winnerOf(under)], ["live", "unconfirmed", null]);
+  assert.deepEqual([under.state, under.verification, winnerOf(under), under.projected], ["live", "unconfirmed", null, "Salt Fork by 3"]);
   // A row with no flag (the MaxPreps reader's, or one written before migration 0019) is under way.
   assert.equal(liveView(parseLiveRows([row({ read_at: at })]), { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" }, Date.parse(at)).finished, false);
 });

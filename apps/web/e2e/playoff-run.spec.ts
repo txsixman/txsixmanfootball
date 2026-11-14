@@ -78,13 +78,13 @@ for (const b of BRACKETS) {
 
 test("a bracket game not yet played shows its projected margin and win probability; the next pairing too, where it is known", async ({ page }) => {
   await page.goto("/playoffs/bracket/tapps-division-i");
-  const projected = page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% win probability$/);
+  const projected = page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win$/);
   expect(await projected.count()).toBeGreaterThan(0);
   // "Likely next pairings" shows while two semifinals (or a region's two area games) are still to play.
   if (await page.locator("#pairings").count()) {
     const pairing = page.locator("#pairings ~ ul li").first();
     await expect(pairing).toContainText(/ vs /);
-    await expect(pairing).toContainText(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% win probability/);
+    await expect(pairing).toContainText(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win/);
   }
 });
 
@@ -120,7 +120,7 @@ test("a playoff team's page has its path to the final: games played with unconfi
   // Where the next pairing is known, the likely opponent and its projection show.
   if (text.includes("If it advances")) {
     expect(text).toMatch(/Likely opponent: .+ \((>99|<1|\d+)% to get there\)/);
-    expect(text).toMatch(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% win probability/);
+    expect(text).toMatch(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win/);
   }
 });
 

@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { fanSignIn, siteOrigin } from "@/lib/auth/config";
+import { fanSignIn } from "@/lib/auth/config";
 import { getFollows } from "@/lib/auth/profile";
 import { getUser } from "@/lib/auth/server";
+import { checkSameOriginJson } from "@/lib/same-origin";
 
 // Change the signed-in fan's follows. Checked here (a same-site POST, a session, a slug's shape) and again by the
 // database (follow_program: own rows only, a profile, the shape, at most 100; migration 0012). The site cannot tell here
@@ -22,10 +23,10 @@ const reply = (body: unknown, status = 200) =>
 
 export async function POST(request: NextRequest) {
   if (!fanSignIn()) return reply({ error: "not found" }, 404); // fan accounts are off
-  // A browser always sends Origin on a POST; a cross-site page's would name another site. SameSite=Lax cookies already
-  // stay off such a request; this is the second lock.
-  if (request.headers.get("origin") !== siteOrigin(request.headers.get("host"))) return reply({ error: "forbidden" }, 403);
-  if (!request.headers.get("content-type")?.startsWith("application/json")) return reply({ error: "bad request" }, 415);
+  // The same lock as every fan write (lib/same-origin.ts): this site's own Origin, and a JSON body.
+  const lock = checkSameOriginJson(request.headers);
+  if (lock === "origin") return reply({ error: "forbidden" }, 403);
+  if (lock === "type") return reply({ error: "bad request" }, 415);
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return reply({ error: "bad request" }, 400);
   const found = await getUser();

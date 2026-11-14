@@ -143,8 +143,8 @@ test("a projection is the rating gap, plus home field off a neutral site, over t
   expect(project(table, "Cedar Gap", "Dry Wash", true)).toMatchObject({ favorite: "Cedar Gap", margin: 20 });
   expect(project(table, "Dry Wash", "Cedar Gap", false)).toMatchObject({ favorite: "Cedar Gap", margin: 16 });
   expect(project(table, "Cedar Gap", "Salt Fork", true)).toBeUndefined(); // unrated
-  expect(projectionText(project(table, "Cedar Gap", "Dry Wash", true)!)).toBe("Cedar Gap by 20 · 84% win probability");
-  expect(projectionText({ favorite: "Cedar Gap", margin: 60, winProbability: 0.999 })).toBe("Cedar Gap by 45+ · >99% win probability");
+  expect(projectionText(project(table, "Cedar Gap", "Dry Wash", true)!)).toBe("Cedar Gap by 20 · 84% chance to win");
+  expect(projectionText({ favorite: "Cedar Gap", margin: 60, winProbability: 0.999 })).toBe("Cedar Gap by 45+ · >99% chance to win");
 });
 
 test("standings list every district by district record, in three tabs", async ({ page }, info) => {
@@ -234,7 +234,7 @@ test("upcoming playoff games show a projected margin and win probability, never 
   const { projectedGames } = await upcoming();
   if (!projectedGames) return test.skip(true, skipReason("no playoff game is still to play with a projection"));
   await page.goto("/scores", { waitUntil: "networkidle" });
-  const projected = page.getByText(/^Projected: .+ by \d+\+? · (>99|\d{2})% win probability$/);
+  const projected = page.getByText(/^Projected: .+ by \d+\+? · (>99|\d{2})% chance to win$/);
   // The board shows one organization at a time: count each one's, and check each for betting words.
   const buttons = page.getByRole("group", { name: "Show games from" }).getByRole("button");
   let seen = await projected.count();
@@ -303,7 +303,7 @@ test("matchup projects any two teams, home or neutral, and keeps the choice in t
   await page.getByRole("combobox", { name: "Team 2" }).selectOption("gordon");
   const result = page.getByRole("region", { name: "Projection" });
   await expect(result).toContainText(/(Jayton|Gordon) by \d+/);
-  await expect(result).toContainText(/\d+% win probability|>99% win probability/);
+  await expect(result).toContainText(/\d+% chance to win|>99% chance to win/);
   const neutral = await result.textContent();
   await page.getByRole("radio", { name: "At Gordon" }).check();
   await expect(page).toHaveURL(/a=jayton&b=gordon&at=b$/);
@@ -525,7 +525,8 @@ test("results list every game week by week, both seasons, naming no winner and n
   await checkPage(page, "/results/2025/1", `results-2025-1-${info.project.name}`);
   await expect(page.getByText(/^UIL · 2025 season · Week 1 · \d+ games$/)).toBeVisible();
   await page.goto("/results/2025/9");
-  expect(await page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|\d+)% win probability$/).count()).toBeGreaterThan(10);
+  // A played game's projection, from the week before, beside what happened (ADR 0044).
+  expect(await page.getByText(/^Projected: .+ by (\d+|45\+|less than 1) · (>99|<1|\d+)% chance to win · (Final: .+ by \d+|Final: tied|Forfeit|Disputed)$/).count()).toBeGreaterThan(10);
   await expect(page.getByText(/upset/i)).toHaveCount(0);
   // A forfeit (recorded 1-0) shows the word, never the score (ADR 0004).
   await page.goto("/programs/avalon");
@@ -570,7 +571,7 @@ test("playoffs show every bracket round by round, naming no winner and no source
   for (const name of ["UIL Division I", "UIL Division II"]) await expect(page.getByRole("region", { name, exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "UIL Division I, Bi-district" }).getByRole("listitem")).toHaveCount(16);
   await expect(page.getByText(/won|beat|defeated|maxpreps|odds|spread/i)).toHaveCount(0);
-  expect(await page.getByText(/Projected: .+ by (\d+|45\+) · (>99|\d+)% win probability/).count()).toBeGreaterThan(0);
+  expect(await page.getByText(/Projected: .+ by (\d+|45\+) · (>99|\d+)% chance to win/).count()).toBeGreaterThan(0);
 
   await checkPage(page, "/playoffs/tapps", `playoffs-tapps-${info.project.name}`);
   await expect(page.getByRole("heading", { level: 2 })).toHaveCount(5);
