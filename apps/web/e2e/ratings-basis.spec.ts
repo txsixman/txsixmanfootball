@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { noLiveScores } from "./live-route";
+import { sitemapPaths } from "./sitemap-urls";
 import { CURRENT_SEASON } from "../lib/season";
 import { slugify } from "../lib/slug";
 import { playedCounts } from "../lib/season-results";
@@ -127,8 +128,7 @@ test("/about/ratings says what a rating means, in plain words, and links both wa
 });
 
 test("the sitemap lists the page and its description is its own", async ({ page }: { page: Page }) => {
-  const xml = await (await page.request.get("/sitemap.xml")).text();
-  expect(xml).toContain("/about/ratings</loc>");
+  expect(await sitemapPaths(page.request)).toContain("/about/ratings");
   await page.goto("/about/ratings");
   const description = await page.locator('meta[name="description"]').getAttribute("content");
   expect(description?.length).toBeLessThanOrEqual(160);

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { noLiveScores } from "./live-route";
+import { sitemapPaths } from "./sitemap-urls";
 
 // Every public page has its own meta description, built from its own data (lib/descriptions.ts): not the site-wide one, at
 // most 160 characters, one per page, and with no betting word, source name or winner. One page of each kind in the sitemap.
@@ -13,16 +14,11 @@ const SOURCE = /maxpreps|hudl|calpreps|sixmanfootball|dave campbell/i;
 const WINNER = /\b(won|beat|defeated|winner|victory)\b/i;
 const CODENAME = /80x40|brady|dcs2|\/Users\//i;
 
-async function sitemapPaths(page: Page) {
-  const xml = await (await page.request.get("/sitemap.xml")).text();
-  return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].replace("https://txsixmanfootball.com", "") || "/");
-}
-
 const description = (page: Page) => page.locator('meta[name="description"]').getAttribute("content");
 
 test("every kind of page has its own short description, with no betting word, source or winner", async ({ page }, info) => {
   test.skip(info.project.name === "phone", "a page's meta tags do not depend on the viewport");
-  const map = await sitemapPaths(page);
+  const map = await sitemapPaths(page.request);
   const first = (re: RegExp) => {
     const found = map.find((p) => re.test(p));
     expect(found, `a sitemap page matching ${re}`).toBeTruthy();
