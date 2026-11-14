@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { mediumDate, type Entry, type GameDetail } from "@/lib/game-pages";
 import type { SeasonResult } from "@/lib/games";
-import { projectionParts } from "@/lib/projection";
+import { projectedLine, type Outcome } from "@/lib/outcome";
+import { projectionText } from "@/lib/projection";
 import { signed } from "@/lib/signed";
 import { MIN_SURPRISE, surpriseOf } from "@/lib/why-moved";
 import { FIRST_SEASON } from "@/lib/season";
@@ -31,14 +32,14 @@ function distance(result: SeasonResult, favorite: string, margin: number): strin
 }
 
 /** The week-before projection and how far the result was from it. Needs a game that was played. */
-export function ProjectionSection({ result, detail }: { result: SeasonResult; detail: GameDetail }) {
+export function ProjectionSection({ result, detail, outcome }: { result: SeasonResult; detail: GameDetail; outcome: Outcome }) {
   const p = detail.projection;
   if (!p) return null;
-  const { margin, chance } = projectionParts(p);
   return (
     <Section id="projection" title="Projection before the game">
-      <p className="pt-2 text-[18px] font-semibold leading-6 text-ink">
-        {margin} <span className="text-muted">·</span> {chance}
+      {/* What was projected beside what happened (ADR 0044): "Projected: Jayton by 12 · 74% chance to win · Final: Jayton by 20". */}
+      <p data-projected className="pt-2 text-[18px] font-semibold leading-6 text-ink">
+        {projectedLine(projectionText(p), outcome)}
       </p>
       {!result.forfeit && <p className="pt-1 text-[15px] leading-5 text-ink">{distance(result, p.favorite, p.margin)}</p>}
       <p className="pt-1 text-[13px] leading-4 text-muted">

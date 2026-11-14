@@ -1,0 +1,36 @@
+# ADR 0039: Tonight in groups by the clock, and the live read only while a game is in progress
+
+**Status:** Proposed Nov 13, 2026; accepted when its pull request is merged. Narrows how often ADR 0021's browser read runs
+and uses ADR 0036's kickoff status for it; every other rule of ADRs 0004, 0009, 0010 and 0021 stands.
+
+## Decision
+- **Tonight is grouped by the clock** (`groupTonight` in `lib/kickoff.ts`), one organization at a time (ADR 0012), in the
+  browser at the moment of viewing, so the static page re-sorts as the clock moves:
+  - "In progress", earliest kickoff first; "Up next", earliest first, a game with no time listed last; "Final", latest first,
+    a game with no time last. An empty group is not shown.
+  - A game with a final or a forfeit is Final whatever the clock says. A game with no final more than 4 hours past kickoff
+    (or a game with no time listed, after its day) is not Final: it goes last, under "Score not reported yet", latest
+    kickoff first.
+  - The server's HTML, and the first render in the browser, put every game with no final under "Up next", so nothing
+    differs between them; the groups move once the page runs.
+- **The live score shows in place** on Tonight and on the home page's My teams, as on the scores board (ADR 0021):
+  - Tonight: a game the live read has a score for is under "In progress" whatever its kickoff says, its line "Unconfirmed"
+    with no leader; one the read says is over (ADR 0043) is under "Final" with its score and "as of" the read, until the
+    stored final replaces it.
+  - Tonight: each game with a projection shows it beside the outcome, in `lib/outcome.ts`'s words (ADR 0044): the
+    projection alone before kickoff; "Projected: … · Now: 14–28 · Unconfirmed" under way, no leader; "… · Final: <team>
+    by 3" once final (a live read's final too); "… · Disputed" and "… · Forfeit" with no score. A played game's
+    projection is the one from the week before it (`lib/pregame.ts`), for bracket and season games alike.
+  - My teams: a followed program's next game shows the live line under its date and opponent, with its projection still
+    beside it (ADR 0044), and the score where a final's goes, from the school's side, dashed (solid once the read says
+    it is over). One read serves every followed program.
+- **The live read runs only while a game on the page may be under way** (`anyInProgress` in `lib/kickoff.ts`), checked
+  again every minute: from kickoff to 4 hours after when the kickoff is known; with no kickoff time, through its game
+  date's evening, 5:00 PM to midnight Central, so its live score still shows. It starts by itself and stops when the window
+  ends. On a game page that means that game's window. A game with a final never starts it. Still true: no request while
+  the tab is hidden, the request is aborted when the page is left, and a failed request shows nothing.
+
+## Consequences
+- A page opened before the first kickoff, after the last window, or on a night of finals sends no request to Supabase.
+- A game whose kickoff is missing from the facts file is read only through its evening (5:00 PM to midnight Central); an
+  afternoon game with no time listed shows no live line until its time is added.

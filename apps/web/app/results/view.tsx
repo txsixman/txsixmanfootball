@@ -3,7 +3,9 @@ import Link from "next/link";
 import { loadAlignments, programFor } from "@/lib/alignments";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
-import { pregame } from "@/lib/pregame";
+import { isDisputed, loadDisputed } from "@/lib/disputed";
+import { projectedLine, resultOutcome } from "@/lib/outcome";
+import { pregameShown } from "@/lib/pregame";
 import { projectionText } from "@/lib/projection";
 import { loadWeeks, resultSeasons, weekLabel, type Week } from "@/lib/weeks";
 import { TabNav } from "../tab-nav";
@@ -13,12 +15,13 @@ import { seasonHref, weekHref } from "./paths";
 /** One week of one organization's results: the games with a team in it, whoever the other team is (ADR 0012). Robot-read
  * scores are unconfirmed, so no row names a winner (ADR 0004, ADR 0008). */
 export async function ResultsWeek({ org, season, week }: { org: Org; season: number; week: number }) {
-  const [weeks, seasons, alignments, identities, before, orgSeasons] = await Promise.all([
+  const [weeks, seasons, alignments, identities, { byId: before }, disputed, orgSeasons] = await Promise.all([
     loadWeeks(season, org),
     resultSeasons(org),
     loadAlignments(),
     loadIdentities(),
-    pregame(season),
+    pregameShown(season),
+    loadDisputed(season),
     Promise.all(ORGS.map(async (o) => [o, await resultSeasons(o)] as const)),
   ]);
   const shown = weeks.find((w) => w.number === week) as Week;
@@ -101,8 +104,12 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
                   {scores(g)}
                 </div>
                 {g.forfeit && <p className="pb-1 pl-[3rem] text-[13px] font-semibold text-muted">Forfeit</p>}
-                {/* What the ratings said the week before; it names no winner of this game (ADR 0004). */}
-                {before.has(g.id) && <p className="pb-1 pl-[3rem] text-[13px] text-muted">Projected: {projectionText(before.get(g.id)!)}</p>}
+                {/* What the ratings said the week before, beside what happened (ADR 0044). */}
+                {before.has(g.id) && (
+                  <p data-projected className="pb-1 pl-[3rem] text-[13px] text-muted">
+                    {projectedLine(projectionText(before.get(g.id)!), resultOutcome(g, isDisputed(disputed, g.date, g.home, g.away)))}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

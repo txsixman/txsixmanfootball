@@ -6,8 +6,8 @@ import { commonOpponents, type CommonOpponent } from "./game-preview";
 import { pairKey } from "./meetings";
 import { memo } from "./memo";
 import type { Org } from "./orgs";
-import { pregame } from "./pregame";
-import type { Projection } from "./projection";
+import { pregame, pregameShown } from "./pregame";
+import { projectionText, type Projection } from "./projection";
 import { loadRanked, rankLabel } from "./rankings";
 import { loadRatings, record } from "./ratings";
 import { CURRENT_SEASON } from "./season";
@@ -211,7 +211,9 @@ export async function resolveGame(id: string) {
           id: found?.result.id,
         })
       : undefined;
-  const g: Game = own ? resultAsGame(own, detail!, await loadDisputed(own.season)) : bracket!;
+  // A played game's projection is the one from the week before it (ADR 0044), shown beside its outcome.
+  const before = own && (await pregameShown(own.season)).byId.get(own.result.id);
+  const g: Game = own ? { ...resultAsGame(own, detail!, await loadDisputed(own.season)), ...(before && { projected: projectionText(before) }) } : bracket!;
   return { g, found, own, sample, detail, neutral: own !== undefined && detail?.playoff !== undefined };
 }
 

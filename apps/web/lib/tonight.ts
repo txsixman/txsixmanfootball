@@ -6,6 +6,7 @@ import { ORGS, orgOfLabel } from "./orgs";
 import { isForfeit } from "./score-display";
 import { CURRENT_SEASON } from "./season";
 import { isDisputed, loadDisputed } from "./disputed";
+import { shownBefore } from "./pregame";
 
 // One game night's games for the "Tonight" scoreboard (/scores/tonight) and the home page's link to it: the bracket games
 // dated that night, and any other robot-read game of the season dated that night, by organization and round. Read when
@@ -27,7 +28,8 @@ export type NightGame = {
   homeScore: number | null;
   /** True for every score the reader gave; false only for a hand-confirmed one. */
   unconfirmed: boolean;
-  /** "Jayton by 12 · 74% win probability" for a game not yet played, when both teams are rated. */
+  /** "Jayton by 12 · 74% chance to win", when both teams are rated: for a game already played, the projection from the
+   * week before it, never today's ratings (ADR 0044). */
   projected?: string;
   /** Kickoff in UTC, for a game not yet played, when known (ADR 0036). */
   kickoff?: string;
@@ -72,7 +74,7 @@ export async function loadNight(night = tonightsDate()): Promise<Night> {
     });
   }
   // Any other robot-read game of the night (a playoff game is already above, under its bracket page): under each organization with a team in it.
-  const disputed = await loadDisputed(CURRENT_SEASON);
+  const [disputed, shown] = await Promise.all([loadDisputed(CURRENT_SEASON), shownBefore(CURRENT_SEASON)]);
   for (const r of onNight(await loadSeasonResults(CURRENT_SEASON), night)) {
     if (r.href !== `/scores/${r.id}`) continue;
     const leagues = new Set([...programsFor(alignments, r.home), ...programsFor(alignments, r.away)].map((a) => a.league));
@@ -92,6 +94,7 @@ export async function loadNight(night = tonightsDate()): Promise<Night> {
           awayScore: r.forfeit ? null : r.awayScore,
           homeScore: r.forfeit ? null : r.homeScore,
           unconfirmed: !r.forfeit && isDisputed(disputed, r.date, r.home, r.away), // a final is confirmed unless disputed (ADR 0040)
+          ...(shown.before.has(r.id) ? { projected: shown.before.get(r.id)! } : {}),
         },
       });
     }

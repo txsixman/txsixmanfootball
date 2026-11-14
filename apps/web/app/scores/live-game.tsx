@@ -3,6 +3,8 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import { asLive, liveStatus, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
+import { projectedLine } from "@/lib/outcome";
+import { outcomeOf } from "@/lib/score-display";
 import { BigLine, type Program } from "./game-parts";
 import { KickoffStatus } from "../kickoff-status";
 import { useLiveScores } from "./live-score";
@@ -51,6 +53,12 @@ export function GameScore({ g, away, home, neutral, watch }: { g: Game; away?: P
         <BigLine g={shown} side="away" program={away} neutral={neutral} />
         <BigLine g={shown} side="home" program={home} neutral={neutral} />
       </section>
+      {/* Under way: what was projected beside the score so far, naming no leader (ADR 0044). */}
+      {live && shown.projected && (
+        <p data-projected className="px-3 pt-1 text-[13px] leading-4 text-muted">
+          {projectedLine(shown.projected, outcomeOf(shown))}
+        </p>
+      )}
     </>
   );
 }
@@ -60,7 +68,12 @@ const ProgramLiveRows = createContext<LiveRow[]>([]);
 /** A program page's one live read, for its next game (`date`, `kickoff`), shared by the next-game box and the game's row:
  * asked only from kickoff to the end of its window (useLiveScores), so a page with no game in progress asks for nothing. */
 export function ProgramLiveRead({ date, kickoff, children }: { date: string; kickoff?: string; children: ReactNode }) {
-  return <ProgramLiveRows.Provider value={useLiveScores([{ date, kickoff }])}>{children}</ProgramLiveRows.Provider>;
+  return <LiveRead games={[{ date, kickoff }]}>{children}</LiveRead>;
+}
+
+/** One live read for several games with no score yet (the home page's My teams next games), for ProgramLiveScore. */
+export function LiveRead({ games, children }: { games: { date: string; kickoff?: string }[]; children: ReactNode }) {
+  return <ProgramLiveRows.Provider value={useLiveScores(games)}>{children}</ProgramLiveRows.Provider>;
 }
 
 /** A program page's game with no score yet, while it is under way: the live score from `school`'s side ("28-14"), dashed,
