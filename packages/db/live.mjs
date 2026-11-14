@@ -6,6 +6,9 @@
 // In ONE transaction: every row in the file is upserted, every row NOT in the file is deleted (a game that went final or
 // vanished stops being live), and any row read more than 6 hours ago is deleted. An empty file clears the table. A bad row
 // rejects the whole file before anything is written. Nothing here touches the repo, so a live update never rebuilds the site.
+// The same transaction records when this run happened in read_status (migration 0017, ADR 0038), on every run, with or
+// without games under way: a failed run rolls back and leaves the earlier time. The time is this run's own clock, taken
+// when the script starts, a few seconds after the reader finished: the live file carries a read time per game, not per run.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -46,9 +49,16 @@ export function validateLiveRows(rows) {
 /** Rows a delete removed: node-postgres says rowCount, PGlite affectedRows. */
 const count = (result) => result.rowCount ?? result.affectedRows ?? 0;
 
-/** Replaces the table's rows with `rows` (already validated), in one transaction. Returns the counts. */
-export async function writeLive(db, rows) {
+/** Replaces the table's rows with `rows` (already validated), and records `at` (a Date: when this run happened) as the time
+ * of the last read, in one transaction. Returns the counts. */
+export async function writeLive(db, rows, at = new Date()) {
   return db.transaction(async (tx) => {
+    // First, so a failure anywhere below rolls it back too. Never moves backward (two runs finishing out of order).
+    await tx.query(
+      `insert into read_status (id, read_at) values (true, $1)
+       on conflict (id) do update set read_at = greatest(read_status.read_at, excluded.read_at)`,
+      [at.toISOString()],
+    );
     for (const r of rows) {
       await tx.query(
         `insert into live_score (game_key, home, away, home_score, away_score, period, read_at)
@@ -69,13 +79,14 @@ async function main() {
   const file = process.argv[2];
   if (!file) throw new Error("usage: node packages/db/live.mjs <live.json>");
   for (const name of ["PGHOST", "PGUSER", "PGPASSWORD"]) if (!process.env[name]) throw new Error(`${name} is not set`);
+  const at = new Date();
   const rows = validateLiveRows(JSON.parse(readFileSync(file, "utf8")));
   const { default: pg } = await import("pg");
   const ssl = process.env.PGSSLROOTCERT ? { ca: readFileSync(process.env.PGSSLROOTCERT, "utf8") } : true;
   const client = new pg.Client({ database: process.env.PGDATABASE || "postgres", ssl });
   await client.connect();
   try {
-    console.log(JSON.stringify(await writeLive(adapt(client), rows)));
+    console.log(JSON.stringify(await writeLive(adapt(client), rows, at)));
   } finally {
     await client.end();
   }

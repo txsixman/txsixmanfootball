@@ -91,6 +91,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "record_admin_audit", anon: false },
     { proname: "reply_to_thread", anon: false },
     { proname: "resolve_game_key", anon: false },
+    { proname: "results_read_at", anon: true }, // migration 0017: when the last game-day read finished, read-only, for anon and signed-in alike
     { proname: "submit_score_report", anon: false }, // migration 0014: signed-in fans only
     { proname: "unfollow_program", anon: false },
   ]);

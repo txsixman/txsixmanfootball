@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../lib/supabase-public";
-import { LIVE_SCORES_URL } from "./live-route";
+import { answer, LIVE_SCORES_URL, READ_AT_URL } from "./live-route";
 
 // Live scores during a game (ADR 0021): the page reads the public function live_scores() in the browser, so every request to
 // Supabase here is answered from a fixture. The service worker is blocked: it would otherwise fetch outside page.route.
@@ -49,6 +49,7 @@ const liveRow = (f: Fixture, over: Record<string, unknown> = {}) => ({
 /** Answers the live_score request with whatever `current.rows` holds, and keeps what the page sent. */
 async function serveLive(page: Page, current: { rows: unknown; status?: number }) {
   const seen: { url: string; method: string; headers: Record<string, string> }[] = [];
+  await answer(page, READ_AT_URL, "null"); // the board's "Scores checked" line asks too (ADR 0038)
   await page.route(LIVE_SCORES_URL, (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });

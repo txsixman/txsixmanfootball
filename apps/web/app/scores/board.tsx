@@ -10,6 +10,7 @@ import { ORGS } from "@/lib/orgs";
 import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
 import { CrestSlot, EmptyState, PageHeader } from "../ui";
 import { KickoffStatus } from "../kickoff-status";
+import { ScoresChecked } from "./freshness";
 import { LiveLine, useLiveScores } from "./live-score";
 import { ForfeitMark, VerifyBar, scoreClass } from "./parts";
 
@@ -233,6 +234,8 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
           </div>
         )}
       </header>
+
+      <ScoresChecked games={games} className="border-b border-line px-3 py-1.5" />
 
       {weekInReview && (
         <Link href={weekInReview.href} className="flex min-h-11 items-center justify-between gap-3 border-b border-line px-3 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">

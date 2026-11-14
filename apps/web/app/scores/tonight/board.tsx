@@ -4,6 +4,7 @@ import Link from "next/link";
 import { liveView, type LiveRow } from "@/lib/live-scores";
 import type { Night, NightGame } from "@/lib/tonight";
 import { KickoffStatus } from "../../kickoff-status";
+import { ScoresChecked } from "../freshness";
 import { LiveLine, useLiveScores } from "../live-score";
 
 // Tonight's games, one organization at a time and each round under it (ADR 0012). A game with no final yet may be under way,
@@ -40,6 +41,7 @@ export default function TonightBoard({ night }: { night: Night }) {
   const liveRows = useLiveScores(night.orgs.some((o) => o.rounds.some((r) => r.games.some((g) => g.state === "later"))));
   return (
     <>
+      <ScoresChecked games={night.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games))} className="px-3 pt-2" />
       {night.orgs.map((org) => (
         <section key={org.slug} aria-labelledby={`night-${org.slug}`}>
           <h2 id={`night-${org.slug}`} className="bg-navy px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">
