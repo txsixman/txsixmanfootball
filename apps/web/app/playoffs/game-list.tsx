@@ -10,13 +10,13 @@ import { CrestSlot } from "../ui";
 const day = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 
-/** The mark on a score the site cannot vouch for (ADR 0004): bordered, so it reads on a phone in the sun. */
-export const UnconfirmedMark = () => (
-  <span className="inline-block border-2 border-ink px-1.5 text-[13px] font-bold uppercase leading-5 tracking-wide text-ink">Unconfirmed</span>
+/** The mark on a final the sources give different winners (ADR 0040): bordered, so it reads on a phone in the sun. */
+export const DisputedMark = () => (
+  <span className="inline-block border-2 border-ink px-1.5 text-[13px] font-bold uppercase leading-5 tracking-wide text-ink">Disputed</span>
 );
 
 /** The games of one round: away team first, a big score, the date and site, a status line and the projection for a game not yet played.
- * No row names a winner from an unconfirmed score (ADR 0004); `today` is a Central-time date (lib/playoff-status.ts).
+ * A final is confirmed (ADR 0040); `today` is a Central-time date (lib/playoff-status.ts).
  * `showStatus` is off for a past season, where every game is old and the page says once that its scores are unconfirmed
  * (a forfeit still says so). */
 export function GameList({ games, league, alignments, identities, today, showStatus = true }: {
@@ -64,7 +64,7 @@ export function GameList({ games, league, alignments, identities, today, showSta
                   ) : (
                     <span className="font-semibold text-ink">{status.label}</span>
                   )}
-                  {showStatus && status.unconfirmed && <UnconfirmedMark />}
+                  {showStatus && status.unconfirmed && <DisputedMark />}
                 </span>
               )}
               {/* The projection is the line a fan wants, so it gets a line of its own. */}

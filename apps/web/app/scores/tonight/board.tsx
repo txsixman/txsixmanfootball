@@ -18,7 +18,7 @@ function Status({ g, liveRows }: { g: NightGame; liveRows: LiveRow[] }) {
         <p className="text-[14px] font-bold uppercase leading-5 tracking-wide text-navy">{g.unconfirmed ? "Score reported" : "Final"}</p>
         <p className="text-[15px] leading-5 text-ink">
           {g.away} {g.awayScore}, {g.home} {g.homeScore}
-          {g.unconfirmed && <span className="text-muted"> &middot; may change</span>}
+          {g.unconfirmed && <span className="text-muted"> &middot; disputed</span>}
         </p>
       </>
     );

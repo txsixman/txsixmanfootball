@@ -140,7 +140,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
           </p>
           {line.playoff && <p className="pt-1 text-[15px] font-semibold text-navy">Playoffs: reached {roundPhrase(line.playoff.round, line.playoff.league)}</p>}
           <p className="pt-1 text-[13px] text-muted">
-            Record counts the playoffs; a forfeit counts as a win or a loss. Rank is among {label} teams as today&rsquo;s alignments place them. Season scores, not confirmed here.
+            Record counts the playoffs; a forfeit counts as a win or a loss. Rank is among {label} teams as today&rsquo;s alignments place them.
           </p>
         </section>
 
@@ -195,7 +195,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
             })}
           </ul>
           <p className="px-3 pt-2 text-[13px] text-muted">
-            {school.school}&rsquo;s score first. Season scores, not confirmed here. Playoff games name their round; a projection is the ratings&rsquo; view the week before.
+            {school.school}&rsquo;s score first. Playoff games name their round; a projection is the ratings&rsquo; view the week before.
           </p>
         </section>
 

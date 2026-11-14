@@ -91,23 +91,28 @@ async function checkPage(page: Page, url: string) {
 }
 
 const NO_SOURCE_OR_BETTING = /\b(spreads?|odds|lines?|bets?|bettors?|sources?|maxpreps)\b/i;
-// A robot-read score names no winner (ADR 0004). "Win probability" is the projection's own phrase.
+// A final names its winner (ADR 0040), marked on the score and read out as "winner"; no other winner word is written.
+// "Win probability" is the projection's own phrase.
 const WINNER_WORDS = /\b(won|beat|beats|defeated|defeats|winner|wins|victory|loser|lost)\b/i;
 const withoutProjectionPhrase = (text: string) => text.replace(/win probability/gi, "");
 
 test.setTimeout(120_000);
 
-test("a regular-season game page shows the teams and score as unconfirmed, with no winner named", async ({ page }) => {
+test("a regular-season game page shows the teams and the final score, the winner marked", async ({ page }) => {
   const { projected: r } = await fixtures();
   await checkPage(page, r.href);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${r.away} vs ${r.home}`);
   const score = page.getByRole("region", { name: "Score" });
   await expect(score).toContainText(r.away);
   await expect(score).toContainText(r.home);
-  expect(((await score.innerText()).match(/^\d+$/gm) ?? [])).toEqual([String(r.awayScore), String(r.homeScore)]); // away first
-  await expect(page.getByText("Unconfirmed", { exact: false }).first()).toBeVisible();
-  await expect(page.getByText("The score may change.")).toBeVisible();
-  const text = withoutProjectionPhrase(await page.locator("main").innerText());
+  expect(((await score.innerText()).replace(/\s*winner/g, "").match(/^\d+$/gm) ?? [])).toEqual([String(r.awayScore), String(r.homeScore)]); // away first
+  await expect(page.getByText("Unconfirmed", { exact: false })).toHaveCount(0);
+  const winner = r.homeScore > r.awayScore ? r.home : r.away;
+  if (r.homeScore !== r.awayScore) {
+    await expect(score.getByText("winner", { exact: false })).toHaveCount(1);
+    await expect(score.locator("div.border-b").filter({ hasText: /\bwinner\b/ })).toContainText(winner);
+  }
+  const text = withoutProjectionPhrase((await page.locator("main").innerText()).replace(/\bwinner\b/g, ""));
   expect(text).not.toMatch(WINNER_WORDS);
   expect(text).not.toMatch(NO_SOURCE_OR_BETTING);
   await expect(page.getByRole("button", { name: /share/i })).toBeVisible();

@@ -108,7 +108,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
         </section>
       ))}
       <p className="mt-4 text-[13px] text-muted">
-        Away team first. Scores are not confirmed here and may change. Projections use both teams&rsquo; ratings from the week
+        Away team first. Scores may be corrected if a mistake is found. Projections use both teams&rsquo; ratings from the week
         before, once each has played four games.
       </p>
     </section>

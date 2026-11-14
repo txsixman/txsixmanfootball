@@ -9,13 +9,12 @@ import { centralClock, gameStatus } from "@/lib/playoff-status";
 import { chanceText, projectionParts } from "@/lib/projection";
 import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
-import { UnconfirmedMark } from "../playoffs/game-list";
+import { DisputedMark } from "../playoffs/game-list";
 import { CrestSlot } from "../ui";
 
 /**
  * "Path to the final": this season's games of a team that is in a playoff bracket (one block per bracket: a school in
- * two leagues has two, ADR 0012) round by round, the score marked Unconfirmed where the site cannot vouch for it and
- * naming no winner (ADR 0004), then the games listed ahead with their projections and, where the next pairing is
+ * two leagues has two, ADR 0012) round by round, each final with its score (ADR 0040), then the games listed ahead with their projections and, where the next pairing is
  * known, the likely opponents (lib/playoff-path.ts). Renders nothing for a team in no bracket.
  */
 export async function PathToFinal({ school, accent }: { school: string; accent: string }) {
@@ -80,7 +79,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
                         ) : (
                           <span className="font-semibold text-ink">{status.label}</span>
                         )}
-                        {status.unconfirmed && <UnconfirmedMark />}
+                        {status.unconfirmed && <DisputedMark />}
                       </span>
                     </span>
                     <span className="font-num text-[28px] font-bold leading-none tabular-nums text-ink">
@@ -121,7 +120,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
         </div>
       ))}
       <p className="px-3 pt-2 text-[13px] text-muted">
-        Scores marked Unconfirmed may change, and a team&rsquo;s next game shows who went on. Projections use the current ratings, on a neutral field unless the game is at a home site.
+        Scores may be corrected if a mistake is found. A team&rsquo;s next game shows who went on. Projections use the current ratings, on a neutral field unless the game is at a home site.
       </p>
     </section>
   );

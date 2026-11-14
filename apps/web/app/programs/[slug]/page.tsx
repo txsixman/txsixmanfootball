@@ -362,7 +362,6 @@ export default async function ProgramPage({ params }: Props) {
                 <div className="flex min-h-11 items-center justify-between gap-2 text-[16px] font-semibold text-ink">
                   <span>
                     {latest.status} · {lead(latest)} {opponentLink(latest.opponent)}
-                    <span className="block text-[14px] font-normal text-muted">Score not confirmed here.</span>
                   </span>
                   <Link
                     href={latest.href}
@@ -392,9 +391,6 @@ export default async function ProgramPage({ params }: Props) {
                   <GameRow key={r.id} r={r} />
                 ))}
               </ul>
-              {(results.length > 0 || games.some((g) => g.verification === "unconfirmed")) && (
-                <p className="px-3 pt-2 text-[13px] text-muted">Season scores, not confirmed here.</p>
-              )}
             </>
           ) : (
             <p className="px-3 py-4 text-[15px] text-muted">No {CURRENT_SEASON} games on record yet. Scores and projections appear here as games are read.</p>
@@ -441,7 +437,7 @@ export default async function ProgramPage({ params }: Props) {
                 </li>
               ))}
             </ul>
-            <p className="px-3 pt-2 text-[13px] text-muted">Forfeits are left out of the figures. Season scores, not confirmed here.</p>
+            <p className="px-3 pt-2 text-[13px] text-muted">Forfeits are left out of the figures.</p>
           </Section>
         )}
 
@@ -475,7 +471,7 @@ export default async function ProgramPage({ params }: Props) {
         {moves.length > 0 && (
           <Section id="why-moved" title="Why the rating moved" accent={accent}>
             <p className="px-3 pt-2 text-[13px] text-muted">
-              Each week, the game that went furthest from what the ratings projected the week before. Season scores, not confirmed here.
+              Each week, the game that went furthest from what the ratings projected the week before.
             </p>
             <ul>
               {moves.map((m) => (
@@ -565,7 +561,7 @@ export default async function ProgramPage({ params }: Props) {
                         <GameRow key={r.id} r={r} big={false} />
                       ))}
                     </ul>
-                    <p className="pt-1 text-[13px] text-muted">Season scores, not confirmed here. Playoff games name their round.</p>
+                    <p className="pt-1 text-[13px] text-muted">Playoff games name their round.</p>
                   </details>
                 )}
               </li>
@@ -579,7 +575,7 @@ export default async function ProgramPage({ params }: Props) {
         {opponents.length > 0 && (
           <Section id="rivals" title={rivals.length ? "Most played" : "Opponents"} accent={accent}>
             <p className="px-3 pt-2 text-[13px] text-muted">
-              Record against each since {withRecord.at(-1)?.line.season ?? seasons.at(-1)}, from scores not confirmed here. A forfeit counts as a win or a loss.
+              Record against each since {withRecord.at(-1)?.line.season ?? seasons.at(-1)}. A forfeit counts as a win or a loss.
             </p>
             {rivals.length > 0 && (
               <ul>

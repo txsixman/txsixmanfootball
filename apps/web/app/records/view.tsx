@@ -75,7 +75,7 @@ export async function RecordsView({ org }: { org: Org }) {
         id="records"
         eyebrow={`${org.label} · ${first} to ${records.seasons[0]} · ${records.games.toLocaleString("en-US")} games`}
         title="Records"
-        note={`From every ${org.label} game on this site since ${first}. Scores are not confirmed here and may change.`}
+        note={`From every ${org.label} game on this site since ${first}. Scores may be corrected if a mistake is found.`}
       />
       <TabNav label="Organization" tabs={orgs.map((o) => ({ href: orgHref("/records", o), label: o.label }))} current={orgHref("/records", org)} />
 

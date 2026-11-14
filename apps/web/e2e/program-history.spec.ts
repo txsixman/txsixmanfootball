@@ -97,7 +97,7 @@ test("every opponent since 2021 is listed with its record; the most played lead 
   expect(await top.count()).toBeLessThanOrEqual(6);
   await expect(top.first()).toContainText(/\d+ games · last 20\d\d, \d+-\d+/);
   await expect(section).toContainText("A forfeit counts as a win or a loss");
-  await expect(section).toContainText("scores not confirmed here");
+  await expect(section).not.toContainText("not confirmed");
   const summary = section.locator("details > summary");
   await expect(summary).toHaveText(/^All opponents \(\d+\)$/);
   const total = Number((await summary.textContent())!.match(/\((\d+)\)/)![1]);
@@ -152,9 +152,9 @@ test("every past playoff game names its round and links to its game page; no gam
   // The page of each is its game page.
   const link = playoff.first().getByRole("link", { name: /game page$/ });
   await expect(link).toHaveAttribute("href", /^\/scores\/2024-11-14-/);
-  // Rows name no winner, and "Season scores, not confirmed here" is said.
+  // Rows write no winner word, and no "not confirmed" note is left (a final is confirmed, ADR 0040).
   await expect(row.locator("details")).not.toContainText(WINNER);
-  await expect(row.locator("details")).toContainText("Season scores, not confirmed here.");
+  await expect(row.locator("details")).not.toContainText("not confirmed");
   await page.goto((await link.getAttribute("href"))!); // opened by address: a click before a cold dev page hydrates goes nowhere
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });

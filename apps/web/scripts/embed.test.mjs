@@ -74,10 +74,10 @@ test("a forfeit shows the word, an unplayed game shows no score, and no row name
   assert.ok(html.includes('<b class="s">Forfeit</b>'));
   assert.doesNotMatch(html, /\b(1-0|2-0)\b/);
   assert.doesNotMatch(html, /\b(won|beat|defeated|winner)\b/i);
-  assert.ok(html.includes("Scores are not confirmed here."));
+  assert.doesNotMatch(html, /not confirmed/); // a final is confirmed (ADR 0040)
 });
 
-test("a program with no games says so and shows no unconfirmed-score note", () => {
+test("a program with no games says so", () => {
   const html = renderEmbed(view({ record: null, recent: [], next: null }));
   assert.ok(html.includes("No 2026 games on record yet."));
   assert.doesNotMatch(html, /not confirmed|record</);

@@ -38,7 +38,7 @@ test("the page names both teams, shows both crests, and links each to its progra
     // The logo, or the badge in the school's colors where it has none: either way the crest is drawn.
     await expect(link.locator("img, span[aria-hidden=true]").first()).toBeVisible();
   }
-  await expect(page.getByText("Season scores, not confirmed here.").first()).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("not confirmed"); // a final is confirmed (ADR 0040)
   await expect(page.getByText("A forfeit counts as a win or a loss.")).toBeVisible();
 });
 
