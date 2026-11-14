@@ -43,7 +43,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
   const scores = (g: (typeof shown.games)[number]) => (
     <Link
       href={g.href}
-      aria-label={`${g.away} at ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
+      aria-label={`${g.away} vs ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
       className="flex shrink-0 items-center gap-1 pl-2 hover:bg-panel"
     >
       <span className="flex flex-col text-right font-num text-[20px] font-bold tabular-nums">
@@ -109,7 +109,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
         </section>
       ))}
       <p className="mt-4 text-[13px] text-muted">
-        Away team first. Scores are not confirmed here and may change. Projections use both teams&rsquo; ratings from the week
+        Away team first. Scores may be corrected if a mistake is found. Projections use both teams&rsquo; ratings from the week
         before, once each has played four games.
       </p>
     </section>

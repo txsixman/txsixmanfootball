@@ -54,6 +54,11 @@ run "Tool versions match ci.yml" same_as_ci
 
 # The `data` job.
 run "Token guard" bash .github/scripts/token-guard.sh
+if [ -n "$(git rev-list origin/main..HEAD 2>/dev/null)" ]; then
+  run "Commit addresses (since origin/main)" bash .github/scripts/commit-emails.sh origin/main..HEAD
+else
+  echo "Commit addresses: skipped, no commits since origin/main (CI checks every pull request)"
+fi
 if need actionlint "Workflow lint (actionlint with shellcheck)" && need shellcheck "Workflow lint (actionlint with shellcheck)"; then
   actionlint_same() {
     local here

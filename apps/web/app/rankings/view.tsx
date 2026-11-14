@@ -91,7 +91,7 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
       {rows.length ? (
         <>
           <RatingsTable rows={rows} hrefs={hrefs} />
-          <p className="mt-3 text-[13px] text-muted">Scores are not confirmed here and may change.</p>
+          <p className="mt-3 text-[13px] text-muted">Scores may be corrected if a mistake is found.</p>
           <HowToRead schedule />
         </>
       ) : (

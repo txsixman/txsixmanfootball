@@ -31,6 +31,16 @@ function files() {
       list.push({ file: seed(d, f), csv: [s.GAME_COLUMNS, s.PlayoffRow] });
     }
   }
+  if (existsSync(path.join(root, seed("disputed")))) {
+    for (const f of readdirSync(path.join(root, seed("disputed"))).filter((f) => /^\d{4}\.csv$/.test(f))) {
+      list.push({ file: seed(`disputed/${f}`), csv: [s.DISPUTED_COLUMNS, s.DisputedRow] });
+    }
+  }
+  if (existsSync(path.join(root, seed("game-details")))) {
+    for (const f of readdirSync(path.join(root, seed("game-details"))).filter((f) => /^\d{4}\.csv$/.test(f))) {
+      list.push({ file: seed(`game-details/${f}`), csv: [s.DETAIL_COLUMNS, s.DetailRow] });
+    }
+  }
   for (const d of dirs.filter((d) => /^maxpreps-\d{4}$/.test(d))) {
     if (existsSync(path.join(root, seed(d, "games.csv")))) list.push({ file: seed(d, "games.csv"), csv: [s.RESULT_COLUMNS, s.PlayedGameRow] });
     if (existsSync(path.join(root, seed(d, "playoffs.csv")))) {
@@ -95,7 +105,39 @@ export function checkAll() {
   if (identity) results.push(checkLogoFiles(identity));
   results.push(checkFirstSeason());
   results.push(...checkMaxprepsFolders(path.join(root, "data/seed")));
+  results.push(...checkDisputed(path.join(root, "data/seed")));
   return results;
+}
+
+/**
+ * Each disputed final (data/seed/disputed/<year>.csv, ADR 0040) must be a game on file: in that season's games.csv or
+ * playoffs.csv, or a hand-captured playoffs-<year>.csv, with the teams spelled as there. A row that matches nothing would
+ * quietly leave its game showing a winner, so it fails the run.
+ */
+export function checkDisputed(seedDir) {
+  const dir = path.join(seedDir, "disputed");
+  if (!existsSync(dir)) return [];
+  const rows = (file) => {
+    if (!existsSync(file)) return [];
+    const [header, ...lines] = readFileSync(file, "utf8").trim().split("\n");
+    const cols = header.split(",");
+    return lines.map((l) => Object.fromEntries(l.split(",").map((v, i) => [cols[i], v])));
+  };
+  return readdirSync(dir)
+    .filter((f) => /^\d{4}\.csv$/.test(f))
+    .sort()
+    .map((f) => {
+      const year = f.slice(0, 4);
+      const files = [path.join(`maxpreps-${year}`, "games.csv"), path.join(`maxpreps-${year}`, "playoffs.csv"), ...readdirSync(seedDir).map((d) => path.join(d, `playoffs-${year}.csv`))];
+      const known = new Set(files.flatMap((file) => rows(path.join(seedDir, file))).map(gameKey));
+      const listed = rows(path.join(dir, f));
+      const missing = listed.filter((r) => !known.has(gameKey(r))).map((r) => `${r.game_date} ${r.away} at ${r.home}`);
+      return {
+        file: seed("disputed", f),
+        ok: missing.length === 0,
+        note: missing.length ? `matches no game in ${year}'s files (check the date and spellings): ${missing.join("; ")}` : `${listed.length} disputed final(s), each a game on file`,
+      };
+    });
 }
 
 /** The only files a robot-read folder in this repo may hold: the facts publish.mjs writes (ADRs 0017, 0029). The reader's

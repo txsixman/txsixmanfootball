@@ -25,7 +25,7 @@ export default async function TonightPage() {
           title="Tonight"
           note={
             night.count
-              ? `${night.count} ${night.count === 1 ? "game" : "games"}, each organization on its own. Scores are not confirmed and may change.`
+              ? `${night.count} ${night.count === 1 ? "game" : "games"}, each organization on its own.`
               : undefined
           }
         />

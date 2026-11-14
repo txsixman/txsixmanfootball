@@ -77,7 +77,6 @@ export function GoingInSection({ away, home, detail }: { away: string; home: str
           ))}
         </tbody>
       </table>
-      <p className="pt-1 text-[13px] text-muted">Records from season scores, not confirmed here.</p>
     </Section>
   );
 }
@@ -93,7 +92,7 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
             <Link href={m.href} className="grid min-h-14 grid-cols-[6.75rem_1fr_auto] items-center gap-x-3 py-1 hover:bg-panel">
               <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(m.date)}</span>
               <span className="min-w-0 text-[15px] leading-5 text-ink">
-                {m.away} at {m.home}
+                {m.away} vs {m.home}
               </span>
               <span className="font-num text-[19px] font-bold tabular-nums text-ink">{m.forfeit ? "Forfeit" : `${m.awayScore}-${m.homeScore}`}</span>
             </Link>
@@ -101,7 +100,7 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
         ))}
       </ul>
       <p className="pt-1 text-[13px] text-muted">
-        {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first. Scores are not confirmed here and may change.
+        {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first.
       </p>
     </>
   );
