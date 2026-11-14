@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { DETAIL_COLUMNS, kickoffRows, liveFields, mergeKickoffs } from "./davecampbells.mjs";
+import { clockFormats, DETAIL_COLUMNS, kickoffRows, liveFields, mergeKickoffs } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -42,7 +42,7 @@ test("a 403 or 429 stops the read with no retry; other errors and bad bodies giv
 });
 
 test("periods become Q1 to Q4, Halftime or OT, never a clock", () => {
-  const cases = [[1, "Q1"], [4, "Q4"], [5, "OT"], [0, null], ["2", "Q2"], ["Q3", "Q3"], ["3rd", "Q3"], ["4th Quarter", "Q4"], ["Half", "Halftime"], ["HALFTIME", "Halftime"], ["OT", "OT"], ["Overtime 2", "OT"], ["Final", null], ["Q2 4:31", null], [null, null]];
+  const cases = [[1, "Q1"], [2, "Q2"], [3, "Q3"], [4, "Q4"], [5, "OT"], [6, "OT"], [0, null], ["2", "Q2"], ["Q3", "Q3"], ["3rd", "Q3"], ["4th Quarter", "Q4"], ["Half", "Halftime"], ["HALFTIME", "Halftime"], ["OT", "OT"], ["Overtime 2", "OT"], ["Final", null], ["Q2 4:31", null], [null, null]];
   for (const [period, want] of cases) assert.equal(periodLabel({ period }), want, String(period));
   for (const label of cases.map(([p]) => periodLabel({ period: p })).filter(Boolean)) assert.match(label, /^[A-Za-z0-9 ]{1,12}$/);
 });
@@ -488,4 +488,11 @@ test("--fields lists the clock and period fields of games under way by format, n
   assert.ok(lines.includes('summary.period number "9": 2 game(s), e.g. 3'));
   const text = lines.join("\n");
   for (const hidden of ["Alpha", "Bravo", "28", "14", "Chicago", "0:00"]) assert.ok(!text.replace(/shape: .*/g, "").includes(hidden), hidden);
+});
+
+test("each live run logs the game clock's formats among games under way, never a value", () => {
+  const game = (status, periodRemainingTime) => ({ status, summary: { period: 2, periodRemainingTime } });
+  assert.equal(clockFormats([]), "no game under way");
+  assert.equal(clockFormats([game("Live", null), game("Live", undefined), game("Final", "0:00")]), "2 null");
+  assert.equal(clockFormats([game("Live", "4:12"), game("In Progress", "11:05"), game("Live", "10:59"), game("Live", null)]), '2 string "99:99", 1 string "9:99", 1 null');
 });

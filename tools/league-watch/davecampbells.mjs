@@ -114,6 +114,18 @@ export function periodLabel(summary) {
  * shape (field names only, three levels deep), and for each field whose name speaks of the clock, the period or an update
  * time (clock, time, remain, period, quarter, updated), how many games hold each value format (digits shown as 9, so
  * "4:12" is "9:99"), with one example. Never a team, a score or any other value. */
+/** The game clock's formats among the games under way, for each live run's summary: "19 null" or "12 \"9:99\", 7 null"
+ * (digits shown as 9). It is how we learn the night the feed first fills summary.periodRemainingTime. Never a value. */
+export function clockFormats(items) {
+  const counts = new Map();
+  for (const item of items.filter(isLive)) {
+    const v = item?.summary?.periodRemainingTime;
+    const f = v === null || v === undefined ? "null" : `${typeof v} "${String(v).replace(/\d/g, "9").slice(0, 16)}"`;
+    counts.set(f, (counts.get(f) ?? 0) + 1);
+  }
+  return counts.size ? [...counts].sort((a, b) => b[1] - a[1]).map(([f, n]) => `${n} ${f}`).join(", ") : "no game under way";
+}
+
 export function liveFields(items) {
   const shapes = new Set();
   const formats = new Map();
@@ -503,6 +515,7 @@ async function live() {
   if (items.length && !seen.size) console.warn(`none of tonight's games matched; a listed game looks like ${shapeOf(items[0])}`);
   const unmapped = due.filter((r) => !theirs.has(slugify(r.home)) && !theirs.has(slugify(r.away))).length;
   summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.length} under way.`);
+  summary(`Game clock (summary.periodRemainingTime) in the games under way: ${clockFormats(items)}.`);
 }
 
 // ---- Past seasons (ADR 0032: the same permission, which the owner confirmed covers past seasons) ----
