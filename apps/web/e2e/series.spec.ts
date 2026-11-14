@@ -225,6 +225,6 @@ test("each meeting's game page has a title of its own: the teams and the date", 
     titles.push(await page.title());
   }
   expect(titles.length).toBeGreaterThanOrEqual(3);
-  for (const t of titles) expect(t).toMatch(/^(Guthrie at Jayton|Jayton at Guthrie), [A-Z][a-z]{2} \d{1,2}, \d{4} \| TX Six-Man Football$/);
+  for (const t of titles) expect(t).toMatch(/^(Guthrie vs Jayton|Jayton vs Guthrie), [A-Z][a-z]{2} \d{1,2}, \d{4} \| TX Six-Man Football$/);
   expect(new Set(titles).size).toBe(titles.length);
 });

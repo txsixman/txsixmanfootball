@@ -96,3 +96,9 @@ test("a next game dated before tonight is headed as waiting on its score, never 
   assert.match(waiting, /<h2 id="n">Score not in yet<\/h2>/);
   assert.ok(!waiting.includes("Next game"));
 });
+
+test("a playoff game reads vs, never at: its home team is the bracket's designation, not where it is played (ADR 0037)", () => {
+  const away = (playoff) => renderEmbed(view({ next: { status: "Fri 11/13", home: false, opponent: "Kress", score: null, ...(playoff && { playoff: true }) } }));
+  assert.match(away(false), /<span>at Kress<\/span>/);
+  assert.match(away(true), /<span>vs Kress<\/span>/);
+});

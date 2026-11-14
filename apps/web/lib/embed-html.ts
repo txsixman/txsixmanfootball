@@ -9,7 +9,7 @@ export type EmbedCrest =
   | { kind: "badge"; text: string; bg: string; fg: string; stripe: string | null };
 
 /** One game as the embed shows it: the program page's own row (lib/program-games.ts). `score` is already "Forfeit" for a forfeit. */
-export type EmbedGame = { status: string; home: boolean; opponent: string; score: string | null; note?: string };
+export type EmbedGame = { status: string; home: boolean; opponent: string; score: string | null; note?: string; playoff?: true };
 
 export type EmbedView = {
   slug: string;
@@ -86,7 +86,7 @@ a{display:inline-flex;align-items:center;min-height:44px;font-weight:600;color:v
 `.replace(/\n/g, "");
 
 const gameRow = (g: EmbedGame) =>
-  `<li class="g"><span class="d">${escapeHtml(g.status)}</span><span>${g.home ? "vs" : "at"} ${escapeHtml(g.opponent)}</span>` +
+  `<li class="g"><span class="d">${escapeHtml(g.status)}</span><span>${g.home || g.playoff ? "vs" : "at"} ${escapeHtml(g.opponent)}</span>` +
   `${g.score ? `<b class="s">${escapeHtml(g.score)}</b>` : "<span></span>"}${g.note ? `<span class="n">${escapeHtml(g.note)}</span>` : ""}</li>`;
 
 const crestHtml = (c: EmbedCrest) =>

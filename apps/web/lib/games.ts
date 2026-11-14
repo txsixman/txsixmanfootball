@@ -120,7 +120,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
       homeScore: played ? Number(r.home_score) : null,
       awayScore: played ? Number(r.away_score) : null,
       state: played ? "final" : "scheduled",
-      status: played ? "Final" : shortDate(r.game_date),
+      status: played ? (robot || corrected ? "Score reported" : "Final") : shortDate(r.game_date),
       ...(!played && season === CURRENT_SEASON && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
       // A robot-read 1-0 or 2-0 is how the source records a forfeit: shown as one, never as a score (ADR 0004).
       endReason: played

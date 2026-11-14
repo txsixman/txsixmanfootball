@@ -21,7 +21,7 @@ import { CURRENT_SEASON } from "@/lib/season";
 import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
-import { seasonRows, type Row } from "@/lib/program-games";
+import { lead, seasonRows, type Row } from "@/lib/program-games";
 import { embedSnippet } from "@/lib/embed-html";
 import { ratingSeries, type Rivalry } from "@/lib/program-history";
 import { programHistory, programSeasonPages } from "@/lib/program-seasons";
@@ -200,7 +200,7 @@ export default async function ProgramPage({ params }: Props) {
             <span className="flex items-center">
               {opponentCrest(r.opponent)}
               <span className="flex min-w-0 items-center gap-1">
-                {r.home ? "vs" : "at"} {opponentLink(r.opponent)}
+                {lead(r)} {opponentLink(r.opponent)}
               </span>
             </span>
             {r.note && <span className="block text-[13px] leading-4 text-muted">{r.note}</span>}
@@ -208,7 +208,7 @@ export default async function ProgramPage({ params }: Props) {
           {r.href ? (
             <Link
               href={r.href}
-              aria-label={`${r.status} ${r.home ? "vs" : "at"} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}
+              aria-label={`${r.status} ${lead(r)} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}
               className="flex min-h-11 min-w-11 items-center justify-end after:absolute after:inset-0"
             >
               {score}
@@ -339,7 +339,7 @@ export default async function ProgramPage({ params }: Props) {
                 {next.href ? (
                   <Link href={next.href} className="flex min-h-11 items-center justify-between gap-2 text-[16px] font-semibold text-ink hover:text-navy">
                     <span>
-                      {next.status} · {next.home ? "vs" : "at"} {next.opponent}
+                      {next.status} · {lead(next)} {next.opponent}
                       {next.date && (
                         <span className="block text-[14px]">
                           <KickoffStatus date={next.date} kickoff={next.kickoff} />
@@ -351,7 +351,7 @@ export default async function ProgramPage({ params }: Props) {
                   </Link>
                 ) : (
                   <p className="text-[16px] font-semibold text-ink">
-                    {next.status} · {next.home ? "vs" : "at"} {next.opponent}
+                    {next.status} · {lead(next)} {next.opponent}
                   </p>
                 )}
               </div>
@@ -361,7 +361,7 @@ export default async function ProgramPage({ params }: Props) {
                 <p className="text-[12px] font-bold uppercase tracking-widest text-red">Latest score</p>
                 <div className="flex min-h-11 items-center justify-between gap-2 text-[16px] font-semibold text-ink">
                   <span>
-                    {latest.status} · {latest.home ? "vs" : "at"} {opponentLink(latest.opponent)}
+                    {latest.status} · {lead(latest)} {opponentLink(latest.opponent)}
                     <span className="block text-[14px] font-normal text-muted">Score not confirmed here.</span>
                   </span>
                   <Link

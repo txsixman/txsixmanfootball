@@ -10,7 +10,7 @@ import { loadSeasonResults, roundPhrase } from "@/lib/games";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { orgByLeague } from "@/lib/orgs";
 import { pregame } from "@/lib/pregame";
-import { seasonRows, type Row } from "@/lib/program-games";
+import { lead, seasonRows, type Row } from "@/lib/program-games";
 import { programSeason, programSeasonPages } from "@/lib/program-seasons";
 import { projectionText } from "@/lib/projection";
 import { FEW_GAMES, ratingSeasons, record, signed } from "@/lib/ratings";
@@ -160,7 +160,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
                       <span className="flex items-center">
                         {opp.crest}
                         <span className="flex min-w-0 items-center gap-1">
-                          {r.home ? "vs" : "at"} {opp.link}
+                          {lead(r)} {opp.link}
                         </span>
                       </span>
                       {notes.map((n) => (
@@ -182,7 +182,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
                     <Link
                       href={r.href}
                       prefetch={false}
-                      aria-label={`${r.status} ${r.home ? "vs" : "at"} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}
+                      aria-label={`${r.status} ${lead(r)} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}
                       className="flex min-h-11 min-w-11 items-center justify-end after:absolute after:inset-0"
                     >
                       <span className="font-num text-[22px] font-bold tabular-nums text-ink">

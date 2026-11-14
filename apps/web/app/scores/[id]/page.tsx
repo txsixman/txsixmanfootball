@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // An invented sample game stays out of search (its schools are not real).
   return {
     // The date keeps each meeting's title its own: the same two teams at the same field meet again in later seasons.
-    title: teams ? `${teams.away} at ${teams.home}${date ? `, ${mediumDate(date)}` : ""}` : "Game",
+    title: teams ? `${teams.away} vs ${teams.home}${date ? `, ${mediumDate(date)}` : ""}` : "Game",
     ...(teams && { description: gameDescription({ away: teams.away, home: teams.home, date: date && mediumDate(date), season, playoff, scheduled: !found && g?.state === "scheduled", sample }) }),
     alternates: { canonical: `/scores/${id}` },
     ...card,
@@ -139,7 +139,7 @@ export default async function GamePage({ params }: Props) {
 
   return (
     <article aria-labelledby="game-title">
-      <Breadcrumbs trail={[{ name: "Home", href: "/" }, back, { name: `${g.away.name} at ${g.home.name}`, href: `/scores/${id}` }]} />
+      <Breadcrumbs trail={[{ name: "Home", href: "/" }, back, { name: `${g.away.name} vs ${g.home.name}`, href: `/scores/${id}` }]} />
       {!sample && <JsonLd data={gameJsonLd(g, { url: `${SITE_URL}/scores/${id}`, home: programOf(g.home), away: programOf(g.away) })} />}
 
       <header>
@@ -158,13 +158,13 @@ export default async function GamePage({ params }: Props) {
         </div>
         <VerifyBar g={g} />
         <h1 id="game-title" className="sr-only">
-          {g.away.name} at {g.home.name}
+          {g.away.name} vs {g.home.name}
         </h1>
         <p className="px-3 pt-2 text-[12px] font-bold uppercase tracking-wider text-muted">
           {g.league}
           {sample && ". Sample game, invented schools."}
         </p>
-        <ShareButton title={`${g.away.name} at ${g.home.name} | ${SITE_NAME}`} className="px-3 pt-1" />
+        <ShareButton title={`${g.away.name} vs ${g.home.name} | ${SITE_NAME}`} className="px-3 pt-1" />
       </header>
 
       {/* A game with no final yet may be under way: its live score is read in the browser (ADR 0021). */}

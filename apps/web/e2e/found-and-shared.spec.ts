@@ -42,7 +42,7 @@ test("a game page has SportsEvent markup with both programs and no score or winn
   const { game, homeSlug, awaySlug } = await fixture();
   await page.goto(game.href);
   const event = await ofType(page, "SportsEvent");
-  expect(event).toMatchObject({ name: `${game.away} at ${game.home}`, startDate: game.date, sport: "Six-man football", url: `${SITE}${game.href}` });
+  expect(event).toMatchObject({ name: `${game.away} vs ${game.home}`, startDate: game.date, sport: "Six-man football", url: `${SITE}${game.href}` });
   expect(event.homeTeam).toMatchObject({ "@type": "SportsTeam", name: game.home, url: `${SITE}/programs/${homeSlug}` });
   expect(event.awayTeam).toMatchObject({ "@type": "SportsTeam", name: game.away, url: `${SITE}/programs/${awaySlug}` });
   expect(event.location).toMatchObject({ "@type": "Place" });

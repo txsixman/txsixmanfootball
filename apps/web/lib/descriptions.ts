@@ -196,12 +196,12 @@ type GameFacts = {
 
 /** A game's page, with no score and no winner: the teams, the date and the round, and what the page adds. */
 export function gameDescription({ away, home, date, season, playoff, scheduled, sample }: GameFacts) {
-  if (sample) return fit(`A sample six-man game between invented schools: ${away} at ${home}.`, "It shows how the scoreboard reads.");
+  if (sample) return fit(`A sample six-man game between invented schools: ${away} vs ${home}.`, "It shows how the scoreboard reads.");
   const [group, round] = (playoff ?? "").split(" · ");
   const kind = playoff
     ? `${season} ${group.replace(/\bD(I+|\d+)\b/, "Division $1")}${round ? ` ${round.toLowerCase()}` : ""} playoff game`
     : `${season} season game`;
-  const teams = `${away} at ${home}`;
+  const teams = `${away} vs ${home}`;
   return fit(
     [`${teams}${date ? `, ${date}` : ""}: ${kind}.`, `${teams}${date ? `, ${date}` : ""}.`, `${teams}.`],
     scheduled

@@ -72,7 +72,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
                     <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{label}</span>
                     <span className="min-w-0 text-[15px] leading-5 text-ink">
                       <span className="flex items-center">
-                        {home ? "vs" : "at"}&nbsp;{opponent(other, b.league)}
+                        vs&nbsp;{opponent(other, b.league)}
                       </span>
                       <span className="flex flex-wrap items-center gap-x-2 text-[13px] leading-5 text-muted">
                         {["scheduled", "tonight", "awaiting"].includes(status.kind) ? (

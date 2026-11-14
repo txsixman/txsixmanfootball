@@ -93,7 +93,7 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
             <Link href={m.href} className="grid min-h-14 grid-cols-[6.75rem_1fr_auto] items-center gap-x-3 py-1 hover:bg-panel">
               <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(m.date)}</span>
               <span className="min-w-0 text-[15px] leading-5 text-ink">
-                {m.away} at {m.home}
+                {m.away} vs {m.home}
               </span>
               <span className="font-num text-[19px] font-bold tabular-nums text-ink">{m.forfeit ? "Forfeit" : `${m.awayScore}-${m.homeScore}`}</span>
             </Link>

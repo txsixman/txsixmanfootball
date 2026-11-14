@@ -100,7 +100,7 @@ test.setTimeout(120_000);
 test("a regular-season game page shows the teams and score as unconfirmed, with no winner named", async ({ page }) => {
   const { projected: r } = await fixtures();
   await checkPage(page, r.href);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${r.away} at ${r.home}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${r.away} vs ${r.home}`);
   const score = page.getByRole("region", { name: "Score" });
   await expect(score).toContainText(r.away);
   await expect(score).toContainText(r.home);
@@ -145,7 +145,7 @@ test("the week-before projection shows once both teams had four games, and how f
   await expect(going.getByRole("columnheader")).toHaveText(["Team", "Record", "Rating"]);
   // Too early in the season to judge: no projection, but still the page.
   await page.goto(early.href);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${early.away} at ${early.home}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${early.away} vs ${early.home}`);
   await expect(page.getByRole("region", { name: "Projection before the game" })).toHaveCount(0);
 });
 
@@ -160,13 +160,13 @@ test("earlier meetings link to their own game pages", async ({ page }) => {
   for (const m of expected) expect(m.date < r.date).toBe(true); // earlier only, newest first
   await links.first().click();
   await expect(page).toHaveURL(expected[0].href);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${expected[0].away} at ${expected[0].home}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${expected[0].away} vs ${expected[0].home}`);
 });
 
 test("a results row and a program schedule row link to the game page", async ({ page }) => {
   const { projected: r, weekOf, regular, programSlug } = await fixtures();
   await page.goto(`/results/2025/${weekOf(r.id)}`);
-  const row = page.getByRole("link", { name: new RegExp(`^${r.away} at ${r.home}, .*game page$`) });
+  const row = page.getByRole("link", { name: new RegExp(`^${r.away} vs ${r.home}, .*game page$`) });
   await expect(row).toHaveAttribute("href", r.href);
   await row.click();
   await expect(page).toHaveURL(r.href);
@@ -195,7 +195,7 @@ test("a current-season playoff game has one page, the bracket game's, with the p
   expect(r.href).not.toBe(`/scores/${r.id}`);
   expect((await request.get(`/scores/${r.id}`)).status()).toBe(404); // no second page for the same game
   await checkPage(page, r.href);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${r.away} at ${r.home}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${r.away} vs ${r.home}`);
   await expect(page.getByRole("region", { name: "Earlier meetings" })).toBeVisible();
   const hrefs = await page.locator("main a[href^='/']").evaluateAll((a) => [...new Set(a.map((x) => x.getAttribute("href")!))]);
   for (const href of hrefs) expect((await request.get(href)).status(), href).toBe(200);

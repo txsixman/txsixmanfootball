@@ -45,7 +45,7 @@ function GameLink({ g }: { g: Games }) {
     <Link
       href={g.href}
       prefetch={false}
-      aria-label={`${g.away} at ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
+      aria-label={`${g.away} vs ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
       className="block min-h-11 py-0.5 text-ink hover:text-navy"
     >
       {line(g.away, g.awayScore)}

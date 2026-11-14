@@ -43,7 +43,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
   const scores = (g: (typeof shown.games)[number]) => (
     <Link
       href={g.href}
-      aria-label={`${g.away} at ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
+      aria-label={`${g.away} vs ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
       className="flex shrink-0 items-center gap-1 pl-2 hover:bg-panel"
     >
       <span className="flex flex-col text-right font-num text-[20px] font-bold tabular-nums">

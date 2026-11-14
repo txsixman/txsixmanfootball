@@ -106,12 +106,12 @@ export default async function SeriesPage({ params }: Props) {
               <li key={r.id} className="border-b border-line">
                 <Link
                   href={r.href}
-                  aria-label={`${mediumDate(r.date)}, ${r.away} at ${r.home}${r.forfeit ? ", forfeit" : `, ${r.awayScore}-${r.homeScore}`}, game page`}
+                  aria-label={`${mediumDate(r.date)}, ${r.away} vs ${r.home}${r.forfeit ? ", forfeit" : `, ${r.awayScore}-${r.homeScore}`}, game page`}
                   className="grid min-h-14 grid-cols-[6.75rem_1fr_auto_auto] items-center gap-x-3 px-3 py-1 hover:bg-panel"
                 >
                   <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(r.date)}</span>
                   <span className="min-w-0 text-[15px] leading-5 text-ink">
-                    {r.away} at {r.home}
+                    {r.away} vs {r.home}
                     <span className="block text-[13px] leading-4 text-muted">{round ? `${season} playoffs · ${round}` : `${season} season`}</span>
                   </span>
                   <span className="font-num text-[19px] font-bold tabular-nums text-ink">{r.forfeit ? "Forfeit" : `${r.awayScore}-${r.homeScore}`}</span>

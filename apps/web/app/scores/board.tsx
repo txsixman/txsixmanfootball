@@ -26,15 +26,19 @@ function StatusCell({ g }: { g: Game }) {
   if (g.state === "final") {
     return (
       <div className={`${base} border-r border-line text-navy`}>
-        <span className="flex items-center gap-0.5">
-          Final
-          {g.verification === "confirmed" && (
-            <>
-              <Check aria-hidden="true" className="size-3.5" strokeWidth={3} />
-              <span className="sr-only">confirmed</span>
-            </>
-          )}
-        </span>
+        {g.verification === "confirmed" ? (
+          <span className="flex items-center gap-0.5">
+            Final
+            <Check aria-hidden="true" className="size-3.5" strokeWidth={3} />
+            <span className="sr-only">confirmed</span>
+          </span>
+        ) : (
+          // Not confirmed: never "Final", which would name a winner from a score no second source has backed (ADR 0008).
+          <>
+            <span>Score</span>
+            <span>reported</span>
+          </>
+        )}
       </div>
     );
   }
@@ -192,10 +196,12 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
   const q = query.trim().toLowerCase();
   const shown = q ? inOrgGames.filter((g) => `${g.home.name} ${g.away.name}`.toLowerCase().includes(q)) : inOrgGames;
   const live = shown.filter((g) => g.state === "live");
-  const final = shown.filter((g) => g.state === "final");
+  const final = shown.filter((g) => g.state === "final" && g.verification === "confirmed");
+  const reported = shown.filter((g) => g.state === "final" && g.verification !== "confirmed");
   const later = shown.filter((g) => g.state === "scheduled" || g.state === "postponed");
   const jumps = [
     { href: "#live", label: "Live", n: live.length },
+    { href: "#reported", label: "Reported", n: reported.length },
     { href: "#final", label: "Final", n: final.length },
     { href: "#later", label: "Later", n: later.length },
   ];
@@ -259,6 +265,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
       </nav>
 
       <Section id="live" title="Live now" live games={live} crests={crests} liveRows={liveRows} />
+      <Section id="reported" title="Score reported" games={reported} crests={crests} liveRows={liveRows} />
       <Section id="final" title="Final" games={final} crests={crests} liveRows={liveRows} />
       <Section id="later" title="Later" games={later} crests={crests} liveRows={liveRows} />
       {!shown.length && (

@@ -430,6 +430,12 @@ test("only a confirmed final names a winner", async ({ page }) => {
   for (const id of ["g3", "g5", "g6", "g7"]) await expect(crowned(id)).toHaveCount(0);
   await expect(row("g3")).toContainText("Unconfirmed");
   await expect(row("g7")).toContainText("Disputed");
+  // "Final" only for a confirmed score; an unconfirmed or disputed one sits under "Score reported" and never says Final.
+  await expect(page.locator("#final").locator('[data-game="g4"]')).toHaveCount(1);
+  for (const id of ["g3", "g7"]) {
+    await expect(page.locator("#reported").locator(`[data-game="${id}"]`)).toContainText("Score reported");
+    await expect(row(id)).not.toContainText(/\bFinal\b/);
+  }
 });
 
 test("a forfeit shows W and L, never a score", async ({ page }) => {

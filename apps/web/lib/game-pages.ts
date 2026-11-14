@@ -171,7 +171,7 @@ function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game {
     homeScore: r.forfeit ? null : r.homeScore,
     awayScore: r.forfeit ? null : r.awayScore,
     state: "final",
-    status: r.forfeit ? "Forfeit" : "Final",
+    status: r.forfeit ? "Forfeit" : "Score reported",
     endReason: r.forfeit ? "Forfeit" : undefined,
     verification: "unconfirmed",
     venue: d.playoff ? "Neutral site or not listed" : `${r.home} (home)`,
