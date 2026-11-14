@@ -18,9 +18,10 @@ import { latestReview } from "@/lib/week-review-load";
 import { MyTeams } from "./my-teams/block";
 import { ChanceList } from "./playoffs/chance-list";
 import { Crest } from "./programs/crest";
+import { homeTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { description: homeDescription(CURRENT_SEASON, ORGS.map((o) => o.label)) };
+export const metadata: Metadata = { title: { absolute: homeTitle() }, description: homeDescription(CURRENT_SEASON, ORGS.map((o) => o.label)), alternates: { canonical: "/" } };
 
 const TOP = 5; // UIL's two divisions
 const TOP_PRIVATE = 3; // each smaller organization
@@ -167,7 +168,7 @@ export default async function Home() {
         <section aria-labelledby="chances" className="mt-8">
           <h2 id="chances" className="section-title">State title chances</h2>
           <p className="section-note">
-            Each team&rsquo;s chance to win its state title from here, from the win probabilities. Shown once a bracket is down
+            Each team&rsquo;s chance to win its state title from here, from each game&rsquo;s projection. Shown once a bracket is down
             to its last four, or once every region of a UIL division is set and the semifinal pairings are known.
           </p>
           <div className="mt-3 grid gap-5 sm:grid-cols-2">
@@ -182,7 +183,7 @@ export default async function Home() {
         <section aria-labelledby="region-chances" className="mt-8">
           <h2 id="region-chances" className="section-title">Region title chances</h2>
           <p className="section-note">
-            Each UIL team&rsquo;s chance to win its region title, from the win probabilities. Shown once a region&rsquo;s two area
+            Each UIL team&rsquo;s chance to win its region title, from each game&rsquo;s projection. Shown once a region&rsquo;s two area
             games or its regional game are set.
           </p>
           <div className="mt-3 grid gap-5 sm:grid-cols-2">

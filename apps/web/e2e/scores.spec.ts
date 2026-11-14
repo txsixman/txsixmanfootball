@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { noLiveScores } from "./live-route";
+import { sitemapUrls } from "./sitemap-urls";
 import { skipReason, upcoming } from "./upcoming";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -229,7 +230,7 @@ test("the home page shows title chances for brackets down to their last four", a
   await expect(chances.getByRole("listitem").first()).toContainText(/(\d+|<1|>99)%$/);
 });
 
-test("upcoming playoff games show a projected margin and win probability, never betting words", async ({ page }) => {
+test("upcoming playoff games show a projected margin and chance to win, never betting words", async ({ page }) => {
   // Games still to play come from the season's data (e2e/upcoming.ts): each game night uses some up, the offseason has none.
   const { projectedGames } = await upcoming();
   if (!projectedGames) return test.skip(true, skipReason("no playoff game is still to play with a projection"));
@@ -551,7 +552,7 @@ test("matchup lists the last meetings between two teams across seasons", async (
 
 test("records list the most points, the longest winning runs and unbeaten seasons, naming no source", async ({ page }, info) => {
   await checkPage(page, "/records", `records-${info.project.name}`);
-  for (const name of ["Most points in a game", "Most points by both teams", "Biggest upsets", "Longest winning runs", "Unbeaten seasons"]) {
+  for (const name of ["Most points in a game", "Most points by both teams", "Biggest surprises", "Longest winning runs", "Unbeaten seasons"]) {
     await expect(page.getByRole("region", { name })).toBeVisible();
   }
   const points = page.getByRole("region", { name: "Most points in a game" }).getByRole("listitem");
@@ -559,9 +560,9 @@ test("records list the most points, the longest winning runs and unbeaten season
   const figures = await points.locator("span.font-num.text-navy").allTextContents();
   expect(figures.map(Number)).toEqual([...figures.map(Number)].sort((a, b) => b - a));
   await expect(page.getByText(/maxpreps|odds|spread|underdog|line\b/i)).toHaveCount(0);
-  const upsets = await page.getByRole("region", { name: "Biggest upsets" }).locator("li span.font-num.text-navy").allTextContents();
-  expect(upsets.length).toBe(10);
-  for (const u of upsets) expect(u).toMatch(/^(<1|[1-4]\d?)%( win probability before the game)?$/); // the unit after it is read aloud only
+  const surprises = await page.getByRole("region", { name: "Biggest surprises" }).locator("li span.font-num.text-navy").allTextContents();
+  expect(surprises.length).toBe(10);
+  for (const u of surprises) expect(u).toMatch(/^(<1|[1-4]\d?)%( chance to win before the game)?$/); // the unit after it is read aloud only
 });
 
 test("playoffs show every bracket round by round, naming no winner and no source", async ({ page }, info) => {
@@ -657,10 +658,10 @@ test("search engines: only the public address is indexed, from robots.txt and a 
   }
   // Visitors see the site's name, never the codename (the owner, Nov 11, 2026).
   await page.goto("/programs/jayton");
-  await expect(page).toHaveTitle(/^Jayton \| TX Six-Man Football$/);
+  await expect(page).toHaveTitle(/^Jayton Jaybirds football: \d{4} schedule, scores, ranking \| TX Six-Man Football$/);
   expect((await (await request.get("/manifest.webmanifest")).json()).name).toBe("TX Six-Man Football");
   await page.goto("/");
-  await expect(page).toHaveTitle("TX Six-Man Football");
+  await expect(page).toHaveTitle("TX Six-Man Football: Texas six-man scores, brackets, rankings");
   await expect(page.locator("header").getByRole("link", { name: "TX Six-Man Football" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("80x40");
   await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
@@ -673,8 +674,7 @@ test("search engines: only the public address is indexed, from robots.txt and a 
   expect(robots).toContain("Allow: /");
   expect(robots).not.toContain("Disallow");
   expect(robots).toContain("Sitemap: https://txsixmanfootball.com/sitemap.xml");
-  const sitemap = await (await request.get("/sitemap.xml")).text();
-  const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const urls = (await sitemapUrls(request)).urls.map((u) => u.url);
   expect(urls.every((u) => u.startsWith("https://txsixmanfootball.com"))).toBe(true);
   for (const path of ["", "/programs/jayton", "/rankings/how", "/rankings/division-1", "/rankings/week/4", "/results/2025", "/standings/tapps", "/championships"]) {
     expect(urls, path).toContain(`https://txsixmanfootball.com${path}`);

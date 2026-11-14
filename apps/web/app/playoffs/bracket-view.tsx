@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { loadAlignments } from "@/lib/alignments";
-import { bracketHref, bracketLabel, type Bracket, roundLabel } from "@/lib/brackets";
+import { bracketHref, bracketLabel, type Bracket, latestRound, roundLabel } from "@/lib/brackets";
 import { loadIdentities } from "@/lib/identity";
 import { previewOf } from "@/lib/playoff-path";
 import { centralClock, currentRound } from "@/lib/playoff-status";
@@ -11,7 +11,7 @@ import { CURRENT_SEASON } from "@/lib/season";
 import { TabNav } from "../tab-nav";
 import { PageHeader } from "../ui";
 import { ChanceList } from "./chance-list";
-import { GameList } from "./game-list";
+import { BuiltList, GameList } from "./game-list";
 
 const leagueHref = (league: string) => (league === "UIL" ? "/playoffs" : `/playoffs/${league.toLowerCase()}`);
 
@@ -40,7 +40,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
           All {b.league} playoffs
         </Link>
       </nav>
-      <PageHeader id="bracket" size="md" eyebrow={`${CURRENT_SEASON} season · ${b.league} · latest: ${b.rounds.at(-1)!.label}`} title={b.name} />
+      <PageHeader id="bracket" size="md" eyebrow={`${CURRENT_SEASON} season · ${b.league} · latest: ${latestRound(b)!.label}`} title={b.name} />
       {siblings.length > 1 && (
         <TabNav label={`${b.league} brackets`} tabs={siblings.map((s) => ({ href: bracketHref(s.name), label: bracketLabel(s) }))} current={bracketHref(b.name)} wrap />
       )}
@@ -113,10 +113,12 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
             {r.label}{" "}
             <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">
               · {r.games.length} {r.games.length === 1 ? "game" : "games"}
+              {r.built.length ? ` · ${r.built.length} more set by the bracket` : ""}
               {r === current ? " · current round" : ""}
             </span>
           </h2>
-          <GameList games={r.games} league={b.league} alignments={alignments} identities={identities} today={clock.date} />
+          {r.games.length > 0 && <GameList games={r.games} league={b.league} alignments={alignments} identities={identities} today={clock.date} />}
+          {r.built.length > 0 && <BuiltList games={r.built} league={b.league} alignments={alignments} identities={identities} />}
         </section>
       ))}
 

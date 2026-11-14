@@ -22,6 +22,7 @@ import { CURRENT_SEASON } from "@/lib/season";
 import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
+import { playedCounts } from "@/lib/season-results";
 import { shownBefore } from "@/lib/pregame";
 import { lead, seasonRows, type Row } from "@/lib/program-games";
 import { ProgramLiveRead, ProgramLiveScore } from "../../scores/live-game";
@@ -43,6 +44,7 @@ import { RatingChart, ratingPoints } from "../rating-chart";
 import { SeasonRatings } from "../season-ratings";
 import { RankTrend, rankTrend } from "../trend";
 import { CrestSlot, EdgeToEdge } from "../../ui";
+import { programTitle } from "@/lib/titles";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -53,10 +55,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const school = (await loadAlignments()).find((a) => a.slug === slug);
   // The same record and rank the page's header shows (the latest season's table), and the same title count.
-  const [ranked, seasons, titles] = await Promise.all([loadRanked(), ratingSeasons(), titlesBySlug()]);
+  const [ranked, seasons, titles, identities] = await Promise.all([loadRanked(), ratingSeasons(), titlesBySlug(), loadIdentities()]);
   const team = ranked.teams.find((t) => t.school.slug === slug);
   return {
-    title: `${school?.school ?? "Program"}`,
+    title: school ? programTitle({ name: school.school, mascot: identities.get(slug)?.mascot, season: seasons[0] }) : "Program",
     ...(school && {
       description: programDescription({
         name: school.school,
@@ -160,8 +162,13 @@ export default async function ProgramPage({ params }: Props) {
   // This program's own finals, and those of the schools that merged into it (ADR 0003), marked "as <old name>".
   const lineage = await loadLineage();
   const names = new Set([slug, ...lineage.filter((l) => slugify(l.successor) === slug).map((l) => slugify(l.predecessor))]);
-  const aka = otherNames(slug, lineage, await loadAliases(), (await loadCorrections()).merges);
-  const finals = (await loadFinals())
+  const allFinals = await loadFinals();
+  const aka = otherNames(slug, lineage, await loadAliases(), {
+    merges: (await loadCorrections()).merges,
+    finals: allFinals,
+    programs: new Set(all.map((a) => a.slug)),
+  });
+  const finals = allFinals
     .filter((f) => names.has(slugify(f.champion)) || names.has(slugify(f.runnerUp)))
     .sort((a, b) => b.season - a.season);
   const titles = finals.filter((f) => names.has(slugify(f.champion))).length;
@@ -174,6 +181,8 @@ export default async function ProgramPage({ params }: Props) {
   // The opponents this program has a series page with (lib/series-data.ts): their games count links to it.
   const partners = (await seriesPartners()).get(slug);
   const current = await loadRatings(seasons[0]);
+  // What the rating rests on: the games played (from the season's games the site lists) and the ratings' own `rated`.
+  const played = ranked ? (playedCounts(await loadSeasonResults(seasons[0])).get(ranked.team) ?? 0) : 0;
   // How hard the record was, measured against this organization's top teams (lib/schedule-strength.ts), and the game each
   // week that went furthest from its projection (lib/why-moved.ts).
   const schedule = ranked ? (await schedulesFor(seasons[0], ranked.org.league)).stats.get(ranked.team) : undefined;
@@ -300,7 +309,25 @@ export default async function ProgramPage({ params }: Props) {
           {ranked ? (
             <>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 sm:flex sm:[&>div]:flex-1">
-                <Stat label={`${seasons[0]} record`} sub={ratedFromOutsideOnly(ranked) ? OUTSIDE_ONLY_NOTE : ranked.rated < FEW_GAMES ? `${ranked.rated} rated ${ranked.rated === 1 ? "game" : "games"}` : undefined}>
+                <Stat
+                  label={`${seasons[0]} record`}
+                  sub={
+                    ratedFromOutsideOnly(ranked) ? (
+                      OUTSIDE_ONLY_NOTE
+                    ) : (
+                      <>
+                        <Link href="/about/ratings" className="inline-flex min-h-11 items-center underline underline-offset-2">
+                          {played} played, {ranked.rated} rated
+                        </Link>
+                        {!!ranked.rated_outside && (
+                          <span className="block">
+                            + {ranked.rated_outside} rated {ranked.rated_outside === 1 ? "game against a school" : "games against schools"} not listed here
+                          </span>
+                        )}
+                      </>
+                    )
+                  }
+                >
                   {ratedFromOutsideOnly(ranked) ? "–" : record(ranked)}
                 </Stat>
                 <Stat
@@ -670,8 +697,14 @@ export default async function ProgramPage({ params }: Props) {
           <Section id="other-names" title="Other names" accent={accent}>
             <ul>
               {aka.map((n) => (
-                <li key={n.name} className="flex min-h-11 flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2 text-[15px] text-ink">
-                  <b>{n.name}</b>
+                <li key={`${n.name}-${n.note}`} className="flex min-h-11 flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2 text-[15px] text-ink">
+                  {n.slug ? (
+                    <Link href={`/programs/${n.slug}`} className="font-bold text-navy hover:underline">
+                      {n.name}
+                    </Link>
+                  ) : (
+                    <b>{n.name}</b>
+                  )}
                   <span className="text-[14px] text-muted">{n.note}</span>
                 </li>
               ))}

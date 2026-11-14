@@ -101,17 +101,17 @@ export async function RecordsView({ org }: { org: Org }) {
       </Board>
 
       <Board
-        id="upsets"
-        title="Biggest upsets"
+        id="surprises"
+        title="Biggest surprises"
         rows={records.upsets.length}
-        note="The winner's win probability before the game, from both teams' ratings at the end of the week before, once each had played four games. Forfeits are left out."
+        note="The winner's chance to win before the game, from both teams' ratings at the end of the week before, once each had played four games. Forfeits are left out."
       >
         {records.upsets.map((u, i) => (
           <BoardRow
             key={`${u.date}-${u.winner}`}
             place={i + 1}
             figure={u.chance < 0.01 ? "<1%" : `${Math.round(u.chance * 100)}%`}
-            unit="win probability before the game"
+            unit="chance to win before the game"
           >
             <Side team={team(u.winner)} score={u.won} />
             <Side team={team(u.loser)} score={u.lost} />

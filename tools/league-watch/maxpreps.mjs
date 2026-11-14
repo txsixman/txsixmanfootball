@@ -27,7 +27,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { duplicateRows } from "../../apps/web/lib/duplicate-game.ts";
-import { CHANGES_FILE, changeLines, countsLine, mergeStored, parseCsv, PENDING_FILE, pendingCsv, readPending, rowKey } from "./store.mjs";
+import { CHANGES_FILE, changeLines, countsLine, mergeStored, movedDate, MOVES_FILE, parseCsv, PENDING_FILE, pendingCsv, readMoves, readPending, rowKey } from "./store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argSeason = process.argv.indexOf("--season");
@@ -536,6 +536,9 @@ async function main() {
     .map(([slug, r]) => `${r.league} ${r.division}: ${r.school}${elevenSlugs.has(slug) ? " (11-man this season)" : readNames.has(slug) ? ` (MaxPreps page read: no ${SEASON} games)` : ""}`);
   mkdirSync(OUT, { recursive: true });
   const { kept, conflicts, selfGames, repeats } = dedupe([...games.values()]);
+  // A game its league moved (moved-games.csv, ADR 0046) is laid on the date it is played, before anything is written.
+  const moves = readMoves(storedText(MOVES_FILE));
+  for (const g of kept) g.date = movedDate(moves, g.date, g.home.slug, g.away.slug);
   // A row with the same school on both sides breaks the database (a game needs two team-seasons): name it loudly.
   for (const s of selfGames) console.log(`::warning::left out, the same school on both sides: ${s}`);
   for (const r of repeats) console.log(`::warning::left out, one game listed twice: ${r}`);

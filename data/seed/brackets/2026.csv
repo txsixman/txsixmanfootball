@@ -1,0 +1,46 @@
+league,division,round,slot,a,b
+TAIAO,1,round-1,NR1,Texas Wind,bye
+TAIAO,1,round-1,NR2,Lubbock Titans,East Texas Homeschool Sports
+TAIAO,1,round-1,NR3,Tyler Heat (Home Education Athletics of Tyler),El Paso Leadership Academy
+TAIAO,1,round-1,NR4,Texas Home Educator's Sports Association (THESA),Midland Texas Leadership Charter Academy
+TAIAO,1,round-1,SR1,Fort Bend Chargers,Valor North Austin
+TAIAO,1,round-1,SR2,San Antonio Patriots,Williamson County Homeschool (WILCO)
+TAIAO,1,round-1,SR3,Founders Classical Academy of Leander,BVCHEA
+TAIAO,1,round-1,SR4,Austin Royals,Jubilee Brownsville
+TAIAO,1,quarterfinal,NQ1,winner:NR1,winner:NR2
+TAIAO,1,quarterfinal,NQ2,winner:NR3,winner:NR4
+TAIAO,1,quarterfinal,SQ1,winner:SR1,winner:SR2
+TAIAO,1,quarterfinal,SQ2,winner:SR3,winner:SR4
+TAIAO,1,semifinal,SF1,winner:NQ1,winner:SQ2
+TAIAO,1,semifinal,SF2,winner:SQ1,winner:NQ2
+TAIAO,1,final,FINAL,winner:SF1,winner:SF2
+TAIAO,2,round-1,NR1,Grace Academy Griffins,Plainview Classical Academy
+TAIAO,2,round-1,NR2,Greenville Homeschool Athletics,Panhandle Christian Home Educ (PCHEA)
+TAIAO,2,round-1,NR3,Kings Academy Tyler,Newman Academy
+TAIAO,2,round-1,NR4,Johnson County Sports Association (JCSA),Big Springs Charter School
+TAIAO,2,round-1,SR1,Vitoria Gators,bye
+TAIAO,2,round-1,SR2,New Braunfels Spartans,Coastal Christian Homeschool
+TAIAO,2,round-1,SR3,NYOS,Valor South Austin
+TAIAO,2,round-1,SR4,Brazos Valley Lions Athletics,Founders Classical Academy of Conroe
+TAIAO,2,quarterfinal,NQ1,winner:NR1,winner:NR2
+TAIAO,2,quarterfinal,NQ2,winner:NR3,winner:NR4
+TAIAO,2,quarterfinal,SQ1,winner:SR1,winner:SR2
+TAIAO,2,quarterfinal,SQ2,winner:SR3,winner:SR4
+TAIAO,2,semifinal,SF1,winner:NQ1,winner:SQ2
+TAIAO,2,semifinal,SF2,winner:SQ1,winner:NQ2
+TAIAO,2,final,FINAL,winner:SF1,winner:SF2
+TAIAO,3,round-1,NR1,Stephenville Faith Knights,bye
+TAIAO,3,round-1,NR2,Sherman Grayson Christian School,Hill Country Knights
+TAIAO,3,round-1,NR3,West Texas Tornadoes,Community School of Mesquite
+TAIAO,3,round-1,NR4,Grace Classical Academy,Valor Leander
+TAIAO,3,round-1,SR1,Town East,Victoria Inc. (Cobras)
+TAIAO,3,round-1,SR2,Arlington Heights Christian School,St. Mary's
+TAIAO,3,round-1,SR3,New Braunfels Thunder,Jubilee Lake View
+TAIAO,3,round-1,SR4,Jubilee San Antonio,Texas Empowerment Academy
+TAIAO,3,quarterfinal,NQ1,winner:NR1,winner:NR2
+TAIAO,3,quarterfinal,NQ2,winner:NR3,winner:NR4
+TAIAO,3,quarterfinal,SQ1,winner:SR1,winner:SR2
+TAIAO,3,quarterfinal,SQ2,winner:SR3,winner:SR4
+TAIAO,3,semifinal,SF1,winner:NQ1,winner:SQ2
+TAIAO,3,semifinal,SF2,winner:SQ1,winner:NQ2
+TAIAO,3,final,FINAL,winner:SF1,winner:SF2

@@ -6,11 +6,13 @@ import { useState, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files
 import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
+import { kickoffState } from "@/lib/kickoff";
 import { ORGS } from "@/lib/orgs";
 import { projectedLine } from "@/lib/outcome";
 import { isForfeit, outcomeOf, winnerOf, type Side } from "@/lib/score-display";
 import { CrestSlot, EmptyState, PageHeader } from "../ui";
-import { KickoffStatus } from "../kickoff-status";
+import { KickoffStatus, useNow } from "../kickoff-status";
+import { ScoresChecked } from "./freshness";
 import { useLiveScores } from "./live-score";
 import { ForfeitMark, VerifyBar, scoreClass } from "./parts";
 
@@ -182,8 +184,41 @@ function Section({ id, title, live, games, crests, checked }: { id: string; titl
 /** A game's organization (ADR 0012): its league label starts with it ("UIL DI · Bi-district", "TCAF · Final"). */
 const orgOf = (g: Game) => ORGS.find((o) => g.league === o.league || g.league.startsWith(`${o.league} `));
 
-/** `weekInReview`: a link to the newest week in review, on the live page only (the sample page stays as it is). */
-export default function Board({ games, eyebrow, title, crests, weekInReview }: { games: Game[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string } }) {
+/** A next-round game the bracket sets before any site lists it (ADR 0047): "Team vs winner of X–Y", or both teams and the projection. */
+export type NextGame = { key: string; org: string; heading: string; sides: [{ name: string; href?: string }, { name: string; href?: string }]; projected?: string };
+
+function NextSection({ games }: { games: NextGame[] }) {
+  if (!games.length) return null;
+  return (
+    <section id="next" aria-labelledby="next-h" className="scroll-mt-[45px]">
+      <h2 id="next-h" className="bg-navy px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">Next games</h2>
+      {[...new Set(games.map((g) => g.heading))].map((heading) => (
+        <div key={heading}>
+          <h3 className="sticky top-[45px] z-10 border-b border-line bg-panel px-3 py-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">{heading}</h3>
+          <ul>
+            {games.filter((g) => g.heading === heading).map((g) => (
+              <li key={g.key} data-built className="border-b border-dashed border-line px-3 py-2 text-ink">
+                <p className="text-[17px] font-bold leading-tight">
+                  {g.sides.map((s, i) => (
+                    <span key={s.name}>
+                      {i > 0 && " vs "}
+                      {s.href ? <Link href={s.href} className="name-link">{s.name}</Link> : s.name}
+                    </span>
+                  ))}
+                </p>
+                <p className="text-[14px] leading-6 text-muted">Set by the bracket · date and site not listed yet</p>
+                {g.projected && <p className="text-[14px] font-semibold leading-6 text-navy">Projected: {g.projected}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** `weekInReview`: a link to the newest week in review, on the live page only (the sample page stays as it is). `next`: games the bracket sets (live page only). */
+export default function Board({ games, eyebrow, title, crests, weekInReview, next = [] }: { games: Game[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string }; next?: NextGame[] }) {
   const [query, setQuery] = useState("");
   // Only a game with a date and no final can be under way, and only inside its kickoff window; invented sample games or finals ask for nothing.
   const liveRows = useLiveScores(games.flatMap((g) => (g.date && g.state === "scheduled" ? [{ date: g.date, kickoff: g.kickoff }] : [])));
@@ -206,7 +241,13 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
   const live = shown.filter((g) => g.state === "live");
   const final = shown.filter((g) => g.state === "final" && g.verification === "confirmed");
   const reported = shown.filter((g) => g.state === "final" && g.verification !== "confirmed");
-  const later = shown.filter((g) => g.state === "scheduled" || g.state === "postponed");
+  // A game past its window with no score is not "Later" (ADR 0046): it is listed as "Score not reported yet", as its row's
+  // status cell says. Worked out at the moment of viewing (ADR 0036); before that (the server, the first render) it is Later.
+  const now = useNow();
+  const awaiting = (g: Game) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "awaiting";
+  const notReported = shown.filter(awaiting);
+  const later = shown.filter((g) => (g.state === "scheduled" || g.state === "postponed") && !awaiting(g));
+  const nextShown = next.filter((g) => org && g.org === org.league && (!q || g.sides.some((s) => s.name.toLowerCase().includes(q))));
   const jumps = [
     { href: "#live", label: "Live", n: live.length },
     { href: "#reported", label: "Reported", n: reported.length },
@@ -248,6 +289,8 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
         )}
       </header>
 
+      <ScoresChecked games={games} className="border-b border-line px-3 py-1.5" />
+
       {weekInReview && (
         <Link href={weekInReview.href} className="flex min-h-11 items-center justify-between gap-3 border-b border-line px-3 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
           {weekInReview.label}
@@ -275,7 +318,9 @@ export default function Board({ games, eyebrow, title, crests, weekInReview }: {
       <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} />
       <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} />
       <Section id="final" title="Final" games={final} crests={crests} checked={checked} />
+      <Section id="not-reported" title="Score not reported yet" games={notReported} crests={crests} checked={checked} />
       <Section id="later" title="Later" games={later} crests={crests} checked={checked} />
+      <NextSection games={nextShown} />
       {!shown.length && (
         <div className="px-3 pb-6">
           <EmptyState>{q ? <>No team matches &ldquo;{query.trim()}&rdquo;.</> : "No games in this organization yet."}</EmptyState>
