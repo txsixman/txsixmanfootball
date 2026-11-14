@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const PAGE = "https://tapps.biz/home/tapps-26-28-alignment/";
-export const USER_AGENT = "Project80x40-alignment-reader/1.0";
+export const USER_AGENT = "txsixmanfootball-results-reader/1.0 (+https://txsixmanfootball.com; contact@txsixmanfootball.com)";
 const HEADER = "league,division,region,district,school,source_url";
 const HEADING = /^Football - 6 Man - Division (I|II|III|IV|V) - (?:District (\d+)|(Independent|Non-Aligned))$/;
 
@@ -57,7 +57,7 @@ export function robotsAllows(robots, pagePath) {
     const field = key.trim().toLowerCase();
     const value = rest.join(":").trim();
     if (field === "user-agent") {
-      const ours = value === "*" || value.toLowerCase().startsWith("project80x40");
+      const ours = value === "*" || value.toLowerCase().startsWith("txsixmanfootball");
       applies = lastWasAgent ? applies || ours : ours;
       lastWasAgent = true;
     } else if (field) {

@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 // Round B, the playoff run: a bracket page per division with each game's status, and "Path to the final" on a team's page.
-// Scores are the robot's, so unconfirmed: marked, and no row names a winner (ADR 0004). The data changes every week, so
+// Scores are the robot's; a final is confirmed (ADR 0040), and no row writes a winner word. The data changes every week, so
 // these check structure (every score marked, every game with a status), not a particular game.
 
 const BRACKETS = [
@@ -11,7 +11,8 @@ const BRACKETS = [
   { path: "/playoffs/bracket/tapps-division-i", title: "TAPPS Division I" },
   { path: "/playoffs/bracket/tcaf", title: "TCAF" },
 ];
-const STATUS = /^(Not yet played|Tonight, no score yet|Score not reported yet|Reported tonight|Score reported|Final|Forfeit)/;
+// A game not yet played shows its kickoff status (ADR 0036), worked out in the browser.
+const STATUS = /^(Starts \d{1,2}:\d\d [AP]M CT|\d{1,2}:\d\d [AP]M CT|In progress|Time not listed|Score not reported yet|Reported tonight|Score reported|Final|Forfeit)/;
 const BETTING = /\b(spreads?|odds|lines?|bets?|betting|underdogs?|favou?rites?)\b/i;
 const NAMES_A_WINNER = /\b(won|beat|beats|defeated|wins|winner)\b/i;
 
@@ -56,16 +57,18 @@ for (const b of BRACKETS) {
       for (const href of await jump.getByRole("link").evaluateAll((els) => els.map((a) => a.getAttribute("href")!))) await expect(page.locator(href)).toHaveCount(1);
     }
 
-    const games = rounds.getByRole("listitem");
+    // A row the bracket sets before any listing (ADR 0047) has no game yet, so no status: e2e/bracket-fill.spec.ts checks it.
+    const games = rounds.locator("li:not([data-built])");
     const count = await games.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i++) {
       const row = games.nth(i);
       const text = ((await row.textContent()) ?? "").replace(/\s+/g, " ");
-      expect(text, text).toMatch(/(Not yet played|Tonight, no score yet|Score not reported yet|Reported tonight|Score reported|Final|Forfeit)/);
-      // A game with a score (digits right after a team) says Unconfirmed; one with none or a forfeit does not claim a score.
+      expect(text, text).toMatch(/(Starts \d|In progress|Time not listed|Score not reported yet|Reported tonight|Score reported|Final|Forfeit)/i);
+      // A game with a score (digits right after a team) is a final: confirmed, never marked Unconfirmed (ADR 0040).
       const scored = await row.locator("span.font-num.tabular-nums").evaluateAll((els) => els.some((e) => /\d/.test(e.textContent ?? "")));
-      if (scored) expect(text, text).toContain("Unconfirmed");
+      if (scored) expect(text, text).toMatch(/Final|Forfeit/);
+      expect(text, text).not.toContain("Unconfirmed");
       expect(text, text).not.toMatch(NAMES_A_WINNER);
     }
     // The status words are the ones the page promises, and nothing reads as betting.
@@ -74,15 +77,15 @@ for (const b of BRACKETS) {
   });
 }
 
-test("a bracket game not yet played shows its projected margin and win probability; the next pairing too, where it is known", async ({ page }) => {
+test("a bracket game not yet played shows its projected margin and chance to win; the next pairing too, where it is known", async ({ page }) => {
   await page.goto("/playoffs/bracket/tapps-division-i");
-  const projected = page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% win probability$/);
+  const projected = page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win$/);
   expect(await projected.count()).toBeGreaterThan(0);
   // "Likely next pairings" shows while two semifinals (or a region's two area games) are still to play.
   if (await page.locator("#pairings").count()) {
     const pairing = page.locator("#pairings ~ ul li").first();
     await expect(pairing).toContainText(/ vs /);
-    await expect(pairing).toContainText(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% win probability/);
+    await expect(pairing).toContainText(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win/);
   }
 });
 
@@ -109,16 +112,22 @@ test("a playoff team's page has its path to the final: games played with unconfi
   await expect(path).toBeVisible();
   await expect(path.getByRole("link", { name: "TAPPS Division I bracket" })).toHaveAttribute("href", "/playoffs/bracket/tapps-division-i");
   expect(await path.getByRole("listitem").count()).toBeGreaterThan(0);
-  const text = (await path.textContent()) ?? "";
+  // A next game the bracket sets says "winner of X–Y" for a game not yet played, naming no winner (ADR 0047): checked in
+  // e2e/bracket-fill.spec.ts, so it is left out here.
+  const text = await path.evaluate((el) => {
+    const copy = el.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll("[data-built]").forEach((b) => b.remove());
+    return copy.textContent ?? "";
+  });
   expect(text).toMatch(/^Path to the final/);
-  expect(text).toMatch(/Not yet played|Tonight, no score yet|Score not reported yet|Reported tonight|Score reported|Final|Forfeit/); // each game carries a status
-  if (/\d+-\d+/.test(text)) expect(text).toContain("Unconfirmed");
+  expect(text).toMatch(/Starts \d|In progress|Time not listed|Score not reported yet|Reported tonight|Score reported|Final|Forfeit/i); // each game carries a status
+  expect(text).not.toContain("Unconfirmed"); // a final is confirmed (ADR 0040)
   expect(text).not.toMatch(NAMES_A_WINNER);
   expect(text).not.toMatch(BETTING);
   // Where the next pairing is known, the likely opponent and its projection show.
   if (text.includes("If it advances")) {
     expect(text).toMatch(/Likely opponent: .+ \((>99|<1|\d+)% to get there\)/);
-    expect(text).toMatch(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% win probability/);
+    expect(text).toMatch(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win/);
   }
 });
 

@@ -10,7 +10,7 @@ export type ChartSeries = { label: string; points: { said: number; happened: num
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 function chart(series: ChartSeries[]): { svg: string; summary: string } {
-  const summary = `Each point is a band of games: the chance the ratings gave the favorite (across) against how often the favorite won (up), for ${series.map((s) => s.label.toLowerCase()).join(" and ")}. Points on the dotted diagonal mean the ratings were exactly right.`;
+  const summary = `Each point is a band of games: the chance the ratings gave the projected team (across) against how often the projected team won (up), for ${series.map((s) => s.label.toLowerCase()).join(" and ")}. Points on the dotted diagonal mean the ratings were exactly right.`;
   const data = series.flatMap((s) => s.points.map((p) => ({ ...p, series: s.label })));
   const { document } = parseHTML("<!doctype html><html><body></body></html>");
   const svg = Plot.plot({
@@ -22,8 +22,8 @@ function chart(series: ChartSeries[]): { svg: string; summary: string } {
     marginRight: 28,
     ariaLabel: summary,
     style: { fontFamily: "var(--font-sans)", fontSize: "14px", color: "var(--color-muted)", background: "transparent" },
-    x: { label: "Chance the ratings gave the favorite", domain: [0.5, 1], grid: true, tickFormat: pct, ticks: 5 },
-    y: { label: "Share of favorites that won", domain: [0.4, 1], grid: true, tickFormat: pct, ticks: 6 },
+    x: { label: "Chance the ratings gave the projected team", domain: [0.5, 1], grid: true, tickFormat: pct, ticks: 5 },
+    y: { label: "Share of projected teams that won", domain: [0.4, 1], grid: true, tickFormat: pct, ticks: 6 },
     marks: [
       Plot.line([[0.5, 0.5], [1, 1]], { stroke: "var(--color-muted)", strokeDasharray: "2 4", strokeWidth: 1.5 }),
       Plot.line(data.filter((d) => d.series === series[0].label), { x: "said", y: "happened", stroke: "var(--color-navy)", strokeWidth: 2 }),
@@ -59,7 +59,7 @@ export function ScorecardChart({ series }: { series: ChartSeries[] }) {
             <tr>
               <th scope="col">Group</th>
               <th scope="col">Chance said</th>
-              <th scope="col">Favorite won</th>
+              <th scope="col">Projected team won</th>
               <th scope="col">Games</th>
             </tr>
           </thead>

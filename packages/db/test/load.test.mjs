@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
-import { loadAll } from "../load.mjs";
+import { loadAll, loadSeasonGames } from "../load.mjs";
 import { seedAlignments } from "../seed.mjs";
 
 // The whole repo load the hosted database gets, run on a throwaway database: every team in every game file must exist.
@@ -77,4 +77,25 @@ test("every migration, alignment and game file loads, and a second run changes n
     assert.equal((await db.query("select 1 from program where slug = $1", [slug])).rows.length, 1, `${slug} stays for its final or lineage`);
   }
   assert.deepEqual((await loadAll(db, opts)).removed, [], "nothing more to remove");
+});
+
+test("one season's games (Results watch, ADR 0031): after the full load it changes nothing, and it never deletes a game", async () => {
+  const db = new PGlite();
+  const opts = { retrievedOn: "2026-11-10", reason: "test", publicResults: !process.env.PRIVATE_DATA };
+  await loadAll(db, opts);
+  const count = async () => (await db.query("select count(*)::int as n from game where season = 2026")).rows[0].n;
+  const before = await count();
+  const report = await loadSeasonGames(db, 2026, opts);
+  assert.ok(report.length >= 2, "the season's games.csv and playoffs.csv");
+  for (const r of report) {
+    assert.equal(r.inserted, 0, r.file);
+    assert.equal(r.updated, 0, r.file);
+    assert.ok(r.unchanged > 0, r.file);
+  }
+  // A game the files no longer hold stays in the database: a load only inserts and updates.
+  await db.query("insert into game (season, game_date, home_ts, away_ts, status, game_type) select season, '2026-08-01', home_ts, away_ts, 'scheduled', 'nondistrict' from game where season = 2026 limit 1");
+  const withExtra = await count();
+  await loadSeasonGames(db, 2026, opts);
+  assert.equal(await count(), withExtra);
+  assert.ok(withExtra >= before);
 });

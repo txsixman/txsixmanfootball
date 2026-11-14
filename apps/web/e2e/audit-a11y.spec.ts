@@ -104,7 +104,7 @@ test("records: every figure says what it counts to a screen reader", async ({ pa
   for (const [board, unit] of [
     ["Most points in a game", "points"],
     ["Most points by both teams", "points combined"],
-    ["Biggest upsets", "win probability before the game"],
+    ["Biggest surprises", "chance to win before the game"],
     ["Longest winning runs", "wins in a row"],
     ["Unbeaten seasons", "record"],
   ]) {

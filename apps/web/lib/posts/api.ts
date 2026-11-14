@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { authEnv, fanSignIn } from "../auth/config";
 import { createAuthClient, getUser } from "../auth/server";
 import { NEW_ACCOUNT_DAYS } from "../moderation/check";
+import { checkSameOriginJson } from "../same-origin";
 
 // What the posting route handlers share (fan comments, score reports, forums). Every Supabase call is made on the server:
 // the session cookie is httpOnly and there is no browser client. A signed-in call is the fan's own session, the public
@@ -57,22 +58,6 @@ export function refusal(error: { message?: string; code?: string }): NextRespons
   return fail("failed");
 }
 
-/**
- * A write must come from a page of this site: the browser's Origin (sent on every cross-site POST) must name this host,
- * and the body must be JSON, which a cross-site form cannot send. The session cookie is SameSite=Lax as well.
- */
-function sameSiteJson(request: NextRequest): boolean {
-  const origin = request.headers.get("origin");
-  if (origin) {
-    try {
-      if (new URL(origin).host !== request.headers.get("host")) return false;
-    } catch {
-      return false;
-    }
-  }
-  return (request.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json");
-}
-
 /** The JSON body, or null when it is not JSON or is larger than 16 KB. A request that says it is larger is refused before its body is read. */
 export async function readJson(request: NextRequest): Promise<unknown> {
   const declared = request.headers.get("content-length");
@@ -89,7 +74,7 @@ export type Fan = { supabase: SupabaseClient; displayName: string; established: 
 
 /** The signed-in fan with a profile, or the refusal to send. `write`: also checks the request came from this site. */
 export async function fanFor(request: NextRequest, { write = true }: { write?: boolean } = {}): Promise<{ fan: Fan } | { response: NextResponse }> {
-  if (write && !sameSiteJson(request)) return { response: fail("cross_site") };
+  if (write && checkSameOriginJson(request.headers) !== "ok") return { response: fail("cross_site") };
   const supabase = await createAuthClient();
   if (!supabase) return { response: fail("sign_in_required") };
   const found = await getUser(supabase);

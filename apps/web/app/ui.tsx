@@ -6,8 +6,8 @@ import { Crest } from "./programs/crest";
 // Shared pieces for the list pages (rankings, results, records, standings, championships, matchup, scores), so they
 // read as one system: one page header, one section bar, one logo slot, one board row, one empty state.
 
-/** The mark on a score the site cannot vouch for (ADR 0004): bordered, so it reads on a phone in the sun. One mark, the
- * same word, on every page that lists games (the scoreboard, tonight, the playoffs, a program's path to the final). */
+/** The mark on a live score the site cannot vouch for yet: bordered, so it reads on a phone in the sun. A final is
+ * confirmed (ADR 0040), so only a score still moving takes it; one mark a row, never a bar as well. */
 export const UnconfirmedMark = () => (
   <span className="inline-block border-2 border-ink px-1.5 text-[13px] font-bold uppercase leading-5 tracking-wide text-ink">Unconfirmed</span>
 );

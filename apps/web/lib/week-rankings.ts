@@ -23,7 +23,7 @@ export async function rankingWeeks(season: number): Promise<RankingWeek[]> {
 }
 
 /** Every team rated by the end of the week, with its record then; `was` is its rating a week before (null if unrated). */
-export async function weekRows(season: number, week: RankingWeek): Promise<RatingRow[]> {
+export async function weekRows(season: number, week: RankingWeek): Promise<(RatingRow & { played: number })[]> {
   const [table, games] = await Promise.all([loadRatings(season), loadSeasonResults(season)]);
   const tally = new Map<string, { won: number; lost: number; tied: number }>();
   for (const g of games) {
@@ -41,7 +41,9 @@ export async function weekRows(season: number, week: RankingWeek): Promise<Ratin
       const rating = t.trend?.[week.index];
       if (rating == null) return [];
       const was = week.index > 0 ? (t.trend?.[week.index - 1] ?? null) : undefined;
-      return [{ team: t.team, rating, was, rated: t.rated_trend?.[week.index] ?? 0, ...(tally.get(t.team) ?? { won: 0, lost: 0, tied: 0 }) }];
+      const record = tally.get(t.team) ?? { won: 0, lost: 0, tied: 0 };
+      // `played` is every game of the season's files through that Sunday (a forfeit too); `rated` is the ratings' own count.
+      return [{ team: t.team, rating, was, rated: t.rated_trend?.[week.index] ?? 0, played: record.won + record.lost + record.tied, ...record }];
     })
     .sort((a, b) => b.rating - a.rating || a.team.localeCompare(b.team));
 }

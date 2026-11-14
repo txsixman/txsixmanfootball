@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { skipReason, upcoming } from "./upcoming";
 
 // "My teams" on the home page: the programs this browser follows (lib/push.ts keeps the list in localStorage under
 // "followed-programs"), each with its record, last result and next game, read from per-program files built with the site.
@@ -11,28 +12,32 @@ const follow = (page: Page, slugs: string[]) =>
   page.addInitScript((list) => localStorage.setItem("followed-programs", JSON.stringify(list)), slugs);
 
 test("a followed program shows its record, last result and next game, with no winner or betting words", async ({ page }, info) => {
+  // A program with a game still to play, picked from the season's data (e2e/upcoming.ts); none in the offseason.
+  const [next] = (await upcoming()).programs;
+  if (!next) return test.skip(true, skipReason());
   const errors: string[] = [];
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("pageerror", (e) => errors.push(e.message));
-  await follow(page, ["fort-bend-chargers", "jayton"]);
+  await follow(page, [...new Set(["fort-bend-chargers", next.slug])]);
   await page.goto("/", { waitUntil: "networkidle" });
 
   const block = page.getByRole("region", { name: "My teams" });
   await expect(block).toBeVisible();
   const cards = block.getByRole("listitem").filter({ has: page.locator("a[href^='/programs/']") });
-  await expect(cards).toHaveCount(2);
+  const followed = [...new Map([[next.slug, next.school], ["fort-bend-chargers", "Fort Bend Chargers"]])];
+  await expect(cards).toHaveCount(followed.length);
 
-  for (const [name, slug] of [["Jayton", "jayton"], ["Fort Bend Chargers", "fort-bend-chargers"]]) {
+  for (const [slug, name] of followed) {
     const card = cards.filter({ has: page.locator(`a[href='/programs/${slug}']`) });
-    await expect(card.getByRole("link", { name: new RegExp(name) }).first()).toHaveAttribute("href", `/programs/${slug}`);
+    await expect(card.getByRole("link", { name }).first()).toHaveAttribute("href", `/programs/${slug}`);
     await expect(card).toContainText(/\d+-\d+/); // the record
     await expect(card).toContainText("Last"); // a result row, with its score
   }
-  // Jayton has a playoff game still to play: its projected margin and win probability, from the program page's own row.
-  await expect(cards.filter({ has: page.locator("a[href='/programs/jayton']") })).toContainText(/Next[\s\S]*Projected: .* by .* · (>99|\d+)% win probability/);
+  // Its playoff game still to play: the projected margin and chance to win, from the program page's own row.
+  await expect(cards.filter({ has: page.locator(`a[href='/programs/${next.slug}']`) })).toContainText(/Next[\s\S]*Projected: .* by .* · (>99|\d+)% chance to win/);
 
   // ADR 0004 and the betting rule: no winner named, no spread, line or odds.
-  const text = (await block.innerText()).replace(/win probability/gi, "");
+  const text = (await block.innerText()).replace(/win probability|chance to win/gi, "");
   expect(text).not.toMatch(/\b(won|win|wins|winner|beat|beats|defeated|victory|spread|line|lines|odds|cover|covers)\b/i);
 
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();

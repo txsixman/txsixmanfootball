@@ -2,12 +2,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { mediumDate, type Entry, type GameDetail } from "@/lib/game-pages";
 import type { SeasonResult } from "@/lib/games";
-import { projectionParts } from "@/lib/projection";
+import { projectedLine, type Outcome } from "@/lib/outcome";
+import { projectionText } from "@/lib/projection";
 import { signed } from "@/lib/signed";
 import { MIN_SURPRISE, surpriseOf } from "@/lib/why-moved";
+import { FIRST_SEASON } from "@/lib/season";
 
 // What a game page adds to the score for a robot-read game, on its own page and on a current-season playoff game's page.
-// Words are rating, projected margin and win probability (never spreads, lines or odds), and nothing here names a
+// Words are rating, projected margin and chance to win (never spreads, lines or odds), and nothing here names a
 // winner of the game itself: robot-read scores are unconfirmed (ADR 0004).
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -30,14 +32,14 @@ function distance(result: SeasonResult, favorite: string, margin: number): strin
 }
 
 /** The week-before projection and how far the result was from it. Needs a game that was played. */
-export function ProjectionSection({ result, detail }: { result: SeasonResult; detail: GameDetail }) {
+export function ProjectionSection({ result, detail, outcome }: { result: SeasonResult; detail: GameDetail; outcome: Outcome }) {
   const p = detail.projection;
   if (!p) return null;
-  const { margin, chance } = projectionParts(p);
   return (
     <Section id="projection" title="Projection before the game">
-      <p className="pt-2 text-[18px] font-semibold leading-6 text-ink">
-        {margin} <span className="text-muted">·</span> {chance}
+      {/* What was projected beside what happened (ADR 0044): "Projected: Jayton by 12 · 74% chance to win · Final: Jayton by 20". */}
+      <p data-projected className="pt-2 text-[18px] font-semibold leading-6 text-ink">
+        {projectedLine(projectionText(p), outcome)}
       </p>
       {!result.forfeit && <p className="pt-1 text-[15px] leading-5 text-ink">{distance(result, p.favorite, p.margin)}</p>}
       <p className="pt-1 text-[13px] leading-4 text-muted">
@@ -76,7 +78,6 @@ export function GoingInSection({ away, home, detail }: { away: string; home: str
           ))}
         </tbody>
       </table>
-      <p className="pt-1 text-[13px] text-muted">Records from season scores, not confirmed here.</p>
     </Section>
   );
 }
@@ -92,7 +93,7 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
             <Link href={m.href} className="grid min-h-14 grid-cols-[6.75rem_1fr_auto] items-center gap-x-3 py-1 hover:bg-panel">
               <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(m.date)}</span>
               <span className="min-w-0 text-[15px] leading-5 text-ink">
-                {m.away} at {m.home}
+                {m.away} vs {m.home}
               </span>
               <span className="font-num text-[19px] font-bold tabular-nums text-ink">{m.forfeit ? "Forfeit" : `${m.awayScore}-${m.homeScore}`}</span>
             </Link>
@@ -100,18 +101,18 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
         ))}
       </ul>
       <p className="pt-1 text-[13px] text-muted">
-        {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first. Scores are not confirmed here and may change.
+        {total > list.length ? `The latest ${list.length} of ${total} games. ` : ""}Away team first.
       </p>
     </>
   );
 }
 
-/** Earlier games of the two programs, 2021 on, each on its own page. Away team first, like every results list. */
+/** Earlier games of the two programs, FIRST_SEASON on, each on its own page. Away team first, like every results list. */
 export function MeetingsSection({ detail }: { detail: GameDetail }) {
   return (
     <Section id="meetings" title="Earlier meetings">
       {detail.meetings.total === 0 ? (
-        <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since 2021.</p>
+        <p className="py-2 text-[15px] text-muted">No earlier game between these two on record since {FIRST_SEASON}.</p>
       ) : (
         <MeetingsList detail={detail} />
       )}

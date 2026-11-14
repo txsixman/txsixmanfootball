@@ -24,6 +24,8 @@ export type Game = {
   state: "live" | "final" | "scheduled" | "postponed";
   /** Short status as it should read: "Q3 4:12", "Halftime", "Final", "7:30 PM". */
   status: string;
+  /** Kickoff in UTC, for a game not yet played, when known (lib/kickoffs.ts, ADR 0036). */
+  kickoff?: string;
   /** Why it ended, when that matters: "45-point rule, halftime", "Forfeit". */
   endReason?: string;
   verification: "confirmed" | "unconfirmed" | "disputed" | "none";
@@ -32,7 +34,6 @@ export type Game = {
   projected?: string;
   /** The projected margin in points, for ordering games by how close they look. */
   projectedMargin?: number;
-  upset?: boolean;
   stream?: string;
   venue: string;
   quarters?: { home: number[]; away: number[] };
@@ -74,13 +75,13 @@ export const demoGames: Game[] = [
   },
   {
     id: "g3", league: "UIL DI · Bi-District", home: pecanValley, away: dryWash, homeScore: 72, awayScore: 66,
-    state: "final", status: "Final", verification: "unconfirmed", sources: "1 source: fan report",
+    state: "final", status: "Score reported", verification: "unconfirmed", sources: "1 source: fan report",
     projected: "Pecan Valley by 9", venue: "Eagle Field, Pecan Valley",
     quarters: { home: [20, 16, 18, 18], away: [14, 22, 14, 16] },
   },
   {
     id: "g4", league: "UIL DII · Bi-District", home: lonePost, away: stillwater, homeScore: 38, awayScore: 34,
-    state: "final", status: "Final", verification: "confirmed", sources: "2 sources: coach, reporter", upset: true,
+    state: "final", status: "Final", verification: "confirmed", sources: "2 sources: coach, reporter",
     projected: "Stillwater Draw by 18", venue: "Panther Field, Lone Post",
     quarters: { home: [8, 14, 8, 8], away: [12, 6, 8, 8] },
   },
@@ -97,7 +98,7 @@ export const demoGames: Game[] = [
   },
   {
     id: "g7", league: "UIL DII · Bi-District", home: caprock, away: bluestem, homeScore: 60, awayScore: 14,
-    state: "final", status: "Final", endReason: "45-point rule, Q3 2:40", verification: "disputed",
+    state: "final", status: "Score reported", endReason: "45-point rule, Q3 2:40", verification: "disputed",
     sources: "2 reports disagree", projected: "Caprock by 31", venue: "Bulldog Field, Caprock",
     quarters: { home: [22, 20, 18, 0], away: [8, 6, 0, 0] },
   },

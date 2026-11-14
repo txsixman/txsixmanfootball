@@ -9,10 +9,8 @@ import { bracketGames } from "@/lib/game-pages";
 import { loadSeasonResults, roundPhrase } from "@/lib/games";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { orgByLeague } from "@/lib/orgs";
-import { pregame } from "@/lib/pregame";
-import { seasonRows, type Row } from "@/lib/program-games";
+import { lead, seasonRows, type Row } from "@/lib/program-games";
 import { programSeason, programSeasonPages } from "@/lib/program-seasons";
-import { projectionText } from "@/lib/projection";
 import { FEW_GAMES, ratingSeasons, record, signed } from "@/lib/ratings";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
@@ -21,8 +19,9 @@ import { Breadcrumbs } from "../../../breadcrumbs";
 import { seasonHref } from "../../../rankings/view";
 import { CrestSlot, EdgeToEdge, SectionBar } from "../../../ui";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../../crest";
+import { programSeasonTitle } from "@/lib/titles";
 
-// One program's season, 2021 on (ADR 0013: records, ranks and scores may rest on unconfirmed robot-read results, so the page
+// One program's season, FIRST_SEASON on (ADR 0013: records, ranks and scores may rest on unconfirmed robot-read results, so the page
 // says so and no game row names a winner, ADR 0004). The record, rank and last playoff round are the program page's own
 // season row (lib/program-seasons.ts); only a season with a game read has a page, and any other address is a 404. The share
 // card is the program's (app/programs/[slug]/opengraph-image.tsx): this route adds no image of its own.
@@ -47,7 +46,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!found) return { title: "Season" };
   const { school, season, line, org } = found;
   return {
-    title: `${school.school} ${season} season`,
+    title: programSeasonTitle({ name: school.school, mascot: (await loadIdentities()).get(school.slug)?.mascot, season }),
     description: programSeasonDescription({
       name: school.school,
       season,
@@ -65,11 +64,10 @@ export default async function ProgramSeasonPage({ params }: Props) {
   if (!found) notFound();
   const { school, season, pages, line, played, org } = found;
   const slug = school.slug;
-  const [all, identities, partners, projections, seasons, active] = await Promise.all([
+  const [all, identities, partners, seasons, active] = await Promise.all([
     loadAlignments(),
     loadIdentities(),
     seriesPartners(),
-    pregame(season),
     ratingSeasons(),
     activeOrgs(),
   ]);
@@ -140,7 +138,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
           </p>
           {line.playoff && <p className="pt-1 text-[15px] font-semibold text-navy">Playoffs: reached {roundPhrase(line.playoff.round, line.playoff.league)}</p>}
           <p className="pt-1 text-[13px] text-muted">
-            Record counts the playoffs; a forfeit counts as a win or a loss. Rank is among {label} teams as today&rsquo;s alignments place them. Season scores, not confirmed here.
+            Record counts the playoffs; a forfeit counts as a win or a loss. Rank is among {label} teams as today&rsquo;s alignments place them.
           </p>
         </section>
 
@@ -149,9 +147,6 @@ export default async function ProgramSeasonPage({ params }: Props) {
           <ul>
             {rows.map((r) => {
               const opp = opponent(r.opponent);
-              // A playoff game names its round; a game the ratings had a view on (both teams four games in) adds the projection from the week before.
-              const projected = projections.get(r.id);
-              const notes = [r.note, projected && `Projected: ${projectionText(projected)}`].filter(Boolean);
               return (
                 <li key={r.id} className="relative border-b border-line hover:bg-panel">
                   <div className="grid min-h-14 grid-cols-[4.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
@@ -160,14 +155,13 @@ export default async function ProgramSeasonPage({ params }: Props) {
                       <span className="flex items-center">
                         {opp.crest}
                         <span className="flex min-w-0 items-center gap-1">
-                          {r.home ? "vs" : "at"} {opp.link}
+                          {lead(r)} {opp.link}
                         </span>
                       </span>
-                      {notes.map((n) => (
-                        <span key={n} className="block text-[13px] leading-4 text-muted">
-                          {n}
-                        </span>
-                      ))}
+                      {/* A playoff game names its round; a game the ratings had a view on (both teams four games in) adds the
+                          projection from the week before, beside what happened (ADR 0044). */}
+                      {r.note && <span className="block text-[13px] leading-4 text-muted">{r.note}</span>}
+                      {r.projected && <span data-projected className="block text-[13px] leading-4 text-muted">{r.projected}</span>}
                       {opp.series && (
                         <Link
                           href={opp.series.href}
@@ -182,7 +176,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
                     <Link
                       href={r.href}
                       prefetch={false}
-                      aria-label={`${r.status} ${r.home ? "vs" : "at"} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}
+                      aria-label={`${r.status} ${lead(r)} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}
                       className="flex min-h-11 min-w-11 items-center justify-end after:absolute after:inset-0"
                     >
                       <span className="font-num text-[22px] font-bold tabular-nums text-ink">
@@ -195,7 +189,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
             })}
           </ul>
           <p className="px-3 pt-2 text-[13px] text-muted">
-            {school.school}&rsquo;s score first. Season scores, not confirmed here. Playoff games name their round; a projection is the ratings&rsquo; view the week before.
+            {school.school}&rsquo;s score first. Playoff games name their round; a projection is the ratings&rsquo; view the week before, shown beside the result.
           </p>
         </section>
 
