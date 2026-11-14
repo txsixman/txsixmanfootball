@@ -16,7 +16,7 @@ test.setTimeout(120_000);
 const WINNER_WORDS = /\b(won|beat|beats|defeated|defeats|winner|wins|winning|victory|loser|lost|leads?|leading|ahead)\b/i;
 const BETTING_OR_SOURCE = /\b(spreads?|odds|lines?|bets?|bettors?|favou?rites?|underdogs?|locks?|sources?|maxpreps)\b/i;
 // "Win probability" is the projection's own phrase; everything else is checked.
-const plain = (text: string) => text.replace(/win probability/gi, "");
+const plain = (text: string) => text.replace(/win probability|chance to win/gi, "");
 
 /** The loaders read ../../data from the working directory; the tests run from the repo root. */
 async function inWeb<T>(run: () => Promise<T>): Promise<T> {

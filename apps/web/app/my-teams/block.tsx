@@ -25,6 +25,7 @@ function Line({ label, game }: { label: string; game: MyGame }) {
           )}
         </span>
         {game.note && <span className="block text-[13px] leading-4 text-muted">{game.note}</span>}
+        {game.projected && <span className="block text-[13px] leading-4 text-muted">{game.projected}</span>}
       </span>
       {game.score && <span className="shrink-0 font-num text-[20px] font-bold tabular-nums text-ink">{game.score}</span>}
     </>

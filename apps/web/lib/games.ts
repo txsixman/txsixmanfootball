@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { memo } from "./memo";
+import { pregameShown } from "./pregame";
 import path from "node:path";
 import type { Game, Team } from "./demo-games";
 import { heading, programFor, slugify, type Alignment } from "./alignments";
@@ -99,7 +100,10 @@ export async function playoffLeagueSet(season: number): Promise<Set<string>> {
 
 export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
   const [rows, ratings, kickoffs, sites] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON), loadSites(CURRENT_SEASON)]);
-  const disputedBy = new Map(await Promise.all([...new Set(rows.map((x) => x.season))].map(async (s) => [s, await loadDisputed(s)] as const)));
+  const seasons = [...new Set(rows.map((x) => x.season))];
+  const disputedBy = new Map(await Promise.all(seasons.map(async (s) => [s, await loadDisputed(s)] as const)));
+  // A played game's projection is the one from the week before it (ADR 0044), never today's ratings, which count it.
+  const beforeBy = new Map(await Promise.all(seasons.map(async (s) => [s, (await pregameShown(s)).byKey] as const)));
   return rows.map(({ r, league, season, file, line: i, robot }) => {
     const team = (name: string): Team => {
       const known = programFor(alignments, name, league);
@@ -112,7 +116,11 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
     const away = team(r.away);
     const disputed = played && isDisputed(disputedBy.get(season)!, r.game_date, r.home, r.away);
     // Playoff sites are mostly neutral; a row that does not say gets no home edge.
-    const projection = !played && ratings.season === season ? project(ratings, home.name, away.name, r.neutral !== "false", r.neutral === "true") : undefined;
+    const projection = played
+      ? beforeBy.get(season)!.get(gameKey(r.game_date, r.home, r.away))
+      : ratings.season === season
+        ? project(ratings, home.name, away.name, r.neutral !== "false", r.neutral === "true")
+        : undefined;
     return {
       id: playoffGameId(season, r),
       date: r.game_date,

@@ -75,7 +75,9 @@ test("scores board: the live score is in the game's own cells, under Live, with 
   await expect(row.locator(".decoration-dashed")).toHaveText(["14", "28"], { timeout: 15_000 });
   await expect(row.locator("[data-live-score]")).toHaveText(new RegExp(`^Q3 · 4:12 left · ${AS_OF}$`));
   await expect(row).toContainText(/Unconfirmed/i);
-  await expect(row).not.toContainText(/no score|Projected/i);
+  await expect(row).not.toContainText(/no score/i);
+  // Its projection from before the game stays, beside the score so far, naming no leader (ADR 0044).
+  for (const line of await row.locator("[data-projected]").allInnerTexts()) expect(line).toMatch(/^Projected: .+ · Now: 14–28 · Unconfirmed$/);
   await noWinner(page, row);
 });
 
@@ -87,8 +89,9 @@ test("game page: the big score holds the live score, dashed, with Live, the peri
   await expect(score.locator(".decoration-dashed")).toHaveText(["14", "28"], { timeout: 15_000 });
   await expect(score).not.toContainText(/no score/);
   await expect(page.locator("[data-live-score]")).toHaveText(new RegExp(`^Live · Q3 · 4:12 left · ${AS_OF} · Unconfirmed$`));
-  // The score shows once: in the big score, not again in a banner.
-  await expect(page.getByText("14–28")).toHaveCount(0);
+  // The score shows in the big score, not again in a banner: only in the projection's line beside it (ADR 0044).
+  await expect(page.getByText("14–28")).toHaveCount(1);
+  await expect(page.locator("[data-projected]").filter({ hasText: "Now:" })).toHaveText(/^Projected: .+ · Now: 14–28 · Unconfirmed$/);
   await noWinner(page);
 });
 

@@ -13,7 +13,8 @@ import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
-import { currentPeriod, isForfeit, playedPeriods, winnerOf } from "@/lib/score-display";
+import { projectedLine } from "@/lib/outcome";
+import { currentPeriod, isForfeit, outcomeOf, playedPeriods } from "@/lib/score-display";
 import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
 import { ShareButton } from "../../share-button";
@@ -129,7 +130,6 @@ export default async function GamePage({ params }: Props) {
   // Fan comments and score reports exist only while FAN_SIGNIN is "on" (read when the page is built; flip it and redeploy).
   const fan = fanSignIn();
   const live = g.state === "live";
-  const winner = winnerOf(g);
   const back = sample ? { href: "/scores/sample", name: "Scoreboard" } : own ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, name: own.season === CURRENT_SEASON ? "Results" : `${own.season} results` } : { href: "/scores", name: "Scoreboard" };
   const places = [
     [g.away.name, detail?.places.away],
@@ -190,8 +190,9 @@ export default async function GamePage({ params }: Props) {
             </Fact>
           )}
           {g.endReason && !isForfeit(g) && <Fact label={g.state === "postponed" ? "Why" : "How it ended"}>{g.endReason}</Fact>}
-          {g.upset && winner && <Fact label="Upset">{g[winner].name} won after being projected to lose.</Fact>}
-          {g.projected && <Fact label="Projected">{g.projected}. A projection, not a result.</Fact>}
+          {/* What was projected before the game beside what happened (ADR 0044). A judged result shows it in its own section
+              below, with how far the result was from it. No upset label. */}
+          {g.projected && !(found && detail?.projection) && <Fact label="Projection"><span data-projected>{projectedLine(g.projected, outcomeOf(g))}</span>. A projection, not a result.</Fact>}
           <Fact label="Site">{g.venue}</Fact>
           {places.length > 0 && (
             <Fact label="Plays in">
@@ -208,7 +209,7 @@ export default async function GamePage({ params }: Props) {
 
       {detail && (
         <div className="pb-6">
-          {found && <ProjectionSection result={found.result} detail={detail} />}
+          {found && <ProjectionSection result={found.result} detail={detail} outcome={outcomeOf(g)} />}
           {preview ? (
             <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} />
           ) : (

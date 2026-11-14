@@ -2,6 +2,7 @@ import { loadAlignments, slugify, uniquePrograms, type Alignment } from "./align
 import { playoffLabels } from "./game-pages";
 import { gameKey, loadSeasonResults, playoffReach } from "./games";
 import { memo } from "./memo";
+import { shownBefore } from "./pregame";
 import { fromResult, type Row } from "./program-games";
 import { opponentRecords, seasonLine, seasonsWithGames, type Meeting, type Rivalry, type SeasonLine } from "./program-history";
 import { placeRows, rankedOrder } from "./rank-range";
@@ -32,11 +33,12 @@ export type SeasonEntry = {
 /** One season of one school: its table line and its games (oldest first), and the meetings behind the line. `labelled`: tag each
  * playoff game with its bracket and round (reads that season's playoff file); the season under way is listed above on the program page, so it skips them. */
 export async function programSeason(school: Alignment, season: number, labelled: boolean): Promise<{ entry: SeasonEntry; meetings: Meeting[] }> {
-  const [org, reach, results, labels] = await Promise.all([
+  const [org, reach, results, labels, shown] = await Promise.all([
     orgSeason(`${season}|${school.league}`),
     playoffReach(season),
     loadSeasonResults(season),
     labelled ? playoffLabels(season) : undefined,
+    labelled ? shownBefore(season) : undefined,
   ]);
   const mine = results.filter((r) => r.home === school.school || r.away === school.school).sort((a, b) => a.date.localeCompare(b.date));
   const meetings = mine.map((r): Meeting => {
@@ -53,7 +55,7 @@ export async function programSeason(school: Alignment, season: number, labelled:
       of: org.of,
       playoff: [...reach].find(([team]) => slugify(team) === school.slug)?.[1],
     }),
-    played: labels ? mine.map((r) => fromResult(school.school, r, labels.get(gameKey(r.date, r.home, r.away)))) : [],
+    played: labels ? mine.map((r) => fromResult(school.school, r, labels.get(gameKey(r.date, r.home, r.away)), shown?.before.get(r.id), shown?.disputed.has(r.id))) : [],
   };
   return { entry, meetings };
 }

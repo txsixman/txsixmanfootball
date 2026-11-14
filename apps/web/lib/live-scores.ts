@@ -124,8 +124,9 @@ type BoardGame = {
 /**
  * A game with no final as the scores board shows it while a live row says it is under way: Live, the read's period as its
  * status, the read's scores in its own score cells (each on the right team), and unconfirmed, so it is dashed and names no
- * winner (lib/score-display.ts winnerOf). A finished row is a final (ADR 0043): "Final", confirmed, the winner marked
- * (ADR 0040). Its projection is dropped either way: a pre-game estimate beside a score would read as a second answer.
+  * winner (lib/score-display.ts winnerOf). A finished row is a final (ADR 0043): "Final", confirmed, the winner marked
+  * (ADR 0040). Its projection from before the game stays either way, beside the outcome (ADR 0044): "Projected: … · Now:
+  * 14–28 · Unconfirmed" under way, "Projected: … · Final: <team> by 14" once finished.
  */
 export function asLive<G extends BoardGame>(g: G, live: LiveView): G {
   return {
@@ -137,8 +138,6 @@ export function asLive<G extends BoardGame>(g: G, live: LiveView): G {
     homeScore: live.home.score,
     awayScore: live.away.score,
     verification: live.finished ? "confirmed" : "unconfirmed",
-    projected: undefined,
-    projectedMargin: undefined,
     upset: undefined,
   };
 }

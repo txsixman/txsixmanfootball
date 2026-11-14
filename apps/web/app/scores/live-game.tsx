@@ -3,6 +3,8 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import { asLive, liveStatus, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
+import { projectedLine } from "@/lib/outcome";
+import { outcomeOf } from "@/lib/score-display";
 import { BigLine, type Program } from "./game-parts";
 import { KickoffStatus } from "../kickoff-status";
 import { useLiveScores } from "./live-score";
@@ -51,6 +53,12 @@ export function GameScore({ g, away, home, neutral, watch }: { g: Game; away?: P
         <BigLine g={shown} side="away" program={away} neutral={neutral} />
         <BigLine g={shown} side="home" program={home} neutral={neutral} />
       </section>
+      {/* Under way: what was projected beside the score so far, naming no leader (ADR 0044). */}
+      {live && shown.projected && (
+        <p data-projected className="px-3 pt-1 text-[13px] leading-4 text-muted">
+          {projectedLine(shown.projected, outcomeOf(shown))}
+        </p>
+      )}
     </>
   );
 }
