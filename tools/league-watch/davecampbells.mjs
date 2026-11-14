@@ -6,6 +6,8 @@
 // feed for the Live and Upcoming games of one mapped team per game, and merges the games under way into <live.json>
 // (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores, period and forfeit flags: never
 // a spread, ranking, poll or `winner` field. Nothing is saved to this repo. A 403 or 429 stops the read at once.
+// By hand, `--fields` after the same two flags writes nothing and prints, for the games under way, the field names and how
+// many games hold each clock, period or update-time format (to find a field such as the game clock; never a team or score).
 //
 // Finals, as a private cross-check of MaxPreps (ADR 0026, the same permission):
 //   node tools/league-watch/davecampbells.mjs --finals <private playoffs.csv> --report <private davecampbells-<season>/>
@@ -106,6 +108,34 @@ export function periodLabel(summary) {
   if (q) return `Q${q[1]}`;
   if (/^(ot|overtime)\s*\d*$/i.test(t)) return "OT";
   return null;
+}
+
+/** `--live <playoffs.csv> --fields` (by hand, to find a field; writes nothing): for the games under way, each distinct item
+ * shape (field names only, three levels deep), and for each field whose name speaks of the clock, the period or an update
+ * time (clock, time, remain, period, quarter, updated), how many games hold each value format (digits shown as 9, so
+ * "4:12" is "9:99"), with one example. Never a team, a score or any other value. */
+export function liveFields(items) {
+  const shapes = new Set();
+  const formats = new Map();
+  const visit = (value, at) => {
+    if (value === null || typeof value !== "object") return;
+    for (const [k, v] of Object.entries(value)) {
+      const here = at ? `${at}.${k}` : k;
+      if (v !== null && typeof v === "object") visit(v, here);
+      else if (/clock|time|remain|period|quarter|updated/i.test(k) && !/zone/i.test(k)) {
+        const key = `${here} ${v === null ? "null" : `${typeof v} "${String(v).replace(/\d/g, "9")}"`}`;
+        const f = formats.get(key) ?? { n: 0, example: v };
+        f.n++;
+        formats.set(key, f);
+      }
+    }
+  };
+  const live = items.filter(isLive);
+  for (const item of live) {
+    shapes.add(`shape: ${shapeOf(item, 3)}`);
+    visit(item, "");
+  }
+  return [`${live.length} games under way`, ...shapes, ...[...formats].sort().map(([k, f]) => `${k}: ${f.n} game(s), e.g. ${JSON.stringify(f.example)}`)];
 }
 
 /** A game under way: the feed's status says live, in progress or halftime (any case, spaces or dashes). */
@@ -463,6 +493,7 @@ async function live() {
     const id = await teamId(client, t, seasonId);
     if (id) (ids++, items.push(...(await liveAndUpcoming(client, seasonId, id))));
   }
+  if (process.argv.includes("--fields")) return console.log(liveFields(items).join("\n") || "no game under way in the feed's answers");
   const rows = liveRowsFromItems(items, { date, due, ours });
   const seen = new Set(matchTonight(items, { date, due, ours }).map((m) => m.key));
   const before = JSON.parse(readFileSync(mergeFile, "utf8"));

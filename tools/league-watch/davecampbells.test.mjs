@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { DETAIL_COLUMNS, kickoffRows, mergeKickoffs } from "./davecampbells.mjs";
+import { DETAIL_COLUMNS, kickoffRows, liveFields, mergeKickoffs } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -472,4 +472,20 @@ test("kickoffs: a bracket game still to play gets the feed's kickoff in UTC, the
   // A fresh value wins over a kept one, a blank keeps it; other kept rows stay.
   const kept = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`;
   assert.equal(mergeKickoffs(kept, rows), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
+});
+
+test("--fields lists the clock and period fields of games under way by format, never a team or a score", () => {
+  const game = (status, clock) => ({
+    status,
+    summary: { homeScore: 28, awayScore: 14, period: 3, periodRemainingTime: clock, lastUpdatedUtc: 1794618000.5 },
+    participants: [{ schoolName: "Alpha", score: 28 }, { schoolName: "Bravo", score: 14 }],
+    venue: { timezone: "America/Chicago" },
+  });
+  const lines = liveFields([game("Live", "4:12"), game("Live", null), game("Final", "0:00")]);
+  assert.equal(lines[0], "2 games under way");
+  assert.ok(lines.includes('summary.periodRemainingTime string "9:99": 1 game(s), e.g. "4:12"'));
+  assert.ok(lines.includes("summary.periodRemainingTime null: 1 game(s), e.g. null"));
+  assert.ok(lines.includes('summary.period number "9": 2 game(s), e.g. 3'));
+  const text = lines.join("\n");
+  for (const hidden of ["Alpha", "Bravo", "28", "14", "Chicago", "0:00"]) assert.ok(!text.replace(/shape: .*/g, "").includes(hidden), hidden);
 });
