@@ -9,10 +9,10 @@ import { PageHeader } from "../../ui";
 import { ScorecardChart } from "./scorecard-chart";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "How the rankings work", description: howRankingsDescription() };
+export const metadata: Metadata = { title: "How the six-man rankings work", description: howRankingsDescription(), alternates: { canonical: "/rankings/how" } };
 
 // Plain-language method note for /rankings (backlog item 8). It must stay true to services/ratings/model.py; the words
-// are rating, projected margin and win probability, never betting terms. No source is named (ADR 0010).
+// are rating, projected margin and chance to win, never betting terms. No source is named (ADR 0010).
 const STEPS: { title: string; body: string }[] = [
   {
     title: "It starts from the scores",
@@ -134,7 +134,7 @@ function Scorecard({ scorecard }: { scorecard: Backtest["scorecard"] }) {
       <p className="mt-2 text-[13px] text-muted">
         The chance for each game comes from ratings that never saw the season being predicted, and from a scale fit on the other seasons. Only games where
         both teams already had {FEW_GAMES} rated games count; ties and forfeits are left out. A game counts under both teams&rsquo; organizations, so
-        those rows overlap. The playoffs are every bracket game. Scores are not confirmed here and may change.
+        those rows overlap. The playoffs are every bracket game. Scores may be corrected if a mistake is found.
       </p>
     </section>
   );
@@ -209,6 +209,9 @@ export default async function HowPage() {
       <p className="mt-3 text-[16px] text-ink">
         Teams are ranked by their rating, best first, within one organization at a time (UIL, TAPPS, TAIAO or TCAF) and, for UIL, within Division I and Division II. A rating is how many points better or worse a team is than the average team in the table, on a neutral field. The projected margin between two teams is the difference in their ratings.
       </p>
+      <Link href="/about/ratings" className="inline-flex min-h-11 items-center font-semibold text-navy underline">
+        About the ratings: what a rating means, and which games it rests on
+      </Link>
       <ol className="mt-6 space-y-5">
         {STEPS.map((s, i) => (
           <li key={s.title} className="border-l-4 border-red pl-3">
@@ -223,14 +226,14 @@ export default async function HowPage() {
         <h2 id="track" className="font-num text-[24px] font-bold uppercase tracking-wide text-navy">How well it projects games</h2>
         <p className="mt-1 text-[15px] text-ink">
           Before each game from {track.seasons.at(-1)} to {track.seasons[0]}, both teams&rsquo; ratings from the week before gave a
-          projected team and a win probability. Across {track.games.toLocaleString("en-US")} games, the projected team won{" "}
+          projected team and its chance to win. Across {track.games.toLocaleString("en-US")} games, the projected team won{" "}
           {pct(track.favoriteWon / track.games)} of the time. When the ratings say 70%, the projected team should win about 7 games in 10:
         </p>
         <table className="mt-3 w-full text-left text-[15px] text-ink">
-          <caption className="sr-only">How often the projected team won, by its win probability before the game, next to the average win probability the ratings gave</caption>
+          <caption className="sr-only">How often the projected team won, by its chance to win before the game, next to the average chance the ratings gave</caption>
           <thead>
             <tr className="border-b-2 border-navy text-[13px] uppercase tracking-wide text-muted">
-              <th scope="col" className="py-2 pr-2 font-bold">Win probability</th>
+              <th scope="col" className="py-2 pr-2 font-bold">Chance to win</th>
               <th scope="col" className="py-2 pr-2 text-right font-bold">Games</th>
               <th scope="col" className="py-2 pr-2 text-right font-bold">Ratings said</th>
               <th scope="col" className="py-2 text-right font-bold">Projected team won</th>
@@ -248,7 +251,7 @@ export default async function HowPage() {
           </tbody>
         </table>
         <p className="mt-2 text-[13px] text-muted">
-          Counted once both teams had played four games. Ties and forfeits are left out. Scores are not confirmed here and may change.
+          Counted once both teams had played four games. Ties and forfeits are left out.
         </p>
       </section>
 
@@ -288,7 +291,7 @@ export default async function HowPage() {
           Only games where both teams already had {FEW_GAMES} rated games count. Ties and forfeits are left out, and a miss
           is counted as at most 45 points, since a game ends at a 45-point lead. The best figure in each row is in bold. 2021
           has no earlier season, so there is no last-season figure for it and the total leaves it out. 2026 counts games
-          played so far. Scores are not confirmed here and may change.
+          played so far. Scores may be corrected if a mistake is found.
         </p>
       </section>
 
@@ -308,7 +311,7 @@ export default async function HowPage() {
           </li>
           <li>
             <b>Record strength</b>: a team&rsquo;s wins minus the wins a typical top-{BENCHMARK_TEAMS} team in its organization would be expected to get against
-            the same opponents at the same sites, using the same win probabilities as above. A 9-0 team on a soft schedule sits near zero; a 4-6 team on a
+            the same opponents at the same sites, using the same chances to win as above. A 9-0 team on a soft schedule sits near zero; a 4-6 team on a
             hard one can sit well above it.
           </li>
         </ul>
@@ -319,7 +322,7 @@ export default async function HowPage() {
         <ul className="mt-2 list-disc space-y-1.5 pl-5 text-[15px] text-ink">
           <li>Injuries, weather, or who played. It sees only final scores.</li>
           <li>Much about a team with fewer than {FEW_GAMES} rated games. Those ratings are grayed in the rankings.</li>
-          <li>Anything certain. Scores are not confirmed here and may change, and the ratings change with them after every game night.</li>
+          <li>Anything certain. Scores may be corrected if a mistake is found, and the ratings change with them after every game night.</li>
         </ul>
       </section>
     </article>

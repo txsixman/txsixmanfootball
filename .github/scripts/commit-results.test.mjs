@@ -62,6 +62,7 @@ function setup() {
   exe(path.join(bin, "node"), `#!/usr/bin/env bash
 case "$1" in
   tools/league-watch/publish.mjs) mkdir -p "$3" && cp "$2/games.csv" "$3/games.csv" ;;
+  tools/league-watch/davecampbells.mjs) [ "$2" = --merge-details ] && [ "$4" = --out ] && cp "$3" "$5" ;;
   apps/web/scripts/check-data.mjs)
     if [ -n "\${STUB_INTEGRITY:-}" ]; then echo "$STUB_INTEGRITY" >> "$INTEGRITY_REPORT"; fi
     exit "\${STUB_CHECK_EXIT:-0}" ;;
@@ -154,6 +155,27 @@ test("the public push fails three times: exit 1, nothing on public main, the pri
   assert.equal(r.output, "");
 });
 
+test("the private token reaches only fetch and push on private/, by environment, and is never stored or printed", () => {
+  const t = setup();
+  newCapture(t);
+  const seen = path.join(t.root, "git-config-seen.log");
+  const realGit = spawnSync("which", ["git"], { encoding: "utf8" }).stdout.trim();
+  exe(path.join(t.bin, "git"), `#!/usr/bin/env bash
+if env | grep -q '^GIT_CONFIG_KEY_[0-9]*=http.https://github.com/.extraheader$'; then h=header; else h=plain; fi
+echo "$* :: $h" >> "${seen}"
+exec "${realGit}" "$@"
+`);
+  const token = "tok-for-test-only-123";
+  // As on a runner (GITHUB_ACTIONS=true), so anything the script prints only there is checked here too.
+  const r = run(t, { DATA_PRIVATE_TOKEN: token, GITHUB_ACTIONS: "true" });
+  assert.equal(r.status, 0, r.stderr);
+  const lines = readFileSync(seen, "utf8").split("\n");
+  const withHeader = lines.filter((l) => l.endsWith(":: header")).map((l) => l.split(" ").slice(0, 3).join(" "));
+  assert.deepEqual(withHeader, ["-C private fetch", "-C private push"]);
+  const everything = r.stdout + r.stderr + readFileSync(path.join(t.work, "private/.git/config"), "utf8");
+  assert.ok(!everything.includes(token) && !everything.includes(Buffer.from(`x-access-token:${token}`).toString("base64")));
+});
+
 test("WRITE not true: nothing is pushed anywhere, and the summary lists what would have been", () => {
   const t = setup();
   newCapture(t);
@@ -238,4 +260,22 @@ test("only games.csv and playoffs.csv are staged: a stray capture in the public 
   assert.equal(readFileSync(t.log, "utf8"), "private\npublic\n");
   const pushed = git(t.root, "--git-dir", path.join(t.root, "public.git"), "ls-tree", "-r", "--name-only", "main", `data/seed/${DIR}`);
   assert.deepEqual(pushed.split("\n"), [`data/seed/${DIR}/games.csv`]);
+});
+
+test("game details read earlier in the run are merged into the newest main's file and committed with the results", () => {
+  const t = setup();
+  const details = path.join(t.root, "details.csv");
+  writeFileSync(details, "date,home,away,kickoff_utc,site_name,site_city\n2026-11-13,Kress,Spur,2026-11-14T01:00:00Z,Bird Field,Lark\n");
+  const r = run(t, { DETAILS: details });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(remoteFile(t, "public", `data/seed/game-details/${YEAR}.csv`), /Kress,Spur,2026-11-14T01:00:00Z,Bird Field,Lark/);
+  assert.equal(readFileSync(t.log, "utf8"), "public\n", "nothing new for the private repo");
+});
+
+test("no game details read: no details file is written", () => {
+  const t = setup();
+  newCapture(t);
+  const r = run(t, { DETAILS: path.join(t.root, "absent.csv") });
+  assert.equal(r.status, 0, r.stderr);
+  assert.throws(() => remoteFile(t, "public", `data/seed/game-details/${YEAR}.csv`));
 });

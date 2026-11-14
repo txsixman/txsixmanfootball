@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ORGS } from "@/lib/orgs";
 import { ratingSeasons } from "@/lib/ratings";
 import { describeRankings, RankingsView, viewOf } from "../../view";
+import { rankingsTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -18,7 +19,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { season } = await params;
-  return { title: `${season} rankings`, description: await describeRankings(viewOf(ORGS[0]), Number(season)), alternates: { canonical: `/rankings/season/${season}` } };
+  return { title: rankingsTitle({ label: "UIL", season: Number(season) }), description: await describeRankings(viewOf(ORGS[0]), Number(season)), alternates: { canonical: `/rankings/season/${season}` } };
 }
 
 export default async function SeasonRankingsPage({ params }: Props) {

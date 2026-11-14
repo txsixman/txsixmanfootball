@@ -25,6 +25,7 @@ export const REASONS = {
   "second-source-refused": "The second score source refused a read (HTTP 403 or 429), so its reads stopped for this run. If it keeps happening, switch SECOND_LIVE and SECOND_FINALS off.",
   "second-source-no-agreement": "The finals cross-check found no agreeing final among 10 or more games of past game nights: its matching or the source's answers may have changed. See the private report.",
   "second-source-no-season": "The second score source has no season id for the season under way, so its reads do nothing until one is added.",
+  "missing-finals": "A bracket game of a past game night still has no score after the morning read and the late-final fill. The run summary names it.",
 };
 /** A named problem is a condition, not one run's failure: it is posted at most once every REASON_QUIET_HOURS. */
 export const REASON_QUIET_HOURS = 12;

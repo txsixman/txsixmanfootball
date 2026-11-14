@@ -106,12 +106,14 @@ jobs:
           repository: txsixman/data-private
           token: ${{ secrets.DATA_PRIVATE_TOKEN }}
           path: private
+          # The token is not left in private/.git/config while npm ci and uv run; the commit step passes it to git itself.
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
           cache-dependency-glob: services/ratings/uv.lock
@@ -125,7 +127,7 @@ jobs:
           [[ "$season" =~ ^20[0-9][0-9]$ ]] || { echo "season must be a year like 2026, not: $season"; exit 1; }
           echo "year=$season" >> "$GITHUB_OUTPUT"
       - name: Reader checks
-        run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/store.test.mjs tools/league-watch/davecampbells.test.mjs
+        run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/store.test.mjs tools/league-watch/davecampbells.test.mjs tools/league-watch/late-finals.test.mjs
       - name: Read MaxPreps schedule pages
         env:
           # Any schedule but the morning one is a playoff-night run.
@@ -169,6 +171,42 @@ jobs:
           SEASON: ${{ steps.season.outputs.year }}
           OPS_REASONS: ${{ runner.temp }}/ops-reasons.txt
         run: node tools/league-watch/davecampbells.mjs --finals "private/maxpreps-$SEASON/playoffs.csv" --report "private/davecampbells-$SEASON"
+      - name: Kickoffs and sites
+        # ADRs 0036 and 0041: on the morning read and a dispatch, each bracket game still to play gets the second feed's
+        # kickoff and site, into a file outside the repo; the commit step merges it into the newest main's
+        # data/seed/game-details/<season>.csv, never overwriting a filled value. The log and summary give counts only, by
+        # league, never a school. Off until the repo variable SECOND_LIVE is "true" (the same feed's upcoming games). A
+        # failure (a 403 or 429 stops it at once) leaves the file as it was.
+        if: ${{ vars.SECOND_LIVE == 'true' && (github.event_name != 'schedule' || github.event.schedule == '23 11 * 8-12,1 5,6,0') }}
+        continue-on-error: true
+        env:
+          SEASON: ${{ steps.season.outputs.year }}
+          OPS_REASONS: ${{ runner.temp }}/ops-reasons.txt
+        run: |
+          f="data/seed/game-details/$SEASON.csv"
+          out="$RUNNER_TEMP/game-details.csv"
+          if [ -f "$f" ]; then cp "$f" "$out"; fi
+          node tools/league-watch/davecampbells.mjs --kickoffs "data/seed/maxpreps-$SEASON/playoffs.csv" --out "$out" > "$RUNNER_TEMP/kickoffs.log"
+          tee -a "$GITHUB_STEP_SUMMARY" < "$RUNNER_TEMP/kickoffs.log"
+      - name: Late finals and missing finals
+        # ADR 0046: on the morning read and a dispatch that is not a game-day read, a bracket game of a past night that
+        # MaxPreps has still not scored takes its final from the league's own bracket (TAIAO, read as a visitor's browser
+        # does) or the second source (with SECOND_FINALS): an agreeing pair if both have one, never a forfeit, through the
+        # store's merge, so the commit below carries it and a later MaxPreps read can only propose a change (ADR 0031).
+        # Any still blank are named in the summary and raise "missing-finals" for the notify job; this step then shows red
+        # without stopping the run. A failed source read is counted and never stops the check.
+        if: ${{ (github.event_name != 'schedule' && !inputs.tonight) || github.event.schedule == '23 11 * 8-12,1 5,6,0' }}
+        continue-on-error: true
+        env:
+          SEASON: ${{ steps.season.outputs.year }}
+          OPS_REASONS: ${{ runner.temp }}/ops-reasons.txt
+          SECOND: ${{ vars.SECOND_FINALS == 'true' && '--second' || '' }}
+        run: |
+          npm ci --prefix tools/league-watch
+          # Three tries of 4 minutes, as the TAIAO reader's job does; with no browser the league bracket is counted unread.
+          for _ in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && break; sleep 20; done
+          node tools/league-watch/late-finals.mjs "private/maxpreps-$SEASON" --season "$SEASON" ${SECOND:+"$SECOND"} --missing "$RUNNER_TEMP/missing-finals.txt"
+          [ ! -s "$RUNNER_TEMP/missing-finals.txt" ]
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
         # stops the finals from being committed below.
@@ -203,6 +241,10 @@ jobs:
           INTEGRITY: report
           INTEGRITY_REPORT: ${{ runner.temp }}/integrity-failures.txt
           YEAR: ${{ steps.season.outputs.year }}
+          # Used only by the script's git calls on private/ (fetch, push), never written to disk.
+          DATA_PRIVATE_TOKEN: ${{ secrets.DATA_PRIVATE_TOKEN }}
+          # The kickoffs and sites read above, when that step ran (ADR 0041).
+          DETAILS: ${{ runner.temp }}/game-details.csv
         # .github/scripts/commit-results.sh: the private repo first, then this one, each on its newest main, with retries;
         # publish, rerate, the data checks (Zod blocks, cross-file reports) and the summary lines. Tested against local
         # bare repos (commit-results.test.mjs).

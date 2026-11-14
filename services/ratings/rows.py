@@ -7,8 +7,11 @@ A played game is one of:
                in the fit. TWIN of `forfeitScore` in apps/web/lib/games.ts: change one, change the other (a test runs
                the same robot-style scores through both rules' table, apps/web/scripts/forfeit-rule.test.mjs).
   no_contest   0-0: a game nobody played; in neither the fit nor the records' wins and losses (it is a tie on paper)
-  duplicate    the same two teams with the same score within DUPLICATE_DAYS of an earlier row: one game listed twice,
-               dropped everywhere (the earlier row stays)
+  duplicate    one game listed twice, dropped everywhere. THE RULE: the same two teams with the same score (each team's own
+               score, so home and away swapped still counts) at most DUPLICATE_DAYS apart (the same day too). The earlier date
+               stays, file order breaks a tie, and a row is judged only against rows that stayed. TWIN of `duplicateRows` in
+               apps/web/lib/duplicate-game.ts, which the reader, the site's loaders and check-data use: change one, change the
+               other (apps/web/lib/duplicate-cases.json is the table both are tested against, test_duplicates.py here).
 A non-zero tie is kept (a real result) and counted in the report. A game against a school outside our alignments (read
 from a season's outside.csv) is a rated game against a HIDDEN team: it informs the fit and is never shown in a table.
 """
@@ -40,7 +43,7 @@ def require_private_data(env=os.environ) -> None:
 
 
 MERCY = {"mercy_half", "mercy_2h"}
-DUPLICATE_DAYS = 2
+DUPLICATE_DAYS = 2  # twin of DUPLICATE_DAYS in apps/web/lib/duplicate-game.ts
 OUTSIDE_PREFIX = "outside: "
 # A school we do not list only informs the fit when it played two of our teams: with one game it connects nothing.
 HIDDEN_MIN_OPPONENTS = 2

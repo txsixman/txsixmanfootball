@@ -59,6 +59,8 @@ const PAGES = [
   "/scores/tonight",
   "/playoffs",
   "/playoffs/tapps",
+  "/playoffs/this-round",
+  "/weeks",
   "/playoffs/bracket/tapps-division-i",
   "/results/2025/9",
   "/rankings",

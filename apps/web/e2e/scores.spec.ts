@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { noLiveScores } from "./live-route";
+import { sitemapUrls } from "./sitemap-urls";
+import { skipReason, upcoming } from "./upcoming";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { demoGames } from "../lib/demo-games";
@@ -8,6 +10,9 @@ import { gameNight, isNight } from "../lib/game-night";
 import { normalCdf, project, projectionText } from "../lib/projection";
 import { chancesFor } from "../lib/title-chances";
 import { movement } from "../lib/ratings";
+import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season";
+
+const SEASONS = CURRENT_SEASON - FIRST_SEASON + 1; // seasons on file, FIRST_SEASON to now
 
 // No live-score request reaches the network (e2e/live-route.ts).
 noLiveScores(test, false);
@@ -139,8 +144,8 @@ test("a projection is the rating gap, plus home field off a neutral site, over t
   expect(project(table, "Cedar Gap", "Dry Wash", true)).toMatchObject({ favorite: "Cedar Gap", margin: 20 });
   expect(project(table, "Dry Wash", "Cedar Gap", false)).toMatchObject({ favorite: "Cedar Gap", margin: 16 });
   expect(project(table, "Cedar Gap", "Salt Fork", true)).toBeUndefined(); // unrated
-  expect(projectionText(project(table, "Cedar Gap", "Dry Wash", true)!)).toBe("Cedar Gap by 20 · 84% win probability");
-  expect(projectionText({ favorite: "Cedar Gap", margin: 60, winProbability: 0.999 })).toBe("Cedar Gap by 45+ · >99% win probability");
+  expect(projectionText(project(table, "Cedar Gap", "Dry Wash", true)!)).toBe("Cedar Gap by 20 · 84% chance to win");
+  expect(projectionText({ favorite: "Cedar Gap", margin: 60, winProbability: 0.999 })).toBe("Cedar Gap by 45+ · >99% chance to win");
 });
 
 test("standings list every district by district record, in three tabs", async ({ page }, info) => {
@@ -225,11 +230,22 @@ test("the home page shows title chances for brackets down to their last four", a
   await expect(chances.getByRole("listitem").first()).toContainText(/(\d+|<1|>99)%$/);
 });
 
-test("upcoming playoff games show a projected margin and win probability, never betting words", async ({ page }) => {
-  await page.goto("/scores");
-  const projected = page.getByText(/^Projected: .+ by \d+\+? · (>99|\d{2})% win probability$/);
-  expect(await projected.count()).toBeGreaterThan(5);
-  await expect(page.locator("body")).not.toContainText(/\b(spread|odds|lines?|bets?|betting|favorite)\b/i);
+test("upcoming playoff games show a projected margin and chance to win, never betting words", async ({ page }) => {
+  // Games still to play come from the season's data (e2e/upcoming.ts): each game night uses some up, the offseason has none.
+  const { projectedGames } = await upcoming();
+  if (!projectedGames) return test.skip(true, skipReason("no playoff game is still to play with a projection"));
+  await page.goto("/scores", { waitUntil: "networkidle" });
+  const projected = page.getByText(/^Projected: .+ by \d+\+? · (>99|\d{2})% chance to win$/);
+  // The board shows one organization at a time: count each one's, and check each for betting words.
+  const buttons = page.getByRole("group", { name: "Show games from" }).getByRole("button");
+  let seen = await projected.count();
+  for (let i = 0, n = await buttons.count(); i < n; i++) {
+    await buttons.nth(i).click();
+    await expect(buttons.nth(i)).toHaveAttribute("aria-pressed", "true");
+    if (i > 0) seen += await projected.count();
+    await expect(page.locator("body")).not.toContainText(/\b(spread|odds|lines?|bets?|betting|favorite)\b/i);
+  }
+  expect(seen, "unplayed games with a projection on the board").toBeGreaterThan(0);
 });
 
 test("old ratings and champions links land on the new pages", async ({ page }) => {
@@ -288,7 +304,7 @@ test("matchup projects any two teams, home or neutral, and keeps the choice in t
   await page.getByRole("combobox", { name: "Team 2" }).selectOption("gordon");
   const result = page.getByRole("region", { name: "Projection" });
   await expect(result).toContainText(/(Jayton|Gordon) by \d+/);
-  await expect(result).toContainText(/\d+% win probability|>99% win probability/);
+  await expect(result).toContainText(/\d+% chance to win|>99% chance to win/);
   const neutral = await result.textContent();
   await page.getByRole("radio", { name: "At Gordon" }).check();
   await expect(page).toHaveURL(/a=jayton&b=gordon&at=b$/);
@@ -315,15 +331,16 @@ test("the programs list and a program page pass", async ({ page }, info) => {
   await checkPage(page, "/programs/odonnell", `odonnell-${info.project.name}`);
 });
 
-test("the 2026 playoffs crown no one and name no source (ADR 0004, ADR 0009)", async ({ page }) => {
+test("a 2026 playoff final is confirmed and names no source (ADR 0040, ADR 0009)", async ({ page }) => {
   await page.goto("/scores");
   await expect(page.getByText(/UIL DI · Bi-district/).first()).toBeVisible();
-  await page.getByRole("group", { name: "Show games from" }).getByRole("button", { name: "TAPPS" }).click(); // robot-read, so unconfirmed
-  await expect(page.getByText(/^Unconfirmed\s*Score may change\.$/).first()).toBeAttached(); // played, unconfirmed: no winner
+  await page.getByRole("group", { name: "Show games from" }).getByRole("button", { name: "TAPPS" }).click(); // robot-read finals
+  await expect(page.locator("#final").getByText("confirmed", { exact: true }).first()).toBeAttached(); // a final: confirmed
+  await expect(page.getByText(/^Unconfirmed\s*Score may change\.$/)).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText(/maxpreps|bracket\./i);
 });
 
-test("a program page lists its season, marked unconfirmed, naming no source (ADR 0009, ADR 0010)", async ({ page }) => {
+test("a program page lists its season, naming no source (ADR 0009, ADR 0010)", async ({ page }) => {
   for (const url of ["/programs/odonnell", "/rankings"]) {
     await page.goto(url);
     await expect(page.locator("body"), url).not.toContainText(/maxpreps|sources|bracket\./i);
@@ -331,7 +348,7 @@ test("a program page lists its season, marked unconfirmed, naming no source (ADR
   await page.goto("/programs/odonnell");
   const games = page.getByRole("region", { name: "2026 games" });
   await expect(games.getByRole("listitem").first()).toContainText(/\d+-\d+/);
-  await expect(games).toContainText("not confirmed here");
+  await expect(page.locator("main")).not.toContainText("not confirmed here");
 });
 
 test("program pages cover every league, link rivals, and 404 when unknown", async ({ page }) => {
@@ -430,6 +447,12 @@ test("only a confirmed final names a winner", async ({ page }) => {
   for (const id of ["g3", "g5", "g6", "g7"]) await expect(crowned(id)).toHaveCount(0);
   await expect(row("g3")).toContainText("Unconfirmed");
   await expect(row("g7")).toContainText("Disputed");
+  // "Final" only for a confirmed score; an unconfirmed or disputed one sits under "Score reported" and never says Final.
+  await expect(page.locator("#final").locator('[data-game="g4"]')).toHaveCount(1);
+  for (const id of ["g3", "g7"]) {
+    await expect(page.locator("#reported").locator(`[data-game="${id}"]`)).toContainText("Score reported");
+    await expect(row(id)).not.toContainText(/\bFinal\b/);
+  }
 });
 
 test("a forfeit shows W and L, never a score", async ({ page }) => {
@@ -479,10 +502,10 @@ test("a program page lists each season: record, place and the last playoff round
   await expect(trend.getByRole("img", { name: /^Rank in its organization from #\d+ in the week ending .+ to #\d+ in the week ending .+; best #\d+\.$/ })).toBeVisible();
   expect(await trend.locator("tbody tr").count()).toBeGreaterThanOrEqual(3);
   const seasons = page.getByRole("region", { name: "Season by season" });
-  await expect(seasons.getByRole("listitem")).toHaveCount(6);
+  await expect(seasons.getByRole("listitem")).toHaveCount(SEASONS);
   const last = seasons.getByRole("listitem").filter({ has: page.getByRole("link", { name: "2025 rankings" }) });
   await expect(last).toContainText("Playoffs: reached the state final");
-  await expect(seasons.getByText(/^\d+-\d+(-\d+)? from 2021 to 2026 · playoffs in \d of 6 seasons$/)).toBeVisible();
+  await expect(seasons.getByText(new RegExp(`^\\d+-\\d+(-\\d+)? from ${FIRST_SEASON} to ${CURRENT_SEASON} · playoffs in \\d of ${SEASONS} seasons$`))).toBeVisible();
   const rivals = page.getByRole("region", { name: "Most played" }).getByRole("listitem");
   expect(await rivals.count()).toBeGreaterThan(0);
   await expect(rivals.first()).toContainText(/\d+ games · last 20\d\d, \d+-\d+/);
@@ -503,7 +526,8 @@ test("results list every game week by week, both seasons, naming no winner and n
   await checkPage(page, "/results/2025/1", `results-2025-1-${info.project.name}`);
   await expect(page.getByText(/^UIL · 2025 season · Week 1 · \d+ games$/)).toBeVisible();
   await page.goto("/results/2025/9");
-  expect(await page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|\d+)% win probability$/).count()).toBeGreaterThan(10);
+  // A played game's projection, from the week before, beside what happened (ADR 0044).
+  expect(await page.getByText(/^Projected: .+ by (\d+|45\+|less than 1) · (>99|<1|\d+)% chance to win · (Final: .+ by \d+|Final: tied|Forfeit|Disputed)$/).count()).toBeGreaterThan(10);
   await expect(page.getByText(/upset/i)).toHaveCount(0);
   // A forfeit (recorded 1-0) shows the word, never the score (ADR 0004).
   await page.goto("/programs/avalon");
@@ -528,7 +552,7 @@ test("matchup lists the last meetings between two teams across seasons", async (
 
 test("records list the most points, the longest winning runs and unbeaten seasons, naming no source", async ({ page }, info) => {
   await checkPage(page, "/records", `records-${info.project.name}`);
-  for (const name of ["Most points in a game", "Most points by both teams", "Biggest upsets", "Longest winning runs", "Unbeaten seasons"]) {
+  for (const name of ["Most points in a game", "Most points by both teams", "Biggest surprises", "Longest winning runs", "Unbeaten seasons"]) {
     await expect(page.getByRole("region", { name })).toBeVisible();
   }
   const points = page.getByRole("region", { name: "Most points in a game" }).getByRole("listitem");
@@ -536,9 +560,9 @@ test("records list the most points, the longest winning runs and unbeaten season
   const figures = await points.locator("span.font-num.text-navy").allTextContents();
   expect(figures.map(Number)).toEqual([...figures.map(Number)].sort((a, b) => b - a));
   await expect(page.getByText(/maxpreps|odds|spread|underdog|line\b/i)).toHaveCount(0);
-  const upsets = await page.getByRole("region", { name: "Biggest upsets" }).locator("li span.font-num.text-navy").allTextContents();
-  expect(upsets.length).toBe(10);
-  for (const u of upsets) expect(u).toMatch(/^(<1|[1-4]\d?)%( win probability before the game)?$/); // the unit after it is read aloud only
+  const surprises = await page.getByRole("region", { name: "Biggest surprises" }).locator("li span.font-num.text-navy").allTextContents();
+  expect(surprises.length).toBe(10);
+  for (const u of surprises) expect(u).toMatch(/^(<1|[1-4]\d?)%( chance to win before the game)?$/); // the unit after it is read aloud only
 });
 
 test("playoffs show every bracket round by round, naming no winner and no source", async ({ page }, info) => {
@@ -548,7 +572,7 @@ test("playoffs show every bracket round by round, naming no winner and no source
   for (const name of ["UIL Division I", "UIL Division II"]) await expect(page.getByRole("region", { name, exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "UIL Division I, Bi-district" }).getByRole("listitem")).toHaveCount(16);
   await expect(page.getByText(/won|beat|defeated|maxpreps|odds|spread/i)).toHaveCount(0);
-  expect(await page.getByText(/Projected: .+ by (\d+|45\+) · (>99|\d+)% win probability/).count()).toBeGreaterThan(0);
+  expect(await page.getByText(/Projected: .+ by (\d+|45\+) · (>99|\d+)% chance to win/).count()).toBeGreaterThan(0);
 
   await checkPage(page, "/playoffs/tapps", `playoffs-tapps-${info.project.name}`);
   await expect(page.getByRole("heading", { level: 2 })).toHaveCount(5);
@@ -586,7 +610,7 @@ test("rankings stand at the end of each week, with records then and moves from t
 test("past playoff seasons list their brackets round by round, with no projections, winners or source", async ({ page }, info) => {
   await checkPage(page, "/playoffs/season/2025", `playoffs-2025-${info.project.name}`);
   const seasons = page.getByRole("navigation", { name: "Season" });
-  await expect(seasons.getByRole("link")).toHaveText(["2026", "2025", "2024", "2023", "2022", "2021"]);
+  await expect(seasons.getByRole("link")).toHaveText(Array.from({ length: SEASONS }, (_, i) => String(CURRENT_SEASON - i)));
   await expect(seasons.getByRole("link", { name: "2025" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("navigation", { name: "League" }).getByRole("link")).toHaveText(["UIL", "TAPPS", "TAIAO", "TCAF"]);
   const division = page.getByRole("region", { name: "UIL Division I", exact: true });
@@ -634,10 +658,10 @@ test("search engines: only the public address is indexed, from robots.txt and a 
   }
   // Visitors see the site's name, never the codename (the owner, Nov 11, 2026).
   await page.goto("/programs/jayton");
-  await expect(page).toHaveTitle(/^Jayton \| TX Six-Man Football$/);
+  await expect(page).toHaveTitle(/^Jayton Jaybirds football: \d{4} schedule, scores, ranking \| TX Six-Man Football$/);
   expect((await (await request.get("/manifest.webmanifest")).json()).name).toBe("TX Six-Man Football");
   await page.goto("/");
-  await expect(page).toHaveTitle("TX Six-Man Football");
+  await expect(page).toHaveTitle("TX Six-Man Football: Texas six-man scores, brackets, rankings");
   await expect(page.locator("header").getByRole("link", { name: "TX Six-Man Football" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("80x40");
   await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
@@ -650,8 +674,7 @@ test("search engines: only the public address is indexed, from robots.txt and a 
   expect(robots).toContain("Allow: /");
   expect(robots).not.toContain("Disallow");
   expect(robots).toContain("Sitemap: https://txsixmanfootball.com/sitemap.xml");
-  const sitemap = await (await request.get("/sitemap.xml")).text();
-  const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const urls = (await sitemapUrls(request)).urls.map((u) => u.url);
   expect(urls.every((u) => u.startsWith("https://txsixmanfootball.com"))).toBe(true);
   for (const path of ["", "/programs/jayton", "/rankings/how", "/rankings/division-1", "/rankings/week/4", "/results/2025", "/standings/tapps", "/championships"]) {
     expect(urls, path).toContain(`https://txsixmanfootball.com${path}`);

@@ -3,8 +3,10 @@
 // on a game-day tick, after the MaxPreps night read:
 //   node tools/league-watch/davecampbells.mjs --live <playoffs.csv> --merge <live.json>
 // reads tonight's still-unscored bracket games (the same Central game-night rule as maxpreps.mjs --tonight), asks the
-// feed for the Live and Upcoming games of one mapped team per game, and merges the games under way into <live.json>
-// (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores, period and forfeit flags: never
+// feed for the Live, Upcoming and finished games of one mapped team per game, and merges the games under way or just
+// finished (ADR 0042) into <live.json>
+// (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores and forfeit flags (the period only
+// for the run summary's counts, ADR 0042): never
 // a spread, ranking, poll or `winner` field. Nothing is saved to this repo. A 403 or 429 stops the read at once.
 //
 // Finals, as a private cross-check of MaxPreps (ADR 0026, the same permission):
@@ -16,6 +18,8 @@
 // Seasons (ADR 0032), run by hand, to the private data repo only: `--seasons` lists the feed's seasons,
 // `--history <year> --private <private repo>` writes a season's six-man games to <private>/davecampbells-history-<year>/games.csv,
 // and `--team <year> <their slug>` shows one team's game count and statuses. On Nov 13, 2026 only 2026 had games.
+// `--opponents <year> <their slug> [--about <slug,slug>]` lists a mapped team's opponents (slug and school name) and, for
+// each `--about` slug, the team's name and place fields: how a new davecampbells-teams.json row is checked by hand.
 //
 // Problems that do not fail the step (it runs with continue-on-error) are named in the file OPS_REASONS, when set, for
 // the workflow's notify job to post to the robot-alert issue (ADR 0028): a refusal (403 or 429), no season id from
@@ -24,9 +28,10 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, write
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { centralDate, gameNight, slugify, tonightsGames } from "./maxpreps.mjs";
+import { parseCsv } from "./store.mjs";
 
 export const ORIGIN = "https://www.davecampbells.com";
-export const USER_AGENT = "project-80x40-results-reader/1.0 (six-man scores; one request per 2.5 s)";
+export const USER_AGENT = "txsixmanfootball-results-reader/1.0 (+https://txsixmanfootball.com; contact@txsixmanfootball.com)";
 /** The feed's id for each season (seen in its own pages). A season not listed is not read. */
 export const SEASON_IDS = { 2026: "ddb8e968-3ddb-4c32-ba99-8329ed0a2853" };
 const GAP_MS = 2500;
@@ -88,16 +93,22 @@ export async function teamId(client, theirSlug, seasonId) {
   return null;
 }
 
-/** A team's games that are live or still to come this season. */
+/** A team's games that are live, still to come or finished this season (finished: a game drops out of Live once it ends,
+ * often long before our own final is read, and the read keeps its last score; ADR 0042). */
 export async function liveAndUpcoming(client, seasonId, id) {
-  const data = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&status=Live%2CUpcoming`);
+  const status = encodeURIComponent(["Live", "Upcoming", ...FINAL_STATUSES].join(","));
+  const data = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&status=${status}&size=50`);
   return Array.isArray(data?.items) ? data.items : [];
 }
 
-/** The period as the site shows it (letters, digits and spaces only, at most 12): "Q1" to "Q4", "Halftime", "OT"; else null. */
+/** The period as the site would show it (letters, digits and spaces only, at most 12): "Q1" to "Q4", "Halftime", or "OT"
+ * when the feed says so in words; else null. A number above 4 is null, not "OT": on Nov 13, 2026 two games of the same
+ * kickoff slot read 5 nearly two hours in, an end-of-game state more likely than overtime. NOT USED for live rows (ADR
+ * 0042): the feed's period lagged the score (Q1 at 75-6, 86 minutes in), so rows carry none. Kept, with its tests, for
+ * when the period-by-minutes log shows the feed can be trusted. */
 export function periodLabel(summary) {
   const p = summary?.period;
-  if (typeof p === "number" && Number.isInteger(p)) return p >= 1 && p <= 4 ? `Q${p}` : p > 4 ? "OT" : null;
+  if (typeof p === "number" && Number.isInteger(p)) return p >= 1 && p <= 4 ? `Q${p}` : null;
   if (typeof p !== "string") return null;
   const t = p.trim();
   if (/^half(time)?$/i.test(t)) return "Halftime";
@@ -105,6 +116,44 @@ export function periodLabel(summary) {
   if (q) return `Q${q[1]}`;
   if (/^(ot|overtime)\s*\d*$/i.test(t)) return "OT";
   return null;
+}
+
+/** Minutes-since-kickoff buckets for the period log. */
+const MINUTE_BUCKETS = [[0, 30], [30, 60], [60, 90], [90, 120], [120, Infinity]];
+
+/**
+ * The run summary's evidence on the feed's period (ADR 0042): for the games under way, how many hold each raw
+ * summary.period value in each band of minutes since kickoff ("0-30: 1 x4, 2 x1; 30-60: ..."). Never a team or a score.
+ * A trustworthy period would climb with the minutes (1 early, 4 late); on Nov 13, 2026 it did not.
+ */
+export function periodByMinutes(items, now = new Date()) {
+  const bands = MINUTE_BUCKETS.map(([lo, hi]) => ({ name: hi === Infinity ? `${lo}+` : `${lo}-${hi}`, lo, hi, counts: new Map() }));
+  for (const item of items.filter(isLive)) {
+    const kickoff = Date.parse(String(item?.scheduledKickoff ?? ""));
+    if (Number.isNaN(kickoff)) continue;
+    const minutes = (now.getTime() - kickoff) / 60_000;
+    const band = bands.find((b) => minutes >= b.lo && minutes < b.hi);
+    if (!band) continue;
+    const p = item?.summary?.period;
+    const value = p === null || p === undefined ? "none" : String(p).replace(/[^A-Za-z0-9 ]/g, "").slice(0, 12) || "other";
+    band.counts.set(value, (band.counts.get(value) ?? 0) + 1);
+  }
+  const used = bands.filter((b) => b.counts.size);
+  if (!used.length) return "no game under way";
+  return used.map((b) => `${b.name} min: ${[...b.counts].sort(([x], [y]) => x.localeCompare(y)).map(([v, n]) => `${v} x${n}`).join(", ")}`).join("; ");
+}
+
+/**
+ * The read sees the game in the fourth quarter or later (ADR 0043): the feed's raw period is 4 or more, or 2 hours have
+ * passed since kickoff. A game with no kickoff goes by the period alone. The raw period is used only here, never stored
+ * or shown (ADR 0042). live_scores() calls a late game whose score has not changed for 60 minutes final (migration 0020).
+ */
+export const LATE_AFTER_MS = 2 * 3600_000;
+export function isLate(item, now = new Date()) {
+  const p = Number(item?.summary?.period);
+  if (Number.isFinite(p) && p >= 4) return true;
+  const kickoff = Date.parse(String(item?.scheduledKickoff ?? ""));
+  return !Number.isNaN(kickoff) && now.getTime() - kickoff >= LATE_AFTER_MS;
 }
 
 /** A game under way: the feed's status says live, in progress or halftime (any case, spaces or dashes). */
@@ -125,18 +174,25 @@ export function sameSchool(schoolName, ourSlug) {
  * Tonight's games under way as live rows (packages/db/live.mjs): games of `date` (Central) that are one of tonight's
  * still-unscored bracket games (`due`). A team is ours by the map (`ours`: their slug to our slug); when only one team is
  * mapped, the other is that team's opponent in tonight's bracket row, and only if the feed's school name matches it.
- * Scores are set in the bracket row's own home and away order. Skipped: a forfeit, a score outside 0 to 200, and a 0-0
- * with no period (a game may list 0-0 before kickoff). One row a game.
+ * Scores are set in the bracket row's own home and away order. A game the feed calls finished (Final, Completed or
+ * Finished) is kept with its last score and `finished: true` (ADR 0042): pages show it as "Final" (ADR 0043) until our
+ * own final is read, which takes it off tonight's due list. A game in the fourth quarter or later (isLate) carries
+ * `late: true`, so live_scores() can call it final once its score sits unchanged for an hour (ADR 0043).
+ * Skipped: a forfeit, a score outside 0 to 200, a 0-0
+ * (a game may list 0-0 before kickoff, and the period that would tell is not trusted) and a finished 0-0. No row carries a
+ * period: the feed's lagged the score on Nov 13, 2026 (ADR 0042), so pages say "Live" with no quarter. One row a game.
  */
 export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() }) {
   const rows = new Map();
   for (const m of matchTonight(items, { date, due, ours })) {
     const { item, key, row, h, a, hs, as } = m;
-    if (!isLive(item) || rows.has(key) || h.forfeited === true || a.forfeited === true) continue;
+    const finished = !isLive(item) && isFinal(item);
+    if (!(isLive(item) || finished) || rows.has(key) || isForfeit(item)) continue;
     const [hScore, aScore] = [score(h.score ?? item.summary?.homeScore), score(a.score ?? item.summary?.awayScore)];
     if (hScore === null || aScore === null) continue;
-    const period = periodLabel(item.summary);
-    if (hScore === 0 && aScore === 0 && !period) continue;
+    // The feed's period is not trusted (ADR 0042): never stored. See periodByMinutes for the evidence log.
+    const period = null;
+    if (hScore === 0 && aScore === 0) continue;
     // The bracket row's home and away, whatever the feed calls them.
     const flip = slugify(row.home) !== hs;
     rows.set(key, {
@@ -146,6 +202,8 @@ export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() 
       home_score: flip ? aScore : hScore,
       away_score: flip ? hScore : aScore,
       period,
+      ...(finished && { finished: true }),
+      ...(isLate(item, readAt) && { late: true }),
       read_at: readAt.toISOString(),
     });
   }
@@ -197,12 +255,22 @@ export function matchGames(items, { rows, ours }) {
 
 /**
  * Both sources' rows for tonight, one per game. Scores only go up during a game, so the row with the higher total is
- * the newer read; on a tie, the one that knows the period. Neither row names a winner, and every live score stays
- * unconfirmed on the site.
+ * the newer read; on a tie, the one that says finished, then the one that knows the period. Neither row names a winner,
+ * and every live score stays unconfirmed on the site.
  */
 export function mergeLive(first, second) {
   const total = (r) => r.home_score + r.away_score;
-  const better = (x, y) => (total(y) > total(x) || (total(y) === total(x) && !x.period && y.period) ? y : x);
+  const rank = (r) => [total(r), r.finished === true ? 1 : 0, r.period ? 1 : 0];
+  const ahead = (x, y) => {
+    const [a, b] = [rank(x), rank(y)];
+    const i = a.findIndex((v, n) => v !== b[n]);
+    return i >= 0 && b[i] > a[i];
+  };
+  // Late (ADR 0043) if either source's read says so: the MaxPreps rows never carry it.
+  const better = (x, y) => {
+    const row = ahead(x, y) ? y : x;
+    return x.late === true || y.late === true ? { ...row, late: true } : row;
+  };
   const byKey = new Map(first.map((r) => [r.game_key, r]));
   for (const r of second) byKey.set(r.game_key, byKey.has(r.game_key) ? better(byKey.get(r.game_key), r) : r);
   return [...byKey.values()].sort((x, y) => x.game_key.localeCompare(y.game_key));
@@ -470,7 +538,8 @@ async function live() {
   // Games listed but none of tonight's found: the item shape (names only) shows whether matching or the feed changed.
   if (items.length && !seen.size) console.warn(`none of tonight's games matched; a listed game looks like ${shapeOf(items[0])}`);
   const unmapped = due.filter((r) => !theirs.has(slugify(r.home)) && !theirs.has(slugify(r.away))).length;
-  summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.length} under way.`);
+  summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.filter((r) => !r.finished).length} under way, ${rows.filter((r) => r.finished).length} finished.`);
+  summary(`Second source's period (not shown on pages) by minutes since kickoff, games under way: ${periodByMinutes(items)}.`);
 }
 
 // ---- Past seasons (ADR 0032: the same permission, which the owner confirmed covers past seasons) ----
@@ -692,8 +761,286 @@ async function team() {
     const items = Array.isArray(data?.items) ? data.items : [];
     const statuses = [...new Set(items.map((x) => x?.status ?? x?.summary?.status))].join(", ");
     console.log(`query "${q.split("=")[0] || "season only"}": ${items.length} items, total ${data?.totalElements}, pages ${data?.totalPages}, page ${data?.page}, size ${data?.size}, statuses: ${statuses}`);
+    // A game item's field names, three levels deep, never a value: what the feed can say about a game (its site, for one).
+    if (q && items.length) console.log(`a game item's fields: ${shapeOf(items[0], 3)}`);
   }
 }
 
-const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team };
+// Game details (ADR 0036, ADR 0041): the feed's scheduled kickoff, in UTC, and its site (the venue's name and city) for every
+// bracket game with no score yet, kept in the public facts file data/seed/game-details/<year>.csv. The file names no source:
+// date, the two teams as the bracket spells them, the kickoff and the site.
+export const DETAIL_COLUMNS = "date,home,away,kickoff_utc,site_name,site_city";
+const kickoffKey = (date, home, away) => gameKey(date, slugify(home), slugify(away));
+
+/** A venue's name or city as the facts file keeps it: plain words (letters, digits, spaces and . ' & ( ) / -), a comma
+ * read as " - " (the file has no quoting), at most `max` characters; anything else is "" (not known), never a guess. */
+export function siteText(value, max) {
+  if (typeof value !== "string") return "";
+  const t = value.replace(/\s*,\s*/g, " - ").replace(/\s+/g, " ").trim();
+  return t.length <= max && /^[\p{L}\p{N} .'&()/-]+$/u.test(t) ? t : "";
+}
+
+/** The kickoff and site of each `due` bracket row the feed lists, as a facts row; a row the feed does not list is left out.
+ * The site is the feed's venue: its location name (else its site label) and city, each blank when the feed has none
+ * (ADR 0041). Nothing else of the venue is kept: no address, coordinates or postal code. */
+export function kickoffRows(items, { due, ours }) {
+  return matchGames(items, { rows: due, ours }).map(({ item, row }) => {
+    const name = siteText(item.venue?.locationName, 80) || siteText(item.venue?.siteLabel, 80);
+    return {
+      date: row.game_date,
+      home: row.home,
+      away: row.away,
+      kickoff_utc: new Date(item.scheduledKickoff).toISOString().replace(/\.\d{3}Z$/, "Z"),
+      site_name: name,
+      // A city with no name is not a site.
+      site_city: name ? siteText(item.venue?.city, 60) : "",
+    };
+  });
+}
+
+/** The facts file with `fresh` rows laid over the kept ones, field by field: a filled value is never overwritten (ADR 0041),
+ * so a fresh value only fills a blank; other kept rows stay. */
+export function mergeKickoffs(text, fresh) {
+  const kept = text.trim() ? parseCsv(text, "game details").rows : [];
+  const out = new Map(kept.map((r) => [kickoffKey(r.date, r.home, r.away), r]));
+  for (const r of fresh) {
+    const k = kickoffKey(r.date, r.home, r.away);
+    const old = out.get(k) ?? {};
+    out.set(k, Object.fromEntries(DETAIL_COLUMNS.split(",").map((c) => [c, old[c] || r[c] || ""])));
+  }
+  const rows = [...out.values()].sort((a, b) => a.kickoff_utc.localeCompare(b.kickoff_utc) || a.home.localeCompare(b.home));
+  const cols = DETAIL_COLUMNS.split(",");
+  for (const r of rows) if (cols.some((c) => r[c].includes(","))) throw new Error(`a comma in a game detail: ${r.date} ${r.home} / ${r.away}`);
+  return [DETAIL_COLUMNS, ...rows.map((r) => cols.map((c) => r[c]).join(","))].join("\n") + "\n";
+}
+
+async function kickoffs() {
+  const arg = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : null);
+  const playoffsFile = arg("--kickoffs");
+  const out = arg("--out");
+  if (!playoffsFile || !out) throw new Error("usage: davecampbells.mjs --kickoffs <playoffs.csv> --out <data/seed/game-details/YYYY.csv>");
+  const today = centralDate();
+  const seasonId = SEASON_IDS[Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1)];
+  if (!seasonId) return console.log("Kickoffs: no feed season id for this season, nothing read.");
+  const due = parseCsv(readFileSync(playoffsFile, "utf8"), "playoffs.csv").rows.filter((r) => r.home_score === "" && r.game_date >= today);
+  if (!due.length) return console.log("Kickoffs: no bracket game still to play.");
+  const { theirs, ours } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
+  // One mapped team a game is enough: its schedule lists the game.
+  const teams = [...new Set(due.map((r) => theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away))).filter(Boolean))];
+  const client = createClient();
+  const items = [];
+  for (const t of teams) {
+    const id = await teamId(client, t, seasonId);
+    if (id) items.push(...(await liveAndUpcoming(client, seasonId, id)));
+  }
+  const fresh = kickoffRows(items, { due, ours });
+  const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh);
+  writeFileSync(out, merged);
+  const sites = fresh.filter((r) => r.site_name).length;
+  console.log(`Kickoffs: ${due.length} bracket games still to play, ${teams.length} teams read, ${fresh.length} kickoff times found, ${sites} with a site.`);
+  console.log(missingDetails(due, merged));
+  // The feed's bracket positions against UIL's bracket (ADR 0047): a misfit means the bracket file or a listing is wrong.
+  const season = Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1);
+  const { checked, misfits } = positionProblems(matchGames(items, { rows: due, ours }), uilStructure(season));
+  if (!misfits.length) console.log(`Bracket positions: ${checked} UIL game(s) the feed places, all fit UIL's bracket.`);
+  else {
+    const line = `Bracket positions: ${misfits.length} of ${checked} UIL game(s) the feed places do not fit UIL's bracket (${misfits.join(", ")}).`;
+    console.log(line);
+    raise(line);
+  }
+}
+
+// ---- UIL bracket positions (ADR 0047) ----
+
+/** The first game code of each UIL round, as UIL's bracket numbers them: bi-district G1 to G16, area G17 to G24, regional
+ * ("quarterfinals" on the bracket) G25 to G28, semifinals G29 and G30, the final G31. */
+const FIRST_CODE = [[/bi-?district/i, 0], [/area/i, 16], [/regional|quarter/i, 24], [/semi/i, 28], [/state|final|champ/i, 30]];
+
+/**
+ * The feed's own bracket position of each UIL game it lists, checked against UIL's bracket file
+ * (data/seed/uil-<span>/bracket-<year>.csv): a game the feed puts at position k of a round must be a pairing of that
+ * round's slot G(first + k), its two teams from the slot's two sides. `matched`: matchGames' { item, row } pairs.
+ * Returns the count checked and each misfit as "UIL <division> G<n>", never a school (the line goes to public logs).
+ */
+export function positionProblems(matched, structure) {
+  const byDivision = Map.groupBy(structure, (r) => r.division);
+  const under = (rows, side, seen = new Set()) => {
+    if (!side.startsWith("winner:")) return side === "bye" ? [] : [side];
+    const r = rows.find((x) => x.slot === side.slice("winner:".length));
+    if (!r || seen.has(r.slot)) return [];
+    seen.add(r.slot);
+    return [...under(rows, r.a, seen), ...under(rows, r.b, seen)];
+  };
+  let checked = 0;
+  const misfits = [];
+  for (const { item, row } of matched) {
+    const rows = row.league === "UIL" && byDivision.get(row.division);
+    const position = Number(item?.playoffBracketPosition);
+    const first = FIRST_CODE.find(([re]) => re.test(String(item?.playoffRound ?? "")))?.[1];
+    if (!rows || !Number.isInteger(position) || position < 1 || first == null) continue;
+    checked++;
+    const code = `G${first + position}`;
+    const slot = rows.find((r) => r.slot === code);
+    const [a, b] = slot ? [new Set(under(rows, slot.a)), new Set(under(rows, slot.b))] : [new Set(), new Set()];
+    const fits = (a.has(row.home) && b.has(row.away)) || (a.has(row.away) && b.has(row.home));
+    if (!fits) misfits.push(`UIL ${row.division} ${code}`);
+  }
+  return { checked, misfits };
+}
+
+/** UIL's bracket files for a season, every span folder's (data/seed/uil-<span>/bracket-<year>.csv). */
+function uilStructure(season) {
+  const seed = fileURLToPath(new URL("../../data/seed", import.meta.url));
+  return readdirSync(seed)
+    .filter((d) => /^uil-\d{4}-\d{2}$/.test(d) && existsSync(path.join(seed, d, `bracket-${season}.csv`)))
+    .flatMap((d) => parseCsv(readFileSync(path.join(seed, d, `bracket-${season}.csv`), "utf8"), "UIL bracket").rows);
+}
+
+/** What the facts file still lacks for the bracket games still to play, counted by league and never naming a school (the
+ * line goes to public run logs): "Still missing: a kickoff 21 (TAIAO 11, TAPPS 9, TCAF 1); a site 25 (...)". */
+export function missingDetails(due, text) {
+  const kept = text.trim() ? parseCsv(text, "game details").rows : [];
+  const known = new Map(kept.map((r) => [kickoffKey(r.date, r.home, r.away), r]));
+  const count = (field) => {
+    const by = new Map();
+    for (const r of due) if (!known.get(kickoffKey(r.game_date, r.home, r.away))?.[field]) by.set(r.league, (by.get(r.league) ?? 0) + 1);
+    const total = [...by.values()].reduce((a, b) => a + b, 0);
+    const leagues = [...by].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([l, n]) => `${l} ${n}`);
+    return total ? `${total} (${leagues.join(", ")})` : "0";
+  };
+  return `Still missing: a kickoff ${count("kickoff_utc")}; a site ${count("site_name")}.`;
+}
+
+/** `--merge-details <fresh.csv> --out <file>`: lays a facts file read earlier in the run over `out` with the same never-
+ * overwrite rule (mergeKickoffs). No network: the Results watch reads the feed before its commit step resets to the newest
+ * main, then merges what it read into that main's file, so a value filled there meanwhile is kept. */
+function mergeDetails() {
+  const arg = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : null);
+  const from = arg("--merge-details");
+  const out = arg("--out");
+  if (!from || !out) throw new Error("usage: davecampbells.mjs --merge-details <fresh.csv> --out <data/seed/game-details/YYYY.csv>");
+  const fresh = readFileSync(from, "utf8");
+  writeFileSync(out, mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh.trim() ? parseCsv(fresh, "game details").rows : []));
+}
+
+/** A mapped team's opponents in its games (`items`), one row a team slug (or a name, for one with no team page): the slug and the feed's school name, for finding a
+ * map row by hand (ADR 0025). Never a score, a ranking or a `winner` field. */
+export function opponentRows(items, theirSlug) {
+  const out = new Map();
+  for (const item of items) {
+    for (const p of Array.isArray(item?.participants) ? item.participants : []) {
+      const slug = teamSlugOf(p?.websiteUrl) ?? "";
+      const school = typeof p?.schoolName === "string" ? p.schoolName : "";
+      // An opponent with no team page is listed by its name, with a blank slug: the feed has the game but no team to map.
+      const key = slug || `name:${school}`;
+      if ((slug || school) && slug !== theirSlug && !out.has(key)) out.set(key, { slug, school });
+    }
+  }
+  return [...out.values()].sort((a, b) => a.slug.localeCompare(b.slug) || a.school.localeCompare(b.school));
+}
+
+/** The name and place words of a team's answer, two levels deep: each string field whose name says name, city, town,
+ * location or state, as "path: value". Nothing else of the answer is shown (field names come from shapeOf). */
+export function placeFields(value, prefix = "", depth = 2) {
+  if (!value || typeof value !== "object" || depth < 0) return [];
+  return Object.entries(value).flatMap(([k, v]) => {
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (typeof v === "string") return /name|city|town|location|state/i.test(k) && !/url|image|logo/i.test(k) ? [`${key}: ${v}`] : [];
+    return v && typeof v === "object" && !Array.isArray(v) ? placeFields(v, key, depth - 1) : [];
+  });
+}
+
+/** `--opponents <year> <their slug> [--about <slug,slug>]`: a mapped team's opponents (slug and school name) from its season's
+ * games, and for each `--about` slug the team answer's name and place fields: how a new map row is checked against a
+ * program's name and town before it is added by hand. Prints only; nothing is saved. */
+async function opponents() {
+  const i = process.argv.indexOf("--opponents");
+  const [year, theirSlug] = [Number(process.argv[i + 1]), process.argv[i + 2]];
+  const about = (process.argv.includes("--about") ? process.argv[process.argv.indexOf("--about") + 1] : "").split(",").filter((s) => /^[a-z0-9-]+$/.test(s));
+  if (!Number.isInteger(year) || !/^[a-z0-9-]+$/.test(theirSlug ?? "")) throw new Error("usage: davecampbells.mjs --opponents <year> <their team slug> [--about <slug,slug>]");
+  const client = createClient();
+  const seasonId = footballSeasons(await client.getData("/api/public/seasons")).get(year);
+  const id = seasonId && (await teamId(client, theirSlug, seasonId));
+  if (!id) return console.log(`${year} ${theirSlug}: no season or team id`);
+  for (const r of opponentRows(await liveAndUpcoming(client, seasonId, id), theirSlug)) console.log(`${r.slug} | ${r.school}`);
+  for (const slug of about) {
+    const t = await client.getData(`/api/public/teams/${encodeURIComponent(slug)}?seasonId=${encodeURIComponent(seasonId)}`);
+    console.log(`about ${slug}: ${t ? placeFields(t).join(" | ") || `no name or place fields (${shapeOf(t, 2)})` : "no answer"}`);
+  }
+}
+
+/** A playoff game's bracket fields as the feed gives them, never a score: date (Central), the two school names, and the
+ * phase, round, bracket position, event text and seeds. How the bracket structure is checked by hand. */
+export const bracketFields = (item) => [
+  item?.scheduledKickoff ? centralDate(new Date(item.scheduledKickoff)) : "no date",
+  (item?.participants ?? []).map((p) => `${p?.schoolName ?? "?"} (${p?.participantType ?? "?"}, seed ${p?.seed ?? "-"})`).join(" v "),
+  `phase ${item?.seasonPhase ?? "-"}`, `round ${item?.playoffRound ?? "-"}`, `position ${item?.playoffBracketPosition ?? "-"}`,
+  `event ${item?.eventDescription ?? "-"}`, `status ${item?.status ?? "-"}`,
+].join(" | ");
+
+/** `--bracket-fields <year> <their slug>...`: each team's playoff games' bracket fields (bracketFields). Prints only. */
+async function bracketFieldsMode() {
+  const i = process.argv.indexOf("--bracket-fields");
+  let [year, ...slugs] = [Number(process.argv[i + 1]), ...process.argv.slice(i + 2)];
+  // --from <playoffs.csv>: one mapped team of each first-round game of every bracket (each game is read once; later rounds
+  // come with the winners' own lists).
+  const from = slugs[0] === "--from" ? slugs[1] : null;
+  if (from) {
+    const { theirs } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
+    const rows = csvRows(readFileSync(from, "utf8"));
+    const first = new Map();
+    for (const r of rows) {
+      const k = `${r.league}|${r.division}`;
+      if (!first.has(k)) first.set(k, r.round);
+    }
+    slugs = [...new Set(rows.filter((r) => first.get(`${r.league}|${r.division}`) === r.round).flatMap((r) => {
+      const t = theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away));
+      if (!t) console.log(`unmapped: ${r.league} ${r.division} ${r.round} ${r.away} v ${r.home}`);
+      return t ? [t] : [];
+    }))];
+  }
+  if (!Number.isInteger(year) || !slugs.length || !slugs.every((s) => /^[a-z0-9-]+$/.test(s))) throw new Error("usage: davecampbells.mjs --bracket-fields <year> (<their slug>... | --from <playoffs.csv>)");
+  const client = createClient();
+  const seasonId = footballSeasons(await client.getData("/api/public/seasons")).get(year);
+  for (const slug of slugs) {
+    const id = seasonId && (await teamId(client, slug, seasonId));
+    if (!id) { console.log(`${slug}: no team id`); continue; }
+    const items = (await liveAndUpcoming(client, seasonId, id)).filter((x) => x?.seasonPhase && !/regular/i.test(String(x.seasonPhase)) || x?.playoffRound != null);
+    console.log(`${slug}: ${items.length} playoff game(s)`);
+    for (const x of items) console.log(`  ${bracketFields(x)}`);
+  }
+}
+
+/** A team's games on one Central date (`items`), as lines: status, then each side's school name, score and forfeit flag.
+ * Never a spread, ranking, poll or `winner` field. */
+export function gamesOnLines(items, date) {
+  return items
+    .filter((item) => item?.scheduledKickoff && (date === "all" || centralDate(new Date(item.scheduledKickoff)) === date))
+    .map((item) => {
+      const parts = Array.isArray(item.participants) ? item.participants : [];
+      const side = (type) => {
+        const p = parts.find((x) => x?.participantType === type);
+        return p ? `${type} ${p.schoolName ?? "?"} ${score(p.score) ?? "-"}${p.forfeited === true ? " (forfeited)" : ""}` : `${type} ?`;
+      };
+      return `${centralDate(new Date(item.scheduledKickoff))} | ${item.status ?? item.summary?.status ?? "?"} | ${side("AWAY")} | ${side("HOME")}`;
+    });
+}
+
+/** `--games-on <year> <their slug> <YYYY-MM-DD>`: one team's games on a Central date, its final or how far it got. Prints
+ * only; nothing is saved. */
+async function gamesOn() {
+  const i = process.argv.indexOf("--games-on");
+  const [year, theirSlug, date] = [Number(process.argv[i + 1]), process.argv[i + 2], process.argv[i + 3]];
+  if (!Number.isInteger(year) || !/^[a-z0-9-]+$/.test(theirSlug ?? "") || !/^(\d{4}-\d{2}-\d{2}|all)$/.test(date ?? "")) {
+    throw new Error("usage: davecampbells.mjs --games-on <year> <their team slug> <YYYY-MM-DD|all>");
+  }
+  const client = createClient();
+  const seasonId = footballSeasons(await client.getData("/api/public/seasons")).get(year);
+  const id = seasonId && (await teamId(client, theirSlug, seasonId));
+  if (!id) return console.log(`${year} ${theirSlug}: no season or team id`);
+  const lines = gamesOnLines(await liveAndUpcoming(client, seasonId, id), date);
+  console.log(lines.length ? lines.join("\n") : `${theirSlug}: no game on ${date}`);
+}
+
+const MODES = { "--finals": finals, "--bracket-fields": bracketFieldsMode, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents, "--games-on": gamesOn };
 if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(Object.entries(MODES).find(([f]) => process.argv.includes(f))?.[1] ?? live);

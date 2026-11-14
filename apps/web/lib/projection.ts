@@ -3,7 +3,7 @@ import { slugify } from "./slug";
 
 // A projected margin and win probability for a game not yet played, from the same model as /rankings: the rating
 // difference, plus the home-field edge unless the site is neutral, turned into a calibrated win probability.
-// The words are projected margin and win probability (plan hard rules); never spreads, lines or odds.
+// The words are projected margin and chance to win (ADR 0045); never spreads, lines or odds.
 
 /** Standard normal CDF (Abramowitz and Stegun 7.1.26, error under 1.5e-7). */
 export function normalCdf(z: number): number {
@@ -53,16 +53,16 @@ export function project(table: RatingsTable, home: string, away: string, neutral
 /** A chance as a percent: never 100% or 0%. */
 export const chanceText = (p: number) => (p > 0.99 ? ">99%" : p < 0.01 ? "<1%" : `${Math.round(p * 100)}%`);
 
-/** The two halves of the text: "Jayton by 12" and "74% win probability". A margin past 45 reads "by 45+", since the
+/** The two halves of the text: "Jayton by 12" and "74% chance to win" (the favorite's). A margin past 45 reads "by 45+", since the
  * game would end there; one that rounds to 0 reads "by less than 1", never a margin the win probability contradicts. */
 export function projectionParts({ favorite, margin, winProbability }: Projection): { margin: string; chance: string } {
   const by = margin >= 45 ? "45+" : margin < 0.5 ? "less than 1" : String(Math.round(margin));
   // ">99%" is earned: in the walk-forward backtest (2022 to 2026) the favorite won 99.6% of the 695 games the calibrated
   // chance put at 99% or more (data/ratings/backtest.json, calibration.bands_calibrated). Nothing is ever shown as 100%.
-  return { margin: `${favorite} by ${by}`, chance: `${chanceText(winProbability)} win probability` };
+  return { margin: `${favorite} by ${by}`, chance: `${chanceText(winProbability)} chance to win` };
 }
 
-/** "Jayton by 12 · 74% win probability". */
+/** "Jayton by 12 · 74% chance to win". */
 export function projectionText(p: Projection): string {
   const { margin, chance } = projectionParts(p);
   return `${margin} · ${chance}`;

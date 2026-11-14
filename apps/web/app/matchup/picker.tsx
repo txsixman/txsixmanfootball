@@ -141,7 +141,6 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
                       );
                     })}
                   </ul>
-                  <p className="mt-1 text-[13px] text-muted">Scores are not confirmed here.</p>
                 </>
               ) : (
                 <p className="mt-1 text-[15px] text-muted">No games between them in the seasons on this site.</p>

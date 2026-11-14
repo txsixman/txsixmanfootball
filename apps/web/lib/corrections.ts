@@ -8,7 +8,7 @@ import type { GameCorrectionRow, ProgramMergeRow } from "./data-schemas";
 //   merge   a name some game file spells that no alignment lists → the listed program it is. Applied first, to every
 //           team name in every game row (and in the game corrections' own names), so everything downstream sees one name.
 //   game    one row per game (the LAST row for a game wins): `score`/`forfeit` set the score, `void` drops the game.
-//           A corrected game is never "confirmed" (ADR 0011): `corrected` marks it, and pages call it unconfirmed.
+//           A corrected final is confirmed like any final (ADR 0040, superseding ADR 0011 there); `corrected` marks it.
 
 export type GameCorrection = z.output<typeof GameCorrectionRow>;
 export type ProgramMerge = z.output<typeof ProgramMergeRow>;
