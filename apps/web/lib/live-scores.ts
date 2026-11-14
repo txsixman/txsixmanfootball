@@ -118,7 +118,6 @@ type BoardGame = {
   verification: "confirmed" | "unconfirmed" | "disputed" | "none";
   projected?: string;
   projectedMargin?: number;
-  upset?: boolean;
 };
 
 /**
@@ -138,6 +137,5 @@ export function asLive<G extends BoardGame>(g: G, live: LiveView): G {
     homeScore: live.home.score,
     awayScore: live.away.score,
     verification: live.finished ? "confirmed" : "unconfirmed",
-    upset: undefined,
   };
 }

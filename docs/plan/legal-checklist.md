@@ -34,7 +34,7 @@ before the review (plan 11.1).
 
 ## Built into the product already (show the attorney)
 - No birth dates, contact details, player rankings or precise location for minors; no direct messages (CLAUDE.md).
-- No betting language: rating, projected margin and win probability only; no ads or affiliate links for betting.
+- No betting language: rating, projected margin and chance to win only (ADR 0045); no ads or affiliate links for betting.
 - Only a confirmed final names a winner (ADR 0004).
 - Row-level security on every table; `audit_log` append-only; score submissions never deleted.
 - WCAG 2.1 AA checked by axe on every page test.

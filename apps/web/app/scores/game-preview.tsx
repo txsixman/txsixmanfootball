@@ -6,7 +6,7 @@ import { MeetingsList } from "./game-extras";
 import { FIRST_SEASON } from "@/lib/season";
 
 // The preview on a game not yet played (/scores/<id>): both teams side by side, their games against each other since
-// FIRST_SEASON, and the opponents both met this season. Words are rating, projected margin and win probability, and nothing here
+// FIRST_SEASON, and the opponents both met this season. Words are rating, projected margin and chance to win, and nothing here
 // names a winner or says how a game went: robot-read scores are unconfirmed (ADR 0004, ADR 0013), shown as scores only,
 // and a forfeit is the word. `programs` maps a school's name to its program page, for the schools our alignments list.
 
