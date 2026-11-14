@@ -50,6 +50,11 @@ test("a played playoff game shows its week-before projection beside its final, o
   expect(lines.join(" ").replace(/chance to win/g, "")).not.toMatch(BETTING);
 
   const row = page.locator("li[data-game]").filter({ has: page.locator("[data-projected]", { hasText: / · Final: / }) }).first();
+  // The board's games change with the season: before the first playoff final there is none to check.
+  if (!(await row.count())) {
+    console.log("skipped: no played playoff game with a projection on /scores yet");
+    test.skip(true, "no played playoff game with a projection on /scores yet");
+  }
   const id = (await row.getAttribute("data-game"))!;
   const shown = await row.locator("[data-projected]").textContent();
   const f = await expected(id);
@@ -69,13 +74,35 @@ test("Results rows show each game's projection beside its outcome", async ({ pag
   await expect(page.getByText(/upset/i)).toHaveCount(0);
 });
 
-test("a program's season page and its current page show each projection beside the outcome", async ({ page }) => {
-  await page.goto("/programs/jayton/2025");
-  const past = await page.locator("[data-projected]").allTextContents();
-  expect(past.length).toBeGreaterThan(0);
-  for (const line of past) expect(line).toMatch(PLAYED);
+/** A program with a played game that has a projection in `season`, picked from the data, never a named team. */
+const programWithProjected = (season: number) =>
+  inWeb(async () => {
+    const { loadAlignments, programFor } = await import("../lib/alignments");
+    const { loadSeasonResults } = await import("../lib/games");
+    const { shownBefore } = await import("../lib/pregame");
+    const [all, results, { before }] = await Promise.all([loadAlignments(), loadSeasonResults(season), shownBefore(season)]);
+    for (const r of results) {
+      const slug = before.has(r.id) && programFor(all, r.home)?.slug;
+      if (slug) return slug;
+    }
+    return undefined;
+  });
 
-  await page.goto("/programs/jayton");
+test("a program's season page and its current page show each projection beside the outcome", async ({ page }) => {
+  const { CURRENT_SEASON } = await import("../lib/season");
+  const past = await programWithProjected(2025);
+  expect(past, "a 2025 program with a projected game").toBeTruthy();
+  await page.goto(`/programs/${past}/2025`);
+  const then = await page.locator("[data-projected]").allTextContents();
+  expect(then.length).toBeGreaterThan(0);
+  for (const line of then) expect(line).toMatch(PLAYED);
+
+  const current = await programWithProjected(CURRENT_SEASON);
+  if (!current) {
+    console.log(`skipped: no ${CURRENT_SEASON} program with a played, projected game yet`);
+    test.skip(true, `no ${CURRENT_SEASON} program with a played, projected game yet`);
+  }
+  await page.goto(`/programs/${current}`);
   const now = await page.locator("[data-projected]").allTextContents();
   expect(now.length).toBeGreaterThan(0);
   for (const line of now) expect(line).toMatch(EITHER);
