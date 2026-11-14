@@ -1,6 +1,7 @@
 // Results watch's commit (commit-results.sh) against local bare repos standing in for both remotes. `node` (publish,
 // data checks) and `uv` (rerate) are stubs first on PATH: publish copies the private games.csv into data/seed, the
-// rerate writes a ratings file from it, and the data checks pass or write an integrity report as a test says.
+// rerate writes a ratings file from it, and the data checks pass or write an integrity report as a test says. The merge
+// of the reader's folder onto the private main (remerge.mjs) is the real script, run by the real node.
 //   node --test .github/scripts/*.test.mjs
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -10,6 +11,7 @@ import path from "node:path";
 import { test } from "node:test";
 
 const SCRIPT = path.join(import.meta.dirname, "commit-results.sh");
+const REPO = path.resolve(import.meta.dirname, "../..");
 const YEAR = "2026";
 const DIR = `maxpreps-${YEAR}`;
 const HEADER = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period";
@@ -62,6 +64,7 @@ function setup() {
   exe(path.join(bin, "node"), `#!/usr/bin/env bash
 case "$1" in
   tools/league-watch/publish.mjs) mkdir -p "$3" && cp "$2/games.csv" "$3/games.csv" ;;
+  tools/league-watch/remerge.mjs) exec "${process.execPath}" "${REPO}/$1" "\${@:2}" ;;
   tools/league-watch/davecampbells.mjs) [ "$2" = --merge-details ] && [ "$4" = --out ] && cp "$3" "$5" ;;
   apps/web/scripts/check-data.mjs)
     if [ -n "\${STUB_INTEGRITY:-}" ]; then echo "$STUB_INTEGRITY" >> "$INTEGRITY_REPORT"; fi
@@ -153,6 +156,28 @@ test("the public push fails three times: exit 1, nothing on public main, the pri
   assert.deepEqual(remoteLog(t, "public"), ["ignore", "start"]);
   assert.match(remoteLog(t, "private")[0], /^Results and ratings from MaxPreps/);
   assert.equal(r.output, "");
+});
+
+test("a commit someone else made to the private maxpreps folder during the run is kept, and the run's new capture goes in beside it", () => {
+  const t = setup();
+  newCapture(t);
+  // Another clone lands a hand fill in the same folder after this run's checkout (the run's private/ is still at "start").
+  const elsewhere = path.join(t.root, "elsewhere-hand");
+  git(t.root, "clone", "-q", path.join(t.root, "private.git"), elsewhere);
+  const handFill = `${HEADER}\nI,season,2026-09-04,Jayton,Guthrie,false,52,6,unknown,\nI,season,2026-09-18,Lark,Wren,false,14,12,unknown,\n`;
+  write(path.join(elsewhere, DIR, "games.csv"), handFill);
+  git(elsewhere, "add", ".");
+  git(elsewhere, "commit", "-q", "-m", "a hand fill");
+  git(elsewhere, "push", "-q", "origin", "HEAD:main");
+  const r = run(t);
+  assert.equal(r.status, 0, r.stderr);
+  const games = remoteFile(t, "private", `${DIR}/games.csv`);
+  assert.match(games, /Lark,Wren,false,14,12/, "the hand fill survives");
+  assert.match(games, /Kress,Spur,false,30,40/, "the run's capture is in");
+  assert.match(games, /Jayton,Guthrie/);
+  assert.match(r.summary, /merged onto it, not copied over it/);
+  assert.deepEqual(remoteLog(t, "private").slice(0, 2), [remoteLog(t, "private")[0], "a hand fill"]);
+  assert.match(remoteFile(t, "public", `data/seed/${DIR}/games.csv`), /Lark,Wren/);
 });
 
 test("the private token reaches only fetch and push on private/, by environment, and is never stored or printed", () => {
