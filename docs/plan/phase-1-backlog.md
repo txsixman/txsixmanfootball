@@ -18,6 +18,17 @@ Ordered by what unblocks the most. Hours are rough, for one person with Claude C
 
 About 72 hours. At 10 hours a week the phase has about 100.
 
+## Found in the data audit (Nov 14, 2026)
+- **Missing private-league bracket games**: some TAPPS, TAIAO and TCAF playoff games of past seasons are not in the
+  playoff files (for example San Marcos Academy's 2021 TAPPS Division I games), because a past season reads only the
+  schools in today's alignments. Find them from the schedule pages of the schools that are listed, with the bracket's
+  later rounds as the check.
+- **Same pair and score, more than 2 days apart**: five likely copies the duplicate rule (2 days) does not catch
+  (2018 Veribest at Bronte, 2019 McLean and White Deer, 2021 Rule at Throckmorton, 2024 Abbott and Aquilla, 2025 Ira at
+  Robert Lee). Each needs a reviewed void with evidence, not a wider rule.
+- **Same-night doubles kept as known exceptions** (`data/integrity-exceptions.json`): 2018 Rotan and Rankin, 2020
+  Lorenzo, 2022 Christian Heritage Classical, 2026 Logos Prep. Void the wrong game once a source says which.
+
 ## Moved out of Phase 1
 - **Score-entry form**: the plan puts score entry in Phase 3 (reporter app, web form, SMS). A form before then has no
   reporters to use it. Until then games enter through the capture files.

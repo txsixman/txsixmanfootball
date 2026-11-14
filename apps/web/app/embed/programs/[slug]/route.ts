@@ -38,7 +38,7 @@ async function crestFor(school: string, identity: Identity): Promise<EmbedCrest>
   return { kind: "badge", text: initials(school), bg, fg, stripe };
 }
 
-const game = (r: Row): EmbedGame => ({ status: r.status, home: r.home, opponent: r.opponent, score: r.score, note: r.score ? undefined : r.note });
+const game = (r: Row): EmbedGame => ({ status: r.status, home: r.home, opponent: r.opponent, score: r.score, note: r.score ? undefined : r.note, playoff: r.playoff });
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

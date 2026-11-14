@@ -134,7 +134,7 @@ function Scorecard({ scorecard }: { scorecard: Backtest["scorecard"] }) {
       <p className="mt-2 text-[13px] text-muted">
         The chance for each game comes from ratings that never saw the season being predicted, and from a scale fit on the other seasons. Only games where
         both teams already had {FEW_GAMES} rated games count; ties and forfeits are left out. A game counts under both teams&rsquo; organizations, so
-        those rows overlap. The playoffs are every bracket game. Scores are not confirmed here and may change.
+        those rows overlap. The playoffs are every bracket game. Scores may be corrected if a mistake is found.
       </p>
     </section>
   );
@@ -251,7 +251,7 @@ export default async function HowPage() {
           </tbody>
         </table>
         <p className="mt-2 text-[13px] text-muted">
-          Counted once both teams had played four games. Ties and forfeits are left out. Scores are not confirmed here and may change.
+          Counted once both teams had played four games. Ties and forfeits are left out.
         </p>
       </section>
 
@@ -291,7 +291,7 @@ export default async function HowPage() {
           Only games where both teams already had {FEW_GAMES} rated games count. Ties and forfeits are left out, and a miss
           is counted as at most 45 points, since a game ends at a 45-point lead. The best figure in each row is in bold. 2021
           has no earlier season, so there is no last-season figure for it and the total leaves it out. 2026 counts games
-          played so far. Scores are not confirmed here and may change.
+          played so far. Scores may be corrected if a mistake is found.
         </p>
       </section>
 
@@ -322,7 +322,7 @@ export default async function HowPage() {
         <ul className="mt-2 list-disc space-y-1.5 pl-5 text-[15px] text-ink">
           <li>Injuries, weather, or who played. It sees only final scores.</li>
           <li>Much about a team with fewer than {FEW_GAMES} rated games. Those ratings are grayed in the rankings.</li>
-          <li>Anything certain. Scores are not confirmed here and may change, and the ratings change with them after every game night.</li>
+          <li>Anything certain. Scores may be corrected if a mistake is found, and the ratings change with them after every game night.</li>
         </ul>
       </section>
     </article>

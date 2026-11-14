@@ -8,7 +8,7 @@ import { record } from "./ratings";
 import { CURRENT_SEASON } from "./season";
 
 /** One game as "My teams" shows it: the program page's own row (lib/program-games.ts), plus the opponent's page when it has one. */
-export type MyGame = Pick<Row, "status" | "home" | "opponent" | "score" | "note" | "href"> & { opponentSlug?: string };
+export type MyGame = Pick<Row, "status" | "home" | "opponent" | "score" | "note" | "href" | "playoff"> & { opponentSlug?: string };
 
 /** What the home page's "My teams" block shows for one followed program. Built at build time (the site is static) and
  * served from app/my-teams/[slug]: the browser asks only for the programs it follows. Public facts only; no source
@@ -33,7 +33,7 @@ export const loadMyTeams = memo<void, Map<string, MyTeam>>(async () => {
     uniquePrograms(all).map((school) => {
       const { latest, next } = seasonRows(school.school, games, results);
       const game = (r: Row | undefined): MyGame | null =>
-        r ? { status: r.status, home: r.home, opponent: r.opponent, score: r.score, note: r.note, href: r.href, opponentSlug: programFor(all, r.opponent, school.league)?.slug } : null;
+        r ? { status: r.status, home: r.home, opponent: r.opponent, score: r.score, note: r.note, href: r.href, playoff: r.playoff, opponentSlug: programFor(all, r.opponent, school.league)?.slug } : null;
       const team = rated.get(school.slug);
       // The crest needs only the logo and colors; the rest of the identity stays out of the JSON.
       const identity = identities.get(school.slug) ?? EMPTY;

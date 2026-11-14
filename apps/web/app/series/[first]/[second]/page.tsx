@@ -17,7 +17,7 @@ import { Breadcrumbs } from "../../../breadcrumbs";
 import { Crest } from "../../../programs/crest";
 import { EdgeToEdge, SectionBar } from "../../../ui";
 
-// The games of one pair of programs, 2021 on (ADR 0013: records and scores may rest on unconfirmed robot-read results, so
+// The games of one pair of programs, FIRST_SEASON on (ADR 0013: records and scores may rest on unconfirmed robot-read results, so
 // the page says so and no game row names a winner, ADR 0004). The address is the two program slugs in alphabetical order;
 // the reversed address is not generated, so it answers 404 and the pair has one page.
 type Props = { params: Promise<{ first: string; second: string }> };
@@ -94,7 +94,7 @@ export default async function SeriesPage({ params }: Props) {
           <b className="font-num text-[24px] tabular-nums">{record(total)}</b> for {a.school} against {b.school} since {since}
           <span className="text-muted">{` · ${games.length} meetings${playoffs > 0 ? `, ${playoffs} in the playoffs` : ""}`}</span>
         </p>
-        <p className="pt-1 text-[13px] text-muted">A forfeit counts as a win or a loss. Season scores, not confirmed here.</p>
+        <p className="pt-1 text-[13px] text-muted">A forfeit counts as a win or a loss.</p>
       </header>
 
       <section aria-labelledby="meetings" className="mt-4">
@@ -106,12 +106,12 @@ export default async function SeriesPage({ params }: Props) {
               <li key={r.id} className="border-b border-line">
                 <Link
                   href={r.href}
-                  aria-label={`${mediumDate(r.date)}, ${r.away} at ${r.home}${r.forfeit ? ", forfeit" : `, ${r.awayScore}-${r.homeScore}`}, game page`}
+                  aria-label={`${mediumDate(r.date)}, ${r.away} vs ${r.home}${r.forfeit ? ", forfeit" : `, ${r.awayScore}-${r.homeScore}`}, game page`}
                   className="grid min-h-14 grid-cols-[6.75rem_1fr_auto_auto] items-center gap-x-3 px-3 py-1 hover:bg-panel"
                 >
                   <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(r.date)}</span>
                   <span className="min-w-0 text-[15px] leading-5 text-ink">
-                    {r.away} at {r.home}
+                    {r.away} vs {r.home}
                     <span className="block text-[13px] leading-4 text-muted">{round ? `${season} playoffs · ${round}` : `${season} season`}</span>
                   </span>
                   <span className="font-num text-[19px] font-bold tabular-nums text-ink">{r.forfeit ? "Forfeit" : `${r.awayScore}-${r.homeScore}`}</span>
@@ -121,7 +121,7 @@ export default async function SeriesPage({ params }: Props) {
             );
           })}
         </ul>
-        <p className="px-3 pt-1 text-[13px] text-muted">Away team first. Season scores, not confirmed here. Playoff games name their round.</p>
+        <p className="px-3 pt-1 text-[13px] text-muted">Away team first. Playoff games name their round.</p>
       </section>
 
       {finals.length > 0 && (
