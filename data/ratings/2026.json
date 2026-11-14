@@ -1,6 +1,6 @@
 {
  "season": 2026,
- "games": 1245,
+ "games": 1246,
  "games_outside": 71,
  "home_field": 4.5,
  "sigma": 20.2,
@@ -1192,11 +1192,11 @@
   },
   {
    "team": "Richland Springs",
-   "rating": 64.1,
+   "rating": 64.3,
    "sd": 8.0,
-   "rated": 10,
+   "rated": 11,
    "rated_outside": 0,
-   "won": 9,
+   "won": 10,
    "lost": 1,
    "tied": 0,
    "was": 65.7,
@@ -1210,7 +1210,7 @@
     66.2,
     65.8,
     65.7,
-    64.1
+    64.3
    ],
    "rated_trend": [
     3,
@@ -1222,7 +1222,7 @@
     9,
     9,
     10,
-    10
+    11
    ]
   },
   {
@@ -2032,7 +2032,7 @@
   },
   {
    "team": "Jonesboro",
-   "rating": 42.7,
+   "rating": 42.8,
    "sd": 8.4,
    "rated": 11,
    "rated_outside": 0,
@@ -2050,7 +2050,7 @@
     36.4,
     39.6,
     46.4,
-    42.7
+    42.8
    ],
    "rated_trend": [
     3,
@@ -2487,7 +2487,7 @@
   },
   {
    "team": "Veribest",
-   "rating": 33.9,
+   "rating": 33.8,
    "sd": 8.9,
    "rated": 9,
    "rated_outside": 0,
@@ -2505,7 +2505,7 @@
     30.6,
     32.7,
     32.7,
-    33.9
+    33.8
    ],
    "rated_trend": [
     3,
@@ -2750,7 +2750,7 @@
     25.3,
     23.0,
     24.0,
-    30.4
+    30.5
    ],
    "rated_trend": [
     3,
@@ -3783,7 +3783,7 @@
   {
    "team": "Ladonia Fannindel",
    "rating": 17.3,
-   "sd": 8.7,
+   "sd": 8.6,
    "rated": 8,
    "rated_outside": 1,
    "won": 6,
@@ -5882,7 +5882,7 @@
   },
   {
    "team": "Arlington Heights Christian School",
-   "rating": -18.8,
+   "rating": -18.7,
    "sd": 8.4,
    "rated": 10,
    "rated_outside": 0,
@@ -5900,7 +5900,7 @@
     -7.1,
     -13.4,
     -14.9,
-    -18.8
+    -18.7
    ],
    "rated_trend": [
     2,
@@ -6058,7 +6058,7 @@
   {
    "team": "Garland Christian Academy",
    "rating": -21.1,
-   "sd": 8.7,
+   "sd": 8.6,
    "rated": 9,
    "rated_outside": 0,
    "won": 0,
@@ -6127,7 +6127,7 @@
   },
   {
    "team": "Santa Anna",
-   "rating": -22.3,
+   "rating": -22.4,
    "sd": 8.0,
    "rated": 10,
    "rated_outside": 0,
@@ -6145,7 +6145,7 @@
     -23.7,
     -23.2,
     -22.3,
-    -22.3
+    -22.4
    ],
    "rated_trend": [
     3,
@@ -6582,12 +6582,12 @@
   },
   {
    "team": "Valera Panther Creek",
-   "rating": -27.8,
-   "sd": 8.7,
-   "rated": 10,
+   "rating": -27.9,
+   "sd": 8.6,
+   "rated": 11,
    "rated_outside": 0,
    "won": 5,
-   "lost": 5,
+   "lost": 6,
    "tied": 0,
    "was": -27.8,
    "trend": [
@@ -6600,7 +6600,7 @@
     -31.9,
     -31.5,
     -27.8,
-    -27.8
+    -27.9
    ],
    "rated_trend": [
     3,
@@ -6612,7 +6612,7 @@
     8,
     9,
     10,
-    10
+    11
    ]
   },
   {
@@ -7142,7 +7142,7 @@
   },
   {
    "team": "Eden",
-   "rating": -35.0,
+   "rating": -35.1,
    "sd": 10.2,
    "rated": 5,
    "rated_outside": 0,
@@ -7160,7 +7160,7 @@
     -33.5,
     -34.4,
     -35.1,
-    -35.0
+    -35.1
    ],
    "rated_trend": [
     3,
@@ -7282,7 +7282,7 @@
   },
   {
    "team": "Loraine",
-   "rating": -36.2,
+   "rating": -36.3,
    "sd": 7.7,
    "rated": 10,
    "rated_outside": 0,
@@ -7300,7 +7300,7 @@
     -31.7,
     -32.3,
     -36.2,
-    -36.2
+    -36.3
    ],
    "rated_trend": [
     3,
@@ -7702,7 +7702,7 @@
   },
   {
    "team": "Valor North Austin",
-   "rating": -44.9,
+   "rating": -44.8,
    "sd": 9.8,
    "rated": 9,
    "rated_outside": 1,
@@ -7720,7 +7720,7 @@
     -47.2,
     -43.1,
     -44.7,
-    -44.9
+    -44.8
    ],
    "rated_trend": [
     3,
@@ -7737,7 +7737,7 @@
   },
   {
    "team": "Founders Classical Academy of Conroe",
-   "rating": -45.3,
+   "rating": -45.2,
    "sd": 13.4,
    "rated": 3,
    "rated_outside": 1,
@@ -7755,7 +7755,7 @@
     -55.0,
     -55.2,
     -44.9,
-    -45.3
+    -45.2
    ],
    "rated_trend": [
     null,
@@ -7773,7 +7773,7 @@
   {
    "team": "Cranfills Gap",
    "rating": -45.5,
-   "sd": 9.8,
+   "sd": 9.7,
    "rated": 10,
    "rated_outside": 0,
    "won": 4,
@@ -8052,7 +8052,7 @@
   },
   {
    "team": "Paint Rock",
-   "rating": -50.7,
+   "rating": -50.8,
    "sd": 9.0,
    "rated": 10,
    "rated_outside": 0,
@@ -8070,7 +8070,7 @@
     -41.5,
     -47.0,
     -50.6,
-    -50.7
+    -50.8
    ],
    "rated_trend": [
     3,
@@ -8647,7 +8647,7 @@
   },
   {
    "team": "Trent",
-   "rating": -61.6,
+   "rating": -61.7,
    "sd": 8.9,
    "rated": 10,
    "rated_outside": 0,
@@ -8665,7 +8665,7 @@
     -56.7,
     -56.7,
     -61.6,
-    -61.6
+    -61.7
    ],
    "rated_trend": [
     3,
@@ -8753,7 +8753,7 @@
   {
    "team": "O'Connell College Preparatory HS-Galveston",
    "rating": -63.7,
-   "sd": 12.1,
+   "sd": 12.0,
    "rated": 4,
    "rated_outside": 1,
    "won": 0,
