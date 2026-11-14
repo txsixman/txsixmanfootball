@@ -10,7 +10,7 @@ import { kickoffState } from "@/lib/kickoff";
 import { ORGS } from "@/lib/orgs";
 import { projectedLine } from "@/lib/outcome";
 import { isForfeit, outcomeOf, winnerOf, type Side } from "@/lib/score-display";
-import { CrestSlot, EmptyState, PageHeader } from "../ui";
+import { CrestSlot, EmptyState, PageHeader, UnconfirmedMark } from "../ui";
 import { KickoffStatus, useNow } from "../kickoff-status";
 import { ScoresChecked } from "./freshness";
 import { useLiveScores } from "./live-score";
@@ -82,6 +82,17 @@ function Notes({ g }: { g: Game }) {
   // What was projected beside what happened (ADR 0044): before the game, the projection alone; after, "Final: …", "Forfeit"
   // or "Disputed"; under way, "Now: …". No upset label.
   const line = projectedLine(g.projected, outcomeOf(g));
+  // An unconfirmed score (a live one) is marked once, in the row, by the same mark as every other page. A full-width red bar
+  // under each game read as an alarm. A "Now: … · Unconfirmed" line already says it, so it takes no second mark; a disputed
+  // score keeps its bar (VerifyBar).
+  if (g.verification === "unconfirmed" && !line?.includes("Unconfirmed")) {
+    items.unshift(
+      <span key="v" className="flex items-center gap-1.5">
+        <UnconfirmedMark />
+        {g.sources && <span className="text-muted">{g.sources}</span>}
+      </span>,
+    );
+  }
   if (line) items.push(<span key="r" data-projected className="text-muted">{line}</span>);
   if (!items.length) return null;
   return <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[13px] leading-4">{items}</p>;
@@ -129,12 +140,7 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
 
 /** `live`: the live read of a game under way (asLive put its score in the score cells; this says where the game stands). */
 function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView }) {
-  const edge =
-    g.verification === "disputed"
-      ? "border-l-[6px] border-red"
-      : g.verification === "unconfirmed"
-        ? "border-l-[6px] border-dashed border-red"
-        : "border-l-[6px] border-transparent";
+  const edge = g.verification === "disputed" ? "border-l-[6px] border-red" : "border-l-[6px] border-transparent";
   return (
     <li data-game={g.id} className="border-b border-line">
       <Link href={`/scores/${g.id}`} className="block hover:bg-panel focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-navy active:bg-panel">
@@ -151,7 +157,7 @@ function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView })
             )}
           </div>
         </div>
-        <VerifyBar g={g} />
+        {g.verification === "disputed" && <VerifyBar g={g} />}
       </Link>
     </li>
   );
@@ -333,7 +339,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
           <dt className="font-bold text-ink">Check</dt>
           <dd>A confirmed final.</dd>
           <dt className="font-bold text-ink">Unconfirmed</dt>
-          <dd>Dashed score. A live score, not final yet.</dd>
+          <dd>Boxed word, dashed score. A live score, not final yet.</dd>
           <dt className="font-bold text-ink">Disputed</dt>
           <dd>Wavy score. Reports disagree, so no winner is marked.</dd>
           <dt className="font-bold text-ink">Forfeit</dt>
