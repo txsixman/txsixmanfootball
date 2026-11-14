@@ -43,6 +43,8 @@ test("each kind of page takes the date of the latest game it shows", () => {
   assert.equal(s.lastmodFor("rankings/week/6", d), "2026-10-03", "every organization's week");
   assert.equal(s.lastmodFor("rankings/season/2025/tapps", d), "2025-12-12");
   assert.equal(s.lastmodFor("standings/tapps", d), "2026-11-14");
+  assert.equal(s.lastmodFor("seasons", d), "2026-11-14");
+  assert.equal(s.lastmodFor("seasons/2025", d), "2025-12-12");
 });
 
 test("a page with no game date has no lastmod, never the build time", () => {

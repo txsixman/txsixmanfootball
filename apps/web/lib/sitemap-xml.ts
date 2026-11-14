@@ -48,6 +48,8 @@ export function lastmodFor(path: string, d: SitemapDates): string | undefined {
       if (rest[0] === "week") return d.weeks.get(`${d.current}|${rest[1]}|*`);
       if (rest[0] === "season") return d.seasons.get(Number(rest[1]));
       return d.latest;
+    case "seasons":
+      return rest[0] ? d.seasons.get(Number(rest[0])) : d.latest;
     case "results":
     case "weeks": {
       const last = rest.at(-1);

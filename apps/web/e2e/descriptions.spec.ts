@@ -65,6 +65,9 @@ test("every kind of page has its own short description, with no betting word, so
     ["week in review", first(/^\/weeks\/\d{4}\/\d+$/)],
     ["week in review, TAPPS", first(/^\/weeks\/\d{4}\/\d+\/tapps$/)],
     ["weeks, TAPPS", "/weeks/tapps"],
+    ["seasons", "/seasons"],
+    ["season", "/seasons/2025"],
+    ["season, current", "/seasons/2026"],
   ];
 
   const seen = new Map<string, string>();
