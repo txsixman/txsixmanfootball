@@ -127,7 +127,7 @@ jobs:
           [[ "$season" =~ ^20[0-9][0-9]$ ]] || { echo "season must be a year like 2026, not: $season"; exit 1; }
           echo "year=$season" >> "$GITHUB_OUTPUT"
       - name: Reader checks
-        run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/store.test.mjs tools/league-watch/davecampbells.test.mjs
+        run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/store.test.mjs tools/league-watch/davecampbells.test.mjs tools/league-watch/late-finals.test.mjs
       - name: Read MaxPreps schedule pages
         env:
           # Any schedule but the morning one is a playoff-night run.
@@ -188,6 +188,25 @@ jobs:
           if [ -f "$f" ]; then cp "$f" "$out"; fi
           node tools/league-watch/davecampbells.mjs --kickoffs "data/seed/maxpreps-$SEASON/playoffs.csv" --out "$out" > "$RUNNER_TEMP/kickoffs.log"
           tee -a "$GITHUB_STEP_SUMMARY" < "$RUNNER_TEMP/kickoffs.log"
+      - name: Late finals and missing finals
+        # ADR 0046: on the morning read and a dispatch that is not a game-day read, a bracket game of a past night that
+        # MaxPreps has still not scored takes its final from the league's own bracket (TAIAO, read as a visitor's browser
+        # does) or the second source (with SECOND_FINALS): an agreeing pair if both have one, never a forfeit, through the
+        # store's merge, so the commit below carries it and a later MaxPreps read can only propose a change (ADR 0031).
+        # Any still blank are named in the summary and raise "missing-finals" for the notify job; this step then shows red
+        # without stopping the run. A failed source read is counted and never stops the check.
+        if: ${{ (github.event_name != 'schedule' && !inputs.tonight) || github.event.schedule == '23 11 * 8-12,1 5,6,0' }}
+        continue-on-error: true
+        env:
+          SEASON: ${{ steps.season.outputs.year }}
+          OPS_REASONS: ${{ runner.temp }}/ops-reasons.txt
+          SECOND: ${{ vars.SECOND_FINALS == 'true' && '--second' || '' }}
+        run: |
+          npm ci --prefix tools/league-watch
+          # Three tries of 4 minutes, as the TAIAO reader's job does; with no browser the league bracket is counted unread.
+          for _ in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && break; sleep 20; done
+          node tools/league-watch/late-finals.mjs "private/maxpreps-$SEASON" --season "$SEASON" $SECOND --missing "$RUNNER_TEMP/missing-finals.txt"
+          [ ! -s "$RUNNER_TEMP/missing-finals.txt" ]
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
         # stops the finals from being committed below.

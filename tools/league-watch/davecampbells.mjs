@@ -914,5 +914,36 @@ async function opponents() {
   }
 }
 
-const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents };
+/** A team's games on one Central date (`items`), as lines: status, then each side's school name, score and forfeit flag.
+ * Never a spread, ranking, poll or `winner` field. */
+export function gamesOnLines(items, date) {
+  return items
+    .filter((item) => item?.scheduledKickoff && (date === "all" || centralDate(new Date(item.scheduledKickoff)) === date))
+    .map((item) => {
+      const parts = Array.isArray(item.participants) ? item.participants : [];
+      const side = (type) => {
+        const p = parts.find((x) => x?.participantType === type);
+        return p ? `${type} ${p.schoolName ?? "?"} ${score(p.score) ?? "-"}${p.forfeited === true ? " (forfeited)" : ""}` : `${type} ?`;
+      };
+      return `${centralDate(new Date(item.scheduledKickoff))} | ${item.status ?? item.summary?.status ?? "?"} | ${side("AWAY")} | ${side("HOME")}`;
+    });
+}
+
+/** `--games-on <year> <their slug> <YYYY-MM-DD>`: one team's games on a Central date, its final or how far it got. Prints
+ * only; nothing is saved. */
+async function gamesOn() {
+  const i = process.argv.indexOf("--games-on");
+  const [year, theirSlug, date] = [Number(process.argv[i + 1]), process.argv[i + 2], process.argv[i + 3]];
+  if (!Number.isInteger(year) || !/^[a-z0-9-]+$/.test(theirSlug ?? "") || !/^(\d{4}-\d{2}-\d{2}|all)$/.test(date ?? "")) {
+    throw new Error("usage: davecampbells.mjs --games-on <year> <their team slug> <YYYY-MM-DD|all>");
+  }
+  const client = createClient();
+  const seasonId = footballSeasons(await client.getData("/api/public/seasons")).get(year);
+  const id = seasonId && (await teamId(client, theirSlug, seasonId));
+  if (!id) return console.log(`${year} ${theirSlug}: no season or team id`);
+  const lines = gamesOnLines(await liveAndUpcoming(client, seasonId, id), date);
+  console.log(lines.length ? lines.join("\n") : `${theirSlug}: no game on ${date}`);
+}
+
+const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents, "--games-on": gamesOn };
 if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(Object.entries(MODES).find(([f]) => process.argv.includes(f))?.[1] ?? live);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkTaiao, mergeInto, PAGE, parseTaiao } from "./taiao.mjs";
+import { checkTaiao, mergeInto, PAGE, parseBracket, parseTaiao } from "./taiao.mjs";
 
 // Invented teams, in the table shape taiao.org rendered on Nov 10, 2026 (ADR 0005).
 const regions = ["North", "South"];
@@ -33,4 +33,74 @@ test("replaces only the TAIAO rows and keeps other leagues' rows", () => {
   ].join("\n");
   const after = mergeInto(before, [{ division: "2", region: "South", school: "New Team" }]).trim().split("\n");
   assert.deepEqual(after.slice(1), [`TAIAO,2,South,0,New Team,${PAGE}`, "TCAF,Six-Man,,2,Mesa Ridge,https://example.test/tcaf"]);
+});
+
+// A bracket tab's text in the shape taiao.org showed on Nov 14, 2026 (ADR 0046); invented teams and places.
+const BRACKET = `Teams & Weekly Rankings
+Division 2 Bracket
+Division 2 Playoffs
+ROUND 1
+NR1
+NORTH
+1. Lark Owls
+ (H)
+70
+8. Wren Academy
+6
+Thu, Nov 5 · 6:00 PM
+Lark Field, 100 Main St
+SR1
+SOUTH
+1. Finch Falcons
+ (H)
+BYE
+Bye · advances to Quarterfinals
+NR3
+NORTH
+3. Robin Prep
+ (H)
+2
+—. Jay Home School
+0
+Sat, Nov 7 · 5:00 PM
+Forfeit
+NQ1
+1. Lark Owls
+ (H)
+68
+4. Heron Homeschool
+0
+Fri, Nov 13 · 7:00 PM
+Pacer Field 12
+NQ2
+3. Robin Prep
+2. Crane Christian
+ (H)
+Sat, Nov 14 · 5:00 PM
+SF2
+1. Finch Falcons
+ (H)
+Winner NQ2
+Date / Time TBD
+FINAL
+Winner SF1
+Winner SF2
+Jan 2 · TBD`;
+
+test("a bracket tab gives each game's teams, home side, scores, date and forfeit word, and nothing else", () => {
+  const games = parseBracket(BRACKET, 2026);
+  assert.deepEqual(games.map((g) => g.code), ["NR1", "SR1", "NR3", "NQ1", "NQ2", "SF2", "FINAL"]);
+  assert.deepEqual(games[0], { code: "NR1", date: "2026-11-05", forfeit: false, teams: [{ name: "Lark Owls", home: true, score: 70 }, { name: "Wren Academy", home: false, score: 6 }] });
+  assert.equal(games[1].teams.length, 1, "a bye has one team");
+  assert.equal(games[2].forfeit, true);
+  assert.equal(games[2].teams[1].name, "Jay Home School", "an unseeded team");
+  assert.deepEqual(games[3].teams.map((t) => t.score), [68, 0]);
+  assert.equal(games[3].date, "2026-11-13");
+  assert.equal(games[3].teams[1].score, 0, "the site's digits after the date are not a score");
+  assert.deepEqual(games[4].teams.map((t) => [t.name, t.home, t.score]), [["Robin Prep", false, null], ["Crane Christian", true, null]]);
+  assert.equal(games[4].date, "2026-11-14");
+  assert.equal(games[5].teams.length, 1, "a Winner side is not a team");
+  assert.equal(games[5].date, null);
+  assert.equal(games[6].teams.length, 0);
+  assert.deepEqual(parseBracket("no heading here\nNQ1\n1. Lark Owls"), [], "nothing before the Playoffs heading");
 });

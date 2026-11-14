@@ -45,6 +45,7 @@
 | [0043](../adr/0043-a-stale-late-live-score-is-final.md) | A late live score (period 4 or more, or 2 hours since kickoff) unchanged for 60 minutes is final; a finished live row shows "Final" with the winner marked and "as of" the read, not "Score reported" (amends 0042); the stored final still wins | Proposed Nov 14, 2026 |
 | [0044](../adr/0044-projection-beside-the-outcome.md) | Every game row and game page with a projection shows it beside the outcome ("Projected: … · Final: <team> by 3"; live "Now: …", disputed, forfeit); a played game's projection is the week-before one (lib/pregame.ts projectBefore), never today's ratings; "chance to win", no upset label. Supersedes 0040's no-winner rule on list pages for that line | Proposed Nov 14, 2026 |
 | [0045](../adr/0045-chance-to-win-everywhere.md) | The site's words are rating, projected margin and "chance to win", never "win probability"; the Records list is "Biggest surprises"; no projection is removed |
+| [0046](../adr/0046-late-finals-and-missing-finals.md) | A bracket game still blank the morning after its Central game night takes its final from the league's own bracket or the second source (both must agree; never a forfeit, 1-0, 2-0 or 0-0), through the store's merge and its two-read rule; one still blank is named in the run summary and raises `missing-finals`; a past game with no score reads "Score not reported yet", never "Later" | Proposed Nov 14, 2026 |
 
 Not in an ADR:
 - Interviews are cut from the plan (the owner, Nov 10, 2026; see `docs/plan/v1.2-notes.md`).
