@@ -192,7 +192,7 @@ export default async function GamePage({ params }: Props) {
           {g.endReason && !isForfeit(g) && <Fact label={g.state === "postponed" ? "Why" : "How it ended"}>{g.endReason}</Fact>}
           {g.upset && winner && <Fact label="Upset">{g[winner].name} won after being projected to lose.</Fact>}
           {g.projected && <Fact label="Projected">{g.projected}. A projection, not a result.</Fact>}
-          <Fact label="Venue">{g.venue}</Fact>
+          <Fact label="Site">{g.venue}</Fact>
           {places.length > 0 && (
             <Fact label="Plays in">
               {places.map(([team, place]) => (

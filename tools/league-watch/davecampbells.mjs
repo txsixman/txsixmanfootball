@@ -759,35 +759,52 @@ async function team() {
     const items = Array.isArray(data?.items) ? data.items : [];
     const statuses = [...new Set(items.map((x) => x?.status ?? x?.summary?.status))].join(", ");
     console.log(`query "${q.split("=")[0] || "season only"}": ${items.length} items, total ${data?.totalElements}, pages ${data?.totalPages}, page ${data?.page}, size ${data?.size}, statuses: ${statuses}`);
+    // A game item's field names, three levels deep, never a value: what the feed can say about a game (its site, for one).
+    if (q && items.length) console.log(`a game item's fields: ${shapeOf(items[0], 3)}`);
   }
 }
 
-// Game details (ADR 0036): the feed's scheduled kickoff, in UTC, for every bracket game with no score yet, kept in the public
-// facts file data/seed/game-details/<year>.csv. The file names no source: date, the two teams as the bracket spells them, the
-// kickoff, and the site (filled by a later read; blank until then).
+// Game details (ADR 0036, ADR 0041): the feed's scheduled kickoff, in UTC, and its site (the venue's name and city) for every
+// bracket game with no score yet, kept in the public facts file data/seed/game-details/<year>.csv. The file names no source:
+// date, the two teams as the bracket spells them, the kickoff and the site.
 export const DETAIL_COLUMNS = "date,home,away,kickoff_utc,site_name,site_city";
 const kickoffKey = (date, home, away) => gameKey(date, slugify(home), slugify(away));
 
-/** The kickoff of each `due` bracket row the feed lists, as a facts row; a row the feed does not list is left out. */
-export function kickoffRows(items, { due, ours }) {
-  return matchGames(items, { rows: due, ours }).map(({ item, row }) => ({
-    date: row.game_date,
-    home: row.home,
-    away: row.away,
-    kickoff_utc: new Date(item.scheduledKickoff).toISOString().replace(/\.\d{3}Z$/, "Z"),
-    site_name: "",
-    site_city: "",
-  }));
+/** A venue's name or city as the facts file keeps it: plain words (letters, digits, spaces and . ' & ( ) / -), a comma
+ * read as " - " (the file has no quoting), at most `max` characters; anything else is "" (not known), never a guess. */
+export function siteText(value, max) {
+  if (typeof value !== "string") return "";
+  const t = value.replace(/\s*,\s*/g, " - ").replace(/\s+/g, " ").trim();
+  return t.length <= max && /^[\p{L}\p{N} .'&()/-]+$/u.test(t) ? t : "";
 }
 
-/** The facts file with `fresh` rows laid over the kept ones, field by field: a fresh value wins, a blank keeps the old one. */
+/** The kickoff and site of each `due` bracket row the feed lists, as a facts row; a row the feed does not list is left out.
+ * The site is the feed's venue: its location name (else its site label) and city, each blank when the feed has none
+ * (ADR 0041). Nothing else of the venue is kept: no address, coordinates or postal code. */
+export function kickoffRows(items, { due, ours }) {
+  return matchGames(items, { rows: due, ours }).map(({ item, row }) => {
+    const name = siteText(item.venue?.locationName, 80) || siteText(item.venue?.siteLabel, 80);
+    return {
+      date: row.game_date,
+      home: row.home,
+      away: row.away,
+      kickoff_utc: new Date(item.scheduledKickoff).toISOString().replace(/\.\d{3}Z$/, "Z"),
+      site_name: name,
+      // A city with no name is not a site.
+      site_city: name ? siteText(item.venue?.city, 60) : "",
+    };
+  });
+}
+
+/** The facts file with `fresh` rows laid over the kept ones, field by field: a filled value is never overwritten (ADR 0041),
+ * so a fresh value only fills a blank; other kept rows stay. */
 export function mergeKickoffs(text, fresh) {
   const kept = text.trim() ? parseCsv(text, "game details").rows : [];
   const out = new Map(kept.map((r) => [kickoffKey(r.date, r.home, r.away), r]));
   for (const r of fresh) {
     const k = kickoffKey(r.date, r.home, r.away);
     const old = out.get(k) ?? {};
-    out.set(k, Object.fromEntries(DETAIL_COLUMNS.split(",").map((c) => [c, r[c] || old[c] || ""])));
+    out.set(k, Object.fromEntries(DETAIL_COLUMNS.split(",").map((c) => [c, old[c] || r[c] || ""])));
   }
   const rows = [...out.values()].sort((a, b) => a.kickoff_utc.localeCompare(b.kickoff_utc) || a.home.localeCompare(b.home));
   const cols = DETAIL_COLUMNS.split(",");
@@ -815,9 +832,39 @@ async function kickoffs() {
     if (id) items.push(...(await liveAndUpcoming(client, seasonId, id)));
   }
   const fresh = kickoffRows(items, { due, ours });
-  writeFileSync(out, mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh));
-  console.log(`Kickoffs: ${due.length} bracket games still to play, ${teams.length} teams read, ${fresh.length} kickoff times found.`);
+  const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh);
+  writeFileSync(out, merged);
+  const sites = fresh.filter((r) => r.site_name).length;
+  console.log(`Kickoffs: ${due.length} bracket games still to play, ${teams.length} teams read, ${fresh.length} kickoff times found, ${sites} with a site.`);
+  console.log(missingDetails(due, merged));
 }
 
-const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs };
+/** What the facts file still lacks for the bracket games still to play, counted by league and never naming a school (the
+ * line goes to public run logs): "Still missing: a kickoff 21 (TAIAO 11, TAPPS 9, TCAF 1); a site 25 (...)". */
+export function missingDetails(due, text) {
+  const kept = text.trim() ? parseCsv(text, "game details").rows : [];
+  const known = new Map(kept.map((r) => [kickoffKey(r.date, r.home, r.away), r]));
+  const count = (field) => {
+    const by = new Map();
+    for (const r of due) if (!known.get(kickoffKey(r.game_date, r.home, r.away))?.[field]) by.set(r.league, (by.get(r.league) ?? 0) + 1);
+    const total = [...by.values()].reduce((a, b) => a + b, 0);
+    const leagues = [...by].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([l, n]) => `${l} ${n}`);
+    return total ? `${total} (${leagues.join(", ")})` : "0";
+  };
+  return `Still missing: a kickoff ${count("kickoff_utc")}; a site ${count("site_name")}.`;
+}
+
+/** `--merge-details <fresh.csv> --out <file>`: lays a facts file read earlier in the run over `out` with the same never-
+ * overwrite rule (mergeKickoffs). No network: the Results watch reads the feed before its commit step resets to the newest
+ * main, then merges what it read into that main's file, so a value filled there meanwhile is kept. */
+function mergeDetails() {
+  const arg = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : null);
+  const from = arg("--merge-details");
+  const out = arg("--out");
+  if (!from || !out) throw new Error("usage: davecampbells.mjs --merge-details <fresh.csv> --out <data/seed/game-details/YYYY.csv>");
+  const fresh = readFileSync(from, "utf8");
+  writeFileSync(out, mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh.trim() ? parseCsv(fresh, "game details").rows : []));
+}
+
+const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails };
 if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(Object.entries(MODES).find(([f]) => process.argv.includes(f))?.[1] ?? live);

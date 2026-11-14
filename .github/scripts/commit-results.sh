@@ -10,7 +10,9 @@
 #
 # Env: WRITE (true pushes; anything else reports what would be pushed), INTEGRITY and INTEGRITY_REPORT (passed to
 # apps/web/scripts/check-data.mjs: cross-file failures are written down, not blocking; the workflow fails the job from
-# that file after the push), GITHUB_STEP_SUMMARY, GITHUB_OUTPUT (sha=<the pushed commit>), RUNNER_TEMP.
+# that file after the push), GITHUB_STEP_SUMMARY, GITHUB_OUTPUT (sha=<the pushed commit>), RUNNER_TEMP, and DETAILS: the
+# game details (kickoffs and sites) read earlier in the run, when there are any. They are merged into the newest main's
+# data/seed/game-details/<season>.csv after the reset, never overwriting a filled value (ADR 0041), and committed with it.
 # Exits 1 when a push fails three times or a Zod check fails; the private commit, once pushed, stays.
 # Tested against local bare repos in commit-results.test.mjs.
 set -euo pipefail
@@ -61,6 +63,11 @@ for try in 1 2 3; do
   git reset -q --hard origin/main
   node tools/league-watch/publish.mjs "private/$dir" "data/seed/$dir"
   uv run --directory services/ratings python run.py --season "$year"
+  details="data/seed/game-details/$year.csv"
+  if [ -n "${DETAILS:-}" ] && [ -s "$DETAILS" ]; then
+    mkdir -p "$(dirname "$details")"
+    node tools/league-watch/davecampbells.mjs --merge-details "$DETAILS" --out "$details"
+  fi
   if git diff --quiet -- data && [ -z "$(git ls-files --others --exclude-standard data)" ]; then
     echo "No new results." >> "$summary"
     exit 0
@@ -81,6 +88,7 @@ for try in 1 2 3; do
   # repo) stays unstaged, and the data checks above have already failed the run over it.
   public=()
   for f in games.csv playoffs.csv; do [ ! -f "data/seed/$dir/$f" ] || public+=("data/seed/$dir/$f"); done
+  [ ! -f "$details" ] || public+=("$details")
   git add -- "${public[@]}" data/ratings
   git commit -q -m "$message"
   if git push -q origin HEAD:main; then

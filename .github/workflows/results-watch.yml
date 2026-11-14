@@ -169,6 +169,23 @@ jobs:
           SEASON: ${{ steps.season.outputs.year }}
           OPS_REASONS: ${{ runner.temp }}/ops-reasons.txt
         run: node tools/league-watch/davecampbells.mjs --finals "private/maxpreps-$SEASON/playoffs.csv" --report "private/davecampbells-$SEASON"
+      - name: Kickoffs and sites
+        # ADRs 0036 and 0041: on the morning read and a dispatch, each bracket game still to play gets the second feed's
+        # kickoff and site, into a file outside the repo; the commit step merges it into the newest main's
+        # data/seed/game-details/<season>.csv, never overwriting a filled value. The log and summary give counts only, by
+        # league, never a school. Off until the repo variable SECOND_LIVE is "true" (the same feed's upcoming games). A
+        # failure (a 403 or 429 stops it at once) leaves the file as it was.
+        if: ${{ vars.SECOND_LIVE == 'true' && (github.event_name != 'schedule' || github.event.schedule == '23 11 * 8-12,1 5,6,0') }}
+        continue-on-error: true
+        env:
+          SEASON: ${{ steps.season.outputs.year }}
+          OPS_REASONS: ${{ runner.temp }}/ops-reasons.txt
+        run: |
+          f="data/seed/game-details/$SEASON.csv"
+          out="$RUNNER_TEMP/game-details.csv"
+          if [ -f "$f" ]; then cp "$f" "$out"; fi
+          node tools/league-watch/davecampbells.mjs --kickoffs "data/seed/maxpreps-$SEASON/playoffs.csv" --out "$out" > "$RUNNER_TEMP/kickoffs.log"
+          tee -a "$GITHUB_STEP_SUMMARY" < "$RUNNER_TEMP/kickoffs.log"
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
         # stops the finals from being committed below.
@@ -203,6 +220,8 @@ jobs:
           INTEGRITY: report
           INTEGRITY_REPORT: ${{ runner.temp }}/integrity-failures.txt
           YEAR: ${{ steps.season.outputs.year }}
+          # The kickoffs and sites read above, when that step ran (ADR 0041).
+          DETAILS: ${{ runner.temp }}/game-details.csv
         # .github/scripts/commit-results.sh: the private repo first, then this one, each on its newest main, with retries;
         # publish, rerate, the data checks (Zod blocks, cross-file reports) and the summary lines. Tested against local
         # bare repos (commit-results.test.mjs).

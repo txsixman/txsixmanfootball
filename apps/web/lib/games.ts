@@ -12,7 +12,7 @@ import { forfeitScore } from "./forfeit";
 import { applyToGame } from "./corrections";
 import { buildSeasonResults, type SeasonResult } from "./season-results";
 import { loadCorrections } from "./correction-files";
-import { kickoffOf, loadKickoffs } from "./kickoffs";
+import { kickoffOf, loadKickoffs, loadSites, siteOf } from "./kickoffs";
 import { isDisputed, loadDisputed } from "./disputed";
 
 // Hand-captured games (data/seed/*/playoffs-*.csv), read at build time. Same columns as packages/db/games.mjs, checked
@@ -98,7 +98,7 @@ export async function playoffLeagueSet(season: number): Promise<Set<string>> {
 }
 
 export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
-  const [rows, ratings, kickoffs] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON)]);
+  const [rows, ratings, kickoffs, sites] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON), loadSites(CURRENT_SEASON)]);
   const disputedBy = new Map(await Promise.all([...new Set(rows.map((x) => x.season))].map(async (s) => [s, await loadDisputed(s)] as const)));
   return rows.map(({ r, league, season, file, line: i, robot }) => {
     const team = (name: string): Team => {
@@ -135,7 +135,9 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
       verification: played ? (disputed ? "disputed" : "confirmed") : "none",
       projected: projection && projectionText(projection),
       projectedMargin: projection?.margin,
-      venue: r.neutral === "true" ? "Neutral site" : r.neutral === "false" ? `${home.name} (home)` : "Site not listed",
+      // Where it is played: the site from the game details when known, else "Site not listed yet". A bracket's home team is
+      // only its designation (ADR 0037), so it is never shown as the site (ADR 0041).
+      venue: season === CURRENT_SEASON ? siteOf(sites, r.game_date, r.home, r.away) : "Site not listed",
     } satisfies Game;
   });
 }
