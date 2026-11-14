@@ -76,7 +76,7 @@ for (const b of BRACKETS) {
   });
 }
 
-test("a bracket game not yet played shows its projected margin and win probability; the next pairing too, where it is known", async ({ page }) => {
+test("a bracket game not yet played shows its projected margin and chance to win; the next pairing too, where it is known", async ({ page }) => {
   await page.goto("/playoffs/bracket/tapps-division-i");
   const projected = page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win$/);
   expect(await projected.count()).toBeGreaterThan(0);

@@ -3,7 +3,7 @@ import { ordinal } from "./standings";
 // The words under a page's title in a search result: each page's own meta description, built from its own data. At most 160
 // characters. They say what the page holds and never what a game's result was: no winner is named (ADR 0004), a score never
 // appears, and a record or rank may rest on scores the page itself calls unconfirmed (ADR 0013). The only rating words are
-// rating, projected margin and win probability, and no source is named (ADR 0010). Organizations never mix (ADR 0012): each
+// rating, projected margin and chance to win, and no source is named (ADR 0010). Organizations never mix (ADR 0012): each
 // description names one organization, by the label its pages use.
 
 const MAX = 160;
@@ -34,14 +34,14 @@ export const homeDescription = (season: number, orgs: string[]) =>
 
 export const scoresDescription = (season: number) =>
   fit(`The ${season} Texas six-man playoff scoreboard, one organization at a time.`, [
-    "Every bracket game, with a projected margin and win probability for each game still to play.",
+    "Every bracket game, with a projected margin and chance to win for each game still to play.",
     "Every bracket game, with projections for games still to play.",
   ]);
 
 export const matchupDescription = (season: number) =>
   fit(`Compare any two rated Texas six-man teams, at home or on a neutral field.`, [
-    `The ${season} projected margin and win probability, from the ratings.`,
-    "The projected margin and win probability.",
+    `The ${season} projected margin and chance to win, from the ratings.`,
+    "The projected margin and chance to win.",
   ]);
 
 export const programsDescription = (programs: number, orgs: string[]) =>
@@ -106,19 +106,19 @@ export function playoffsDescription({ league, season, brackets, past }: { league
   const base = `${season} ${league} six-man playoffs: ${count(brackets, "bracket")}`;
   return past
     ? fit(`${base}, every game of the postseason, round by round.`)
-    : fit(`${base}, round by round.`, ["Projected margins and win probabilities for games still to play, and each team's chance at a title.", "Projected margins and win probabilities for games still to play."]);
+    : fit(`${base}, round by round.`, ["Projected margins and chances to win for games still to play, and each team's chance at a title.", "Projected margins and chances to win for games still to play."]);
 }
 
 export const bracketDescription = ({ name, season, latestRound }: { name: string; season: number; latestRound?: string }) =>
   fit(`${name} ${season} six-man playoff bracket${latestRound ? `, latest round: ${latestRound}` : ""}.`, [
-    "Every round's games, with projected margins and win probabilities for games still to play.",
+    "Every round's games, with projected margins and chances to win for games still to play.",
     "Every round's games, with projections for games still to play.",
   ]);
 
 export function recordsDescription({ org, first, latest }: { org: string; first?: number; latest?: number }) {
   const span = first === undefined ? "" : first === latest ? ` for ${first}` : `, ${first} to ${latest}`;
-  return fit(`${org} six-man records${span}: most points in a game, most by both teams, biggest upsets, longest streaks and unbeaten seasons.`, [
-    `${org} six-man records${span}: most points in a game, biggest upsets, longest streaks and unbeaten seasons.`,
+  return fit(`${org} six-man records${span}: most points in a game, most by both teams, biggest surprises, longest streaks and unbeaten seasons.`, [
+    `${org} six-man records${span}: most points in a game, biggest surprises, longest streaks and unbeaten seasons.`,
   ]);
 }
 
@@ -210,7 +210,7 @@ export function gameDescription({ away, home, date, season, playoff, scheduled, 
   return fit(
     [`${teams}${date ? `, ${date}` : ""}: ${kind}.`, `${teams}${date ? `, ${date}` : ""}.`, `${teams}.`],
     scheduled
-      ? ["A preview with each team's record and rating, and the projected margin and win probability.", "A preview with each team's record and rating."]
+      ? ["A preview with each team's record and rating, and the projected margin and chance to win.", "A preview with each team's record and rating."]
       : ["Each team's record going in and their earlier meetings.", "Their earlier meetings."],
   );
 }

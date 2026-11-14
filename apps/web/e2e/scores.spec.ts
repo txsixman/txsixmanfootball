@@ -229,7 +229,7 @@ test("the home page shows title chances for brackets down to their last four", a
   await expect(chances.getByRole("listitem").first()).toContainText(/(\d+|<1|>99)%$/);
 });
 
-test("upcoming playoff games show a projected margin and win probability, never betting words", async ({ page }) => {
+test("upcoming playoff games show a projected margin and chance to win, never betting words", async ({ page }) => {
   // Games still to play come from the season's data (e2e/upcoming.ts): each game night uses some up, the offseason has none.
   const { projectedGames } = await upcoming();
   if (!projectedGames) return test.skip(true, skipReason("no playoff game is still to play with a projection"));
@@ -551,7 +551,7 @@ test("matchup lists the last meetings between two teams across seasons", async (
 
 test("records list the most points, the longest winning runs and unbeaten seasons, naming no source", async ({ page }, info) => {
   await checkPage(page, "/records", `records-${info.project.name}`);
-  for (const name of ["Most points in a game", "Most points by both teams", "Biggest upsets", "Longest winning runs", "Unbeaten seasons"]) {
+  for (const name of ["Most points in a game", "Most points by both teams", "Biggest surprises", "Longest winning runs", "Unbeaten seasons"]) {
     await expect(page.getByRole("region", { name })).toBeVisible();
   }
   const points = page.getByRole("region", { name: "Most points in a game" }).getByRole("listitem");
@@ -559,9 +559,9 @@ test("records list the most points, the longest winning runs and unbeaten season
   const figures = await points.locator("span.font-num.text-navy").allTextContents();
   expect(figures.map(Number)).toEqual([...figures.map(Number)].sort((a, b) => b - a));
   await expect(page.getByText(/maxpreps|odds|spread|underdog|line\b/i)).toHaveCount(0);
-  const upsets = await page.getByRole("region", { name: "Biggest upsets" }).locator("li span.font-num.text-navy").allTextContents();
-  expect(upsets.length).toBe(10);
-  for (const u of upsets) expect(u).toMatch(/^(<1|[1-4]\d?)%( win probability before the game)?$/); // the unit after it is read aloud only
+  const surprises = await page.getByRole("region", { name: "Biggest surprises" }).locator("li span.font-num.text-navy").allTextContents();
+  expect(surprises.length).toBe(10);
+  for (const u of surprises) expect(u).toMatch(/^(<1|[1-4]\d?)%( chance to win before the game)?$/); // the unit after it is read aloud only
 });
 
 test("playoffs show every bracket round by round, naming no winner and no source", async ({ page }, info) => {

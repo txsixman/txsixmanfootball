@@ -141,7 +141,7 @@ test("the board shows a live game as Live: the read's period and scores in its o
   const game = {
     id: "g", date: "2026-11-13", league: "UIL DI · Bi-district", home: { name: "Salt Fork" }, away: { name: "Cedar Gap" },
     homeScore: null, awayScore: null, state: "scheduled", status: "Fri 11/13", kickoff: "2026-11-14T01:00:00Z",
-    verification: "none", projected: "Salt Fork by 3", projectedMargin: 3, upset: true, venue: "",
+    verification: "none", projected: "Salt Fork by 3", projectedMargin: 3, venue: "",
   };
   const live = { away: { name: "Cedar Gap", score: 47 }, home: { name: "Salt Fork", score: 45 }, period: "OT", readAt: new Date() };
   const shown = asLive(game, live);
@@ -151,7 +151,6 @@ test("the board shows a live game as Live: the read's period and scores in its o
   assert.equal(shown.verification, "unconfirmed");
   assert.equal(shown.projected, "Salt Fork by 3", "the projection from before the game stays beside the score (ADR 0044)");
   assert.equal(shown.projectedMargin, 3);
-  assert.equal(shown.upset, undefined);
   assert.equal(winnerOf(shown), null, "a live score names no winner");
   assert.equal(shown.kickoff, game.kickoff, "the rest of the game is kept");
   assert.equal(game.state, "scheduled", "the game itself is not changed");

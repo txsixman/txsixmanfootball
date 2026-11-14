@@ -3,7 +3,7 @@ import { slugify } from "./slug";
 
 // A projected margin and win probability for a game not yet played, from the same model as /rankings: the rating
 // difference, plus the home-field edge unless the site is neutral, turned into a calibrated win probability.
-// The words are projected margin and win probability (plan hard rules); never spreads, lines or odds.
+// The words are projected margin and chance to win (ADR 0045); never spreads, lines or odds.
 
 /** Standard normal CDF (Abramowitz and Stegun 7.1.26, error under 1.5e-7). */
 export function normalCdf(z: number): number {
