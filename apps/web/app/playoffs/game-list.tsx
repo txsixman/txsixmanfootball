@@ -90,7 +90,7 @@ export function BuiltList({ games, league, alignments }: { games: BuiltRow[]; le
     const slug = "team" in s ? programFor(alignments, s.team, league)?.slug : undefined;
     const text = sideText(s);
     return slug ? (
-      <Link href={`/programs/${slug}`} className="hover:text-navy hover:underline">
+      <Link href={`/programs/${slug}`} className="name-link">
         {text}
       </Link>
     ) : (

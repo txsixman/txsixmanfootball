@@ -201,7 +201,7 @@ function NextSection({ games }: { games: NextGame[] }) {
                   {g.sides.map((s, i) => (
                     <span key={s.name}>
                       {i > 0 && " vs "}
-                      {s.href ? <Link href={s.href} className="hover:text-navy hover:underline">{s.name}</Link> : s.name}
+                      {s.href ? <Link href={s.href} className="name-link">{s.name}</Link> : s.name}
                     </span>
                   ))}
                 </p>

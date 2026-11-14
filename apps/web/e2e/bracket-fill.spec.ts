@@ -1,3 +1,4 @@
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { programFor, loadAlignments } from "../lib/alignments";
 import { sideText } from "../lib/bracket-fill";
@@ -14,7 +15,18 @@ const BETTING = /\b(spreads?|odds|lines?|bets?|betting|underdogs?|favou?rites?)\
 const CLAIMS_A_RESULT = /\b(won|beat|beats|defeated|wins)\b|\bwinner\b(?! of )/i;
 const PROJECTED = /^Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win$/;
 
+/** The loaders read ../../data from the working directory; the tests run from the repo root (as e2e/upcoming.ts does). */
 async function built() {
+  const was = process.cwd();
+  process.chdir(path.join(__dirname, ".."));
+  try {
+    return await builtRows();
+  } finally {
+    process.chdir(was);
+  }
+}
+
+async function builtRows() {
   const [brackets, alignments] = await Promise.all([loadBrackets(), loadAlignments()]);
   return brackets.flatMap((b) =>
     b.rounds.flatMap((r) =>
