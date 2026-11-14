@@ -2,7 +2,7 @@
 // time known. Invented games only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { anyInProgress, IN_PROGRESS_MS, kickoffState, kickoffTime } from "../lib/kickoff.ts";
+import { anyInProgress, groupTonight, IN_PROGRESS_MS, kickoffState, kickoffTime } from "../lib/kickoff.ts";
 
 // Friday Nov 13, 2026, 7:00 PM Central is 01:00 UTC on the 14th.
 const game = { date: "2026-11-13", kickoff: "2026-11-14T01:00:00Z" };
@@ -52,6 +52,55 @@ test("no status names a winner or uses a betting word", () => {
       }
     }
   }
+});
+
+// Tonight's order (groupTonight), Friday Nov 13, 2026. Kickoffs are in UTC: 6:00 PM CT is 00:00Z on the 14th. Invented ids.
+const night = (id, kickoff, state = "later") => ({ id, date: "2026-11-13", state, ...(kickoff ? { kickoff: `2026-11-14T${kickoff}:00Z` } : {}) });
+const games = [
+  night("late", "02:00"), // 8:00 PM CT
+  night("early", "00:00"), // 6:00 PM CT
+  night("mid", "01:00"), // 7:00 PM CT
+  night("untimed"),
+  night("done-early", "00:00", "final"),
+  night("done-late", "01:00", "final"),
+  night("done-untimed", undefined, "final"),
+  night("forfeit", "00:30", "forfeit"),
+];
+const order = (now) => groupTonight(games, at(now)).map((g) => [g.key, g.label, g.games.map((x) => x.id)]);
+
+test("before any kickoff: Up next by kickoff with no time last, then Final latest first with no time last", () => {
+  assert.deepEqual(order("2026-11-13T20:00:00Z"), [
+    ["up-next", "Up next", ["early", "mid", "late", "untimed"]],
+    ["final", "Final", ["done-late", "forfeit", "done-early", "done-untimed"]],
+  ]);
+});
+
+test("once kickoffs pass: In progress first by kickoff, then Up next, then Final", () => {
+  assert.deepEqual(order("2026-11-14T01:30:00Z"), [ // 7:30 PM CT
+    ["in-progress", "In progress", ["early", "mid"]],
+    ["up-next", "Up next", ["late", "untimed"]],
+    ["final", "Final", ["done-late", "forfeit", "done-early", "done-untimed"]],
+  ]);
+});
+
+test("a game with a final is Final whatever the clock says; an empty group is left out", () => {
+  const only = [night("a", "00:00", "final"), night("b", "01:00", "forfeit")];
+  assert.deepEqual(groupTonight(only, at("2026-11-14T00:30:00Z")).map((g) => g.key), ["final"]); // inside both kickoff windows
+  assert.deepEqual(groupTonight([], at("2026-11-14T00:30:00Z")), []);
+});
+
+test("past the window with no score a game is not Final: it goes last, under Score not reported yet; so does a no-time game after its day", () => {
+  assert.deepEqual(order("2026-11-14T04:30:00Z"), [ // 10:30 PM CT: early (4h30m) is out of its window, mid (3h30m) is not
+    ["in-progress", "In progress", ["mid", "late"]],
+    ["up-next", "Up next", ["untimed"]],
+    ["final", "Final", ["done-late", "forfeit", "done-early", "done-untimed"]],
+    ["awaiting", "Score not reported yet", ["early"]],
+  ]);
+  assert.deepEqual(groupTonight([night("untimed")], at("2026-11-14T06:00:00Z")).map((g) => g.key), ["awaiting"]); // after midnight Central
+});
+
+test("with no clock (the server render) every game with no final is Up next", () => {
+  assert.deepEqual(groupTonight(games, null).map((g) => [g.key, g.games.length]), [["up-next", 4], ["final", 4]]);
 });
 
 test("live scores are read from kickoff to 4 hours after, and at no other time", () => {

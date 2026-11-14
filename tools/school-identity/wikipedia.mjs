@@ -7,7 +7,7 @@ import { IDENTITY } from "./fetch-logos.mjs";
 import { knownSchools } from "./merge.mjs";
 
 const API = "https://en.wikipedia.org/w/api.php";
-const USER_AGENT = "Project80x40-school-facts/1.0 (private research build)";
+const USER_AGENT = "txsixmanfootball-results-reader/1.0 (+https://txsixmanfootball.com; contact@txsixmanfootball.com)";
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // One request a second, and Wikipedia's own Retry-After on a 429, so a full run stays polite.

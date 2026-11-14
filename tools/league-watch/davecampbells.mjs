@@ -29,7 +29,7 @@ import { centralDate, gameNight, slugify, tonightsGames } from "./maxpreps.mjs";
 import { parseCsv } from "./store.mjs";
 
 export const ORIGIN = "https://www.davecampbells.com";
-export const USER_AGENT = "project-80x40-results-reader/1.0 (six-man scores; one request per 2.5 s)";
+export const USER_AGENT = "txsixmanfootball-results-reader/1.0 (+https://txsixmanfootball.com; contact@txsixmanfootball.com)";
 /** The feed's id for each season (seen in its own pages). A season not listed is not read. */
 export const SEASON_IDS = { 2026: "ddb8e968-3ddb-4c32-ba99-8329ed0a2853" };
 const GAP_MS = 2500;

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { groupTonight } from "../lib/kickoff";
 import { FIRST_SEASON } from "../lib/season";
 import path from "node:path";
 import { LIVE_SCORES_URL, noLiveScores } from "./live-route";
@@ -182,8 +183,10 @@ test("the preview fits a phone: no sideways scroll, the long head-to-head list i
 });
 
 test.describe("Tonight", () => {
-  test("lists the night's games by organization and round, or says there are none", async ({ page }) => {
+  test("lists the night's games by organization, in groups by the clock, or says there are none", async ({ page }) => {
     const { tonight } = await fixtures();
+    const NOW = new Date("2026-11-14T00:45:00Z"); // 6:45 PM Central, Friday Nov 13
+    await page.clock.setFixedTime(NOW);
     await checkPage(page, "/scores/tonight");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tonight");
     await expect(page.getByText(/^Page updated .*\d{1,2}:\d{2} (AM|PM) CT$/)).toBeVisible();
@@ -192,14 +195,16 @@ test.describe("Tonight", () => {
       await expect(page.getByRole("link", { name: "See every playoff game" })).toHaveAttribute("href", "/scores");
       return;
     }
-    // One section per organization, in the site's order; each holds only its own games, rounds in bracket order.
+    // One section per organization, in the site's order; each holds only its own games: In progress, Up next, then Final,
+    // an empty group left out, the order inside each group by kickoff (lib/kickoff.ts, unit-tested at fixed times).
     const sections = page.locator("main section[aria-labelledby^='night-']");
     await expect(sections).toHaveCount(tonight.orgs.length);
     for (const [i, org] of tonight.orgs.entries()) {
       const section = sections.nth(i);
       await expect(section.getByRole("heading", { level: 2 })).toHaveText(org.label);
-      await expect(section.getByRole("heading", { level: 3 })).toHaveText(org.rounds.map((r) => r.label));
-      const ids = org.rounds.flatMap((r) => r.games.map((g) => g.id));
+      const groups = groupTonight(org.rounds.flatMap((r) => r.games), NOW);
+      await expect(section.getByRole("heading", { level: 3 })).toHaveText(groups.map((g) => g.label));
+      const ids = groups.flatMap((g) => g.games.map((x) => x.id));
       expect(await section.locator("li[data-game]").evaluateAll((li) => li.map((x) => x.getAttribute("data-game")))).toEqual(ids);
       for (const g of org.rounds.flatMap((r) => r.games)) {
         const row = section.locator(`li[data-game="${g.id}"]`);
@@ -252,6 +257,33 @@ test.describe("Tonight", () => {
     expect(plain(await row.innerText()).replace(later!.away, "").replace(later!.home, "")).not.toMatch(WINNER_WORDS);
     // The other rows are untouched.
     await expect(page.locator("[data-live-score]")).toHaveCount(1);
+  });
+
+  test("the groups move with the clock and the live read starts at the first kickoff", async ({ page }) => {
+    const { tonight } = await fixtures();
+    const later = tonight.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games)).filter((g) => g.state === "later" && g.kickoff);
+    test.skip(!later.length, "no game of the night has a kickoff on file");
+    const first = Math.min(...later.map((g) => Date.parse(g.kickoff!)));
+    const startsAtFirst = later.filter((g) => Date.parse(g.kickoff!) === first);
+    let hits = 0;
+    await page.route(LIVE_SCORES_URL, (route) => {
+      if (route.request().method() !== "OPTIONS") hits++;
+      return route.fulfill({ status: route.request().method() === "OPTIONS" ? 204 : 200, contentType: "application/json", headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" }, body: "[]" });
+    });
+    await page.clock.install({ time: new Date(first - 5 * 60_000) });
+    await page.goto("/scores/tonight");
+    const heading = (name: string) => page.getByRole("heading", { level: 3, name, exact: true });
+    await expect(heading("Up next").first()).toBeVisible();
+    await expect(heading("In progress")).toHaveCount(0);
+    await page.clock.runFor(2 * 60_000);
+    expect(hits).toBe(0); // before kickoff: nothing asked
+    await page.clock.runFor(4 * 60_000); // a minute past the first kickoff
+    await expect(heading("In progress").first()).toBeVisible();
+    for (const g of startsAtFirst) await expect(page.locator(`[data-group="in-progress"] li[data-game="${g.id}"]`)).toHaveCount(1);
+    await expect.poll(() => hits).toBeGreaterThan(0);
+    // The group that holds it comes first in its organization's section.
+    const firstHeading = page.locator(`li[data-game="${startsAtFirst[0].id}"]`).locator("xpath=ancestor::section[1]").getByRole("heading", { level: 3 }).first();
+    await expect(firstHeading).toHaveText("In progress");
   });
 
   test("the home page links to it only when the night has games", async ({ page }) => {
