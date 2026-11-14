@@ -40,6 +40,7 @@ async function noProblems(page: Page) {
 }
 
 test("every bracket of the season: a tree when its games connect to one final, rounds otherwise, every box drawn", async ({ page }, info) => {
+  test.setTimeout(150_000); // every bracket page of the season, one after another
   for (const { b, whole } of await brackets()) {
     await page.goto(bracketHref(b.name));
     const shown = info.project.name === "desktop" && whole ? tree(page) : rounds(page);

@@ -183,44 +183,51 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
             {fit ? "Full size" : "Fit to screen"}
           </button>
         )}
-        {imageBase && (
-          <a href={`${imageBase}/share.png`} download className="btn">
-            Download image
-          </a>
-        )}
-        {imageBase && data.whole && (
-          <a href={`${imageBase}/full.png`} download className="btn">
-            Full-size image
-          </a>
-        )}
-        <button type="button" onClick={() => window.print()} className="btn max-md:hidden">
-          Print
-        </button>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => (setCopied(true), setTimeout(() => setCopied(false), 3000)), () => {})}
-        >
-          {copied ? "Link copied" : "Copy link"}
-        </button>
-        <ShareButton title={`${data.name} bracket`} className="[&>p]:sr-only" />
-        {/* The same games as a plain list, below the drawing: the way past it with a keyboard or a screen reader. */}
-        {list && (
-          <a href="#games-by-round" className="btn">
-            Games as a list
-          </a>
-        )}
+        {/* Saving and sharing behind one button, so a phone reaches the bracket after one row of controls. Opened, it
+            takes a line of its own. */}
+        <details className="group open:basis-full">
+          <summary className="btn cursor-pointer list-none [&::-webkit-details-marker]:hidden">Save or share</summary>
+          <div className="mt-2 flex flex-wrap items-start gap-2">
+            {imageBase && (
+              <a href={`${imageBase}/share.png`} download className="btn">
+                Download image
+              </a>
+            )}
+            {imageBase && data.whole && (
+              <a href={`${imageBase}/full.png`} download className="btn">
+                Full-size image
+              </a>
+            )}
+            <button type="button" onClick={() => window.print()} className="btn max-md:hidden">
+              Print
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => (setCopied(true), setTimeout(() => setCopied(false), 3000)), () => {})}
+            >
+              {copied ? "Link copied" : "Copy link"}
+            </button>
+            <ShareButton title={`${data.name} bracket`} className="[&>p]:sr-only" />
+          </div>
+        </details>
       </div>
-      <p data-print-hide className="mt-2 min-h-5 text-[13px] text-muted" aria-live="polite">
+      <p data-print-hide className="mt-1 flex flex-wrap items-center gap-x-3 text-[13px] text-muted" aria-live="polite">
         {teamName ? (
           <>
-            {teamName}&rsquo;s path is lit.{" "}
+            <span>{teamName}&rsquo;s path is lit.</span>
             <button type="button" onClick={() => setTeam(null)} className="inline-flex min-h-11 items-center font-semibold text-navy underline">
               Clear
             </button>
           </>
         ) : (
-          "Tap a team to light its path. Tap a game for its page."
+          <span>Tap a team to light its path. Tap a game for its page.</span>
+        )}
+        {/* The same games as a plain list, below the drawing: the way past it with a keyboard or a screen reader. */}
+        {list && (
+          <a href="#games-by-round" className="link-more">
+            Games as a list
+          </a>
         )}
       </p>
 
