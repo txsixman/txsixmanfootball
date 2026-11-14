@@ -9,7 +9,7 @@ import { centralClock, gameStatus } from "@/lib/playoff-status";
 import { chanceText, projectionParts } from "@/lib/projection";
 import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
-import { UnconfirmedMark } from "../playoffs/game-list";
+import { DisputedMark } from "../playoffs/game-list";
 import { CrestSlot } from "../ui";
 
 /**
@@ -79,7 +79,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
                         ) : (
                           <span className="font-semibold text-ink">{status.label}</span>
                         )}
-                        {status.unconfirmed && <UnconfirmedMark />}
+                        {status.unconfirmed && <DisputedMark />}
                       </span>
                     </span>
                     <span className="font-num text-[28px] font-bold leading-none tabular-nums text-ink">

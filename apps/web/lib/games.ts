@@ -13,6 +13,7 @@ import { applyToGame } from "./corrections";
 import { buildSeasonResults, type SeasonResult } from "./season-results";
 import { loadCorrections } from "./correction-files";
 import { kickoffOf, loadKickoffs } from "./kickoffs";
+import { isDisputed, loadDisputed } from "./disputed";
 
 // Hand-captured games (data/seed/*/playoffs-*.csv), read at build time. Same columns as packages/db/games.mjs, checked
 // row by row in lib/data-schemas.ts: a bad row fails the build.
@@ -98,6 +99,7 @@ export async function playoffLeagueSet(season: number): Promise<Set<string>> {
 
 export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
   const [rows, ratings, kickoffs] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON)]);
+  const disputedBy = new Map(await Promise.all([...new Set(rows.map((x) => x.season))].map(async (s) => [s, await loadDisputed(s)] as const)));
   return rows.map(({ r, league, season, file, line: i, robot }) => {
     const team = (name: string): Team => {
       const known = programFor(alignments, name, league);
@@ -108,6 +110,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
     const played = r.home_score !== "" && r.away_score !== "" && !(r.home_score === "0" && r.away_score === "0");
     const home = team(r.home);
     const away = team(r.away);
+    const disputed = played && isDisputed(disputedBy.get(season)!, r.game_date, r.home, r.away);
     // Playoff sites are mostly neutral; a row that does not say gets no home edge.
     const projection = !played && ratings.season === season ? project(ratings, home.name, away.name, r.neutral !== "false", r.neutral === "true") : undefined;
     return {
@@ -120,15 +123,16 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
       homeScore: played ? Number(r.home_score) : null,
       awayScore: played ? Number(r.away_score) : null,
       state: played ? "final" : "scheduled",
-      status: played ? "Final" : shortDate(r.game_date),
+      status: played ? (disputed ? "Score reported" : "Final") : shortDate(r.game_date),
       ...(!played && season === CURRENT_SEASON && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
       // A robot-read 1-0 or 2-0 is how the source records a forfeit: shown as one, never as a score (ADR 0004).
       endReason: played
         ? endReason(robot && forfeitScore(Number(r.home_score), Number(r.away_score)) ? "forfeit" : r.end_reason, r.end_period)
         : undefined,
       // A final score is confirmed, whether read by the robot, captured by hand or corrected (ADR 0040). Only a live score is
-      // unconfirmed, and a forfeit still shows the word, never its 1-0 or 2-0 (ADR 0004).
-      verification: played ? "confirmed" : "none",
+      // unconfirmed, and a forfeit still shows the word, never its 1-0 or 2-0 (ADR 0004). A final the sources give different
+      // winners is disputed (data/seed/disputed): its score shows, no winner is marked.
+      verification: played ? (disputed ? "disputed" : "confirmed") : "none",
       projected: projection && projectionText(projection),
       projectedMargin: projection?.margin,
       venue: r.neutral === "true" ? "Neutral site" : r.neutral === "false" ? `${home.name} (home)` : "Site not listed",
@@ -141,14 +145,14 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
 export type PlayoffGame = {
   league: string; bracket: string; round: string; date: string; home: string; away: string;
   homeScore?: number; awayScore?: number; forfeit: boolean; neutral: boolean;
-  /** A played game: its final score is confirmed, however it was read (ADR 0040). */
+  /** A played game: its final score is confirmed, however it was read, unless the sources give it different winners (ADR 0040). */
   confirmed: boolean;
   /** Kickoff in UTC, for a game not yet played, when known (lib/kickoffs.ts, ADR 0036). */
   kickoff?: string;
 };
 
 export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT_SEASON): Promise<PlayoffGame[]> {
-  const kickoffs = await loadKickoffs(season);
+  const [kickoffs, disputed] = await Promise.all([loadKickoffs(season), loadDisputed(season)]);
   return (await playoffRows([season])).map(({ r, league }) => {
     const name = (n: string) => programFor(alignments, n, league)?.school ?? n;
     const played = r.home_score !== "" && r.away_score !== "" && !(r.home_score === "0" && r.away_score === "0");
@@ -163,7 +167,7 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
       ...(played ? { homeScore: h, awayScore: a } : {}),
       forfeit: r.end_reason === "forfeit" || (played && forfeitScore(h, a)),
       neutral: r.neutral !== "false",
-      confirmed: played, // a final is confirmed (ADR 0040)
+      confirmed: played && !isDisputed(disputed, r.game_date, r.home, r.away), // a final is confirmed unless disputed (ADR 0040)
       ...(!played && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
     };
   });

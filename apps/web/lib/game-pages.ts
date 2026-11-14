@@ -11,6 +11,7 @@ import type { Projection } from "./projection";
 import { loadRanked, rankLabel } from "./rankings";
 import { loadRatings, record } from "./ratings";
 import { CURRENT_SEASON } from "./season";
+import { isDisputed, loadDisputed } from "./disputed";
 import { resultSeasons } from "./weeks";
 
 // A page for every robot-read game of every season (/scores/<id>, app/scores/[id]). The lookups below are worked out once
@@ -157,11 +158,12 @@ export const mediumDate = (iso: string) =>
 
 /**
  * A robot-read game as the scoreboard's Game, so it shares the playoff game page's look. A final, so it is confirmed and
- * names its winner (ADR 0040); a forfeit carries the word and no score, so its 1-0 or 2-0 never reaches the page.
+ * names its winner unless disputed (ADR 0040); a forfeit carries the word and no score, so its 1-0 or 2-0 never reaches the page.
  */
-function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game {
+function resultAsGame({ season, result: r }: Entry, d: GameDetail, disputed: Set<string>): Game {
   const team = (name: string, g: Going): Team => ({ name, mascot: "", initials: initials(name), color: "#0a2a5e", record: g.record ? `${g.record} going in` : "" });
   const kind = d.playoff ? `${season} playoffs · ${d.playoff}` : d.districtGame ? `${season} season · District game` : `${season} season`;
+  const dispute = !r.forfeit && isDisputed(disputed, r.date, r.home, r.away); // the sources give different winners: none marked
   return {
     id: r.id,
     date: r.date,
@@ -171,9 +173,9 @@ function resultAsGame({ season, result: r }: Entry, d: GameDetail): Game {
     homeScore: r.forfeit ? null : r.homeScore,
     awayScore: r.forfeit ? null : r.awayScore,
     state: "final",
-    status: r.forfeit ? "Forfeit" : "Final",
+    status: r.forfeit ? "Forfeit" : dispute ? "Score reported" : "Final",
     endReason: r.forfeit ? "Forfeit" : undefined,
-    verification: "confirmed",
+    verification: dispute ? "disputed" : "confirmed",
     venue: d.playoff ? "Neutral site or not listed" : `${r.home} (home)`,
   };
 }
@@ -209,7 +211,7 @@ export async function resolveGame(id: string) {
           id: found?.result.id,
         })
       : undefined;
-  const g: Game = own ? resultAsGame(own, detail!) : bracket!;
+  const g: Game = own ? resultAsGame(own, detail!, await loadDisputed(own.season)) : bracket!;
   return { g, found, own, sample, detail, neutral: own !== undefined && detail?.playoff !== undefined };
 }
 

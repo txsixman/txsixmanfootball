@@ -31,6 +31,11 @@ function files() {
       list.push({ file: seed(d, f), csv: [s.GAME_COLUMNS, s.PlayoffRow] });
     }
   }
+  if (existsSync(path.join(root, seed("disputed")))) {
+    for (const f of readdirSync(path.join(root, seed("disputed"))).filter((f) => /^\d{4}\.csv$/.test(f))) {
+      list.push({ file: seed(`disputed/${f}`), csv: [s.DISPUTED_COLUMNS, s.DisputedRow] });
+    }
+  }
   if (existsSync(path.join(root, seed("game-details")))) {
     for (const f of readdirSync(path.join(root, seed("game-details"))).filter((f) => /^\d{4}\.csv$/.test(f))) {
       list.push({ file: seed(`game-details/${f}`), csv: [s.DETAIL_COLUMNS, s.DetailRow] });
