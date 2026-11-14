@@ -13,6 +13,12 @@ and uses ADR 0036's kickoff status for it; every other rule of ADRs 0004, 0009, 
     kickoff first.
   - The server's HTML, and the first render in the browser, put every game with no final under "Up next", so nothing
     differs between them; the groups move once the page runs.
+- **The live score shows in place** on Tonight and on the home page's My teams, as on the scores board (ADR 0021):
+  - Tonight: a game the live read has a score for is under "In progress" whatever its kickoff says, its line "Unconfirmed"
+    with no leader; one the read says is over (ADR 0043) is under "Final" with its score and "as of" the read, until the
+    stored final replaces it.
+  - My teams: a followed program's next game shows the live line in the projection's place and the score where a final's
+    goes, from the school's side, dashed (solid once the read says it is over). One read serves every followed program.
 - **The live read runs only while a game on the page may be under way** (`anyInProgress` in `lib/kickoff.ts`), checked
   again every minute: from kickoff to 4 hours after when the kickoff is known; with no kickoff time, through its game
   date's evening, 5:00 PM to midnight Central, so its live score still shows. It starts by itself and stops when the window

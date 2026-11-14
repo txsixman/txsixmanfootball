@@ -2,16 +2,29 @@
 
 import Link from "next/link";
 import { groupTonight } from "@/lib/kickoff";
-import { liveView, type LiveRow } from "@/lib/live-scores";
+import { checkedAt, liveView, type LiveRow } from "@/lib/live-scores";
 import type { Night, NightGame } from "@/lib/tonight";
 import { KickoffStatus, useNow } from "../../kickoff-status";
 import { LiveLine, useLiveScores } from "../live-score";
 
-// Tonight's games, one organization at a time (ADR 0012), each in groups by the clock: in progress, up next, final. A game with no final yet may be under way,
-// so its live line is read in the browser exactly as the scoreboard reads it (ADR 0021). Every score is the reader's:
-// "Unconfirmed", and no team is named the winner or marked as leading.
+// Tonight's games, one organization at a time (ADR 0012), each in groups by the clock: in progress, up next, final. A game
+// with no final yet may be under way, so its live score is read in the browser as the scoreboard reads it (ADR 0021) and
+// shown in place (ADR 0039): a game the read has a score for is In progress, its line "Unconfirmed" with no leader; one the
+// read says is over is a Final with its score and when it was read (ADR 0043), until the stored final replaces it.
 
-function Status({ g, liveRows }: { g: NightGame; liveRows: LiveRow[] }) {
+/** A game as Tonight shows it: with the live read's score in place (ADR 0039). A game under way is in progress whatever its
+ * kickoff says; one the read says is over (ADR 0043) is a final, with its score and when it was read, until the stored
+ * final replaces it. */
+type TonightGame = NightGame & { round: string; underWay?: boolean; asOf?: string };
+function withLive(g: NightGame & { round: string }, liveRows: LiveRow[]): TonightGame {
+  if (g.state !== "later") return g;
+  const live = liveView(liveRows, { date: g.date, home: g.home, away: g.away });
+  if (!live) return g;
+  if (!live.finished) return { ...g, underWay: true };
+  return { ...g, state: "final", awayScore: live.away.score, homeScore: live.home.score, unconfirmed: false, asOf: checkedAt(live.readAt) };
+}
+
+function Status({ g, liveRows }: { g: TonightGame; liveRows: LiveRow[] }) {
   if (g.state === "forfeit") return <p className="text-[14px] font-bold leading-5 text-ink">Forfeit</p>;
   if (g.state === "final") {
     return (
@@ -20,6 +33,7 @@ function Status({ g, liveRows }: { g: NightGame; liveRows: LiveRow[] }) {
         <p className="text-[15px] leading-5 text-ink">
           {g.away} {g.awayScore}, {g.home} {g.homeScore}
           {g.unconfirmed && <span className="text-muted"> &middot; disputed</span>}
+          {g.asOf && <span className="text-muted"> &middot; as of {g.asOf}</span>}
         </p>
       </>
     );
@@ -46,7 +60,7 @@ export default function TonightBoard({ night }: { night: Night }) {
     <>
       {night.orgs.map((org) => {
         // Each game keeps its round on its line, now that the groups replace the round headings.
-        const games = org.rounds.flatMap((r) => r.games.map((g) => ({ ...g, round: r.label })));
+        const games = org.rounds.flatMap((r) => r.games.map((g) => withLive({ ...g, round: r.label }, liveRows)));
         return (
           <section key={org.slug} aria-labelledby={`night-${org.slug}`}>
             <h2 id={`night-${org.slug}`} className="bg-navy px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">

@@ -50,7 +50,8 @@ export const anyInProgress = (games: { date: string; kickoff?: string }[], now: 
   );
 
 export type NightGroupKey = "in-progress" | "up-next" | "final" | "awaiting";
-type NightGame = { date: string; kickoff?: string; state: "later" | "final" | "forfeit" };
+/** `underWay`: the live read has a score for it now (ADR 0039), so it is in progress whatever its kickoff says. */
+type NightGame = { date: string; kickoff?: string; state: "later" | "final" | "forfeit"; underWay?: boolean };
 
 const GROUPS: { key: NightGroupKey; label: string }[] = [
   { key: "in-progress", label: "In progress" },
@@ -71,6 +72,7 @@ const kickoffMs = (g: { kickoff?: string }) => (g.kickoff ? Date.parse(g.kickoff
 export function groupTonight<T extends NightGame>(games: T[], now: Date | null): { key: NightGroupKey; label: string; games: T[] }[] {
   const keyOf = (g: T): NightGroupKey => {
     if (g.state !== "later") return "final";
+    if (g.underWay) return "in-progress";
     const kind = now ? kickoffState(g, now).kind : "starts";
     return kind === "in-progress" ? "in-progress" : kind === "awaiting" ? "awaiting" : "up-next";
   };
