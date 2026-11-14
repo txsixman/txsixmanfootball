@@ -35,7 +35,7 @@ function StatusCell({ g }: { g: Game }) {
         ) : (
           // Not confirmed: never "Final", which would name a winner from a score no second source has backed (ADR 0008).
           <>
-            <span>Score</span>
+            <span>Score</span>{" "}
             <span>reported</span>
           </>
         )}

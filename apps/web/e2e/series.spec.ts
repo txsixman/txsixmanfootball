@@ -64,7 +64,7 @@ for (const pair of [JAYTON, FORFEIT, LONG]) {
     const labels = await list.getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("aria-label")!));
     let [w, l, t, forfeits] = [0, 0, 0, 0];
     for (const label of labels) {
-      const m = label.match(/^[A-Za-z]+ \d+, \d{4}, (.+) at (.+?), (forfeit|(\d+)-(\d+)), game page$/)!;
+      const m = label.match(/^[A-Za-z]+ \d+, \d{4}, (.+) vs (.+?), (forfeit|(\d+)-(\d+)), game page$/)!;
       expect(m, label).not.toBeNull();
       if (m[3] === "forfeit") {
         forfeits += 1;
