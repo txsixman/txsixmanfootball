@@ -65,3 +65,26 @@ body {
 @utility btn-red {
   @apply inline-flex min-h-11 items-center justify-center border-2 border-red bg-red px-4 font-bold text-white hover:brightness-110;
 }
+
+/* Printing a bracket (ADR 0049): the drawing alone, on one landscape page. Its frame sets --print-zoom to fit the page. */
+@media print {
+  @page {
+    size: landscape;
+    margin: 8mm;
+  }
+  body:has([data-tree-print]) > :not(:has([data-tree-print])),
+  body:has([data-tree-print]) header,
+  body:has([data-tree-print]) footer,
+  [data-print-hide] {
+    display: none !important;
+  }
+  [data-tree-scroll] {
+    display: block !important;
+    overflow: visible !important;
+    width: auto !important;
+    margin: 0 !important;
+  }
+  [data-tree-scroll] > div {
+    zoom: var(--print-zoom, 1) !important;
+  }
+}
