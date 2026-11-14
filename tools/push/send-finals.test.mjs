@@ -58,6 +58,9 @@ test("sends one alert per following browser, deletes gone ones, counts failures"
   const left = await db.query("select endpoint from push_subscription order by 1");
   assert.equal(left.rows.length, 3);
   assert.ok(!left.rows.some((x) => x.endpoint.endsWith("/gone")));
+  // Only the browser the push service accepted a message for is confirmed (migration 0018).
+  const confirmed = await db.query("select endpoint from push_subscription where confirmed_at is not null");
+  assert.deepEqual(confirmed.rows.map((x) => x.endpoint.split("/").at(-1)), ["ok"]);
 });
 
 test("web-push provides what the sender and the key setup call (named exports, no default)", async () => {
