@@ -8,13 +8,14 @@ import { KickoffStatus } from "../kickoff-status";
 import { useLiveScores } from "./live-score";
 
 // A game under way shows its live score where its score goes, not beside it (ADR 0021): the read's score, dashed and
-// "Unconfirmed", naming no winner or leader, with where it stands ("Q3 · 4:12 left · as of 7:42 PM CT"). A final replaces it.
+// "Unconfirmed", naming no winner or leader, with where it stands ("Q3 · 4:12 left · as of 7:42 PM CT"). Once the read
+// says it is over it is a final (ADR 0043): "Final · as of 9:45 PM CT", the winner marked. The stored final replaces it.
 
 /** "Live · Q3 · 4:12 left · as of 7:42 PM CT · Unconfirmed" (`score`, when given, after "Live"; with no period, "Live" once).
- * A game the read saw finished: "Score reported · 28-14 · as of 9:05 PM CT · Unconfirmed" (ADR 0042). */
+ * A finished game: "Final · 28-14 · as of 9:45 PM CT" (ADR 0043). */
 const statusLine = (live: LiveView, score?: string) =>
   live.finished
-    ? ["Score reported", score, liveStatus(live).replace(/^Score reported · /, ""), "Unconfirmed"].filter(Boolean).join(" · ")
+    ? ["Final", score, liveStatus(live).replace(/^Final · /, "")].filter(Boolean).join(" · ")
     : ["Live", score, liveStatus(live).replace(/^Live · /, ""), "Unconfirmed"].filter(Boolean).join(" · ");
 
 const GameLiveRows = createContext<LiveRow[]>([]);
@@ -25,11 +26,11 @@ export function GameLiveRead({ date, kickoff, watch, children }: { date?: string
   return <GameLiveRows.Provider value={useLiveScores(watch && date ? [{ date, kickoff }] : [])}>{children}</GameLiveRows.Provider>;
 }
 
-/** The game page header's kickoff status (ADR 0036), except for a game the live read saw finished: "Score reported", never
- * "In progress" (ADR 0042). */
+/** The game page header's kickoff status (ADR 0036), except for a game the live read says is over: "Final", never
+ * "In progress" (ADR 0043). */
 export function GameKickoffStatus({ g }: { g: Game & { date: string } }) {
   const live = liveView(useContext(GameLiveRows), { date: g.date, home: g.home.name, away: g.away.name });
-  if (live?.finished) return <span data-kickoff-status="reported">Score reported</span>;
+  if (live?.finished) return <span data-kickoff-status="final">Final</span>;
   return <KickoffStatus date={g.date} kickoff={g.kickoff} tone={false} />;
 }
 
@@ -75,6 +76,15 @@ export function ProgramLiveScore({ date, school, opponent, home, line, children 
     return (
       <span data-live-score className="block font-num text-[15px] font-bold uppercase tracking-wide text-red">
         {statusLine(live, score)}
+      </span>
+    );
+  }
+  // A finished game's score is a final (ADR 0043): solid, not dashed.
+  if (live.finished) {
+    return (
+      <span data-live-score>
+        {score}
+        <span className="sr-only"> final</span>
       </span>
     );
   }

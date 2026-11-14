@@ -104,25 +104,30 @@ test("a game under way shows its live score in the score itself on the game page
   await expect(row.locator("[aria-hidden='true']", { hasText: "◀" })).toHaveCount(0);
 });
 
-test("a game the read saw finished shows as Score reported until the final: dashed, no winner, never In progress (ADR 0042)", async ({ page }) => {
+test("a finished live row shows Final with the winner marked, as of the read, never In progress (ADR 0043)", async ({ page }) => {
   const { scheduled: f } = await fixtures();
   await serveLive(page, { rows: [liveRow(f, { period: null, finished: true })] });
   await page.clock.install({ time: inWindow(f) });
   await page.goto(`/scores/${f.id}`);
-  await expect(page.locator("[data-live-score]")).toHaveText(/^Score reported · as of \d{1,2}:\d{2} (AM|PM) CT · Unconfirmed$/);
-  await expect(page.getByRole("region", { name: "Score" }).locator(".decoration-dashed")).toHaveText(["14", "28"]);
-  await expect(page.locator("[data-kickoff-status]")).toHaveText("Score reported"); // the header too, never "In progress"
-  await expect(page.locator("body")).not.toContainText(/winner|In progress/i);
+  await expect(page.locator("[data-live-score]")).toHaveText(/^Final · as of \d{1,2}:\d{2} (AM|PM) CT$/);
+  const score = page.getByRole("region", { name: "Score" });
+  await expect(score.locator(".decoration-dashed")).toHaveCount(0); // a final, not a live score
+  await expect(score).toContainText("28");
+  await expect(score).toContainText("14");
+  await expect(score.getByText("winner", { exact: false })).toHaveCount(1); // the home side, 28 to 14
+  await expect(page.locator("[data-kickoff-status]")).toHaveText("Final"); // the header too, never "In progress"
+  await expect(page.locator("body")).not.toContainText(/In progress/i);
+  await expect(score).not.toContainText(/Unconfirmed/i);
 
-  // The board lists it under Score reported, counted in the jump bar, not under Live.
+  // The board lists it under Final, with the winner marked, not under Live or Score reported.
   const row = await openBoard(page, f);
-  await expect(page.locator("#reported").locator(`li[data-game="${f.id}"]`)).toBeVisible();
+  await expect(page.locator("#final").locator(`li[data-game="${f.id}"]`)).toBeVisible();
   await expect(page.locator("#live").locator(`li[data-game="${f.id}"]`)).toHaveCount(0);
-  await expect(page.getByRole("navigation", { name: "Jump to" }).getByRole("link", { name: /Reported\s*\d+/ })).toBeVisible();
-  await expect(row.locator(".decoration-dashed")).toHaveText(["14", "28"]);
+  await expect(page.locator("#reported").locator(`li[data-game="${f.id}"]`)).toHaveCount(0);
+  await expect(row.locator("[data-live-score]")).toHaveText(/^Final · as of \d{1,2}:\d{2} (AM|PM) CT$/);
+  await expect(row.getByText("winner", { exact: true })).toHaveCount(1);
   const text = (await row.innerText()).replace(/\s+/g, " ");
-  expect(text).not.toMatch(/In progress|Projected|\bLive\b/i);
-  expect(text.replace(f.away, "").replace(f.home, "")).not.toMatch(NO_WINNER_OR_BETTING);
+  expect(text).not.toMatch(/In progress|Projected|\bLive\b|Unconfirmed/i);
 });
 
 test("a row with no period reads Live · as of … · Unconfirmed, the score in the big score, and Live with no quarter on the board", async ({ page }) => {

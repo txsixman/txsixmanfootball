@@ -169,24 +169,27 @@ test("the live status beside the score: period, time left when read, and when it
   assert.equal(view({ clock: "4:60" }), null, "a bad clock drops the row, as a bad period does");
 });
 
-test("a game the read saw finished is a reported score: Score reported, dashed, no winner, never Live (ADR 0042)", async () => {
+test("a finished live row is a final: Final with the winner marked, as of the read, never Live (ADR 0043)", async () => {
   const { asLive, liveStatus } = await import("../lib/live-scores.ts");
   const { winnerOf } = await import("../lib/score-display.ts");
-  const at = "2026-11-14T03:05:00Z"; // 9:05 PM in Central
+  const at = "2026-11-14T03:45:00Z"; // 9:45 PM in Central
   const live = liveView(parseLiveRows([row({ read_at: at, period: null, finished: true })]), { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" }, Date.parse(at));
   assert.equal(live.finished, true);
-  assert.equal(liveStatus(live), "Score reported · as of 9:05 PM CT");
+  assert.equal(liveStatus(live), "Final · as of 9:45 PM CT");
   const game = {
     id: "g", date: "2026-11-13", league: "UIL DI · Bi-district", home: { name: "Salt Fork" }, away: { name: "Cedar Gap" },
     homeScore: null, awayScore: null, state: "scheduled", status: "Fri 11/13", verification: "none", projected: "Salt Fork by 3", projectedMargin: 3,
   };
   const shown = asLive(game, live);
-  assert.equal(shown.state, "final", "it sits with the reported finals, not under Live");
-  assert.equal(shown.status, "Score reported");
-  assert.equal(shown.verification, "unconfirmed");
+  assert.equal(shown.state, "final", "it sits with the finals, not under Live");
+  assert.equal(shown.status, "Final");
+  assert.equal(shown.verification, "confirmed", "a final is confirmed (ADR 0040)");
   assert.deepEqual([shown.awayScore, shown.homeScore], [14, 28]);
   assert.equal(shown.projected, undefined);
-  assert.equal(winnerOf(shown), null, "a reported score names no winner");
+  assert.equal(winnerOf(shown), "home", "the winner is marked");
+  // A game under way stays unconfirmed with no winner.
+  const under = asLive(game, { ...live, finished: false });
+  assert.deepEqual([under.state, under.verification, winnerOf(under)], ["live", "unconfirmed", null]);
   // A row with no flag (the MaxPreps reader's, or one written before migration 0019) is under way.
   assert.equal(liveView(parseLiveRows([row({ read_at: at })]), { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" }, Date.parse(at)).finished, false);
 });

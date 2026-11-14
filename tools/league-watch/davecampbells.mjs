@@ -141,6 +141,19 @@ export function periodByMinutes(items, now = new Date()) {
   return used.map((b) => `${b.name} min: ${[...b.counts].sort(([x], [y]) => x.localeCompare(y)).map(([v, n]) => `${v} x${n}`).join(", ")}`).join("; ");
 }
 
+/**
+ * The read sees the game in the fourth quarter or later (ADR 0043): the feed's raw period is 4 or more, or 2 hours have
+ * passed since kickoff. A game with no kickoff goes by the period alone. The raw period is used only here, never stored
+ * or shown (ADR 0042). live_scores() calls a late game whose score has not changed for 60 minutes final (migration 0020).
+ */
+export const LATE_AFTER_MS = 2 * 3600_000;
+export function isLate(item, now = new Date()) {
+  const p = Number(item?.summary?.period);
+  if (Number.isFinite(p) && p >= 4) return true;
+  const kickoff = Date.parse(String(item?.scheduledKickoff ?? ""));
+  return !Number.isNaN(kickoff) && now.getTime() - kickoff >= LATE_AFTER_MS;
+}
+
 /** A game under way: the feed's status says live, in progress or halftime (any case, spaces or dashes). */
 export function isLive(item) {
   const s = String(item?.status ?? item?.summary?.status ?? "").toLowerCase().replace(/[\s_-]/g, "");
@@ -160,8 +173,10 @@ export function sameSchool(schoolName, ourSlug) {
  * still-unscored bracket games (`due`). A team is ours by the map (`ours`: their slug to our slug); when only one team is
  * mapped, the other is that team's opponent in tonight's bracket row, and only if the feed's school name matches it.
  * Scores are set in the bracket row's own home and away order. A game the feed calls finished (Final, Completed or
- * Finished) is kept with its last score and `finished: true` (ADR 0042): pages show it as "Score reported"
- * until our own final is read, which takes it off tonight's due list. Skipped: a forfeit, a score outside 0 to 200, a 0-0
+ * Finished) is kept with its last score and `finished: true` (ADR 0042): pages show it as "Final" (ADR 0043) until our
+ * own final is read, which takes it off tonight's due list. A game in the fourth quarter or later (isLate) carries
+ * `late: true`, so live_scores() can call it final once its score sits unchanged for an hour (ADR 0043).
+ * Skipped: a forfeit, a score outside 0 to 200, a 0-0
  * (a game may list 0-0 before kickoff, and the period that would tell is not trusted) and a finished 0-0. No row carries a
  * period: the feed's lagged the score on Nov 13, 2026 (ADR 0042), so pages say "Live" with no quarter. One row a game.
  */
@@ -186,6 +201,7 @@ export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() 
       away_score: flip ? hScore : aScore,
       period,
       ...(finished && { finished: true }),
+      ...(isLate(item, readAt) && { late: true }),
       read_at: readAt.toISOString(),
     });
   }
@@ -248,7 +264,11 @@ export function mergeLive(first, second) {
     const i = a.findIndex((v, n) => v !== b[n]);
     return i >= 0 && b[i] > a[i];
   };
-  const better = (x, y) => (ahead(x, y) ? y : x);
+  // Late (ADR 0043) if either source's read says so: the MaxPreps rows never carry it.
+  const better = (x, y) => {
+    const row = ahead(x, y) ? y : x;
+    return x.late === true || y.late === true ? { ...row, late: true } : row;
+  };
   const byKey = new Map(first.map((r) => [r.game_key, r]));
   for (const r of second) byKey.set(r.game_key, byKey.has(r.game_key) ? better(byKey.get(r.game_key), r) : r);
   return [...byKey.values()].sort((x, y) => x.game_key.localeCompare(y.game_key));

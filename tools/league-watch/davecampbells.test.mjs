@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { DETAIL_COLUMNS, kickoffRows, mergeKickoffs } from "./davecampbells.mjs";
-import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
+import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLate, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
 
@@ -105,8 +105,8 @@ test("a game the feed calls finished keeps its last score, marked finished, with
   const opts = { date: "2026-11-13", due, ours, readAt };
   for (const status of ["Finished", "Final", "Completed"]) {
     assert.deepEqual(liveRowsFromItems([item({ status, summary: { period: 4, homeScore: 20, awayScore: 14 } })], opts), [
-      { game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: null, finished: true, read_at: "2026-11-14T02:00:00.000Z" },
-    ], status);
+      { game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: null, finished: true, late: true, read_at: "2026-11-14T02:00:00.000Z" },
+    ], status); // period 4: late too (ADR 0043)
   }
   // A live listing of the same game comes first in the answer: the row says under way (no finished field).
   assert.equal(liveRowsFromItems([item(), item({ status: "Finished" })], opts)[0].finished, undefined);
@@ -506,4 +506,29 @@ test("the period log counts the feed's period by minutes since kickoff, games un
   const line = periodByMinutes([at(10, 1), at(20, 1), at(86, 1), at(116, 5), at(116, 5), at(45, null), at(130, 4, "Finished"), at(5, "Q<2>")], now);
   assert.equal(line, "0-30 min: 1 x2, Q2 x1; 30-60 min: none x1; 60-90 min: 1 x1; 90-120 min: 5 x2");
   assert.ok(!/75|6\b|wren|lark/i.test(line));
+});
+
+test("late (ADR 0043): the raw period is 4 or more, or 2 hours since kickoff; with no kickoff, the period alone", () => {
+  const kickoff = "2026-11-14T01:00:00Z";
+  const at = (minutes) => new Date(Date.parse(kickoff) + minutes * 60_000);
+  assert.equal(isLate(item({ summary: { period: 4 } }), at(40)), true, "late by period");
+  assert.equal(isLate(item({ summary: { period: 5 } }), at(40)), true, "past the fourth quarter");
+  assert.equal(isLate(item({ summary: { period: "4" } }), at(40)), true, "a period given as text");
+  assert.equal(isLate(item({ summary: { period: 2 } }), at(120)), true, "late by time: 2 hours since kickoff");
+  assert.equal(isLate(item({ summary: { period: 2 } }), at(119)), false, "not late");
+  assert.equal(isLate(item({ summary: { period: null } }), at(60)), false);
+  assert.equal(isLate(item({ scheduledKickoff: undefined, summary: { period: 2 } }), at(600)), false, "no kickoff: period alone");
+  assert.equal(isLate(item({ scheduledKickoff: undefined, summary: { period: 4 } }), at(0)), true);
+  // The row carries the flag only when late; the period itself is never stored.
+  const opts = { date: "2026-11-13", due, ours };
+  const [late] = liveRowsFromItems([item({ summary: { period: 2, homeScore: 20, awayScore: 14 } })], { ...opts, readAt: at(130) });
+  assert.deepEqual([late.late, late.period], [true, null]);
+  assert.equal(liveRowsFromItems([item()], { ...opts, readAt: at(60) })[0].late, undefined);
+});
+
+test("mergeLive keeps late when either source's row says so (ADR 0043)", () => {
+  const r = (total, late) => ({ game_key: "2026-11-13|a|b", home: "a", away: "b", home_score: total, away_score: 0, period: null, ...(late && { late: true }), read_at: "2026-11-14T03:00:00.000Z" });
+  assert.equal(mergeLive([r(28)], [r(21, true)])[0].late, true, "the higher score wins, the late flag is kept");
+  assert.equal(mergeLive([r(28)], [r(21, true)])[0].home_score, 28);
+  assert.equal(mergeLive([r(28)], [r(21)])[0].late, undefined);
 });

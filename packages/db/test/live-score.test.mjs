@@ -146,3 +146,59 @@ test("a finished game keeps its last score with the flag, and live_scores() retu
   assert.equal((await d.query("select finished from live_score")).rows[0].finished, false);
   assert.deepEqual(await checkLive(d), []);
 });
+
+// Migration 0020, ADR 0043: a late game whose score has not changed for 60 minutes is final in live_scores().
+const minutesAgo = (m) => new Date(Date.now() - m * 60_000).toISOString();
+const finishedNow = async (d) => {
+  await d.exec("set role anon");
+  const { rows } = await d.query("select finished from live_scores()");
+  await d.exec("reset role");
+  return rows[0]?.finished;
+};
+
+test("the upsert keeps score_changed_at while the score is the same, and moves it when the score changes", async () => {
+  const d = await supabaseLike();
+  const first = minutesAgo(70);
+  await writeLive(d, validateLiveRows([row({ read_at: first })]));
+  const changedAt = async () => (await d.query("select score_changed_at from live_score")).rows[0].score_changed_at.toISOString();
+  assert.equal(await changedAt(), first, "a new row: its read time");
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(30), period: "Q4", late: true })]));
+  assert.equal(await changedAt(), first, "same score (period and flags may change): kept");
+  // The same score with home and away swapped is the same score.
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(20), home: "cedar-gap", away: "salt-fork", home_score: 14, away_score: 28 })]));
+  assert.equal(await changedAt(), first, "teams swapped, same scores: kept");
+  const later = minutesAgo(10);
+  await writeLive(d, validateLiveRows([row({ read_at: later, home_score: 34 })]));
+  assert.equal(await changedAt(), later, "a score changed: this read's time");
+});
+
+test("late and unchanged for 60 minutes is final; changed at minute 50, or not late, is not", async () => {
+  const d = await supabaseLike();
+  // Unchanged for 70 minutes while late: final.
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(70), late: true })]));
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(5), late: true })]));
+  assert.equal(await finishedNow(d), true);
+  // The score changed 50 minutes ago (10 minutes into the hour): not final.
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(50), late: true, home_score: 35 })]));
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(5), late: true, home_score: 35 })]));
+  assert.equal(await finishedNow(d), false);
+  // Unchanged for 60 minutes but not late (an early game, or the read does not say): not final.
+  await writeLive(d, []);
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(65) })]));
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(5) })]));
+  assert.equal(await finishedNow(d), false);
+  // A 0-0 is never final by this rule, however long it sits.
+  await writeLive(d, []);
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(90), late: true, home_score: 0, away_score: 0 })]));
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(5), late: true, home_score: 0, away_score: 0 })]));
+  assert.equal(await finishedNow(d), false);
+  // The feed's own finished flag still makes it final at once.
+  await writeLive(d, validateLiveRows([row({ read_at: minutesAgo(5), finished: true })]));
+  assert.equal(await finishedNow(d), true);
+  assert.deepEqual(await checkLive(d), []);
+});
+
+test("late must be true or false", () => {
+  assert.throws(() => validateLiveRows([row({ late: "yes" })]), /late is not true or false/);
+  assert.equal(validateLiveRows([row()])[0].late, false);
+});

@@ -4,7 +4,8 @@ import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-public.ts";
 // Live scores during a game (migration 0016, ADR 0021). Results watch writes the score of each game under way to the
 // table live_score every 10 minutes; the browser reads it through the function live_scores() with Supabase's public key
 // (lib/supabase-public.ts, the one push uses; no sign-in setting is involved) and shows it beside the
-// game. It is the read's score, not a result: always "Unconfirmed", never a winner or leader. Imports two plain files
+// game. While under way it is the read's score, not a result: "Unconfirmed", never a winner or leader. Once the read
+// says it is over (`finished`, ADR 0043) it is a final: "Final", the winner marked (ADR 0040). Imports two plain files
 // only, so the node tests run it as it is.
 
 /** One row of live_score, checked. A row that fails is dropped, never shown. */
@@ -17,7 +18,8 @@ export type LiveRow = {
   period: string | null;
   /** Time left in the period ("4:12"), when the reader has it; absent until it does (the page then leaves it out). */
   clock?: string | null;
-  /** The read saw the game finished (migration 0019, ADR 0042): its last score, "Score reported", until our own final. */
+  /** The game is over (live_scores(), migrations 0019 and 0020, ADR 0043): the feed says finished, or it is late and its
+   * score has not changed for an hour. Shown as "Final" with the winner marked until the stored final replaces it. */
   finished?: boolean;
   read_at: string;
 };
@@ -99,11 +101,11 @@ export const checkedAt = (at: Date) =>
   `${new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" }).format(at)} CT`;
 
 /** Where a game under way stands, beside its score: "Q3 · 4:12 left · as of 7:42 PM CT". The period reads "Live" when the
- * read has none, and the time left is left out until the reader has it. A game the read saw finished: "Score reported ·
- * as of 9:05 PM CT" (ADR 0042), never "In progress" and never "Final": only our own final is that. */
+ * read has none, and the time left is left out until the reader has it. A finished game: "Final · as of 9:45 PM CT"
+ * (ADR 0043), never "In progress". */
 export const liveStatus = (live: LiveView) =>
   live.finished
-    ? `Score reported · as of ${checkedAt(live.readAt)}`
+    ? `Final · as of ${checkedAt(live.readAt)}`
     : [live.period ?? "Live", live.clock && `${live.clock} left`, `as of ${checkedAt(live.readAt)}`].filter(Boolean).join(" · ");
 
 /** The fields of a game the board needs to show it live (lib/demo-games.ts Game; named here so this file stays plain). */
@@ -121,19 +123,19 @@ type BoardGame = {
 /**
  * A game with no final as the scores board shows it while a live row says it is under way: Live, the read's period as its
  * status, the read's scores in its own score cells (each on the right team), and unconfirmed, so it is dashed and names no
- * winner (lib/score-display.ts winnerOf). Its projection is dropped: a pre-game estimate beside a score under way would
- * read as a second answer.
+ * winner (lib/score-display.ts winnerOf). A finished row is a final (ADR 0043): "Final", confirmed, the winner marked
+ * (ADR 0040). Its projection is dropped either way: a pre-game estimate beside a score would read as a second answer.
  */
 export function asLive<G extends BoardGame>(g: G, live: LiveView): G {
   return {
     ...g,
-    // A game the read saw finished is a reported score, not a live one: it sits with the other unconfirmed finals
-    // ("Score reported", dashed, no winner) until our own final replaces it (ADR 0042).
+    // A finished game is a final (ADR 0043): it sits with the other finals, "Final" with the winner marked, until the
+    // stored final replaces it. If the two differ, the stored final wins: the game then has a final and takes no live row.
     state: live.finished ? "final" : "live",
-    status: live.finished ? "Score reported" : (live.period ?? ""),
+    status: live.finished ? "Final" : (live.period ?? ""),
     homeScore: live.home.score,
     awayScore: live.away.score,
-    verification: "unconfirmed",
+    verification: live.finished ? "confirmed" : "unconfirmed",
     projected: undefined,
     projectedMargin: undefined,
     upset: undefined,
