@@ -14,6 +14,9 @@
 # that file after the push), GITHUB_STEP_SUMMARY, GITHUB_OUTPUT (sha=<the pushed commit>), RUNNER_TEMP, and DETAILS: the
 # game details (kickoffs and sites) read earlier in the run, when there are any. They are merged into the newest main's
 # data/seed/game-details/<season>.csv after the reset, never overwriting a filled value (ADR 0041), and committed with it.
+# The reader's folder is laid on the private repo's newest main by tools/league-watch/remerge.mjs (ADR 0051), never copied over
+# it: a commit someone else made to maxpreps-<season>/ during the run (a hand fill, a late final) survives. It needs the
+# folder as the run started, taken from the private checkout's HEAD before anything here changes it.
 # Exits 1 when a push fails three times or a Zod check fails; the private commit, once pushed, stays.
 # Tested against local bare repos in commit-results.test.mjs.
 set -euo pipefail
@@ -27,9 +30,13 @@ for f in finals-check.csv team-ids.json; do [ ! -f "private/davecampbells-$year/
 summary="${GITHUB_STEP_SUMMARY:-/dev/null}"
 output="${GITHUB_OUTPUT:-/dev/null}"
 read="${RUNNER_TEMP:?RUNNER_TEMP is needed}/read"
+base="$RUNNER_TEMP/base"
 
-rm -rf "$read" && mkdir -p "$read"
+rm -rf "$read" "$base" && mkdir -p "$read" "$base"
 for p in "${private_paths[@]}"; do mkdir -p "$(dirname "$read/$p")" && cp -r "private/$p" "$read/$p"; done
+# The folder as the run started: the checkout's HEAD (the read writes the working tree, never a commit). A season with no
+# folder there yet leaves it empty.
+git -C private cat-file -e "HEAD:$dir" 2>/dev/null && git -C private archive HEAD "$dir" | tar -x -C "$base"
 for repo in private .; do
   git -C "$repo" config user.name "github-actions[bot]"
   git -C "$repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -56,12 +63,18 @@ pgit() {
 }
 message="Results and ratings from MaxPreps, $(date -u +%Y-%m-%d)"
 
-# 1. The private repo: this read's captures laid on its newest main. Only this workflow writes them.
+# 1. The private repo: this read's captures laid on its newest main (merged, not copied: see remerge.mjs). Someone else may
+# have committed to the folder since the checkout.
 for try in 1 2 3 4; do
   [ "$try" -le 3 ] || exit 1
   pgit fetch -q origin main
   git -C private reset -q --hard origin/main
-  for p in "${private_paths[@]}"; do rm -rf "private/${p:?}" && mkdir -p "$(dirname "private/$p")" && cp -r "$read/$p" "private/$p"; done
+  # The reader's folder is merged onto main's (remerge.mjs); the finals cross-check's two files are whole-file reports, copied.
+  node tools/league-watch/remerge.mjs "$read/$dir" "private/$dir" --base "$base/$dir" | tee -a "$summary"
+  for p in "${private_paths[@]}"; do
+    [ "$p" != "$dir" ] || continue
+    rm -rf "private/${p:?}" && mkdir -p "$(dirname "private/$p")" && cp -r "$read/$p" "private/$p"
+  done
   if [ -z "$(git -C private status --porcelain -- "${private_paths[@]}")" ]; then
     echo "Private repo: no new captures." >> "$summary"
     break
