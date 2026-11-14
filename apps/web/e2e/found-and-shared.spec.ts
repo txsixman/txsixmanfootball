@@ -166,3 +166,26 @@ test("a past season's game page draws no card of its own", async ({ page }) => {
   await page.goto(past.href);
   expect(await page.locator('meta[property="og:image"]').evaluateAll((els) => els.map((el) => el.getAttribute("content")))).not.toContainEqual(expect.stringContaining("/scores/"));
 });
+
+test("the home page names the site for search results (WebSite markup)", async ({ page }) => {
+  await page.goto("/");
+  const site = await ofType(page, "WebSite");
+  expect(site?.name).toBe("TX Six-Man Football");
+  expect(site?.url).toBe(`${SITE}/`);
+});
+
+test("the playoff pages say what they hold in plain words, and a bracket page's trail is in its markup", async ({ page }) => {
+  await page.goto("/playoffs");
+  const intro = page.locator("main h1 + p");
+  await expect(intro).toContainText(/^Every \d{4} UIL six-man playoff game, Division I and Division II, round by round\./);
+  await expect(intro).toContainText("projected margin");
+  await expect(intro).not.toContainText(/\b(odds|spread|lines?|favou?rites?|won|beat)\b/i);
+
+  const href = await page.getByRole("link", { name: /bracket page/i }).first().getAttribute("href");
+  expect(href).toMatch(/^\/playoffs\/bracket\//);
+  await page.goto(href!);
+  await expect(page.locator("main h1 + p")).toContainText(/six-man playoff bracket, the round being played first\./);
+  const crumbs = await ofType(page, "BreadcrumbList");
+  expect(crumbs.itemListElement.map((c: { name: string }) => c.name)).toEqual(["Home", "UIL playoffs", await page.locator("main h1").textContent()]);
+  expect(crumbs.itemListElement.at(-1).item).toBe(`${SITE}${href}`);
+});

@@ -7,6 +7,7 @@ import { isDisputed, loadDisputed } from "@/lib/disputed";
 import { projectedLine, resultOutcome } from "@/lib/outcome";
 import { pregameShown } from "@/lib/pregame";
 import { projectionText } from "@/lib/projection";
+import { weekNeighbours } from "@/lib/neighbours";
 import { loadWeeks, resultSeasons, weekLabel, type Week } from "@/lib/weeks";
 import { TabNav } from "../tab-nav";
 import { CrestSlot, EmptyState, PageHeader, SectionBar } from "../ui";
@@ -25,6 +26,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
     Promise.all(ORGS.map(async (o) => [o, await resultSeasons(o)] as const)),
   ]);
   const shown = weeks.find((w) => w.number === week) as Week;
+  const { review, rankings } = await weekNeighbours({ season, week, org });
   const days = Map.groupBy(shown.games, (g) => g.status);
 
   const team = (name: string) => {
@@ -115,6 +117,11 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
           </ul>
         </section>
       ))}
+      {(review || rankings) && (
+        <nav aria-label="This week" className="mt-4 flex flex-wrap gap-x-5">
+          {[review, rankings].map((n) => n && <Link key={n.href} href={n.href} prefetch={false} className="link-more">{n.label}</Link>)}
+        </nav>
+      )}
       <p className="mt-4 text-[13px] text-muted">
         Away team first. Scores may be corrected if a mistake is found. Projections use both teams&rsquo; ratings from the week
         before, once each has played four games.
