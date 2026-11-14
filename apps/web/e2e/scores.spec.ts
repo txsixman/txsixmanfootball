@@ -616,7 +616,7 @@ test("past playoff seasons list their brackets round by round, with no projectio
   const division = page.getByRole("region", { name: "UIL Division I", exact: true });
   await expect(division.getByRole("region", { name: "UIL Division I, State Championship" }).getByRole("listitem")).toHaveCount(1);
   await expect(page.getByText(/Projected:|title chances/i)).toHaveCount(0);
-  await expect(page.locator("main").getByText(/won|beat|defeated|champion|maxpreps|odds|spread/i)).toHaveCount(0); // the site nav has "Championships"
+  await expect(page.locator("main").getByText(/won|beat|defeated|champion(?!ship)|maxpreps|odds|spread/i)).toHaveCount(0); // "State Championship" is the round's name; the site nav has "Championships"
 
   await checkPage(page, "/playoffs/season/2025/tapps", `playoffs-2025-tapps-${info.project.name}`);
   await expect(page.getByRole("navigation", { name: "League" }).getByRole("link", { name: "TAPPS" })).toHaveAttribute("aria-current", "page");
