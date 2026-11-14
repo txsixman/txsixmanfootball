@@ -182,8 +182,8 @@ const orgOf = (g: Game) => ORGS.find((o) => g.league === o.league || g.league.st
 /** `weekInReview`: a link to the newest week in review, on the live page only (the sample page stays as it is). */
 export default function Board({ games, eyebrow, title, crests, weekInReview }: { games: Game[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string } }) {
   const [query, setQuery] = useState("");
-  // Only a game with a date and no final can be under way; a board of invented sample games or finals asks for nothing.
-  const liveRows = useLiveScores(games.some((g) => g.date && g.state === "scheduled"));
+  // Only a game with a date and no final can be under way, and only inside its kickoff window; invented sample games or finals ask for nothing.
+  const liveRows = useLiveScores(games.flatMap((g) => (g.date && g.state === "scheduled" ? [{ date: g.date, kickoff: g.kickoff }] : [])));
   // One button per organization that has games, in the site's order (UIL first, the default). Never an "All".
   const orgs = ORGS.filter((o) => games.some((g) => orgOf(g) === o));
   const [chosen, setChosen] = useState("");

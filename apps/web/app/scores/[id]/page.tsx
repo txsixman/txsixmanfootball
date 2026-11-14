@@ -168,7 +168,7 @@ export default async function GamePage({ params }: Props) {
       </header>
 
       {/* A game with no final yet may be under way: its live score is read in the browser (ADR 0021). */}
-      {!sample && g.date && g.state === "scheduled" && <LiveScore date={g.date} home={g.home.name} away={g.away.name} />}
+      {!sample && g.date && g.state === "scheduled" && <LiveScore date={g.date} kickoff={g.kickoff} home={g.home.name} away={g.away.name} />}
 
       <section aria-label="Score" className="px-3">
         <BigLine g={g} side="away" program={programOf(g.away)} neutral={neutral} />

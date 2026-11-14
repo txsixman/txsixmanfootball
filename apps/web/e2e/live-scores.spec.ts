@@ -21,7 +21,7 @@ async function inWeb<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-type Fixture = { id: string; date: string; home: string; away: string; org: string; key: string; homeSlug: string; awaySlug: string };
+type Fixture = { id: string; date: string; home: string; away: string; org: string; key: string; homeSlug: string; awaySlug: string; kickoff?: string };
 let cached: Promise<{ scheduled: Fixture; final: Fixture }> | undefined;
 const fixtures = () =>
   (cached ??= inWeb(async () => {
@@ -34,16 +34,22 @@ const fixtures = () =>
     const fixture = (g: (typeof games)[number]): Fixture => ({
       id: g.id, date: g.date!, home: g.home.name, away: g.away.name,
       org: ORGS.find((o) => g.league === o.league || g.league.startsWith(`${o.league} `))!.label,
-      key: liveKey(g.date!, g.home.name, g.away.name), homeSlug: slugify(g.home.name), awaySlug: slugify(g.away.name),
+      key: liveKey(g.date!, g.home.name, g.away.name), homeSlug: slugify(g.home.name), awaySlug: slugify(g.away.name), kickoff: g.kickoff,
     });
-    const scheduled = games.find((g) => g.state === "scheduled" && g.date);
+    // The live read starts at kickoff (lib/kickoff.ts): a game with a known kickoff to put the clock inside.
+    // The earliest kickoff of any unplayed game, so the hours before it hold no game in progress anywhere.
+    const scheduled = games.filter((g) => g.state === "scheduled" && g.date && g.kickoff).sort((a, b) => a.kickoff!.localeCompare(b.kickoff!))[0];
     const final = games.find((g) => g.state === "final" && g.date);
     if (!scheduled || !final) throw new Error("no scheduled and final bracket game to test with");
     return { scheduled: fixture(scheduled), final: fixture(final) };
   }));
 
+/** Half an hour after kickoff: inside the game's in-progress window. */
+const inWindow = (f: Fixture) => new Date(Date.parse(f.kickoff!) + 30 * 60_000);
+
+/** The page's clock is fixed, so a row is read "now" on that clock. */
 const liveRow = (f: Fixture, over: Record<string, unknown> = {}) => ({
-  game_key: f.key, home: f.homeSlug, away: f.awaySlug, home_score: 28, away_score: 14, period: "Q3", read_at: new Date().toISOString(), ...over,
+  game_key: f.key, home: f.homeSlug, away: f.awaySlug, home_score: 28, away_score: 14, period: "Q3", ...over, read_at: over.read_at ?? inWindow(f).toISOString(),
 });
 
 /** Answers the live_score request with whatever `current.rows` holds, and keeps what the page sent. */
@@ -68,6 +74,7 @@ async function openBoard(page: Page, f: Fixture) {
 test("a game under way shows its live line on the game page and the board: Live, period, score, Unconfirmed, no winner", async ({ page }) => {
   const { scheduled: f } = await fixtures();
   const seen = await serveLive(page, { rows: [liveRow(f)] });
+  await page.clock.install({ time: inWindow(f) });
 
   await page.goto(`/scores/${f.id}`);
   const line = page.locator("[data-live-score]");
@@ -92,15 +99,18 @@ test("a game under way shows its live line on the game page and the board: Live,
 test("a row with no period reads Live · score · Unconfirmed", async ({ page }) => {
   const { scheduled: f } = await fixtures();
   await serveLive(page, { rows: [liveRow(f, { period: null })] });
+  await page.clock.install({ time: inWindow(f) });
   await page.goto(`/scores/${f.id}`);
   await expect(page.locator("[data-live-score]").getByText("Live · 14–28 · Unconfirmed")).toBeVisible();
 });
 
 test("a game with a final ignores a live row, on its page and on the board", async ({ page }) => {
-  const { final: f } = await fixtures();
-  const seen = await serveLive(page, { rows: [liveRow(f)] });
+  const { scheduled, final: f } = await fixtures();
+  const seen = await serveLive(page, { rows: [liveRow(f, { read_at: inWindow(scheduled).toISOString() })] });
+  await page.clock.install({ time: inWindow(scheduled) }); // a game on the board is in progress, so the board asks
   await page.goto(`/scores/${f.id}`, { waitUntil: "networkidle" });
   await expect(page.locator("[data-live-score]")).toHaveCount(0);
+  expect(seen.length).toBe(0); // a game with a final never enables the read, though another game is in progress
   const row = await openBoard(page, f);
   await expect(row).toBeVisible();
   expect(seen.length).toBeGreaterThan(0); // the board did ask; it just shows nothing for a final
@@ -112,6 +122,7 @@ test("nothing extra shows when the request fails, the answer is not a list, or a
   const { scheduled: f } = await fixtures();
   const current: { rows: unknown; status?: number } = { rows: { message: "no" }, status: 500 };
   await serveLive(page, current);
+  await page.clock.install({ time: inWindow(f) });
   await page.goto(`/scores/${f.id}`, { waitUntil: "networkidle" });
   await expect(page.locator("[data-live-score]")).toHaveCount(0);
   for (const rows of [{ message: "JWT expired" }, [liveRow(f, { home_score: 999 })], [liveRow(f, { period: "<b>" })], [liveRow(f, { read_at: "2020-01-01T00:00:00Z" })]]) {
@@ -124,16 +135,64 @@ test("nothing extra shows when the request fails, the answer is not a list, or a
 
 test("the line refreshes every minute and goes away when the game leaves the table", async ({ page }) => {
   const { scheduled: f } = await fixtures();
-  await page.clock.install();
+  await page.clock.install({ time: inWindow(f) });
   const current: { rows: unknown[] } = { rows: [] };
   await serveLive(page, current);
   await page.goto(`/scores/${f.id}`);
   const line = page.locator("[data-live-score]");
   await expect(line).toHaveCount(0);
-  current.rows = [liveRow(f, { home_score: 35, away_score: 14, period: "Q4" })];
+  current.rows = [liveRow(f, { home_score: 35, away_score: 14, period: "Q4", read_at: new Date(inWindow(f).getTime() + 60_000).toISOString() })];
   await page.clock.runFor(61_000);
   await expect(line.getByText("Live · Q4 · 14–35 · Unconfirmed")).toBeVisible();
   current.rows = [];
   await page.clock.runFor(61_000);
   await expect(line).toHaveCount(0);
+});
+
+// The request is made only while a game is in progress (by kickoff, re-checked each minute) and the tab is visible.
+const requests = (seen: unknown[]) => seen.length;
+
+test("a game page asks for nothing before kickoff, starts by itself at kickoff, and stops when the window ends", async ({ page }) => {
+  const { scheduled: f } = await fixtures();
+  const kickoff = Date.parse(f.kickoff!);
+  await page.clock.install({ time: new Date(kickoff - 5 * 60_000) });
+  const seen = await serveLive(page, { rows: [liveRow(f, { read_at: new Date(kickoff + 60_000).toISOString() })] });
+  await page.goto(`/scores/${f.id}`);
+  await page.clock.runFor(2 * 60_000); // two minutes before kickoff
+  expect(requests(seen)).toBe(0);
+  await expect(page.locator("[data-live-score]")).toHaveCount(0);
+  await page.clock.runFor(4 * 60_000); // a minute after kickoff
+  await expect.poll(() => requests(seen)).toBeGreaterThan(0);
+  await expect(page.locator("[data-live-score]").getByText("Live · Q3 · 14–28 · Unconfirmed")).toBeVisible();
+  // Past the window (4 hours): no more requests, and the line goes.
+  await page.clock.runFor(4 * 3600_000);
+  await expect(page.locator("[data-live-score]")).toHaveCount(0);
+  const after = requests(seen);
+  await page.clock.runFor(5 * 60_000);
+  expect(requests(seen)).toBe(after);
+});
+
+test("the board and Tonight ask for nothing before the first kickoff", async ({ page }) => {
+  const { scheduled: f } = await fixtures();
+  const seen = await serveLive(page, { rows: [liveRow(f)] });
+  await page.clock.install({ time: new Date(Date.parse(f.kickoff!) - 10 * 3600_000) });
+  await page.goto("/scores", { waitUntil: "networkidle" });
+  await page.clock.runFor(3 * 60_000);
+  expect(requests(seen)).toBe(0);
+  await page.goto("/scores/tonight", { waitUntil: "networkidle" });
+  await page.clock.runFor(3 * 60_000);
+  expect(requests(seen)).toBe(0);
+});
+
+test("a hidden tab makes no request", async ({ page }) => {
+  const { scheduled: f } = await fixtures();
+  await page.addInitScript(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+  });
+  await page.clock.install({ time: inWindow(f) });
+  const seen = await serveLive(page, { rows: [liveRow(f)] });
+  await page.goto(`/scores/${f.id}`, { waitUntil: "networkidle" });
+  await page.clock.runFor(3 * 60_000);
+  expect(requests(seen)).toBe(0);
 });

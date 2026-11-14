@@ -1,16 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { anyInProgress } from "@/lib/kickoff";
 import { checkedAt, fetchLiveRows, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
+import { useNow } from "../kickoff-status";
 
 // Live scores during a game (ADR 0021). The pages are static; this reads the score of games under way through the public
-// function live_scores() in the browser, every minute while the tab is visible. It shows nothing when the request fails or
-// no row matches. The score is the read's, so it says "Unconfirmed" and names no leader.
+// function live_scores() in the browser, every minute while the tab is visible and a game on the page is in progress by its
+// kickoff (lib/kickoff.ts), re-checked every minute: it starts by itself at kickoff and stops when the window ends. It shows
+// nothing when the request fails or no row matches. The score is the read's, so it says "Unconfirmed" and names no leader.
 const REFRESH_MS = 60_000;
 
 /** The live rows, refreshed every minute while the tab is visible. Empty until a read succeeds, and again when one fails.
- * `enabled` false (nothing on the page can be under way) asks for nothing. */
-export function useLiveScores(enabled = true): LiveRow[] {
+ * `games` are the page's games with no final: nothing is asked unless one is in progress now (a game with no kickoff time
+ * never is), and the rows are dropped when none is. */
+export function useLiveScores(games: { date: string; kickoff?: string }[]): LiveRow[] {
+  const now = useNow();
+  const enabled = now !== null && anyInProgress(games, now);
   const [rows, setRows] = useState<LiveRow[]>([]);
   useEffect(() => {
     if (!enabled) return;
@@ -38,7 +44,7 @@ export function useLiveScores(enabled = true): LiveRow[] {
       document.removeEventListener("visibilitychange", load);
     };
   }, [enabled]);
-  return rows;
+  return enabled ? rows : [];
 }
 
 /** "Live · Q3 · 28–14 · Unconfirmed" (scores in the order the page lists the teams), the teams with their scores, and when it was read. */
@@ -57,8 +63,8 @@ export function LiveLine({ live, className = "" }: { live: LiveView; className?:
 }
 
 /** A game page's live line, for a game with no final. */
-export function LiveScore({ date, home, away }: { date: string; home: string; away: string }) {
-  const rows = useLiveScores();
+export function LiveScore({ date, kickoff, home, away }: { date: string; kickoff?: string; home: string; away: string }) {
+  const rows = useLiveScores([{ date, kickoff }]);
   const live = liveView(rows, { date, home, away });
   if (!live) return null;
   return (
