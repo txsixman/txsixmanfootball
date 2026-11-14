@@ -46,3 +46,20 @@ test("the label moves with the clock, without a reload", async ({ page }) => {
   await page.clock.runFor(2 * 60_000);
   await expect.poll(() => inProgress.count()).toBeGreaterThan(before);
 });
+
+// A game whose date has passed with no score reads "Score not reported yet", never "Later" (ADR 0046). Before the season
+// nothing is past; after it, every dated game still without a score has moved out of Later, and none is lost.
+test("a past game with no score is under Score not reported yet, not Later: /scores", async ({ page }) => {
+  const count = async (when: string) => {
+    await page.clock.setFixedTime(new Date(when));
+    expect((await page.goto("/scores", { waitUntil: "networkidle" }))?.status()).toBe(200);
+    await expect(page.locator('[data-kickoff-status="pending"]')).toHaveCount(0);
+    return { later: await page.locator("#later li").count(), notReported: await page.locator("#not-reported li").count() };
+  };
+  const before = await count("2026-08-01T17:00:00Z");
+  expect(before.notReported).toBe(0);
+  const after = await count("2027-03-01T18:00:00Z");
+  expect(after.later + after.notReported).toBe(before.later);
+  if (before.later) expect(after.notReported).toBeGreaterThan(0);
+  if (after.notReported) await expect(page.locator("#not-reported h2")).toHaveText("Score not reported yet");
+});

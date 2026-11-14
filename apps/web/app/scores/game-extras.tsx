@@ -9,7 +9,7 @@ import { MIN_SURPRISE, surpriseOf } from "@/lib/why-moved";
 import { FIRST_SEASON } from "@/lib/season";
 
 // What a game page adds to the score for a robot-read game, on its own page and on a current-season playoff game's page.
-// Words are rating, projected margin and win probability (never spreads, lines or odds), and nothing here names a
+// Words are rating, projected margin and chance to win (never spreads, lines or odds), and nothing here names a
 // winner of the game itself: robot-read scores are unconfirmed (ADR 0004).
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {

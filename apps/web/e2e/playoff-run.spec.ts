@@ -57,7 +57,8 @@ for (const b of BRACKETS) {
       for (const href of await jump.getByRole("link").evaluateAll((els) => els.map((a) => a.getAttribute("href")!))) await expect(page.locator(href)).toHaveCount(1);
     }
 
-    const games = rounds.getByRole("listitem");
+    // A row the bracket sets before any listing (ADR 0047) has no game yet, so no status: e2e/bracket-fill.spec.ts checks it.
+    const games = rounds.locator("li:not([data-built])");
     const count = await games.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i++) {
@@ -76,7 +77,7 @@ for (const b of BRACKETS) {
   });
 }
 
-test("a bracket game not yet played shows its projected margin and win probability; the next pairing too, where it is known", async ({ page }) => {
+test("a bracket game not yet played shows its projected margin and chance to win; the next pairing too, where it is known", async ({ page }) => {
   await page.goto("/playoffs/bracket/tapps-division-i");
   const projected = page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win$/);
   expect(await projected.count()).toBeGreaterThan(0);
@@ -111,7 +112,13 @@ test("a playoff team's page has its path to the final: games played with unconfi
   await expect(path).toBeVisible();
   await expect(path.getByRole("link", { name: "TAPPS Division I bracket" })).toHaveAttribute("href", "/playoffs/bracket/tapps-division-i");
   expect(await path.getByRole("listitem").count()).toBeGreaterThan(0);
-  const text = (await path.textContent()) ?? "";
+  // A next game the bracket sets says "winner of X–Y" for a game not yet played, naming no winner (ADR 0047): checked in
+  // e2e/bracket-fill.spec.ts, so it is left out here.
+  const text = await path.evaluate((el) => {
+    const copy = el.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll("[data-built]").forEach((b) => b.remove());
+    return copy.textContent ?? "";
+  });
   expect(text).toMatch(/^Path to the final/);
   expect(text).toMatch(/Starts \d|In progress|Time not listed|Score not reported yet|Reported tonight|Score reported|Final|Forfeit/i); // each game carries a status
   expect(text).not.toContain("Unconfirmed"); // a final is confirmed (ADR 0040)

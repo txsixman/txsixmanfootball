@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { DETAIL_COLUMNS, kickoffRows, mergeKickoffs, missingDetails } from "./davecampbells.mjs";
+import { bracketFields, DETAIL_COLUMNS, gamesOnLines, kickoffRows, mergeKickoffs, missingDetails, opponentRows, placeFields, positionProblems } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLate, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -585,4 +585,59 @@ test("mergeLive keeps late when either source's row says so (ADR 0043)", () => {
   assert.equal(mergeLive([r(28)], [r(21, true)])[0].late, true, "the higher score wins, the late flag is kept");
   assert.equal(mergeLive([r(28)], [r(21, true)])[0].home_score, 28);
   assert.equal(mergeLive([r(28)], [r(21)])[0].late, undefined);
+});
+
+test("--opponents lists a team's opponents by slug and school name, once each, never the team itself", () => {
+  const game = (a, b) => ({ participants: [{ websiteUrl: `/team/${a}`, schoolName: a.toUpperCase(), score: 7 }, { websiteUrl: `https://x.test/team/${b}/`, schoolName: "Wren Academy" }] });
+  const rows = opponentRows([game("lark-owls", "wren-academy-wrens"), game("lark-owls", "wren-academy-wrens"), game("finch-falcons", "lark-owls"), { participants: null }, { participants: [{ websiteUrl: "/team/lark-owls" }, { schoolName: "Robin Prep" }, {}] }], "lark-owls");
+  assert.deepEqual(rows, [{ slug: "", school: "Robin Prep" }, { slug: "finch-falcons", school: "FINCH-FALCONS" }, { slug: "wren-academy-wrens", school: "Wren Academy" }]);
+  assert.ok(!JSON.stringify(rows).includes("7"), "no score");
+});
+
+test("--about shows only a team answer's name and place fields", () => {
+  const answer = { teamId: "t1", schoolName: "Wren Academy", logoUrl: "https://x.test/l.png", school: { name: "Wren Academy", city: "Lark", state: "TX", websiteUrl: "https://x.test" }, ranking: 3, records: [{ city: "no" }] };
+  assert.deepEqual(placeFields(answer), ["schoolName: Wren Academy", "school.name: Wren Academy", "school.city: Lark", "school.state: TX"]);
+  assert.deepEqual(placeFields(null), []);
+});
+
+test("bracketFields prints a playoff game's bracket fields, never a score, and copes with missing ones (ADR 0047)", () => {
+  const item = {
+    scheduledKickoff: "2026-11-14T01:00:00Z", seasonPhase: "Playoffs", playoffRound: "Bi-District", playoffBracketPosition: 6,
+    eventDescription: "1A D1 Bi-District", status: "Final", homeScore: 98, awayScore: 50,
+    participants: [{ schoolName: "Invented Valley", participantType: "Home", seed: 1 }, { schoolName: "Made Up", participantType: "Away" }],
+  };
+  const line = bracketFields(item);
+  assert.equal(line, "2026-11-13 | Invented Valley (Home, seed 1) v Made Up (Away, seed -) | phase Playoffs | round Bi-District | position 6 | event 1A D1 Bi-District | status Final");
+  assert.doesNotMatch(line, /98|50/);
+  assert.equal(bracketFields({}), "no date |  | phase - | round - | position - | event - | status -");
+});
+
+test("the feed's UIL bracket positions are checked against UIL's bracket: G(first of round + position) (ADR 0047)", () => {
+  const structure = [
+    ["G1", "bi-district", "Salt Fork", "Cedar Gap"], ["G2", "bi-district", "Dry Wash", "Owl Creek"],
+    ["G3", "bi-district", "Lone Elm", "Big Draw"], ["G4", "bi-district", "Kite Hill", "Sand Bend"],
+    ["G17", "area", "winner:G1", "winner:G2"], ["G18", "area", "winner:G3", "winner:G4"],
+  ].map(([slot, round, a, b]) => ({ division: "I", round, slot, a, b }));
+  const game = (round, position, home, away, league = "UIL") => ({ item: { playoffRound: round, playoffBracketPosition: position }, row: { league, division: "I", home, away } });
+  const fit = positionProblems([game("Bi-District", 2, "Owl Creek", "Dry Wash"), game("Area", 1, "Owl Creek", "Salt Fork"), game("Area", 2, "Big Draw", "Sand Bend")], structure);
+  assert.deepEqual(fit, { checked: 3, misfits: [] });
+  // Area position 1 is G17 (G1 and G2's winners): a pairing from G3 and G4 there does not fit; nor does a position with no slot.
+  const wrong = positionProblems([game("Area", 1, "Big Draw", "Sand Bend"), game("Area", 5, "Owl Creek", "Salt Fork")], structure);
+  assert.deepEqual(wrong, { checked: 2, misfits: ["UIL I G17", "UIL I G21"] });
+  // Not UIL, no position or an unknown round: not checked.
+  const skipped = positionProblems([game("Area", 1, "Owl Creek", "Salt Fork", "TAPPS"), game("Area", null, "Owl Creek", "Salt Fork"), game("Playoffs", 1, "Owl Creek", "Salt Fork")], structure);
+  assert.deepEqual(skipped, { checked: 0, misfits: [] });
+});
+
+test("games on a Central date: each side's name, score and forfeit flag, never the spread or the winner flag (ADR 0046)", () => {
+  const items = [
+    finalItem("lark-owls", "wren-wrens", 68, 0), // 7 PM Central on Nov 12
+    finalItem("lark-owls", "jay-jays", null, null, { status: "Upcoming", scheduledKickoff: "2026-11-14T23:00:00Z" }),
+    finalItem("lark-owls", "kite-kites", 2, 0, { participants: [{ participantType: "HOME", schoolName: "lark", score: 2 }, { participantType: "AWAY", schoolName: "kite", score: 0, forfeited: true }] }),
+    { status: "Final" }, // no kickoff: not listed
+  ];
+  assert.deepEqual(gamesOnLines(items, "2026-11-12"), ["2026-11-12 | Final | AWAY wren 0 | HOME lark 68", "2026-11-12 | Final | AWAY kite 0 (forfeited) | HOME lark 2"]);
+  assert.deepEqual(gamesOnLines(items, "2026-11-14"), ["2026-11-14 | Upcoming | AWAY jay - | HOME lark -"]);
+  assert.equal(gamesOnLines(items, "all").length, 3);
+  assert.ok(!gamesOnLines(items, "all").join("\n").match(/-10|winner/i));
 });

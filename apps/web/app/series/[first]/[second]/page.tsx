@@ -16,6 +16,7 @@ import { loadSeries } from "@/lib/series-data";
 import { Breadcrumbs } from "../../../breadcrumbs";
 import { Crest } from "../../../programs/crest";
 import { EdgeToEdge, SectionBar } from "../../../ui";
+import { seriesTitle } from "@/lib/titles";
 
 // The games of one pair of programs, FIRST_SEASON on (ADR 0013: records and scores may rest on unconfirmed robot-read results, so
 // the page says so and no game row names a winner, ADR 0004). The address is the two program slugs in alphabetical order;
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const labelOf = new Map(labels);
   const playoff = s.games.some(({ season, result: r }) => labelOf.get(season)?.has(gameKey(r.date, r.home, r.away)));
   return {
-    title: `${s.a.school} vs ${s.b.school}`,
+    title: seriesTitle({ first: s.a.school, second: s.b.school }),
     description: seriesDescription({ first: s.a.school, second: s.b.school, games: s.games.length, since: s.since, playoff, projection: s.projection !== undefined }),
     alternates: { canonical: `/series/${first}/${second}` },
   };

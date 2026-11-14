@@ -12,9 +12,10 @@ import { ORGS } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
 import { PageHeader } from "../ui";
 import { Matchup } from "./picker";
+import { matchupTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Matchup", description: matchupDescription(CURRENT_SEASON) };
+export const metadata: Metadata = { title: matchupTitle(), description: matchupDescription(CURRENT_SEASON), alternates: { canonical: "/matchup" } };
 
 const orgIndex = (league: string) => ORGS.findIndex((o) => o.league === league);
 

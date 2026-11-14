@@ -63,6 +63,27 @@ export const DetailRow = z.object({
   site_city: z.union([z.literal(""), z.string().max(60).regex(SITE_WORDS, "plain words: letters, digits, spaces and . ' & ( ) / -")]),
 }).refine((r) => r.site_name || !r.site_city, "a site city with no site name");
 
+/** data/seed/brackets/<season>.csv: which games feed which (ADR 0047), written by a robot from a league's own bracket. A side
+ * is a team as the bracket names it, "bye", or "winner:<slot>" (a slot of the same bracket). No source column (ADR 0010). */
+export const BRACKET_COLUMNS = ["league", "division", "round", "slot", "a", "b"];
+const slotCode = z.string().regex(/^[A-Za-z0-9-]{1,12}$/, "a slot code: letters, digits and -");
+const bracketSide = z.union([z.literal("bye"), z.string().regex(/^winner:[A-Za-z0-9-]{1,12}$/), z.string().min(1).max(90).regex(/^[^,:]+$/, "a team name, bye or winner:<slot>")]);
+export const BracketSlotRow = z.object({ league: z.enum(["UIL", "TAPPS", "TAIAO", "TCAF"]), division: text, round: z.enum(ROUNDS), slot: slotCode, a: bracketSide, b: bracketSide })
+  .refine((r) => !(r.a === "bye" && r.b === "bye"), "a slot with two byes");
+
+/** data/seed/uil-<span>/bracket-<year>.csv (ADR 0047): UIL's own six-man bracket for a season, entered by hand from UIL's
+ * bracket. A slot's code (G1 to G31), round, region, sides (a team as the pages spell it, or winner:<slot>), each team's
+ * district seed (W5: District 5's winner; R6: District 6's runner-up), and a kickoff and site only where the bracket lists one. */
+export const UIL_BRACKET_COLUMNS = ["division", "region", "round", "slot", "a", "a_seed", "b", "b_seed", "kickoff_utc", "site_name", "site_city"];
+const seed = z.union([z.literal(""), z.string().regex(/^[WR]\d{1,2}$/, "a district seed: W or R and the district")]);
+export const UilBracketRow = z.object({
+  division: z.enum(["I", "II"]), region: z.union([z.literal(""), z.enum(["1", "2", "3", "4"])]), round: z.enum(ROUNDS),
+  slot: z.string().regex(/^G\d{1,2}$/, "a game code, G1 to G31"), a: bracketSide, a_seed: seed, b: bracketSide, b_seed: seed,
+  kickoff_utc: DetailRow.shape.kickoff_utc, site_name: DetailRow.shape.site_name, site_city: DetailRow.shape.site_city,
+})
+  .refine((r) => (r.a_seed === "" || !/^winner:|^bye$/.test(r.a)) && (r.b_seed === "" || !/^winner:|^bye$/.test(r.b)), "a seed belongs to a team")
+  .refine((r) => r.site_name || !r.site_city, "a site city with no site name");
+
 export const ALIGNMENT_COLUMNS = ["league", "division", "region", "district", "school", "source_url"];
 export const AlignmentRow = z.object({
   league: z.enum(["UIL", "TAPPS", "TAIAO", "TCAF", "TCAL", "TCSAAL", "Independent"]),

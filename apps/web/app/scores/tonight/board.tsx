@@ -6,6 +6,7 @@ import { checkedAt, liveView, type LiveRow, type LiveView } from "@/lib/live-sco
 import { projectedLine, type Outcome } from "@/lib/outcome";
 import type { Night, NightGame } from "@/lib/tonight";
 import { KickoffStatus, useNow } from "../../kickoff-status";
+import { ScoresChecked } from "../freshness";
 import { LiveLine, useLiveScores } from "../live-score";
 
 // Tonight's games, one organization at a time (ADR 0012), each in groups by the clock: in progress, up next, final. A game
@@ -91,6 +92,7 @@ export default function TonightBoard({ night }: { night: Night }) {
   const now = useNow();
   return (
     <>
+      <ScoresChecked games={night.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games))} className="px-3 pt-2" />
       {night.orgs.map((org) => {
         // Each game keeps its round on its line, now that the groups replace the round headings.
         const games = org.rounds.flatMap((r) => r.games.map((g) => withLive({ ...g, round: r.label }, liveRows)));

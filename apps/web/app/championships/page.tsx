@@ -7,12 +7,14 @@ import { finalLinker, type Linker } from "@/lib/final-linker";
 import { loadIdentities } from "@/lib/identity";
 import { loadLineage, successorOf } from "@/lib/lineage";
 import { CrestSlot, PageHeader, SectionBar } from "../ui";
+import { championshipsTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
 export async function generateMetadata(): Promise<Metadata> {
   const seasons = (await loadFinals()).map((f) => f.season);
   return {
-    title: "State Championships",
+    title: championshipsTitle(seasons.length ? { first: Math.min(...seasons), latest: Math.max(...seasons) } : {}),
+    alternates: { canonical: "/championships" },
     description: championshipsDescription({ first: seasons.length ? Math.min(...seasons) : undefined, latest: seasons.length ? Math.max(...seasons) : undefined, games: seasons.length }),
   };
 }

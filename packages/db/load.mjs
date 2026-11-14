@@ -224,7 +224,7 @@ const SIGNED_IN_FUNCTIONS = [
 const ANON_FUNCTIONS = [
   "public.list_comments(text, integer, integer)", "public.fan_score_status(text)", "public.forum_boards()",
   "public.forum_threads(text, integer, integer)", "public.forum_thread_info(uuid)", "public.forum_posts(uuid, integer, integer)",
-  "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)", "public.live_scores()",
+  "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)", "public.live_scores()", "public.results_read_at()",
 ];
 
 /** Schemas the project owns and the API could reach. */

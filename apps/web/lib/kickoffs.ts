@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { bracketSlots, fill, ROUND_ORDER, type FillGame } from "./bracket-fill.ts";
+import { loadSlotRows } from "./bracket-slots.ts";
 import { slugify } from "./slug.ts";
 
 // Kickoff times (ADR 0036) and sites (ADR 0041) from data/seed/game-details/<season>.csv
@@ -34,7 +36,45 @@ async function read(season: number): Promise<Details> {
     if (name) sites.set(key(date, home, away), city ? `${name}, ${city}` : name);
   }
   if (dropped) console.warn(`${file}: ${dropped} row(s) dropped, not date,home,away,kickoff_utc`);
+  // What a league's own bracket lists for a game now on the schedule (ADR 0047), only where this file has nothing: a kept
+  // detail is never overwritten (ADR 0041).
+  for (const d of await bracketDetails(season)) {
+    if (d.utc && !out.has(d.key)) out.set(d.key, d.utc);
+    if (d.site && !sites.has(d.key)) sites.set(d.key, d.site);
+  }
   return { kickoffs: out, sites };
+}
+
+const centralDate = (utc: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date(utc));
+
+/** The kickoff and site a bracket slot lists, keyed to the listed game that fills it. A kickoff on another day than the
+ * listed game's is not used: the listing's date stands. */
+async function bracketDetails(season: number): Promise<{ key: string; utc?: string; site?: string }[]> {
+  const rows = (await loadSlotRows(season)).filter((r) => r.kickoff_utc || r.site);
+  if (!rows.length) return [];
+  const file = path.join(process.cwd(), "../../data/seed", `maxpreps-${season}`, "playoffs.csv");
+  const [header, ...lines] = (await readFile(file, "utf8").catch(() => "")).trim().split("\n");
+  const cols = (header ?? "").split(",");
+  const games = lines.map((l) => Object.fromEntries(l.split(",").map((v, i) => [cols[i], v]))).map((r) => ({
+    league: r.league, division: r.division,
+    game: { round: r.round, date: r.game_date, home: r.home, away: r.away, confirmed: false } satisfies FillGame,
+  }));
+  const out: { key: string; utc?: string; site?: string }[] = [];
+  for (const [both, list] of Map.groupBy(rows, (r) => `${r.league}|${r.division}`)) {
+    const [league, division] = both.split("|");
+    const listed = games.filter((g) => g.league === league && g.division === division).map((g) => g.game);
+    const slots = bracketSlots(await loadSlotRows(season), listed, { league, division });
+    for (const f of fill(slots, listed, ROUND_ORDER)) {
+      const r = list.find((x) => x.slot === f.slot.slot);
+      if (!r || !f.game) continue;
+      out.push({
+        key: key(f.game.date, f.game.home, f.game.away),
+        ...(r.kickoff_utc && centralDate(r.kickoff_utc) === f.game.date ? { utc: r.kickoff_utc } : {}),
+        ...(r.site ? { site: r.site } : {}),
+      });
+    }
+  }
+  return out;
 }
 
 const details = (season: number) => {

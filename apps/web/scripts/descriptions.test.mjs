@@ -87,7 +87,7 @@ test("every other page kind fits, names its organization and season, and differs
     }
   }
   all.push(
-    d.homeDescription(2026, ["UIL", "TAPPS", "TAIAO", "TCAF", "Independent"]), d.scoresDescription(2026), d.matchupDescription(2026), d.howRankingsDescription(),
+    d.homeDescription(2026, ["UIL", "TAPPS", "TAIAO", "TCAF", "Independent"]), d.scoresDescription(2026), d.matchupDescription(2026), d.howRankingsDescription(), d.aboutRatingsDescription(),
     d.programsDescription(280, ["UIL", "TAPPS", "TAIAO", "TCAF", "Independent"]), d.championshipsDescription({ first: 1972, latest: 2025, games: 74 }),
     d.seasonsIndexDescription({ first: 2021, latest: 2026 }),
   );

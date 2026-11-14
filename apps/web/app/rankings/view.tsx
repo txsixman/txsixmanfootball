@@ -9,8 +9,10 @@ import { loadSeasonResults } from "@/lib/games";
 import { coverageLine, seasonCoverage } from "@/lib/season-coverage";
 import { rankedOrder } from "@/lib/rank-range";
 import { placeTeams } from "@/lib/rankings";
+import { loadSeasonResults } from "@/lib/games";
 import { loadRatings, ratingSeasons } from "@/lib/ratings";
 import { schedulesFor } from "@/lib/schedule-strength";
+import { playedCounts } from "@/lib/season-results";
 import { rankingWeeks } from "@/lib/week-rankings";
 import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
@@ -50,14 +52,15 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
   const [table, alignments, identities, seasons, orgs] = await Promise.all([
     loadRatings(season), loadAlignments(), loadIdentities(), ratingSeasons(), activeOrgs(view.org),
   ]);
-  const { stats } = await schedulesFor(table.season, view.org.league);
+  const [{ stats }, results] = await Promise.all([schedulesFor(table.season, view.org.league), loadSeasonResults(table.season)]);
+  const played = playedCounts(results);
   const past = table.season !== seasons[0];
   const weeks = past ? [] : await rankingWeeks(table.season);
   const { org } = view;
   const { placed, outside } = placeTeams(table.teams, alignments);
   const rows: Row[] = placed.flatMap(({ school, ...r }) => {
     if (school.league !== org.league || ("division" in view && school.division !== view.division)) return [];
-    return [{ ...r, ...(past && { was: undefined }), name: school.school, href: `/programs/${school.slug}`, identity: identities.get(school.slug) ?? EMPTY, schedule: stats.get(r.team) }];
+    return [{ ...r, ...(past && { was: undefined }), name: school.school, href: `/programs/${school.slug}`, identity: identities.get(school.slug) ?? EMPTY, schedule: stats.get(r.team), played: played.get(r.team) ?? 0 }];
   });
   // Where each opponent's program page is, for the best win and worst loss columns.
   const hrefs = new Map(alignments.filter((a) => a.league === org.league).map((a) => [a.school, `/programs/${a.slug}`]));
@@ -96,7 +99,7 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
         <>
           <RatingsTable rows={rows} hrefs={hrefs} />
           <p className="mt-3 text-[13px] text-muted">Scores may be corrected if a mistake is found.</p>
-          <HowToRead schedule />
+          <HowToRead schedule basis />
         </>
       ) : (
         <EmptyState action={{ href: "/rankings/sample", label: "See sample rankings" }}>

@@ -10,6 +10,8 @@
 //   a postponed game is listed again under its new date. A row whose teams' pages were not read stays.
 // - a 0-0 "final" without a forfeit (a placeholder or a cancelled game, never a result) is no score, stored or read: it is
 //   written blank and counts as a game not yet played (DECISIONS.md, Nov 13, 2026).
+// - a game its league moved to another date is in moved-games.csv (ADR 0046): a read lays every game it finds on a moved
+//   game's listed date onto the date it is played, so the reader's old date never puts the row back.
 // A stored score that must go (a game that was not six-man, a wrong team) goes through data/corrections or a reviewed
 // commit to the private repo, never a read.
 
@@ -18,6 +20,8 @@ import { slugify } from "./maxpreps.mjs";
 export const PENDING_FILE = "pending-scores.csv";
 export const CHANGES_FILE = "score-changes.csv";
 export const PENDING_COLUMNS = "file,key,home_score,away_score,first_seen";
+export const MOVES_FILE = "moved-games.csv";
+export const MOVES_COLUMNS = "from_date,home,away,to_date,source";
 export const CHANGE_COLUMNS = "changed_at,file,key,old_home_score,old_away_score,new_home_score,new_away_score,source_url";
 
 /** Plain comma cells, as the reader writes them; a quoted cell would shift columns, so it fails loudly instead. */
@@ -148,6 +152,22 @@ function fillBlanks(old, fresh) {
   const filled = {};
   for (const [c, v] of Object.entries(fresh)) if (!["home_score", "away_score", "home", "away"].includes(c) && (old[c] ?? "") === "" && v !== "") filled[c] = v;
   return filled;
+}
+
+/** moved-games.csv as a map: the rowKey of a game at its listed date, to the date it is played (ADR 0046). */
+export const readMoves = (text) => new Map(parseCsv(text, MOVES_FILE).rows.map((m) => [rowKey({ game_date: m.from_date, home: m.home, away: m.away }), m.to_date]));
+/** The date a game listed on `date` between two teams (slugs or names) is played: its move's, else its own. */
+export const movedDate = (moves, date, a, b) => moves.get(rowKey({ game_date: date, home: a, away: b })) ?? date;
+/** moved-games.csv with `add` (rows of MOVES_COLUMNS) appended to the stored text; a move already there is not repeated. */
+export function movesCsv(storedText, add) {
+  const rows = parseCsv(storedText, MOVES_FILE).rows;
+  const have = new Set(rows.map((m) => `${rowKey({ game_date: m.from_date, home: m.home, away: m.away })}>${m.to_date}`));
+  for (const m of add) {
+    if (MOVES_COLUMNS.split(",").some((c) => String(m[c] ?? "").includes(","))) throw new Error(`${MOVES_FILE}: a cell would hold a comma`);
+    const k = `${rowKey({ game_date: m.from_date, home: m.home, away: m.away })}>${m.to_date}`;
+    if (!have.has(k)) (have.add(k), rows.push(m));
+  }
+  return [MOVES_COLUMNS, ...rows.map((m) => MOVES_COLUMNS.split(",").map((c) => m[c] ?? "").join(","))].join("\n") + "\n";
 }
 
 /** pending-scores.csv as rows, and back. */

@@ -4,6 +4,7 @@ import { orgParams } from "@/lib/active-orgs";
 import { orgBySlug } from "@/lib/orgs";
 import { ratingSeasons } from "@/lib/ratings";
 import { describeRankings, RankingsView, viewOf } from "../../../view";
+import { rankingsTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
@@ -22,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { season, org } = await params;
   const found = orgBySlug(org);
   return {
-    title: `${season} ${found?.label ?? ""} rankings`,
+    title: found ? rankingsTitle({ label: found.label, season: Number(season) }) : "Rankings",
     ...(found && { description: await describeRankings(viewOf(found), Number(season)) }),
     alternates: { canonical: `/rankings/season/${season}/${org}` },
   };
