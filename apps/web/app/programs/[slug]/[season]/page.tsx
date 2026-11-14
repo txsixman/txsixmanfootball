@@ -108,7 +108,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
 
   return (
     <EdgeToEdge>
-      <article aria-labelledby="season" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
+      <article aria-labelledby="season" className="mx-auto max-w-3xl border-line bg-page pb-6 sm:border-x">
         <Breadcrumbs trail={trail} />
         <header className="px-3 pb-3 pt-5" style={{ background: theme.bg, color: theme.fg, borderBottom: `6px solid ${theme.stripe ?? theme.bg}` }}>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">

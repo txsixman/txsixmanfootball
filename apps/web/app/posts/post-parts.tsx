@@ -12,7 +12,7 @@ import { send, when, type Me } from "./client";
 export type Post = { id: string; author: string; body: string; createdAt: string; edited: boolean; joined?: string };
 
 export const TEXTAREA =
-  "block w-full border border-line bg-white px-3 py-2 text-[16px] leading-6 text-ink outline-none focus-visible:ring-2 focus-visible:ring-navy";
+  "block w-full border border-line bg-page px-3 py-2 text-[16px] leading-6 text-ink outline-none focus-visible:ring-2 focus-visible:ring-navy";
 
 /** What a signed-in person may do on a page, from /api/fan/me. */
 export const canPost = (me: Me | undefined): me is Extract<Me, { profile: true }> => me?.signedIn === true && "profile" in me && me.profile && me.canPost;

@@ -21,7 +21,7 @@ export function useNow(): Date | null {
 
 const TONE: Record<KickoffState["kind"], string> = {
   starts: "text-ink",
-  "in-progress": "bg-red px-1.5 text-white",
+  "in-progress": "bg-alert px-1.5 text-white",
   awaiting: "text-ink",
   unlisted: "text-ink",
 };

@@ -80,7 +80,7 @@ export default async function SeriesPage({ params }: Props) {
 
   return (
     <EdgeToEdge>
-    <article aria-labelledby="series" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
+    <article aria-labelledby="series" className="mx-auto max-w-3xl border-line bg-page pb-6 sm:border-x">
       <Breadcrumbs trail={[{ name: "Home", href: "/" }, { name: "Programs", href: "/programs" }, { name: title, href: `/series/${first}/${second}` }]} />
       <header className="px-3 pt-5">
         <p className="text-[12px] font-bold uppercase tracking-widest text-red">Series since {since}</p>

@@ -20,7 +20,7 @@ function StatusCell({ g }: { g: Game }) {
   const base = "flex w-[68px] shrink-0 flex-col justify-center self-stretch px-2 font-num text-[14px] font-bold uppercase leading-4 tracking-wide";
   if (g.state === "live") {
     return (
-      <div className={`${base} bg-red text-white`}>
+      <div className={`${base} bg-alert text-white`}>
         <span>Live</span>
         <span>{/half/i.test(g.status) ? "Half" : g.status}</span>
       </div>
@@ -162,7 +162,7 @@ function Section({ id, title, live, games, crests, checked }: { id: string; titl
   const leagues = [...new Set(games.map((g) => g.league))];
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-[45px]">
-      <h2 id={`${id}-h`} className={`px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white ${live ? "bg-red" : "bg-navy"}`}>
+      <h2 id={`${id}-h`} className={`px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white ${live ? "bg-alert" : "bg-band"}`}>
         {title}
       </h2>
       {leagues.map((league) => (
@@ -191,7 +191,7 @@ function NextSection({ games }: { games: NextGame[] }) {
   if (!games.length) return null;
   return (
     <section id="next" aria-labelledby="next-h" className="scroll-mt-[45px]">
-      <h2 id="next-h" className="bg-navy px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">Next games</h2>
+      <h2 id="next-h" className="bg-band px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">Next games</h2>
       {[...new Set(games.map((g) => g.heading))].map((heading) => (
         <div key={heading}>
           <h3 className="sticky top-[45px] z-10 border-b border-line bg-panel px-3 py-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">{heading}</h3>
@@ -279,7 +279,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
                 aria-pressed={org === o}
                 onClick={() => setChosen(o.slug)}
                 className={`min-h-11 flex-1 border-2 border-navy px-1 font-num text-[15px] font-bold uppercase tracking-wide ${
-                  org === o ? "bg-navy text-white" : "text-navy hover:bg-panel"
+                  org === o ? "bg-band text-white" : "text-navy hover:bg-panel"
                 }`}
               >
                 {o.label}
@@ -298,7 +298,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
         </Link>
       )}
 
-      <nav aria-label="Jump to" className="sticky top-0 z-20 flex h-[45px] border-b border-line bg-white">
+      <nav aria-label="Jump to" className="sticky top-0 z-20 flex h-[45px] border-b border-line bg-page">
         {jumps.map((j) =>
           // A section with no games is not on the page, so its jump link would do nothing: show it as plain, dimmed text.
           j.n ? (

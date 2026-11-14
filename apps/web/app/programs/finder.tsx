@@ -32,7 +32,7 @@ export function Finder({ groups }: { groups: FinderGroup[] }) {
 
   return (
     <>
-      <label className="mt-4 flex h-12 max-w-xl items-center gap-2.5 border-2 border-navy bg-white px-3 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-navy">
+      <label className="mt-4 flex h-12 max-w-xl items-center gap-2.5 border-2 border-navy bg-page px-3 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-navy">
         <Search aria-hidden="true" className="size-5 shrink-0 text-navy" />
         <span className="sr-only">Find a school</span>
         <input
@@ -48,7 +48,7 @@ export function Finder({ groups }: { groups: FinderGroup[] }) {
       </p>
       {orgs.length > 1 && (
         // Sticky, so a long list can be left for another organization from anywhere on the page.
-        <nav aria-label="Jump to an organization" className="sticky top-0 z-10 mt-1 flex border-b-2 border-navy bg-white">
+        <nav aria-label="Jump to an organization" className="sticky top-0 z-10 mt-1 flex border-b-2 border-navy bg-page">
           {orgs.map(({ org, count: n }) => (
             <a
               key={org.slug}
@@ -77,11 +77,11 @@ export function Finder({ groups }: { groups: FinderGroup[] }) {
                       .filter((g) => g.heading === division)
                       .map((g) => (
                         <article key={g.key} className="border border-line bg-panel">
-                          <H className="border-b border-line bg-white px-3 py-2 font-num text-[15px] font-bold uppercase tracking-wider text-navy">{g.place}</H>
+                          <H className="border-b border-line bg-page px-3 py-2 font-num text-[15px] font-bold uppercase tracking-wider text-navy">{g.place}</H>
                           <ul>
                             {g.schools.map((s) => (
                               <li key={s.slug} className="border-b border-line last:border-b-0">
-                                <Link href={`/programs/${s.slug}`} className="flex min-h-12 items-center px-3 text-[16px] leading-tight text-ink hover:bg-white hover:text-navy hover:underline">
+                                <Link href={`/programs/${s.slug}`} className="flex min-h-12 items-center px-3 text-[16px] leading-tight text-ink hover:bg-page hover:text-navy hover:underline">
                                   <CrestSlot school={s.school} identity={s.identity} size={28} />
                                   <span className="min-w-0">{s.school}</span>
                                 </Link>

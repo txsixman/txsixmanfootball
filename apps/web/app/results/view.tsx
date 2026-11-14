@@ -82,7 +82,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
             aria-current={w.number === week ? "page" : undefined}
             aria-label={`Week ${w.number}, from ${weekLabel(w.monday)}`}
             className={`inline-flex size-11 items-center justify-center border-2 border-navy font-num text-[17px] font-bold ${
-              w.number === week ? "bg-navy text-white" : "text-navy hover:bg-panel"
+              w.number === week ? "bg-band text-white" : "text-navy hover:bg-panel"
             }`}
           >
             {w.number}

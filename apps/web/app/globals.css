@@ -1,14 +1,20 @@
 @import "tailwindcss";
 
-/* Red, white and blue (the owner, Nov 10, 2026; replaces plan section 13.2). */
+/* Red, white and blue (the owner, Nov 10, 2026; replaces plan section 13.2), light and dark (ADR 0035).
+   Each color is light-dark(light, dark): the page follows the system setting unless the footer's choice sets
+   data-theme on <html> (theme-toggle.tsx). Every text pair passes WCAG AA in both (e2e/theme.spec.ts runs axe in both).
+   `navy` and `red` are text, borders and lines; a filled band behind white text is `band` or `alert`, which stay dark in
+   both themes so white text on them always reads. scripts/theme-tokens.test.mjs refuses a fill that ignores the theme. */
 @theme {
-  --color-page: #ffffff;
-  --color-panel: #f4f6fb;
-  --color-line: #cdd6e8;
-  --color-navy: #0a2a5e;
-  --color-red: #bf1e2e;
-  --color-ink: #14213d;
-  --color-muted: #55617a;
+  --color-page: light-dark(#ffffff, #0d1526);
+  --color-panel: light-dark(#f4f6fb, #17223a);
+  --color-line: light-dark(#cdd6e8, #34456b);
+  --color-navy: light-dark(#0a2a5e, #a9c4ff);
+  --color-red: light-dark(#bf1e2e, #ff8089);
+  --color-ink: light-dark(#14213d, #e8edf7);
+  --color-muted: light-dark(#55617a, #a9b4ca);
+  --color-band: light-dark(#0a2a5e, #1c3a72);
+  --color-alert: light-dark(#bf1e2e, #b51f2c);
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   /* --font-barlow is set by layout.tsx (next/font); Ladle, outside Next, loads @fontsource's "Barlow Condensed". */
   --font-num: var(--font-barlow, "Barlow Condensed"), "Arial Narrow", sans-serif;
@@ -17,14 +23,24 @@
      gray text, so no existing page changes. Its muted-foreground is the site's `muted`. */
   --color-background: var(--color-page);
   --color-foreground: var(--color-ink);
-  --color-primary: var(--color-navy);
+  --color-primary: var(--color-band);
   --color-primary-foreground: #ffffff;
   --color-accent: var(--color-panel);
   --color-accent-foreground: var(--color-navy);
-  --color-destructive: var(--color-red);
+  --color-destructive: var(--color-alert);
   --color-border: var(--color-line);
   --color-input: var(--color-line);
   --color-ring: var(--color-navy);
+}
+
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {
@@ -63,5 +79,5 @@ body {
   @apply inline-flex min-h-11 min-w-11 items-center hover:text-navy hover:underline;
 }
 @utility btn-red {
-  @apply inline-flex min-h-11 items-center justify-center border-2 border-red bg-red px-4 font-bold text-white hover:brightness-110;
+  @apply inline-flex min-h-11 items-center justify-center border-2 border-alert bg-alert px-4 font-bold text-white hover:brightness-110;
 }

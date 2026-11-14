@@ -98,7 +98,7 @@ export default function TonightBoard({ night }: { night: Night }) {
         const games = org.rounds.flatMap((r) => r.games.map((g) => withLive({ ...g, round: r.label }, liveRows)));
         return (
           <section key={org.slug} aria-labelledby={`night-${org.slug}`}>
-            <h2 id={`night-${org.slug}`} className="bg-navy px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">
+            <h2 id={`night-${org.slug}`} className="bg-band px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">
               {org.label}
             </h2>
             {groupTonight(games, now).map((group) => (
