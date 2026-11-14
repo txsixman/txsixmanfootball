@@ -15,7 +15,7 @@ export default async function Card() {
         <Mark size={260} />
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 96, fontWeight: 900, lineHeight: 1, textTransform: "uppercase" }}>{SITE_NAME}</div>
-          <div style={{ fontSize: 40, marginTop: 24, opacity: 0.9 }}>Scores, rankings, standings and every state championship</div>
+          <div style={{ fontSize: 40, marginTop: 24, opacity: 0.9 }}>Scores, rankings, standings and every State Championship</div>
         </div>
       </div>
     ),

@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: SITE_NAME,
     short_name: "TX Six-Man",
-    description: "Scores, rankings, standings and every state championship.",
+    description: "Scores, rankings, standings and every State Championship.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

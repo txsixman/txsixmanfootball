@@ -127,7 +127,7 @@ export default async function SeriesPage({ params }: Props) {
 
       {finals.length > 0 && (
         <section aria-labelledby="finals" className="mt-6">
-          <SectionBar id="finals" title="State finals" className="mt-2" />
+          <SectionBar id="finals" title="State Championships" className="mt-2" />
           <ul>
             {finals.map((f) => (
               <li key={`${f.season}-${f.division}`} className="grid min-h-12 grid-cols-[3.5rem_1fr_auto] items-center gap-x-3 border-b border-line px-3 py-1.5">
@@ -141,7 +141,7 @@ export default async function SeriesPage({ params }: Props) {
               </li>
             ))}
           </ul>
-          <p className="px-3 pt-1 text-[13px] text-muted">UIL state finals the two programs played each other in, merged schools included.</p>
+          <p className="px-3 pt-1 text-[13px] text-muted">UIL State Championships the two programs played each other in, merged schools included.</p>
         </section>
       )}
 

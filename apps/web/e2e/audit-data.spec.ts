@@ -127,7 +127,7 @@ test("Scores names rounds the way Playoffs does", async ({ page }) => {
   await page.goto("/scores");
   const text = (await page.locator("main").textContent()) ?? ""; // not innerText: the labels are uppercased by CSS
   expect(text).not.toMatch(/Round-1/);
-  expect(text).toMatch(/UIL DI{1,2} · (Bi-district|Area|Regional|Semifinal|State final|Quarterfinal)/);
+  expect(text).toMatch(/UIL DI{1,2} · (Bi-district|Area|Regional|Semifinal|State Championship|Quarterfinal)/);
 });
 
 test("Standings says what its district and overall records count", async ({ page }) => {

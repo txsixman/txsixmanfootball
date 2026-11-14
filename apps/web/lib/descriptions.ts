@@ -28,8 +28,8 @@ function fit(first: string | string[], ...more: (string | string[])[]): string {
 
 export const homeDescription = (season: number, orgs: string[]) =>
   fit(`Texas six-man football for ${season}: scores, rankings, playoff brackets and standings for ${list(orgs)}.`, [
-    "Every program, a rating for every team, and the state championship archive.",
-    "Every program and every state final.",
+    "Every program, a rating for every team, and the State Championship archive.",
+    "Every program and every State Championship.",
   ]);
 
 export const scoresDescription = (season: number) =>
@@ -53,8 +53,8 @@ export const programsDescription = (programs: number, orgs: string[]) =>
 export const championshipsDescription = ({ first, latest, games }: { first?: number; latest?: number; games: number }) =>
   fit(
     first === undefined
-      ? "Every UIL six-man state championship game."
-      : `Every UIL six-man state championship game, ${first} to ${latest}: ${count(games, "final")}.`,
+      ? "Every UIL six-man State Championship game."
+      : `Every UIL six-man State Championship game, ${first} to ${latest}: ${count(games, "State Championship game")}.`,
     ["Division I and Division II since 2006, and the programs with the most state titles.", "The programs with the most state titles."],
   );
 
@@ -171,7 +171,7 @@ type ProgramSeasonFacts = {
   record?: string;
   /** Its place among its organization's teams: "UIL" with place 3; absent for a team with too few games to be ranked. */
   rank?: { place: number; org: string };
-  /** The last playoff round it played, as a phrase: "the state final". */
+  /** The last playoff round it played, as a phrase: "the State Championship". */
   playoff?: string;
 };
 
@@ -204,7 +204,7 @@ export function gameDescription({ away, home, date, season, playoff, scheduled, 
   if (sample) return fit(`A sample six-man game between invented schools: ${away} vs ${home}.`, "It shows how the scoreboard reads.");
   const [group, round] = (playoff ?? "").split(" · ");
   const kind = playoff
-    ? `${season} ${group.replace(/\bD(I+|\d+)\b/, "Division $1")}${round ? ` ${round.toLowerCase()}` : ""} playoff game`
+    ? `${season} ${group.replace(/\bD(I+|\d+)\b/, "Division $1")}${round ? ` ${round === "State Championship" ? round : round.toLowerCase()}` : ""} playoff game`
     : `${season} season game`;
   const teams = `${away} vs ${home}`;
   return fit(

@@ -50,7 +50,7 @@ export const programSeasonTitle = ({ name, mascot, season }: { name: string; mas
 /** "UIL Division I bi-district" from a bracket label ("UIL DI · Bi-district", "TAIAO D1 · First round"). */
 const roundWords = (label: string) => {
   const [group, round] = label.split(" · ");
-  return `${group.replace(/\bD(I+|\d+)\b/, "Division $1")}${round ? ` ${round.toLowerCase()}` : ""}`;
+  return `${group.replace(/\bD(I+|\d+)\b/, "Division $1")}${round ? ` ${round === "State Championship" ? round : round.toLowerCase()}` : ""}`;
 };
 
 /**

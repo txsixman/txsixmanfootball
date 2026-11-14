@@ -110,13 +110,13 @@ test("a forfeit shows the word, never the recorded 1-0 or 2-0", async ({ page })
   await expect(forfeits).not.toContainText(/\b(0-1|1-0|0-2|2-0)\b/);
 });
 
-test("a state final between the two shows in its own section, and a pair with none has no finals section", async ({ page }) => {
-  await open(page, ["benjamin", "loraine"]); // the 2022 Division II final, from the state final archive
-  const finals = page.getByRole("region", { name: "State finals" });
+test("a State Championship between the two shows in its own section, and a pair with none has no finals section", async ({ page }) => {
+  await open(page, ["benjamin", "loraine"]); // the 2022 Division II final, from the State Championship archive
+  const finals = page.getByRole("region", { name: "State Championships" });
   await expect(finals.getByRole("listitem")).toHaveCount(1);
   await expect(finals.getByRole("listitem")).toContainText(/2022\s*Champion Benjamin · Div II\s*Runner-up Loraine\s*68-20/);
   // The same game is also one of the meetings, named by its round.
-  await expect(rows(page).filter({ hasText: "2022 playoffs · UIL Division II · State final" })).toHaveCount(1);
+  await expect(rows(page).filter({ hasText: "2022 playoffs · UIL Division II · State Championship" })).toHaveCount(1);
   await open(page, JAYTON);
   await expect(page.locator("section[aria-labelledby=finals]")).toHaveCount(0);
 });

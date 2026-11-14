@@ -226,7 +226,7 @@ test("the home page lists the closest games still to play, each organization on 
 test("the home page shows title chances for brackets down to their last four", async ({ page }) => {
   await page.goto("/");
   const chances = page.getByRole("region", { name: "State title chances" });
-  await expect(chances.getByRole("heading", { level: 3 }).first()).toContainText(/Semifinals|Final/);
+  await expect(chances.getByRole("heading", { level: 3 }).first()).toContainText(/Semifinals|State Championship/);
   await expect(chances.getByRole("listitem").first()).toContainText(/(\d+|<1|>99)%$/);
 });
 
@@ -258,7 +258,7 @@ test("old ratings and champions links land on the new pages", async ({ page }) =
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("State Championships");
 });
 
-test("state championships split Division I, Division II and the one-division years", async ({ page }) => {
+test("State Championships split Division I, Division II and the one-division years", async ({ page }) => {
   await page.goto("/championships");
   for (const [name, from] of [["Division I", "2006"], ["Division II", "2006"], ["One division", "1972"]]) {
     const section = page.getByRole("region", { name, exact: true });
@@ -269,20 +269,20 @@ test("state championships split Division I, Division II and the one-division yea
   await expect(page).toHaveURL(/#division-2$/);
 });
 
-test("the state championships page passes, lists every final and names no source (ADR 0010)", async ({ page }, info) => {
+test("the State Championships page passes, lists every final and names no source (ADR 0010)", async ({ page }, info) => {
   await checkPage(page, "/championships", `championships-${info.project.name}`);
   await expect(page.getByRole("heading", { name: "Most state titles" })).toBeVisible();
   const finals = page.getByRole("table").getByRole("row");
   expect(await finals.count()).toBeGreaterThan(70);
   await expect(page.getByRole("link", { name: "Jayton" }).first()).toHaveAttribute("href", "/programs/jayton");
-  await expect(page.getByText(/no state championship game/)).toBeVisible();
+  await expect(page.getByText(/no State Championship game/)).toBeVisible();
   await expect(page.locator("body")).not.toContainText(/uiltexas|maxpreps|source/i);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
 });
 
-test("a program page lists its state finals", async ({ page }) => {
+test("a program page lists its State Championships", async ({ page }) => {
   await page.goto("/programs/jayton");
-  const finals = page.getByRole("region", { name: "State championships" });
+  const finals = page.getByRole("region", { name: "State Championships" });
   await expect(finals).toContainText(/\d+ UIL state titles/);
   await expect(finals.getByRole("listitem").first()).toContainText(/Champion|Runner-up/);
 });
@@ -291,7 +291,7 @@ test("a merged school's final shows on the program it became (ADR 0003)", async 
   await page.goto("/championships");
   await expect(page.getByRole("link", { name: /^Wellman\s*now Wellman-Union$/ })).toHaveAttribute("href", "/programs/wellman-union");
   await page.goto("/programs/wellman-union");
-  const finals = page.getByRole("region", { name: "State championships" });
+  const finals = page.getByRole("region", { name: "State Championships" });
   await expect(finals.getByRole("listitem").filter({ hasText: "1987" })).toContainText(/Runner-up.*as Wellman/);
 });
 
@@ -504,7 +504,7 @@ test("a program page lists each season: record, place and the last playoff round
   const seasons = page.getByRole("region", { name: "Season by season" });
   await expect(seasons.getByRole("listitem")).toHaveCount(SEASONS);
   const last = seasons.getByRole("listitem").filter({ has: page.getByRole("link", { name: "2025 rankings" }) });
-  await expect(last).toContainText("Playoffs: reached the state final");
+  await expect(last).toContainText("Playoffs: reached the State Championship");
   await expect(seasons.getByText(new RegExp(`^\\d+-\\d+(-\\d+)? from ${FIRST_SEASON} to ${CURRENT_SEASON} · playoffs in \\d of ${SEASONS} seasons$`))).toBeVisible();
   const rivals = page.getByRole("region", { name: "Most played" }).getByRole("listitem");
   expect(await rivals.count()).toBeGreaterThan(0);
@@ -585,7 +585,7 @@ test("playoffs show every bracket round by round, naming no winner and no source
   expect(quarters).toHaveLength(4);
 
   await checkPage(page, "/playoffs/tcaf", `playoffs-tcaf-${info.project.name}`);
-  await expect(page.getByRole("region", { name: "TCAF, Final" }).getByRole("listitem")).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "TCAF, State Championship" }).getByRole("listitem")).toHaveCount(1);
 });
 
 test("rankings stand at the end of each week, with records then and moves from the week before", async ({ page }, info) => {
@@ -614,7 +614,7 @@ test("past playoff seasons list their brackets round by round, with no projectio
   await expect(seasons.getByRole("link", { name: "2025" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("navigation", { name: "League" }).getByRole("link")).toHaveText(["UIL", "TAPPS", "TAIAO", "TCAF"]);
   const division = page.getByRole("region", { name: "UIL Division I", exact: true });
-  await expect(division.getByRole("region", { name: "UIL Division I, State final" }).getByRole("listitem")).toHaveCount(1);
+  await expect(division.getByRole("region", { name: "UIL Division I, State Championship" }).getByRole("listitem")).toHaveCount(1);
   await expect(page.getByText(/Projected:|title chances/i)).toHaveCount(0);
   await expect(page.locator("main").getByText(/won|beat|defeated|champion|maxpreps|odds|spread/i)).toHaveCount(0); // the site nav has "Championships"
 

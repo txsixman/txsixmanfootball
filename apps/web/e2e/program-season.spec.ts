@@ -73,10 +73,10 @@ test("every game row links to its game page, names its round when a playoff game
   const hrefs = await rows.evaluateAll((lis) => lis.map((li) => [...li.querySelectorAll("a")].map((a) => a.getAttribute("href")).filter((h) => h?.startsWith("/scores/"))));
   for (const h of hrefs) expect(h.length).toBe(1);
   expect(new Set(hrefs.flat()).size).toBe(await rows.count());
-  // 2025: bi-district, area, regional, semifinal and the state final.
+  // 2025: bi-district, area, regional, semifinal and the State Championship.
   const playoff = rows.filter({ hasText: /UIL Division II · / });
   await expect(playoff).toHaveCount(5);
-  for (const round of [/Bi-District/i, /Area/i, /Regional/i, /Semifinal/i, /State Final|Final/i]) await expect(playoff.filter({ hasText: round }).first()).toBeVisible();
+  for (const round of [/Bi-District/i, /Area/i, /Regional/i, /Semifinal/i, /State Championship/i]) await expect(playoff.filter({ hasText: round }).first()).toBeVisible();
   // vs or at, then the opponent, and a score: the school's own first, never a W or an L.
   await expect(rows.first()).toContainText(/^[A-Z][a-z]{2} \d+\/\d+.*?(vs|at) /);
   await expect(rows.first().getByRole("link", { name: /, game page$/ })).toHaveAttribute("href", /^\/scores\/2025-08-28-/);
