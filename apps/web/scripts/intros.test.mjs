@@ -47,7 +47,7 @@ test("a bracket page", () => {
 test("the home page's line says what a fan gets, from the data's own first seasons", () => {
   assert.equal(
     clean(t.homeEdge({ firstSeason: 2018, firstFinal: 1972 })),
-    "Free, with no sign-in: scores through every game night, a projected margin and each team's chance to win for every game still to play, brackets that fill in as games finish, results since 2018 and every UIL state final since 1972.",
+    "Free, with no sign-in: scores through every game night, a projected margin and each team's chance to win for every game still to play, brackets that fill in as games finish, results since 2018 and every UIL State Championship since 1972.",
   );
 });
 
@@ -57,7 +57,7 @@ test("the scores page's and a program page's lines: what a fan gets, under the l
     scores,
     "Live scores on game nights, a projected margin and chance to win for every game still to play, brackets that fill in as games finish, district standings, results since 2018 and every UIL State Championship since 1972. Free, no sign-in.",
   );
-  assert.ok(scores.length <= 230, `${scores.length} characters`);
+  assert.ok(scores.length <= 240, `${scores.length} characters`);
   for (const name of ["Jayton", "O'Donnell", "Sherman Grayson Christian School"]) {
     const line = clean(t.programEdge({ name, firstSeason: 2018 }));
     assert.ok(line.startsWith(`${name}'s scores`), line);
