@@ -94,7 +94,7 @@ const NO_SOURCE_OR_BETTING = /\b(spreads?|odds|lines?|bets?|bettors?|sources?|ma
 // A final names its winner (ADR 0040), marked on the score and read out as "winner"; no other winner word is written.
 // "Win probability" is the projection's own phrase.
 const WINNER_WORDS = /\b(won|beat|beats|defeated|defeats|winner|wins|victory|loser|lost)\b/i;
-const withoutProjectionPhrase = (text: string) => text.replace(/win probability/gi, "");
+const withoutProjectionPhrase = (text: string) => text.replace(/win probability|chance to win/gi, "");
 
 test.setTimeout(120_000);
 
@@ -144,6 +144,9 @@ test("the week-before projection shows once both teams had four games, and how f
   const projection = page.getByRole("region", { name: "Projection before the game" });
   await expect(projection).toContainText(projectedText.margin);
   await expect(projection).toContainText(projectedText.chance);
+  // Beside what happened (ADR 0044): "Projected: … · Final: <winner> by <n>".
+  await expect(projection.locator("[data-projected]")).toHaveText(/^Projected: .+ chance to win · (Final: .+ by \d+|Final: tied|Disputed)$/);
+  await expect(page.locator("[data-projected]")).toHaveCount(1); // once on the page, not again in the facts
   await expect(projection).toContainText(/finished (about as projected|\d+ points (better|worse) than the projected margin)/);
   await expect(projection).toContainText("A projection, not a result.");
   const going = page.getByRole("region", { name: "Going in" });

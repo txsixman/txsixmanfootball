@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { groupTonight } from "@/lib/kickoff";
-import { checkedAt, liveView, type LiveRow } from "@/lib/live-scores";
+import { checkedAt, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
+import { projectedLine, type Outcome } from "@/lib/outcome";
 import type { Night, NightGame } from "@/lib/tonight";
 import { KickoffStatus, useNow } from "../../kickoff-status";
 import { LiveLine, useLiveScores } from "../live-score";
@@ -10,7 +11,9 @@ import { LiveLine, useLiveScores } from "../live-score";
 // Tonight's games, one organization at a time (ADR 0012), each in groups by the clock: in progress, up next, final. A game
 // with no final yet may be under way, so its live score is read in the browser as the scoreboard reads it (ADR 0021) and
 // shown in place (ADR 0039): a game the read has a score for is In progress, its line "Unconfirmed" with no leader; one the
-// read says is over is a Final with its score and when it was read (ADR 0043), until the stored final replaces it.
+// read says is over is a Final with its score and when it was read (ADR 0043), until the stored final replaces it. Each
+// game with a projection shows it beside the outcome (ADR 0044): the projection alone before kickoff, "Now: 14–28 ·
+// Unconfirmed" under way (no leader), "Final: <team> by 3" after, or the word for a disputed final or a forfeit.
 
 /** A game as Tonight shows it: with the live read's score in place (ADR 0039). A game under way is in progress whatever its
  * kickoff says; one the read says is over (ADR 0043) is a final, with its score and when it was read, until the stored
@@ -24,8 +27,30 @@ function withLive(g: NightGame & { round: string }, liveRows: LiveRow[]): Tonigh
   return { ...g, state: "final", awayScore: live.away.score, homeScore: live.home.score, unconfirmed: false, asOf: checkedAt(live.readAt) };
 }
 
+/** The game's outcome so far in lib/outcome.ts terms: under way from the live read, else its own state. On this page an
+ * "unconfirmed" final is a disputed one (lib/tonight.ts), so its line names no winner. */
+function outcome(g: TonightGame, live: LiveView | null): Outcome {
+  const teams = { home: g.home, away: g.away };
+  if (live) return { ...teams, homeScore: live.home.score, awayScore: live.away.score, state: "live" };
+  if (g.state === "later") return { ...teams, state: "scheduled" };
+  return { ...teams, homeScore: g.homeScore, awayScore: g.awayScore, state: "final", forfeit: g.state === "forfeit", disputed: g.unconfirmed };
+}
+
+/** "Projected: Jayton by 7 · 74% chance to win · Final: Guthrie by 3", or nothing for a game with no projection. */
+function Projected({ g, live }: { g: TonightGame; live: LiveView | null }) {
+  const line = projectedLine(g.projected, outcome(g, live));
+  return line ? <p data-projected className="text-[14px] leading-5 text-muted">{line}</p> : null;
+}
+
 function Status({ g, liveRows }: { g: TonightGame; liveRows: LiveRow[] }) {
-  if (g.state === "forfeit") return <p className="text-[14px] font-bold leading-5 text-ink">Forfeit</p>;
+  if (g.state === "forfeit") {
+    return (
+      <>
+        <p className="text-[14px] font-bold leading-5 text-ink">Forfeit</p>
+        <Projected g={g} live={null} />
+      </>
+    );
+  }
   if (g.state === "final") {
     return (
       <>
@@ -35,17 +60,25 @@ function Status({ g, liveRows }: { g: TonightGame; liveRows: LiveRow[] }) {
           {g.unconfirmed && <span className="text-muted"> &middot; disputed</span>}
           {g.asOf && <span className="text-muted"> &middot; as of {g.asOf}</span>}
         </p>
+        <Projected g={g} live={null} />
       </>
     );
   }
   const live = liveView(liveRows, { date: g.date, home: g.home, away: g.away });
-  if (live) return <LiveLine live={live} />;
+  if (live) {
+    return (
+      <>
+        <LiveLine live={live} />
+        <Projected g={g} live={live} />
+      </>
+    );
+  }
   return (
     <>
       <p className="text-[14px] font-bold uppercase leading-5 tracking-wide text-navy">
         <KickoffStatus date={g.date} kickoff={g.kickoff} />
       </p>
-      {g.projected && <p className="text-[14px] leading-5 text-muted">Projected: {g.projected}</p>}
+      <Projected g={g} live={null} />
     </>
   );
 }

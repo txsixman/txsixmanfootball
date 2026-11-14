@@ -9,10 +9,8 @@ import { bracketGames } from "@/lib/game-pages";
 import { loadSeasonResults, roundPhrase } from "@/lib/games";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { orgByLeague } from "@/lib/orgs";
-import { pregame } from "@/lib/pregame";
 import { lead, seasonRows, type Row } from "@/lib/program-games";
 import { programSeason, programSeasonPages } from "@/lib/program-seasons";
-import { projectionText } from "@/lib/projection";
 import { FEW_GAMES, ratingSeasons, record, signed } from "@/lib/ratings";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
@@ -65,11 +63,10 @@ export default async function ProgramSeasonPage({ params }: Props) {
   if (!found) notFound();
   const { school, season, pages, line, played, org } = found;
   const slug = school.slug;
-  const [all, identities, partners, projections, seasons, active] = await Promise.all([
+  const [all, identities, partners, seasons, active] = await Promise.all([
     loadAlignments(),
     loadIdentities(),
     seriesPartners(),
-    pregame(season),
     ratingSeasons(),
     activeOrgs(),
   ]);
@@ -149,9 +146,6 @@ export default async function ProgramSeasonPage({ params }: Props) {
           <ul>
             {rows.map((r) => {
               const opp = opponent(r.opponent);
-              // A playoff game names its round; a game the ratings had a view on (both teams four games in) adds the projection from the week before.
-              const projected = projections.get(r.id);
-              const notes = [r.note, projected && `Projected: ${projectionText(projected)}`].filter(Boolean);
               return (
                 <li key={r.id} className="relative border-b border-line hover:bg-panel">
                   <div className="grid min-h-14 grid-cols-[4.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
@@ -163,11 +157,10 @@ export default async function ProgramSeasonPage({ params }: Props) {
                           {lead(r)} {opp.link}
                         </span>
                       </span>
-                      {notes.map((n) => (
-                        <span key={n} className="block text-[13px] leading-4 text-muted">
-                          {n}
-                        </span>
-                      ))}
+                      {/* A playoff game names its round; a game the ratings had a view on (both teams four games in) adds the
+                          projection from the week before, beside what happened (ADR 0044). */}
+                      {r.note && <span className="block text-[13px] leading-4 text-muted">{r.note}</span>}
+                      {r.projected && <span data-projected className="block text-[13px] leading-4 text-muted">{r.projected}</span>}
                       {opp.series && (
                         <Link
                           href={opp.series.href}
@@ -195,7 +188,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
             })}
           </ul>
           <p className="px-3 pt-2 text-[13px] text-muted">
-            {school.school}&rsquo;s score first. Playoff games name their round; a projection is the ratings&rsquo; view the week before.
+            {school.school}&rsquo;s score first. Playoff games name their round; a projection is the ratings&rsquo; view the week before, shown beside the result.
           </p>
         </section>
 

@@ -17,8 +17,13 @@ and uses ADR 0036's kickoff status for it; every other rule of ADRs 0004, 0009, 
   - Tonight: a game the live read has a score for is under "In progress" whatever its kickoff says, its line "Unconfirmed"
     with no leader; one the read says is over (ADR 0043) is under "Final" with its score and "as of" the read, until the
     stored final replaces it.
-  - My teams: a followed program's next game shows the live line in the projection's place and the score where a final's
-    goes, from the school's side, dashed (solid once the read says it is over). One read serves every followed program.
+  - Tonight: each game with a projection shows it beside the outcome, in `lib/outcome.ts`'s words (ADR 0044): the
+    projection alone before kickoff; "Projected: … · Now: 14–28 · Unconfirmed" under way, no leader; "… · Final: <team>
+    by 3" once final (a live read's final too); "… · Disputed" and "… · Forfeit" with no score. A played game's
+    projection is the one from the week before it (`lib/pregame.ts`), for bracket and season games alike.
+  - My teams: a followed program's next game shows the live line under its date and opponent, with its projection still
+    beside it (ADR 0044), and the score where a final's goes, from the school's side, dashed (solid once the read says
+    it is over). One read serves every followed program.
 - **The live read runs only while a game on the page may be under way** (`anyInProgress` in `lib/kickoff.ts`), checked
   again every minute: from kickoff to 4 hours after when the kickoff is known; with no kickoff time, through its game
   date's evening, 5:00 PM to midnight Central, so its live score still shows. It starts by itself and stops when the window

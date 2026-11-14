@@ -31,14 +31,10 @@ function Line({ label, game, school }: { label: string; game: MyGame; school?: s
       <span className="w-11 shrink-0 text-[13px] font-bold uppercase tracking-wider text-red">{label}</span>
       <span className="min-w-0 flex-1 text-[15px] leading-5 text-ink">
         {line}
-        {/* While under way the live line takes the projection's place, as on the scores board. */}
-        {live ? (
-          <ProgramLiveScore {...live} line>
-            {game.note && <span className="block text-[13px] leading-4 text-muted">{game.note}</span>}
-          </ProgramLiveScore>
-        ) : (
-          game.note && <span className="block text-[13px] leading-4 text-muted">{game.note}</span>
-        )}
+        {game.note && <span className="block text-[13px] leading-4 text-muted">{game.note}</span>}
+        {/* While under way, the live line; the projection stays beside it (ADR 0044). */}
+        {live && <ProgramLiveScore {...live} line />}
+        {game.projected && <span className="block text-[13px] leading-4 text-muted">{game.projected}</span>}
       </span>
       {game.score && <span className="shrink-0 font-num text-[20px] font-bold tabular-nums text-ink">{game.score}</span>}
       {live && (

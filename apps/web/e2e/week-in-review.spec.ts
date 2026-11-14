@@ -14,7 +14,7 @@ test.setTimeout(180_000);
 // A game row names no winner from an unconfirmed score (ADR 0004); "win probability" is the projection's own phrase.
 const WINNER_WORDS = /\b(won|beat|beats|defeated|defeats|winner|wins|winning|victory|loser|lost|leads?|leading|ahead)\b/i;
 const BETTING_OR_SOURCE = /\b(spreads?|odds|lines?|bets?|bettors?|favou?rites?|underdogs?|locks?|sources?|maxpreps)\b/i;
-const plain = (text: string) => text.replace(/win probability/gi, "");
+const plain = (text: string) => text.replace(/win probability|chance to win/gi, "");
 
 /** The loaders read ../../data from the working directory; the tests run from the repo root. */
 async function inWeb<T>(run: () => Promise<T>): Promise<T> {
