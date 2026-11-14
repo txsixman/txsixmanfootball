@@ -33,11 +33,11 @@ test("a followed program shows its record, last result and next game, with no wi
     await expect(card).toContainText(/\d+-\d+/); // the record
     await expect(card).toContainText("Last"); // a result row, with its score
   }
-  // Its playoff game still to play: the projected margin and win probability, from the program page's own row.
-  await expect(cards.filter({ has: page.locator(`a[href='/programs/${next.slug}']`) })).toContainText(/Next[\s\S]*Projected: .* by .* · (>99|\d+)% win probability/);
+  // Its playoff game still to play: the projected margin and chance to win, from the program page's own row.
+  await expect(cards.filter({ has: page.locator(`a[href='/programs/${next.slug}']`) })).toContainText(/Next[\s\S]*Projected: .* by .* · (>99|\d+)% chance to win/);
 
   // ADR 0004 and the betting rule: no winner named, no spread, line or odds.
-  const text = (await block.innerText()).replace(/win probability/gi, "");
+  const text = (await block.innerText()).replace(/win probability|chance to win/gi, "");
   expect(text).not.toMatch(/\b(won|win|wins|winner|beat|beats|defeated|victory|spread|line|lines|odds|cover|covers)\b/i);
 
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
