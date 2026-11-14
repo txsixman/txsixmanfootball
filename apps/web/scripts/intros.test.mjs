@@ -46,6 +46,6 @@ test("a bracket page", () => {
 test("the home page's line says what a fan gets, from the data's own first seasons", () => {
   assert.equal(
     clean(t.homeEdge({ firstSeason: 2018, firstFinal: 1972 })),
-    "Free, with no sign-in: scores through every game night, a projected margin and each team's chance to win for every game still to play, brackets that fill in as games finish, results since 2018 and every UIL state final since 1972.",
+    "Free, with no sign-in: scores through every game night, a projected margin and each team's chance to win for every game still to play, brackets that fill in as games finish, results since 2018 and every UIL State Championship since 1972.",
   );
 });

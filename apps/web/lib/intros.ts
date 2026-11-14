@@ -26,6 +26,6 @@ export function playoffsIntro({ league, season, brackets, past, chances }: { lea
 export const bracketIntro = ({ name, season }: { name: string; season: number }) =>
   `The ${season} ${name} six-man playoff bracket, the round being played first. Every game still to play has a projected margin and each team's chance to win, and a team's next game shows who went on.`;
 
-/** The home page's second line: what a fan gets here, in plain words. `firstFinal`: the first state final on record. */
+/** The home page's second line: what a fan gets here, in plain words. `firstFinal`: the first State Championship on record. */
 export const homeEdge = ({ firstSeason, firstFinal }: { firstSeason: number; firstFinal: number }) =>
-  `Free, with no sign-in: scores through every game night, a projected margin and each team's chance to win for every game still to play, brackets that fill in as games finish, results since ${firstSeason} and every UIL state final since ${firstFinal}.`;
+  `Free, with no sign-in: scores through every game night, a projected margin and each team's chance to win for every game still to play, brackets that fill in as games finish, results since ${firstSeason} and every UIL State Championship since ${firstFinal}.`;
