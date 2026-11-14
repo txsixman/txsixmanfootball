@@ -10,6 +10,7 @@ import { ORGS, type Org } from "@/lib/orgs";
 import { resultSeasons, weekLabel } from "@/lib/weeks";
 import { marginOf } from "@/lib/week-review";
 import { indexHref, weekHref } from "@/lib/week-review-hrefs";
+import { weekNeighbours } from "@/lib/neighbours";
 import { loadWeekReview, orgWeeks, reviewedWeeks, type PlacedMover, type WeekReview } from "@/lib/week-review-load";
 import { TabNav } from "../tab-nav";
 import { BoardRow, EmptyState, PageHeader, SectionBar } from "../ui";
@@ -104,6 +105,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
   const lastOf = async (s: number) => (await reviewedWeeks(s, org)).at(-1)!.number;
   // A season's tab opens its last week; the tab of the season being read stays on this week, so it is the current one.
   const seasonTabs = await Promise.all(seasons.map(async (s) => ({ href: weekHref(s, s === season ? week : await lastOf(s), org), label: String(s) })));
+  const { rankings } = await weekNeighbours({ season, week, org });
   const at = weeks.findIndex((w) => w.number === week);
   const [earlier, later] = [weeks[at - 1], weeks[at + 1]];
   const byDay = Map.groupBy(review.games, (g) => g.status);
@@ -296,6 +298,11 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
         <Link href={`/results/${season}/${week}${org === ORGS[0] ? "" : `/${org.slug}`}`} className="link-more">
           Week {week} results
         </Link>
+        {rankings && (
+          <Link href={rankings.href} className="link-more">
+            {rankings.label}
+          </Link>
+        )}
       </nav>
     </section>
   );

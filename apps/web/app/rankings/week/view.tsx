@@ -4,6 +4,7 @@ import { activeOrgs } from "@/lib/active-orgs";
 import { loadAlignments } from "@/lib/alignments";
 import { rankingsWeekDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
+import { weekNeighbours } from "@/lib/neighbours";
 import { orgHref, type Org } from "@/lib/orgs";
 import { placeTeams } from "@/lib/rankings";
 import { ratingSeasons } from "@/lib/ratings";
@@ -31,6 +32,7 @@ export async function WeekRankings({ wanted, org }: { wanted: string; org: Org }
     .filter(({ school }) => school.league === org.league)
     .map(({ school, ...r }) => ({ ...r, name: school.school, href: `/programs/${school.slug}`, identity: identities.get(school.slug) ?? EMPTY }));
   const outsideNote = outside ? ` ${outside} ${outside === 1 ? "team" : "teams"} outside these leagues ${outside === 1 ? "is" : "are"} not shown.` : "";
+  const { results, review } = await weekNeighbours({ season, week: week.number, org });
   const weekBase = (n: number) => `/rankings/week/${n}`;
 
   return (
@@ -63,6 +65,9 @@ export async function WeekRankings({ wanted, org }: { wanted: string; org: Org }
       <p className="mt-3 text-[13px] text-muted">
         Scores may be corrected if a mistake is found. Records count forfeits; ratings leave them out. Under each team: games played and games rated, through that Sunday.
       </p>
+      <nav aria-label="This week" className="flex flex-wrap gap-x-5">
+        {[results, review].map((n) => n && <Link key={n.href} href={n.href} prefetch={false} className="link-more">{n.label}</Link>)}
+      </nav>
       <Link href="/about/ratings" className="inline-flex min-h-11 items-center font-semibold text-navy underline">What a rating rests on</Link>
     </section>
   );

@@ -13,6 +13,7 @@ import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
+import { gameNeighbours } from "@/lib/neighbours";
 import { projectedLine } from "@/lib/outcome";
 import { currentPeriod, isForfeit, outcomeOf, playedPeriods } from "@/lib/score-display";
 import { Breadcrumbs } from "../../breadcrumbs";
@@ -139,6 +140,8 @@ export default async function GamePage({ params }: Props) {
   // The two programs' series page, when they have met often enough to have one (lib/series.ts).
   const [awaySlug, homeSlug] = [programOf(g.away)?.slug, programOf(g.home)?.slug];
   const series = !sample && awaySlug && homeSlug && (await seriesPartners()).get(awaySlug)?.has(homeSlug) ? seriesHref(awaySlug, homeSlug) : undefined;
+  // Where the game sits: its bracket and next round, its results week, each team's season (lib/neighbours.ts).
+  const around = sample ? [] : await gameNeighbours({ season: found?.season ?? CURRENT_SEASON, date: g.date, home: g.home.name, away: g.away.name, resultId: found?.result.id });
   // Fan comments and score reports exist only while FAN_SIGNIN is "on" (read when the page is built; flip it and redeploy).
   const fan = fanSignIn();
   const live = g.state === "live";
@@ -240,6 +243,20 @@ export default async function GamePage({ params }: Props) {
         </div>
       )}
       {!detail && <div className="pb-6" />}
+
+      {around.length > 0 && (
+        <nav aria-label="Around this game" className="px-3 pb-6">
+          <ul>
+            {around.map((n) => (
+              <li key={n.href}>
+                <Link href={n.href} prefetch={false} className="link-more">
+                  {n.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
 
       {fan && !sample && g.state === "scheduled" && <ScoreReport gameKey={id} away={g.away.name} home={g.home.name} date={g.date} />}
 
