@@ -68,3 +68,17 @@ test("a bracket of its last four, a shorter half, a one-sided tree, and a game o
   assert.equal(stray.placed.some((p) => p.id === "X"), false);
   assert.deepEqual(layoutTree([]), { cols: 0, rows: 0, placed: [], links: [], groups: [] });
 });
+
+test("pixels: UIL's nine columns fit a 1440px screen, every team row is 44px, connectors join box edges", async () => {
+  const { geometry } = await import("../lib/bracket-layout.ts");
+  const nine = geometry({ cols: 9, rows: 8, groups: [{}] });
+  assert.ok(nine.width <= 1440 - 32, `${nine.width}px`);
+  assert.equal(nine.boxH - nine.caption - 18, 88);
+  const g = geometry({ cols: 3, rows: 2, groups: [] });
+  assert.equal(g.gutter, 0);
+  assert.equal(g.width, 3 * g.boxW + 2 * g.gap);
+  const mid = g.y(0) + g.caption + 44;
+  assert.equal(g.link({ col: 0, row: 0 }, { col: 1, row: 0.5 }), `M${g.boxW} ${mid}H${g.boxW + g.gap / 2}V${g.y(0.5) + g.caption + 44}H${g.boxW + g.gap}`);
+  // The right half runs leftward, into the final's right edge.
+  assert.match(g.link({ col: 2, row: 0 }, { col: 1, row: 0 }), new RegExp(`^M${2 * (g.boxW + g.gap)} .*H${2 * g.boxW + g.gap}$`));
+});

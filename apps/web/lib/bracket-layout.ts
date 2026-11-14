@@ -97,3 +97,31 @@ export function layoutTree(nodes: TreeNode[]): TreeLayout {
   groups.sort((a, b) => a.label.localeCompare(b.label, "en", { numeric: true }));
   return { cols, rows, placed, links, groups };
 }
+
+/**
+ * The tree in pixels: every team row is a 44px tap target (the site's rule), so a box is two team rows, a line above for its
+ * code and date and a line below for its result or projection. Narrow boxes when the tree has nine columns (UIL), so it fits
+ * a 1440px screen; wider ones otherwise. `x`/`y` are a box's top-left corner; the connectors run between box edges.
+ */
+export function geometry(layout: Pick<TreeLayout, "cols" | "rows" | "groups">) {
+  const boxW = layout.cols >= 9 ? 134 : 176;
+  const gap = 18; // between columns, where the connectors run
+  const caption = 18; // the code-and-date line above the teams
+  const boxH = caption + 44 + 44 + 18;
+  const rowPitch = boxH + 12;
+  const header = 30; // the round names over the columns
+  const gutter = layout.groups.length ? 24 : 0; // the group labels down each outer side
+  const x = (col: number) => gutter + col * (boxW + gap);
+  const y = (row: number) => header + row * rowPitch;
+  const width = layout.cols ? 2 * gutter + layout.cols * boxW + (layout.cols - 1) * gap : 0;
+  const height = layout.rows ? header + (layout.rows - 1) * rowPitch + boxH : 0;
+  /** The elbow from a game to the one it feeds: out of the side facing the final, down or up, into the next box. */
+  const link = (from: Placed, to: Placed) => {
+    const rightward = from.col < to.col;
+    const [x1, x2] = rightward ? [x(from.col) + boxW, x(to.col)] : [x(from.col), x(to.col) + boxW];
+    const [y1, y2] = [y(from.row) + caption + 44, y(to.row) + caption + 44]; // between the two team rows
+    const mid = (x1 + x2) / 2;
+    return `M${x1} ${y1}H${mid}V${y2}H${x2}`;
+  };
+  return { boxW, boxH, gap, caption, header, gutter, rowPitch, x, y, width, height, link };
+}

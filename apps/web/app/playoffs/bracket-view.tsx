@@ -12,6 +12,8 @@ import { TabNav } from "../tab-nav";
 import { PageHeader } from "../ui";
 import { ChanceList } from "./chance-list";
 import { BuiltList, GameList } from "./game-list";
+import { BracketBoard } from "./tree/board";
+import { treeData } from "./tree/data";
 
 const leagueHref = (league: string) => (league === "UIL" ? "/playoffs" : `/playoffs/${league.toLowerCase()}`);
 
@@ -22,7 +24,7 @@ const leagueHref = (league: string) => (league === "UIL" ? "/playoffs" : `/playo
  * unconfirmed and names no winner (ADR 0004); a bracket may go on from one (ADR 0013).
  */
 export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; siblings: Bracket[] }) {
-  const [alignments, identities, table] = await Promise.all([loadAlignments(), loadIdentities(), loadRatings(CURRENT_SEASON)]);
+  const [alignments, identities, table, tree] = await Promise.all([loadAlignments(), loadIdentities(), loadRatings(CURRENT_SEASON), treeData(b)]);
   const clock = centralClock();
   const current = currentRound(b.rounds, clock.date);
   const rounds = [...(current ? [current] : []), ...b.rounds.filter((r) => r !== current)];
@@ -34,6 +36,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
 
   return (
     <section aria-labelledby="bracket">
+      <div className="print:hidden">
       <nav aria-label="Back" className="-mx-1">
         <Link href={leagueHref(b.league)} className="inline-flex min-h-11 items-center gap-1.5 px-1 text-[14px] font-semibold text-navy">
           <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={2.5} />
@@ -51,7 +54,14 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
           This page is rebuilt with the newest scores read, about every 30 minutes on playoff Friday nights. Scores may be corrected if a mistake is found.
         </p>
       </div>
+      </div>
 
+      <a href="#games-by-round" className="sr-only focus:not-sr-only focus:inline-flex focus:min-h-11 focus:items-center focus:px-2 focus:font-semibold focus:text-navy">
+        Skip the drawing: the games round by round
+      </a>
+      <BracketBoard data={tree} imageBase={`${bracketHref(b.name)}/image`} />
+
+      <div id="games-by-round" className="scroll-mt-4 print:hidden">
       {b.rounds.length > 1 && (
         <nav aria-label={`${b.name} rounds`} className="mt-3 flex flex-wrap border-b border-line px-1">
           {b.rounds.map((r) => (
@@ -125,6 +135,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
       <p className="mt-6 text-[13px] text-muted">
         Away team first. Projections and title chances use the current ratings, on a neutral field unless the game is at a home site. A team&rsquo;s next game shows who went on.
       </p>
+      </div>
     </section>
   );
 }
