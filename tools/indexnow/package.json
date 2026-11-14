@@ -1,0 +1,8 @@
+{
+  "name": "@project-80x40/indexnow",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
