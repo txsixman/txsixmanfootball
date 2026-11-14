@@ -3,7 +3,8 @@
 // on a game-day tick, after the MaxPreps night read:
 //   node tools/league-watch/davecampbells.mjs --live <playoffs.csv> --merge <live.json>
 // reads tonight's still-unscored bracket games (the same Central game-night rule as maxpreps.mjs --tonight), asks the
-// feed for the Live and Upcoming games of one mapped team per game, and merges the games under way into <live.json>
+// feed for the Live, Upcoming and finished games of one mapped team per game, and merges the games under way or just
+// finished (ADR 0041) into <live.json>
 // (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores, period and forfeit flags: never
 // a spread, ranking, poll or `winner` field. Nothing is saved to this repo. A 403 or 429 stops the read at once.
 //
@@ -89,9 +90,11 @@ export async function teamId(client, theirSlug, seasonId) {
   return null;
 }
 
-/** A team's games that are live or still to come this season. */
+/** A team's games that are live, still to come or finished this season (finished: a game drops out of Live once it ends,
+ * often long before our own final is read, and the read keeps its last score; ADR 0041). */
 export async function liveAndUpcoming(client, seasonId, id) {
-  const data = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&status=Live%2CUpcoming`);
+  const status = encodeURIComponent(["Live", "Upcoming", ...FINAL_STATUSES].join(","));
+  const data = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&status=${status}&size=50`);
   return Array.isArray(data?.items) ? data.items : [];
 }
 
@@ -126,18 +129,21 @@ export function sameSchool(schoolName, ourSlug) {
  * Tonight's games under way as live rows (packages/db/live.mjs): games of `date` (Central) that are one of tonight's
  * still-unscored bracket games (`due`). A team is ours by the map (`ours`: their slug to our slug); when only one team is
  * mapped, the other is that team's opponent in tonight's bracket row, and only if the feed's school name matches it.
- * Scores are set in the bracket row's own home and away order. Skipped: a forfeit, a score outside 0 to 200, and a 0-0
- * with no period (a game may list 0-0 before kickoff). One row a game.
+ * Scores are set in the bracket row's own home and away order. A game the feed calls finished (Final, Completed or
+ * Finished) is kept with its last score and `finished: true`, and no period (ADR 0041): pages show it as "Score reported"
+ * until our own final is read, which takes it off tonight's due list. Skipped: a forfeit, a score outside 0 to 200, a 0-0
+ * with no period (a game may list 0-0 before kickoff) and a finished 0-0. One row a game.
  */
 export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() }) {
   const rows = new Map();
   for (const m of matchTonight(items, { date, due, ours })) {
     const { item, key, row, h, a, hs, as } = m;
-    if (!isLive(item) || rows.has(key) || h.forfeited === true || a.forfeited === true) continue;
+    const finished = !isLive(item) && isFinal(item);
+    if (!(isLive(item) || finished) || rows.has(key) || isForfeit(item)) continue;
     const [hScore, aScore] = [score(h.score ?? item.summary?.homeScore), score(a.score ?? item.summary?.awayScore)];
     if (hScore === null || aScore === null) continue;
-    const period = periodLabel(item.summary);
-    if (hScore === 0 && aScore === 0 && !period) continue;
+    const period = finished ? null : periodLabel(item.summary);
+    if (hScore === 0 && aScore === 0 && (finished || !period)) continue;
     // The bracket row's home and away, whatever the feed calls them.
     const flip = slugify(row.home) !== hs;
     rows.set(key, {
@@ -147,6 +153,7 @@ export function liveRowsFromItems(items, { date, due, ours, readAt = new Date() 
       home_score: flip ? aScore : hScore,
       away_score: flip ? hScore : aScore,
       period,
+      ...(finished && { finished: true }),
       read_at: readAt.toISOString(),
     });
   }
@@ -198,12 +205,18 @@ export function matchGames(items, { rows, ours }) {
 
 /**
  * Both sources' rows for tonight, one per game. Scores only go up during a game, so the row with the higher total is
- * the newer read; on a tie, the one that knows the period. Neither row names a winner, and every live score stays
- * unconfirmed on the site.
+ * the newer read; on a tie, the one that says finished, then the one that knows the period. Neither row names a winner,
+ * and every live score stays unconfirmed on the site.
  */
 export function mergeLive(first, second) {
   const total = (r) => r.home_score + r.away_score;
-  const better = (x, y) => (total(y) > total(x) || (total(y) === total(x) && !x.period && y.period) ? y : x);
+  const rank = (r) => [total(r), r.finished === true ? 1 : 0, r.period ? 1 : 0];
+  const ahead = (x, y) => {
+    const [a, b] = [rank(x), rank(y)];
+    const i = a.findIndex((v, n) => v !== b[n]);
+    return i >= 0 && b[i] > a[i];
+  };
+  const better = (x, y) => (ahead(x, y) ? y : x);
   const byKey = new Map(first.map((r) => [r.game_key, r]));
   for (const r of second) byKey.set(r.game_key, byKey.has(r.game_key) ? better(byKey.get(r.game_key), r) : r);
   return [...byKey.values()].sort((x, y) => x.game_key.localeCompare(y.game_key));
@@ -471,7 +484,7 @@ async function live() {
   // Games listed but none of tonight's found: the item shape (names only) shows whether matching or the feed changed.
   if (items.length && !seen.size) console.warn(`none of tonight's games matched; a listed game looks like ${shapeOf(items[0])}`);
   const unmapped = due.filter((r) => !theirs.has(slugify(r.home)) && !theirs.has(slugify(r.away))).length;
-  summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.length} under way.`);
+  summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.filter((r) => !r.finished).length} under way, ${rows.filter((r) => r.finished).length} finished.`);
 }
 
 // ---- Past seasons (ADR 0032: the same permission, which the owner confirmed covers past seasons) ----

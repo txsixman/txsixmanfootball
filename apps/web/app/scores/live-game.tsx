@@ -9,9 +9,12 @@ import { useLiveScores } from "./live-score";
 // A game under way shows its live score where its score goes, not beside it (ADR 0021): the read's score, dashed and
 // "Unconfirmed", naming no winner or leader, with where it stands ("Q3 · 4:12 left · as of 7:42 PM CT"). A final replaces it.
 
-/** "Live · Q3 · 4:12 left · as of 7:42 PM CT · Unconfirmed" (`score`, when given, after "Live"; with no period, "Live" once). */
+/** "Live · Q3 · 4:12 left · as of 7:42 PM CT · Unconfirmed" (`score`, when given, after "Live"; with no period, "Live" once).
+ * A game the read saw finished: "Score reported · 28-14 · as of 9:05 PM CT · Unconfirmed" (ADR 0041). */
 const statusLine = (live: LiveView, score?: string) =>
-  ["Live", score, liveStatus(live).replace(/^Live · /, ""), "Unconfirmed"].filter(Boolean).join(" · ");
+  live.finished
+    ? ["Score reported", score, liveStatus(live).replace(/^Score reported · /, ""), "Unconfirmed"].filter(Boolean).join(" · ")
+    : ["Live", score, liveStatus(live).replace(/^Live · /, ""), "Unconfirmed"].filter(Boolean).join(" · ");
 
 /** The game page's score: the two big lines. While a game with no final is under way (`watch`), they hold the live score,
  * under a line saying where it stands; otherwise they are the page's own. */

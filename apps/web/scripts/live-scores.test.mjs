@@ -15,6 +15,7 @@ const REFERENCE = z.object({
   away_score: z.number().int().min(0).max(200),
   period: z.string().min(1).max(12).regex(/^[A-Za-z0-9 ]+$/).nullable(),
   clock: z.string().max(5).regex(/^\d{1,2}:[0-5]\d$/).nullable().optional(),
+  finished: z.boolean().optional(),
   read_at: z.iso.datetime({ offset: true }),
 });
 
@@ -29,6 +30,7 @@ test("the hand-written check keeps and drops exactly the rows the Zod schema did
     home_score: [0, 200, 201, -1, 1.5, -0, NaN, Infinity, "28", null, 2 ** 53, true],
     away_score: [0, 199, 200.0001, -0.5, undefined],
     period: [null, "", " ", "OT", "Q4 0 12", "x".repeat(12), "x".repeat(13), "<b>", "Q3\n", "Ⅲ", 3, undefined, false],
+    finished: [true, false, "true", 1, 0, null],
     clock: [null, "4:12", "0:09", "12:00", "99:59", "4:60", "412", "4:1", "123:00", ":12", "4:12 ", "4:12\n", "", "Q3", 412, false],
     read_at: [
       "2026-11-13T23:40:00Z", "2026-11-13T23:40:00.1Z", "2026-11-13T23:40:00.123456789-05:00", "2026-11-13T23:40Z",
@@ -165,4 +167,26 @@ test("the live status beside the score: period, time left when read, and when it
   assert.equal(liveStatus(view({ clock: "4:12" })), "Q3 · 4:12 left · as of 7:42 PM CT");
   assert.equal(liveStatus(view({ period: null, clock: "0:09" })), "Live · 0:09 left · as of 7:42 PM CT");
   assert.equal(view({ clock: "4:60" }), null, "a bad clock drops the row, as a bad period does");
+});
+
+test("a game the read saw finished is a reported score: Score reported, dashed, no winner, never Live (ADR 0041)", async () => {
+  const { asLive, liveStatus } = await import("../lib/live-scores.ts");
+  const { winnerOf } = await import("../lib/score-display.ts");
+  const at = "2026-11-14T03:05:00Z"; // 9:05 PM in Central
+  const live = liveView(parseLiveRows([row({ read_at: at, period: null, finished: true })]), { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" }, Date.parse(at));
+  assert.equal(live.finished, true);
+  assert.equal(liveStatus(live), "Score reported · as of 9:05 PM CT");
+  const game = {
+    id: "g", date: "2026-11-13", league: "UIL DI · Bi-district", home: { name: "Salt Fork" }, away: { name: "Cedar Gap" },
+    homeScore: null, awayScore: null, state: "scheduled", status: "Fri 11/13", verification: "none", projected: "Salt Fork by 3", projectedMargin: 3,
+  };
+  const shown = asLive(game, live);
+  assert.equal(shown.state, "final", "it sits with the reported finals, not under Live");
+  assert.equal(shown.status, "Score reported");
+  assert.equal(shown.verification, "unconfirmed");
+  assert.deepEqual([shown.awayScore, shown.homeScore], [14, 28]);
+  assert.equal(shown.projected, undefined);
+  assert.equal(winnerOf(shown), null, "a reported score names no winner");
+  // A row with no flag (the MaxPreps reader's, or one written before migration 0019) is under way.
+  assert.equal(liveView(parseLiveRows([row({ read_at: at })]), { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" }, Date.parse(at)).finished, false);
 });

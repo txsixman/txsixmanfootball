@@ -13,7 +13,7 @@ import { adapt } from "./load.mjs";
 
 export const MAX_AGE_HOURS = 6;
 const MAX_ROWS = 200;
-const KEYS = ["game_key", "home", "away", "home_score", "away_score", "period", "read_at"];
+const KEYS = ["game_key", "home", "away", "home_score", "away_score", "period", "finished", "read_at"];
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const KEY = /^(\d{4}-\d{2}-\d{2})\|([a-z0-9]+(?:-[a-z0-9]+)*)\|([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 
@@ -35,11 +35,13 @@ export function validateLiveRows(rows) {
     for (const f of ["home_score", "away_score"]) if (!Number.isInteger(r[f]) || r[f] < 0 || r[f] > 200) throw bad(`${f} is not a whole number from 0 to 200`);
     const period = r.period ?? null;
     if (period !== null && (typeof period !== "string" || period.length < 1 || period.length > 12 || /[<>&"]/.test(period))) throw bad("period is not short plain text");
+    // A game the read saw finished (migration 0019): absent means under way.
+    if (r.finished !== undefined && typeof r.finished !== "boolean") throw bad("finished is not true or false");
     const at = typeof r.read_at === "string" ? new Date(r.read_at) : null;
     if (!at || Number.isNaN(at.getTime())) throw bad("read_at is not a date and time");
     if (seen.has(r.game_key)) throw bad("game_key listed twice");
     seen.add(r.game_key);
-    return { game_key: r.game_key, home: r.home, away: r.away, home_score: r.home_score, away_score: r.away_score, period, read_at: at.toISOString() };
+    return { game_key: r.game_key, home: r.home, away: r.away, home_score: r.home_score, away_score: r.away_score, period, finished: r.finished === true, read_at: at.toISOString() };
   });
 }
 
@@ -51,12 +53,13 @@ export async function writeLive(db, rows) {
   return db.transaction(async (tx) => {
     for (const r of rows) {
       await tx.query(
-        `insert into live_score (game_key, home, away, home_score, away_score, period, read_at)
-         values ($1, $2, $3, $4, $5, $6, $7)
+        `insert into live_score (game_key, home, away, home_score, away_score, period, finished, read_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)
          on conflict (game_key) do update
            set home = excluded.home, away = excluded.away, home_score = excluded.home_score,
-               away_score = excluded.away_score, period = excluded.period, read_at = excluded.read_at`,
-        [r.game_key, r.home, r.away, r.home_score, r.away_score, r.period, r.read_at],
+               away_score = excluded.away_score, period = excluded.period, finished = excluded.finished,
+               read_at = excluded.read_at`,
+        [r.game_key, r.home, r.away, r.home_score, r.away_score, r.period, r.finished === true, r.read_at],
       );
     }
     const gone = await tx.query("delete from live_score where not (game_key = any($1::text[]))", [rows.map((r) => r.game_key)]);

@@ -101,12 +101,26 @@ test("a live game becomes one row in the bracket row's own home and away order, 
   assert.deepEqual(rows, [{ game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: "Q2", read_at: "2026-11-14T02:00:00.000Z" }]);
 });
 
-test("skips games not live, not tonight, not due, unmapped, forfeited, out of range, or 0-0 before kickoff", () => {
+test("a game the feed calls finished keeps its last score, marked finished, with no period (ADR 0041)", () => {
+  const opts = { date: "2026-11-13", due, ours, readAt };
+  for (const status of ["Finished", "Final", "Completed"]) {
+    assert.deepEqual(liveRowsFromItems([item({ status, summary: { period: 4, homeScore: 20, awayScore: 14 } })], opts), [
+      { game_key: "2026-11-13|lark|wren", home: "lark", away: "wren", home_score: 14, away_score: 20, period: null, finished: true, read_at: "2026-11-14T02:00:00.000Z" },
+    ], status);
+  }
+  // A live listing of the same game comes first in the answer: the row says under way (no finished field).
+  assert.equal(liveRowsFromItems([item(), item({ status: "Finished" })], opts)[0].finished, undefined);
+});
+
+test("skips games not live or finished, not tonight, not due, unmapped, forfeited, out of range, 0-0 before kickoff or a finished 0-0", () => {
   const opts = { date: "2026-11-13", due, ours, readAt };
   const [h, a] = item().participants;
   const skipped = [
     item({ status: "Upcoming" }),
-    item({ status: "Finished" }),
+    item({ status: "Forfeit" }),
+    item({ status: "Double Forfeit" }),
+    item({ status: "Finished", participants: [{ ...item().participants[0], forfeited: true }, item().participants[1]] }),
+    item({ status: "Final", participants: [{ ...item().participants[0], score: 0 }, { ...item().participants[1], score: 0 }] }),
     item({ scheduledKickoff: "2026-11-14T07:00:00Z" }), // 1 AM Central on Nov 14
     item({ scheduledKickoff: "not a date" }),
     item({ participants: [h, { ...a, websiteUrl: "https://www.davecampbells.com/team/robin-robins" }] }),
@@ -472,4 +486,13 @@ test("kickoffs: a bracket game still to play gets the feed's kickoff in UTC, the
   // A fresh value wins over a kept one, a blank keeps it; other kept rows stay.
   const kept = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`;
   assert.equal(mergeKickoffs(kept, rows), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
+});
+
+test("merging the two sources: on the same score, the row that says finished wins, then the one with a period", () => {
+  const r = (over) => ({ game_key: "2026-11-13|a|b", home: "a", away: "b", home_score: 28, away_score: 14, period: null, read_at: "2026-11-14T02:00:00.000Z", ...over });
+  assert.equal(mergeLive([r({ period: "Q4" })], [r({ finished: true })])[0].finished, true);
+  assert.equal(mergeLive([r({ finished: true })], [r({ period: "Q4" })])[0].finished, true);
+  // A higher score is the newer read, finished or not.
+  assert.equal(mergeLive([r({ finished: true })], [r({ home_score: 34, period: "Q4" })])[0].home_score, 34);
+  assert.equal(mergeLive([r({})], [r({ period: "Q2" })])[0].period, "Q2");
 });

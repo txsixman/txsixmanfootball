@@ -41,13 +41,14 @@ export function useLiveScores(enabled = true): LiveRow[] {
   return rows;
 }
 
-/** "Live · Q3 · 28–14 · Unconfirmed" (scores in the order the page lists the teams), the teams with their scores, and when it was read. */
+/** "Live · Q3 · 28–14 · Unconfirmed" (scores in the order the page lists the teams), the teams with their scores, and when it
+ * was read. A game the read saw finished reads "Score reported · 28–14 · Unconfirmed" (ADR 0041). */
 export function LiveLine({ live, className = "" }: { live: LiveView; className?: string }) {
   const scores = `${live.away.score}–${live.home.score}`;
   return (
     <div data-live-score className={`font-num ${className}`}>
       <p className="text-[15px] font-bold uppercase leading-5 tracking-wide text-red">
-        {["Live", live.period, scores, "Unconfirmed"].filter(Boolean).join(" · ")}
+        {(live.finished ? ["Score reported", scores, "Unconfirmed"] : ["Live", live.period, scores, "Unconfirmed"]).filter(Boolean).join(" · ")}
       </p>
       <p className="font-sans text-[13px] leading-4 text-muted">
         {live.away.name} {live.away.score}, {live.home.name} {live.home.score} &middot; checked {checkedAt(live.readAt)}

@@ -93,6 +93,10 @@ test("rows are validated before anything is written", () => {
     [null, /not an object/],
   ];
   for (const [r, why] of bad) assert.throws(() => validateLiveRows([r]), why);
+  // A finished game (migration 0019): true or false, absent meaning under way; nothing else.
+  assert.equal(validateLiveRows([row()])[0].finished, false);
+  assert.equal(validateLiveRows([row({ finished: true })])[0].finished, true);
+  for (const finished of ["true", 1, null]) assert.throws(() => validateLiveRows([row({ finished })]), /finished/);
   assert.throws(() => validateLiveRows({}), /not a list/);
   assert.throws(() => validateLiveRows([row(), row()]), /listed twice/);
   assert.throws(() => validateLiveRows(Array.from({ length: 201 }, (_, i) => row({ game_key: `2026-11-13|a${i}|b`, home: `a${i}`, away: "b" }))), /most is 200/);
@@ -125,4 +129,20 @@ test("a write that fails halfway changes nothing", async () => {
   const broken = { ...row({ game_key: "2026-11-13|x|y", home: "x", away: "y" }), home_score: 999 }; // skips validation on purpose: the table refuses it
   await assert.rejects(writeLive(d, [{ ...a, home_score: 50 }, broken]), /home_score/);
   assert.equal((await d.query("select home_score from live_score")).rows[0].home_score, 28);
+});
+
+test("a finished game keeps its last score with the flag, and live_scores() returns it (migration 0019)", async () => {
+  const d = await supabaseLike();
+  await writeLive(d, validateLiveRows([row(), row({ game_key: "2026-11-13|dry-wash|mesa-top", home: "dry-wash", away: "mesa-top", home_score: 52, away_score: 6, period: null, finished: true })]));
+  await d.exec("set role anon");
+  const { rows } = await d.query("select game_key, home_score, away_score, period, finished from live_scores() order by game_key");
+  assert.deepEqual(rows, [
+    { game_key: "2026-11-13|dry-wash|mesa-top", home_score: 52, away_score: 6, period: null, finished: true },
+    { game_key: "2026-11-13|salt-fork|cedar-gap", home_score: 28, away_score: 14, period: "Q3", finished: false },
+  ]);
+  await d.exec("reset role");
+  // The next read sees it under way again (the feed changed its mind): the flag follows the read.
+  await writeLive(d, validateLiveRows([row({ game_key: "2026-11-13|dry-wash|mesa-top", home: "dry-wash", away: "mesa-top", home_score: 52, away_score: 6 })]));
+  assert.equal((await d.query("select finished from live_score")).rows[0].finished, false);
+  assert.deepEqual(await checkLive(d), []);
 });
