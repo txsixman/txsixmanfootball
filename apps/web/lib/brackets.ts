@@ -1,4 +1,6 @@
-import { heading, loadAlignments, type Alignment } from "./alignments";
+import { heading, loadAlignments, programFor, type Alignment } from "./alignments";
+import { bracketSlots, builtGames, fill, type Side } from "./bracket-fill";
+import { loadSlotRows } from "./bracket-slots";
 import { memo } from "./memo";
 import { pairsOf, type Pair } from "./playoff-path";
 import { slugify } from "./slug";
@@ -14,7 +16,10 @@ import { CURRENT_SEASON } from "./season";
 // no projections and no title chances. Team names missing from today's alignments pass through as written.
 
 export type BracketRow = PlayoffGame & { projection?: Projection };
-type BracketRound = { round: string; label: string; games: BracketRow[] };
+/** A next-round game no site lists yet (ADR 0047): its two sides, the team first when only one is known ("Team vs winner of
+ * X–Y"), and the projection on a neutral field once both teams are known. No date or site: none is listed yet. */
+export type BuiltRow = { round: string; sides: [Side, Side]; projection?: Projection };
+type BracketRound = { round: string; label: string; games: BracketRow[]; built: BuiltRow[] };
 /** `chances`: state title chances (the last four, or a template plus every region settled). `regionChances`: UIL region titles.
  * `pairs`: games whose winners meet next, so the next pairing is known (lib/playoff-path.ts). */
 export type Bracket = { name: string; league: string; rounds: BracketRound[]; pairs: Pair[]; chances?: Chance[]; regionChances?: RegionChances[] };
@@ -23,6 +28,8 @@ export type Bracket = { name: string; league: string; rounds: BracketRound[]; pa
 export const bracketSlug = (name: string) => slugify(name);
 export const bracketHref = (name: string) => `/playoffs/bracket/${bracketSlug(name)}`;
 export const bracketLabel = (b: Pick<Bracket, "name" | "league">) => b.name.slice(b.league.length).trim() || b.league;
+/** The latest round a site lists a game in: a round that holds only games the bracket sets (ADR 0047) is not "latest" yet. */
+export const latestRound = (b: Pick<Bracket, "rounds">) => b.rounds.findLast((r) => r.games.length) ?? b.rounds.at(-1);
 
 /** League tabs, in page order: UIL first, then the private leagues. */
 export const LEAGUES = ["UIL", "TAPPS", "TAIAO", "TCAF"] as const;
@@ -69,16 +76,27 @@ const regionLookup = (alignments: Alignment[], league: string, name: string) => 
 /** Read once per season per build worker: every program page asks for its bracket path. Never mutate what it returns. */
 export const loadBrackets = (season = CURRENT_SEASON): Promise<Bracket[]> => bracketsOf(season);
 const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
-  const [alignments, ratings, template] = await Promise.all([loadAlignments(), loadRatings(season), loadBracketTemplate()]);
+  const [alignments, ratings, template, slotRows] = await Promise.all([loadAlignments(), loadRatings(season), loadBracketTemplate(), loadSlotRows(season)]);
   const games = await loadPlayoffGames(alignments, season);
   const brackets = [...Map.groupBy(games, (g) => g.bracket)].map(([name, list]): Bracket => {
     const league = list[0].league;
-    const rounds = [...Map.groupBy(list, (g) => g.round)]
-      .sort(([a], [b]) => ROUNDS.indexOf(a) - ROUNDS.indexOf(b))
-      .map(([round, rows]) => ({
+    // The next round's games before any site lists them: from the league's own bracket, or what the data closes (ADR 0047).
+    const division = list[0].division;
+    const regionOf = regionLookup(alignments, league, name);
+    const slots = bracketSlots(slotRows, list, { league, division, regionOf, rename: (t) => programFor(alignments, t, league)?.school ?? t });
+    // Past seasons are all played: their pages stay as listed.
+    const built = (season === CURRENT_SEASON ? builtGames(fill(slots, list, ROUNDS)) : []).map(({ round, sides }): BuiltRow => {
+      const [a, b] = sides;
+      const projection = "team" in a && "team" in b ? project(ratings, a.team, b.team, true, true) : undefined;
+      return { round, sides, ...(projection ? { projection } : {}) };
+    });
+    const rounds = [...new Set([...list.map((g) => g.round), ...built.map((g) => g.round)])]
+      .sort((a, b) => ROUNDS.indexOf(a) - ROUNDS.indexOf(b))
+      .map((round) => ({
         round,
         label: roundLabel(round, league),
-        games: rows.map((g) => (g.homeScore == null ? { ...g, projection: project(ratings, g.home, g.away, g.neutral) } : g)),
+        games: list.filter((g) => g.round === round).map((g) => (g.homeScore == null ? { ...g, projection: project(ratings, g.home, g.away, g.neutral) } : g)),
+        built: built.filter((g) => g.round === round),
       }));
     const found = bracketTitleChances(ratings, alignments, template, name, list);
     const chances = found.state?.chances;
