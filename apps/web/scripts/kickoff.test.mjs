@@ -89,13 +89,14 @@ test("a game with a final is Final whatever the clock says; an empty group is le
   assert.deepEqual(groupTonight([], at("2026-11-14T00:30:00Z")), []);
 });
 
-test("past the window with no score a game moves to Final; a game with no time stays Up next through its day, then Final", () => {
+test("past the window with no score a game is not Final: it goes last, under Score not reported yet; so does a no-time game after its day", () => {
   assert.deepEqual(order("2026-11-14T04:30:00Z"), [ // 10:30 PM CT: early (4h30m) is out of its window, mid (3h30m) is not
     ["in-progress", "In progress", ["mid", "late"]],
     ["up-next", "Up next", ["untimed"]],
-    ["final", "Final", ["done-late", "forfeit", "early", "done-early", "done-untimed"]], // early ties done-early: input order
+    ["final", "Final", ["done-late", "forfeit", "done-early", "done-untimed"]],
+    ["awaiting", "Score not reported yet", ["early"]],
   ]);
-  assert.deepEqual(groupTonight([night("untimed")], at("2026-11-14T06:00:00Z")).map((g) => g.key), ["final"]); // after midnight Central
+  assert.deepEqual(groupTonight([night("untimed")], at("2026-11-14T06:00:00Z")).map((g) => g.key), ["awaiting"]); // after midnight Central
 });
 
 test("with no clock (the server render) every game with no final is Up next", () => {

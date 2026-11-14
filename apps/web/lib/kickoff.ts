@@ -39,13 +39,15 @@ export function kickoffState(game: { date: string; kickoff?: string }, now: Date
  * never in progress, so a page of such games asks for nothing: the live read starts only on a time we know. */
 export const anyInProgress = (games: { date: string; kickoff?: string }[], now: Date) => games.some((g) => kickoffState(g, now).kind === "in-progress");
 
-export type NightGroupKey = "in-progress" | "up-next" | "final";
+export type NightGroupKey = "in-progress" | "up-next" | "final" | "awaiting";
 type NightGame = { date: string; kickoff?: string; state: "later" | "final" | "forfeit" };
 
 const GROUPS: { key: NightGroupKey; label: string }[] = [
   { key: "in-progress", label: "In progress" },
   { key: "up-next", label: "Up next" },
   { key: "final", label: "Final" },
+  // Over four hours past kickoff with no final: not "Final" (no score is in), so a group of its own, last.
+  { key: "awaiting", label: "Score not reported yet" },
 ];
 const kickoffMs = (g: { kickoff?: string }) => (g.kickoff ? Date.parse(g.kickoff) : NaN);
 
@@ -60,10 +62,10 @@ export function groupTonight<T extends NightGame>(games: T[], now: Date | null):
   const keyOf = (g: T): NightGroupKey => {
     if (g.state !== "later") return "final";
     const kind = now ? kickoffState(g, now).kind : "starts";
-    return kind === "in-progress" ? "in-progress" : kind === "awaiting" ? "final" : "up-next";
+    return kind === "in-progress" ? "in-progress" : kind === "awaiting" ? "awaiting" : "up-next";
   };
   return GROUPS.map(({ key, label }) => {
-    const sign = key === "final" ? -1 : 1;
+    const sign = key === "up-next" || key === "in-progress" ? 1 : -1;
     const inGroup = games.filter((g) => keyOf(g) === key);
     // Array.prototype.sort is stable: games with the same (or no) time keep the order they came in.
     const sorted = [...inGroup].sort((a, b) => {

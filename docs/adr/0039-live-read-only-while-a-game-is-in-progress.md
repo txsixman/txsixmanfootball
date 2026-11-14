@@ -1,4 +1,4 @@
-# ADR 0037: Tonight in groups by the clock, and the live read only while a game is in progress
+# ADR 0039: Tonight in groups by the clock, and the live read only while a game is in progress
 
 **Status:** Proposed Nov 13, 2026; accepted when its pull request is merged. Narrows how often ADR 0021's browser read runs
 and uses ADR 0036's kickoff status for it; every other rule of ADRs 0004, 0009, 0010 and 0021 stands.
@@ -9,7 +9,8 @@ and uses ADR 0036's kickoff status for it; every other rule of ADRs 0004, 0009, 
   - "In progress", earliest kickoff first; "Up next", earliest first, a game with no time listed last; "Final", latest first,
     a game with no time last. An empty group is not shown.
   - A game with a final or a forfeit is Final whatever the clock says. A game with no final more than 4 hours past kickoff
-    (its row says "Score not reported yet") sits under Final, ordered by its kickoff.
+    (or a game with no time listed, after its day) is not Final: it goes last, under "Score not reported yet", latest
+    kickoff first.
   - The server's HTML, and the first render in the browser, put every game with no final under "Up next", so nothing
     differs between them; the groups move once the page runs.
 - **The live read runs only while a game on the page is in progress** by `kickoffState`, checked again every minute. It
