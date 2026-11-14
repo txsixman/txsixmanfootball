@@ -130,3 +130,15 @@ test("a game's site is plain words, and a city needs a name (ADR 0041)", () => {
   bad("2026-11-13,Lark,Wren,,Bird Field,https://x", /site_city/);
   bad("2026-11-13,Lark,Wren,,,Lark", /a site city with no site name/);
 });
+
+test("a voided playoff listing that later reads a score is named for review, never dropped silently", async () => {
+  const { voidedButScored } = await import("./check-data.mjs");
+  const { buildCorrections } = await import("../lib/corrections.ts");
+  const fix = { game_date: "2026-11-20", home: "Alpha", away: "Beta", action: "void", home_score: "", away_score: "", source_url: "https://example.org/bracket", reason: "contradicts the league's bracket", corrected_on: "2026-11-14" };
+  const fixes = buildCorrections([], [fix]);
+  const row = (home, away, h, a) => ({ league: "TAIAO", division: "2", round: "semifinal", game_date: "2026-11-20", home, away, neutral: "", home_score: h, away_score: a, end_reason: "", end_period: "" });
+  assert.deepEqual(voidedButScored([row("Alpha", "Beta", "", "")], fixes, "f.csv"), [], "still a placeholder: nothing to say");
+  assert.deepEqual(voidedButScored([row("Gamma", "Delta", "20", "14")], fixes, "f.csv"), [], "a game no correction touches");
+  const [line] = voidedButScored([row("Beta", "Alpha", "28", "30")], fixes, "f.csv");
+  assert.match(line, /^f\.csv: 2026-11-20 Alpha at Beta is voided .* now reads 30-28; re-examine the correction$/);
+});
