@@ -37,7 +37,7 @@ function Status({ g, liveRows }: { g: NightGame; liveRows: LiveRow[] }) {
 
 export default function TonightBoard({ night }: { night: Night }) {
   // Only a game with no final can be under way: a night of finals asks for nothing.
-  const liveRows = useLiveScores(night.orgs.some((o) => o.rounds.some((r) => r.games.some((g) => g.state === "later"))));
+  const liveRows = useLiveScores(night.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games.filter((g) => g.state === "later"))));
   return (
     <>
       {night.orgs.map((org) => (

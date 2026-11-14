@@ -14,6 +14,7 @@ const REFERENCE = z.object({
   home_score: z.number().int().min(0).max(200),
   away_score: z.number().int().min(0).max(200),
   period: z.string().min(1).max(12).regex(/^[A-Za-z0-9 ]+$/).nullable(),
+  clock: z.string().max(5).regex(/^\d{1,2}:[0-5]\d$/).nullable().optional(),
   read_at: z.iso.datetime({ offset: true }),
 });
 
@@ -28,6 +29,7 @@ test("the hand-written check keeps and drops exactly the rows the Zod schema did
     home_score: [0, 200, 201, -1, 1.5, -0, NaN, Infinity, "28", null, 2 ** 53, true],
     away_score: [0, 199, 200.0001, -0.5, undefined],
     period: [null, "", " ", "OT", "Q4 0 12", "x".repeat(12), "x".repeat(13), "<b>", "Q3\n", "Ⅲ", 3, undefined, false],
+    clock: [null, "4:12", "0:09", "12:00", "99:59", "4:60", "412", "4:1", "123:00", ":12", "4:12 ", "4:12\n", "", "Q3", 412, false],
     read_at: [
       "2026-11-13T23:40:00Z", "2026-11-13T23:40:00.1Z", "2026-11-13T23:40:00.123456789-05:00", "2026-11-13T23:40Z",
       "2026-11-13T23:40:00", "2026-11-13T24:00:00Z", "2026-11-13T23:60:00Z", "2026-11-13T23:40:60Z", "2026-11-13t23:40:00Z",
@@ -128,4 +130,39 @@ test("the request calls the live_scores function with the public key, the one pu
   } finally {
     globalThis.fetch = real;
   }
+});
+
+test("the board shows a live game as Live: the read's period and scores in its own cells, unconfirmed, no projection", async () => {
+  const { asLive } = await import("../lib/live-scores.ts");
+  const { winnerOf } = await import("../lib/score-display.ts");
+  const game = {
+    id: "g", date: "2026-11-13", league: "UIL DI · Bi-district", home: { name: "Salt Fork" }, away: { name: "Cedar Gap" },
+    homeScore: null, awayScore: null, state: "scheduled", status: "Fri 11/13", kickoff: "2026-11-14T01:00:00Z",
+    verification: "none", projected: "Salt Fork by 3", projectedMargin: 3, upset: true, venue: "",
+  };
+  const live = { away: { name: "Cedar Gap", score: 47 }, home: { name: "Salt Fork", score: 45 }, period: "OT", readAt: new Date() };
+  const shown = asLive(game, live);
+  assert.equal(shown.state, "live");
+  assert.equal(shown.status, "OT");
+  assert.deepEqual([shown.awayScore, shown.homeScore], [47, 45]);
+  assert.equal(shown.verification, "unconfirmed");
+  assert.equal(shown.projected, undefined);
+  assert.equal(shown.projectedMargin, undefined);
+  assert.equal(shown.upset, undefined);
+  assert.equal(winnerOf(shown), null, "a live score names no winner");
+  assert.equal(shown.kickoff, game.kickoff, "the rest of the game is kept");
+  assert.equal(game.state, "scheduled", "the game itself is not changed");
+  assert.equal(asLive(game, { ...live, period: null }).status, "", "no period: the status cell reads Live alone");
+});
+
+test("the live status beside the score: period, time left when read, and when it was read, in Central", async () => {
+  const { liveStatus } = await import("../lib/live-scores.ts");
+  const game = { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" };
+  const at = "2026-11-14T01:42:30Z"; // 7:42 PM in Central
+  const view = (over) => liveView(parseLiveRows([row({ read_at: at, ...over })]), game, Date.parse(at));
+  assert.equal(liveStatus(view({})), "Q3 · as of 7:42 PM CT", "no clock column yet: the time left is left out");
+  assert.equal(liveStatus(view({ clock: null })), "Q3 · as of 7:42 PM CT");
+  assert.equal(liveStatus(view({ clock: "4:12" })), "Q3 · 4:12 left · as of 7:42 PM CT");
+  assert.equal(liveStatus(view({ period: null, clock: "0:09" })), "Live · 0:09 left · as of 7:42 PM CT");
+  assert.equal(view({ clock: "4:60" }), null, "a bad clock drops the row, as a bad period does");
 });
