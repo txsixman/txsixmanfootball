@@ -205,7 +205,7 @@ jobs:
           npm ci --prefix tools/league-watch
           # Three tries of 4 minutes, as the TAIAO reader's job does; with no browser the league bracket is counted unread.
           for _ in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && break; sleep 20; done
-          node tools/league-watch/late-finals.mjs "private/maxpreps-$SEASON" --season "$SEASON" $SECOND --missing "$RUNNER_TEMP/missing-finals.txt"
+          node tools/league-watch/late-finals.mjs "private/maxpreps-$SEASON" --season "$SEASON" ${SECOND:+"$SECOND"} --missing "$RUNNER_TEMP/missing-finals.txt"
           [ ! -s "$RUNNER_TEMP/missing-finals.txt" ]
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
