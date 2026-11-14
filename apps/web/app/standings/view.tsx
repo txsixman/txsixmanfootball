@@ -28,10 +28,12 @@ const uilDivisions = GROUPS.filter((g) => g.org === ORGS[0]);
 
 type Identities = Awaited<ReturnType<typeof loadIdentities>>;
 
+// prefetch={false}, as in the rankings table: each level repeats every team, and the sample page's invented schools
+// have no program page, so a prefetch of each 404 kept the page from ever going quiet.
 function TeamCell({ r, identities }: { r: RankedRow | DistrictStandings["rows"][number]; identities: Identities }) {
   return (
     <th scope="row" className="pl-3 text-left font-normal">
-      <Link href={`/programs/${r.school.slug}`} className="flex min-h-11 items-center text-ink hover:text-navy hover:underline">
+      <Link href={`/programs/${r.school.slug}`} prefetch={false} className="flex min-h-11 items-center text-ink hover:text-navy hover:underline">
         <CrestSlot school={r.school.school} identity={identities.get(r.school.slug) ?? EMPTY} />
         {r.school.school}
       </Link>
