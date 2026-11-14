@@ -18,9 +18,13 @@ a robot-read or corrected score unconfirmed, and the "Score reported" rule of AD
    - Its structured data carries the score (`lib/json-ld.ts`).
 2. **A live score stays unconfirmed** until it is final: "Live · Q3 · 14–28 · Unconfirmed", no leader marked.
 3. **A forfeit is confirmed** and still shows the word, never its 1-0 or 2-0 (ADR 0004's forfeit rule stands).
-4. **Disputed is not built here.** The second source's finals check writes its report to the private data repo, which the
-   web build does not read. So no real game is marked "disputed" for now. The sample board keeps its invented disputed
-   game. Feeding that report into the build is the follow-up that would bring it back.
+4. **Disputed: a final the sources give different winners.** Listed in `data/seed/disputed/<year>.csv` (`game_date,home,away`,
+   teams as the bracket and results rows spell them), which `check-data.mjs` checks and `lib/disputed.ts` reads.
+   - The list is settled by hand from the second source's finals check. That report itself stays private: the web build
+     never reads private files.
+   - Only a different winner goes on it. A final whose margin differs between sources stays a normal confirmed final.
+   - A disputed final shows its score with no winner. Its status is "Score reported", and the bracket pages mark it "Disputed".
+   - The file ships empty and is filled as disagreements are settled.
 5. **A 0-0 is no score, never a final.** The store already writes it blank; the loaders also refuse it.
 
 - **Wording:** every "not confirmed here" and "Scores are not confirmed here and may change" line is removed. Where a caveat
@@ -30,8 +34,9 @@ a robot-read or corrected score unconfirmed, and the "Score reported" rule of AD
   review, the embed, push alerts) still list them that way. They show the score, and the game page names the winner.
 
 ## Consequences
-- The "Score reported" section and status from ADR 0037 now hold only a disputed score: the sample board's, until rule 4's
-  follow-up.
+- The "Score reported" section and status from ADR 0037 now hold only a disputed final.
+- `scripts/disputed.test.mjs` covers the list: a match in either team order, a missing file meaning none, and a bad
+  header or row failing the build.
 - The tests that asserted "Unconfirmed" on a final now assert the reverse.
   - The game page test checks that the winner is marked.
   - The structured-data test checks the final score in its description.
