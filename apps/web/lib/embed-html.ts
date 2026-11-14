@@ -34,9 +34,12 @@ const SITE = "https://txsixmanfootball.com";
  * e2e/embed.spec.ts measures every program. */
 export const EMBED_HEIGHT = 560;
 
-/** The iframe a school pastes into its page (shown on the program page as text, never as an element). */
+/** What a school pastes into its page (shown on the program page as text, never as an element): the iframe, then one plain
+ * link to the program page under it. An iframe's own link counts for nothing on the host page, so the plain link is what
+ * lets search engines follow the school's site to ours. */
 export const embedSnippet = (slug: string, school: string) =>
-  `<iframe src="${SITE}/embed/programs/${encodeURIComponent(slug)}" title="${escapeHtml(school)} scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>`;
+  `<iframe src="${SITE}/embed/programs/${encodeURIComponent(slug)}" title="${escapeHtml(school)} scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>\n` +
+  `<p><a href="${SITE}/programs/${encodeURIComponent(slug)}">${escapeHtml(school)} football scores and schedule</a></p>`;
 
 /** `?theme=` is read from the address by this one script, which accepts only these three words and ignores anything else.
  * No `</script` may appear in it. */

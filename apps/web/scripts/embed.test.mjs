@@ -83,10 +83,11 @@ test("a program with no games says so", () => {
   assert.doesNotMatch(html, /not confirmed|record</);
 });
 
-test("the snippet is the iframe a school pastes: the address, an escaped title, the height", () => {
+test("the snippet is the iframe a school pastes, then a plain link to the program page: addresses, escaped names, the height", () => {
   assert.equal(
     embedSnippet("jayton", `Jay "ton" & Co`),
-    `<iframe src="https://txsixmanfootball.com/embed/programs/jayton" title="Jay &quot;ton&quot; &amp; Co scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>`,
+    `<iframe src="https://txsixmanfootball.com/embed/programs/jayton" title="Jay &quot;ton&quot; &amp; Co scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>\n` +
+      `<p><a href="https://txsixmanfootball.com/programs/jayton">Jay &quot;ton&quot; &amp; Co football scores and schedule</a></p>`,
   );
 });
 
