@@ -173,7 +173,7 @@ export default async function Home() {
           </p>
           <div className="mt-3 grid gap-5 sm:grid-cols-2">
             {chances.state.map((b) => (
-              <ChanceList key={b.bracket} id={`c-${slugify(b.bracket)}`} title={`${b.bracket} · ${b.round === "final" ? "Final" : b.round === "semifinal" ? "Semifinals" : "Regional round"}`} chances={b.chances} identities={identities} />
+              <ChanceList key={b.bracket} id={`c-${slugify(b.bracket)}`} title={`${b.bracket} · ${b.round === "final" ? "State Championship" : b.round === "semifinal" ? "Semifinals" : "Regional round"}`} chances={b.chances} identities={identities} />
             ))}
           </div>
         </section>
@@ -223,7 +223,7 @@ export default async function Home() {
             })}
           </ul>
           <Link href="/championships" className="link-more">
-            Every state championship
+            Every State Championship
           </Link>
         </section>
       )}

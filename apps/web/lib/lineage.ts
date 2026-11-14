@@ -40,7 +40,7 @@ export type OtherName = { name: string; note: string; /** The program page to li
 type FinalYears = { season: number; champion: string; runnerUp: string }[];
 
 /** A spelling's years are its school's finals, a bound: one final is exact, a span says "between" (it shows in some). */
-const spellingNote = (span: string) => (span.includes(" to ") ? `in state final records between ${span.replace(" to ", " and ")}` : `in state finals${span && ` ${span}`}`);
+const spellingNote = (span: string) => (span.includes(" to ") ? `in State Championship records between ${span.replace(" to ", " and ")}` : `in State Championships${span && ` ${span}`}`);
 
 /** "1983", "1997 to 2017", or "" when the name has no state final: the seasons a name appears in the finals. */
 const finalsSpan = (finals: FinalYears, name: string) => {
@@ -71,7 +71,7 @@ export function otherNames(
     .filter((l) => slugify(l.successor) === slug)
     .map((l) => ({
       name: l.predecessor,
-      note: `${l.event === "consolidation" ? "merged into this program" : l.event} in ${l.season}${years(l.predecessor) && `, state finals ${years(l.predecessor)}`}`,
+      note: `${l.event === "consolidation" ? "merged into this program" : l.event} in ${l.season}${years(l.predecessor) && `, State Championships ${years(l.predecessor)}`}`,
       ...link(l.predecessor),
     }));
   const became = lineage

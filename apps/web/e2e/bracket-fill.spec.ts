@@ -66,7 +66,7 @@ test("a team with a next game the bracket sets sees it on its page, in place of 
   test.skip(!rows.length, "no next-round game is waiting on a listing today");
   const r = rows[0];
   await page.goto(`/programs/${r.teams[0]}`);
-  const path = page.getByRole("region", { name: "Path to the final" });
+  const path = page.getByRole("region", { name: "Path to the State Championship" });
   const row = path.locator("li[data-built]");
   await expect(row).toHaveCount(1);
   await expect(row).toContainText(r.round.label);

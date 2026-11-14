@@ -655,7 +655,7 @@ export default async function ProgramPage({ params }: Props) {
         )}
 
         {finals.length > 0 && (
-          <Section id="finals" title="State championships" accent={accent}>
+          <Section id="finals" title="State Championships" accent={accent}>
             <p className="px-3 pt-2 font-num text-[20px] font-bold text-ink">
               {titles === 0 ? "No UIL state titles" : titles === 1 ? "1 UIL state title" : `${titles} UIL state titles`}
               {finals.length > titles && `, ${finals.length - titles} runner-up ${finals.length - titles === 1 ? "finish" : "finishes"}`}
