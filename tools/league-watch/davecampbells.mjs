@@ -839,6 +839,61 @@ async function kickoffs() {
   const sites = fresh.filter((r) => r.site_name).length;
   console.log(`Kickoffs: ${due.length} bracket games still to play, ${teams.length} teams read, ${fresh.length} kickoff times found, ${sites} with a site.`);
   console.log(missingDetails(due, merged));
+  // The feed's bracket positions against UIL's bracket (ADR 0047): a misfit means the bracket file or a listing is wrong.
+  const season = Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1);
+  const { checked, misfits } = positionProblems(matchGames(items, { rows: due, ours }), uilStructure(season));
+  if (!misfits.length) console.log(`Bracket positions: ${checked} UIL game(s) the feed places, all fit UIL's bracket.`);
+  else {
+    const line = `Bracket positions: ${misfits.length} of ${checked} UIL game(s) the feed places do not fit UIL's bracket (${misfits.join(", ")}).`;
+    console.log(line);
+    raise(line);
+  }
+}
+
+// ---- UIL bracket positions (ADR 0047) ----
+
+/** The first game code of each UIL round, as UIL's bracket numbers them: bi-district G1 to G16, area G17 to G24, regional
+ * ("quarterfinals" on the bracket) G25 to G28, semifinals G29 and G30, the final G31. */
+const FIRST_CODE = [[/bi-?district/i, 0], [/area/i, 16], [/regional|quarter/i, 24], [/semi/i, 28], [/state|final|champ/i, 30]];
+
+/**
+ * The feed's own bracket position of each UIL game it lists, checked against UIL's bracket file
+ * (data/seed/uil-<span>/bracket-<year>.csv): a game the feed puts at position k of a round must be a pairing of that
+ * round's slot G(first + k), its two teams from the slot's two sides. `matched`: matchGames' { item, row } pairs.
+ * Returns the count checked and each misfit as "UIL <division> G<n>", never a school (the line goes to public logs).
+ */
+export function positionProblems(matched, structure) {
+  const byDivision = Map.groupBy(structure, (r) => r.division);
+  const under = (rows, side, seen = new Set()) => {
+    if (!side.startsWith("winner:")) return side === "bye" ? [] : [side];
+    const r = rows.find((x) => x.slot === side.slice("winner:".length));
+    if (!r || seen.has(r.slot)) return [];
+    seen.add(r.slot);
+    return [...under(rows, r.a, seen), ...under(rows, r.b, seen)];
+  };
+  let checked = 0;
+  const misfits = [];
+  for (const { item, row } of matched) {
+    const rows = row.league === "UIL" && byDivision.get(row.division);
+    const position = Number(item?.playoffBracketPosition);
+    const first = FIRST_CODE.find(([re]) => re.test(String(item?.playoffRound ?? "")))?.[1];
+    if (!rows || !Number.isInteger(position) || position < 1 || first == null) continue;
+    checked++;
+    const code = `G${first + position}`;
+    const slot = rows.find((r) => r.slot === code);
+    const [a, b] = slot ? [new Set(under(rows, slot.a)), new Set(under(rows, slot.b))] : [new Set(), new Set()];
+    const fits = (a.has(row.home) && b.has(row.away)) || (a.has(row.away) && b.has(row.home));
+    if (!fits) misfits.push(`UIL ${row.division} ${code}`);
+  }
+  return { checked, misfits };
+}
+
+/** UIL's bracket files for a season, every span folder's (data/seed/uil-<span>/bracket-<year>.csv). */
+function uilStructure(season) {
+  const seed = fileURLToPath(new URL("../../data/seed", import.meta.url));
+  return readdirSync(seed)
+    .filter((d) => /^uil-\d{4}-\d{2}$/.test(d) && existsSync(path.join(seed, d, `bracket-${season}.csv`)))
+    .flatMap((d) => parseCsv(readFileSync(path.join(seed, d, `bracket-${season}.csv`), "utf8"), "UIL bracket").rows);
 }
 
 /** What the facts file still lacks for the bracket games still to play, counted by league and never naming a school (the
@@ -914,6 +969,48 @@ async function opponents() {
   }
 }
 
+/** A playoff game's bracket fields as the feed gives them, never a score: date (Central), the two school names, and the
+ * phase, round, bracket position, event text and seeds. How the bracket structure is checked by hand. */
+export const bracketFields = (item) => [
+  item?.scheduledKickoff ? centralDate(new Date(item.scheduledKickoff)) : "no date",
+  (item?.participants ?? []).map((p) => `${p?.schoolName ?? "?"} (${p?.participantType ?? "?"}, seed ${p?.seed ?? "-"})`).join(" v "),
+  `phase ${item?.seasonPhase ?? "-"}`, `round ${item?.playoffRound ?? "-"}`, `position ${item?.playoffBracketPosition ?? "-"}`,
+  `event ${item?.eventDescription ?? "-"}`, `status ${item?.status ?? "-"}`,
+].join(" | ");
+
+/** `--bracket-fields <year> <their slug>...`: each team's playoff games' bracket fields (bracketFields). Prints only. */
+async function bracketFieldsMode() {
+  const i = process.argv.indexOf("--bracket-fields");
+  let [year, ...slugs] = [Number(process.argv[i + 1]), ...process.argv.slice(i + 2)];
+  // --from <playoffs.csv>: one mapped team of each first-round game of every bracket (each game is read once; later rounds
+  // come with the winners' own lists).
+  const from = slugs[0] === "--from" ? slugs[1] : null;
+  if (from) {
+    const { theirs } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
+    const rows = csvRows(readFileSync(from, "utf8"));
+    const first = new Map();
+    for (const r of rows) {
+      const k = `${r.league}|${r.division}`;
+      if (!first.has(k)) first.set(k, r.round);
+    }
+    slugs = [...new Set(rows.filter((r) => first.get(`${r.league}|${r.division}`) === r.round).flatMap((r) => {
+      const t = theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away));
+      if (!t) console.log(`unmapped: ${r.league} ${r.division} ${r.round} ${r.away} v ${r.home}`);
+      return t ? [t] : [];
+    }))];
+  }
+  if (!Number.isInteger(year) || !slugs.length || !slugs.every((s) => /^[a-z0-9-]+$/.test(s))) throw new Error("usage: davecampbells.mjs --bracket-fields <year> (<their slug>... | --from <playoffs.csv>)");
+  const client = createClient();
+  const seasonId = footballSeasons(await client.getData("/api/public/seasons")).get(year);
+  for (const slug of slugs) {
+    const id = seasonId && (await teamId(client, slug, seasonId));
+    if (!id) { console.log(`${slug}: no team id`); continue; }
+    const items = (await liveAndUpcoming(client, seasonId, id)).filter((x) => x?.seasonPhase && !/regular/i.test(String(x.seasonPhase)) || x?.playoffRound != null);
+    console.log(`${slug}: ${items.length} playoff game(s)`);
+    for (const x of items) console.log(`  ${bracketFields(x)}`);
+  }
+}
+
 /** A team's games on one Central date (`items`), as lines: status, then each side's school name, score and forfeit flag.
  * Never a spread, ranking, poll or `winner` field. */
 export function gamesOnLines(items, date) {
@@ -945,5 +1042,5 @@ async function gamesOn() {
   console.log(lines.length ? lines.join("\n") : `${theirSlug}: no game on ${date}`);
 }
 
-const MODES = { "--finals": finals, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents, "--games-on": gamesOn };
+const MODES = { "--finals": finals, "--bracket-fields": bracketFieldsMode, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents, "--games-on": gamesOn };
 if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(Object.entries(MODES).find(([f]) => process.argv.includes(f))?.[1] ?? live);

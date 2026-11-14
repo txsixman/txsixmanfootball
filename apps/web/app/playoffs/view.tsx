@@ -2,14 +2,14 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { loadAlignments } from "@/lib/alignments";
 import { playoffsDescription } from "@/lib/descriptions";
-import { bracketHref, bracketLabel, LEAGUES, loadBrackets, playoffLeagues, playoffSeasons } from "@/lib/brackets";
+import { bracketHref, bracketLabel, latestRound, LEAGUES, loadBrackets, playoffLeagues, playoffSeasons } from "@/lib/brackets";
 import { loadIdentities } from "@/lib/identity";
 import { playoffsIntro } from "@/lib/intros";
 import { centralClock } from "@/lib/playoff-status";
 import { TabNav } from "../tab-nav";
 import { PageHeader, SectionBar } from "../ui";
 import { ChanceList } from "./chance-list";
-import { GameList } from "./game-list";
+import { BuiltList, GameList } from "./game-list";
 
 export type League = (typeof LEAGUES)[number];
 /** The latest season lives at /playoffs; past seasons at /playoffs/season/<year> (UIL) and .../<league>. */
@@ -67,7 +67,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
         const roundId = (round: string) => `${id}-${round}`;
         return (
           <section key={b.name} aria-labelledby={id} className="mt-8">
-            <SectionBar id={id} title={b.name} aside={`Latest: ${b.rounds.at(-1)!.label}`} className="" />
+            <SectionBar id={id} title={b.name} aside={`Latest: ${latestRound(b)!.label}`} className="" />
             {!past && (
               <Link href={bracketHref(b.name)} className="flex min-h-11 items-center justify-between border-b border-line px-3 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
                 {bracketLabel(b)} bracket page: current round first
@@ -95,9 +95,14 @@ export async function PlayoffsView({ league, season }: { league: League; season?
             {b.rounds.map((r) => (
               <section key={r.round} id={roundId(r.round)} aria-label={`${b.name}, ${r.label}`} className="mt-5 scroll-mt-4">
                 <h3 className="border-b-2 border-navy px-3 pb-1 font-num text-[20px] font-bold uppercase tracking-wider text-navy">
-                  {r.label} <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">· {r.games.length} {r.games.length === 1 ? "game" : "games"}</span>
+                  {r.label}{" "}
+                  <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">
+                    · {r.games.length} {r.games.length === 1 ? "game" : "games"}
+                    {r.built.length ? ` · ${r.built.length} more set by the bracket` : ""}
+                  </span>
                 </h3>
-                <GameList games={r.games} league={league} alignments={alignments} identities={identities} today={today} showStatus={!past} />
+                {r.games.length > 0 && <GameList games={r.games} league={league} alignments={alignments} identities={identities} today={today} showStatus={!past} />}
+                {r.built.length > 0 && <BuiltList games={r.built} league={league} alignments={alignments} identities={identities} />}
               </section>
             ))}
           </section>

@@ -154,6 +154,8 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
  * Scores are absent until played; a forfeit carries no score to show (ADR 0004). */
 export type PlayoffGame = {
   league: string; bracket: string; round: string; date: string; home: string; away: string;
+  /** The league's division as the files write it ("I", "2", "III Small School"), for its bracket slots (ADR 0047). */
+  division: string;
   homeScore?: number; awayScore?: number; forfeit: boolean; neutral: boolean;
   /** A played game: its final score is confirmed, however it was read, unless the sources give it different winners (ADR 0040). */
   confirmed: boolean;
@@ -170,6 +172,7 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
     return {
       league,
       bracket: heading({ league, division: r.division, region: "1" }),
+      division: r.division,
       round: r.round,
       date: r.game_date,
       home: name(r.home),
