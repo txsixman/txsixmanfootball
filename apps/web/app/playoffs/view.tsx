@@ -64,7 +64,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
             <SectionBar id={id} title={b.name} aside={`Latest: ${latestRound(b)!.label}`} className="" />
             {!past && (
               <Link href={bracketHref(b.name)} className="flex min-h-11 items-center justify-between border-b border-line px-3 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
-                {bracketLabel(b)} bracket page: current round first
+                The {bracketLabel(b)} bracket, latest round first
                 <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
               </Link>
             )}

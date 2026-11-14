@@ -9,6 +9,7 @@ import { pregameShown } from "@/lib/pregame";
 import { projectionText } from "@/lib/projection";
 import { loadWeeks, resultSeasons, weekLabel, type Week } from "@/lib/weeks";
 import { TabNav } from "../tab-nav";
+import { WeekStrip } from "../week-strip";
 import { CrestSlot, EmptyState, PageHeader, SectionBar } from "../ui";
 import { seasonHref, weekHref } from "./paths";
 
@@ -74,21 +75,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
           current={seasonHref(season, seasons[0], org)}
         />
       )}
-      <nav aria-label="Week" className="mt-3 flex flex-wrap gap-1.5">
-        {weeks.map((w) => (
-          <Link
-            key={w.number}
-            href={weekHref(season, w.number, org)}
-            aria-current={w.number === week ? "page" : undefined}
-            aria-label={`Week ${w.number}, from ${weekLabel(w.monday)}`}
-            className={`inline-flex size-11 items-center justify-center border-2 border-navy font-num text-[17px] font-bold ${
-              w.number === week ? "bg-navy text-white" : "text-navy hover:bg-panel"
-            }`}
-          >
-            {w.number}
-          </Link>
-        ))}
-      </nav>
+      <WeekStrip weeks={weeks.map((w) => ({ number: w.number, href: weekHref(season, w.number, org), label: `Week ${w.number}, from ${weekLabel(w.monday)}`, current: w.number === week }))} />
       {!shown.games.length && <EmptyState>No {org.label} games this week.</EmptyState>}
       {[...days].map(([day, games]) => (
         <section key={day} aria-labelledby={`day-${day.replace(/\W+/g, "-")}`} className="mt-6">

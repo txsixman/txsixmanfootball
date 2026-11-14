@@ -12,6 +12,7 @@ import { marginOf } from "@/lib/week-review";
 import { indexHref, weekHref } from "@/lib/week-review-hrefs";
 import { loadWeekReview, orgWeeks, reviewedWeeks, type PlacedMover, type WeekReview } from "@/lib/week-review-load";
 import { TabNav } from "../tab-nav";
+import { WeekStrip } from "../week-strip";
 import { BoardRow, EmptyState, PageHeader, SectionBar } from "../ui";
 
 // The week in review: one week of one organization (ADR 0012), from the same games, ratings and projections as the Results,
@@ -125,22 +126,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
         current={weekHref(season, week, org)}
       />
       {seasons.length > 1 && <TabNav label="Season" wrap tabs={seasonTabs} current={weekHref(season, week, org)} />}
-      <nav aria-label="Week" className="mt-3 flex flex-wrap gap-1.5">
-        {weeks.map((w) => (
-          <Link
-            key={w.number}
-            href={weekHref(season, w.number, org)}
-            prefetch={false}
-            aria-current={w.number === week ? "page" : undefined}
-            aria-label={`Week ${w.number}, from ${weekLabel(w.monday)}`}
-            className={`inline-flex size-11 items-center justify-center border-2 border-navy font-num text-[17px] font-bold ${
-              w.number === week ? "bg-navy text-white" : "text-navy hover:bg-panel"
-            }`}
-          >
-            {w.number}
-          </Link>
-        ))}
-      </nav>
+      <WeekStrip prefetch={false} weeks={weeks.map((w) => ({ number: w.number, href: weekHref(season, w.number, org), label: `Week ${w.number}, from ${weekLabel(w.monday)}`, current: w.number === week }))} />
       <p className="mt-3 text-[13px] text-muted">
         Away team first. Scores may be corrected if a mistake is found. Rankings and projections use the
         ratings at the end of the week before.

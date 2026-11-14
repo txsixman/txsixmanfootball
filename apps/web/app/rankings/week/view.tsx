@@ -9,6 +9,7 @@ import { placeTeams } from "@/lib/rankings";
 import { ratingSeasons } from "@/lib/ratings";
 import { rankingWeeks, weekRows } from "@/lib/week-rankings";
 import { TabNav } from "../../tab-nav";
+import { WeekStrip } from "../../week-strip";
 import { RankingsHeader, RatingsTable, type Row } from "../table";
 
 const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -40,25 +41,15 @@ export async function WeekRankings({ wanted, org }: { wanted: string; org: Org }
         note={`${rows.length} ${org.label} ${rows.length === 1 ? "team" : "teams"}, rated on the games played by Sunday, ${day(week.sunday)}. Arrows show the move from a week earlier.${outsideNote}`}
       />
       <TabNav label="Rankings by organization" tabs={orgs.map((o) => ({ href: orgHref(weekBase(week.number), o), label: o.label }))} current={orgHref(weekBase(week.number), org)} />
-      <nav aria-label="Week" className="mt-4 flex flex-wrap gap-1.5">
-        {weeks.map((w) => (
-          <Link
-            key={w.number}
-            href={orgHref(weekBase(w.number), org)}
-            prefetch={false}
-            aria-current={w.number === week.number ? "page" : undefined}
-            aria-label={`After week ${w.number}, ending ${day(w.sunday)}`}
-            className={`inline-flex size-11 items-center justify-center border-2 border-navy font-num text-[17px] font-bold ${
-              w.number === week.number ? "bg-navy text-white" : "text-navy hover:bg-panel"
-            }`}
-          >
-            {w.number}
-          </Link>
-        ))}
-        <Link href={orgHref("/rankings", org)} className="inline-flex min-h-11 items-center border-2 border-navy px-3 font-num text-[16px] font-bold uppercase text-navy hover:bg-panel">
+      <WeekStrip
+        prefetch={false}
+        weeks={weeks.map((w) => ({ number: w.number, href: orgHref(weekBase(w.number), org), label: `After week ${w.number}, ending ${day(w.sunday)}`, current: w.number === week.number }))}
+        after={
+          <Link href={orgHref("/rankings", org)} className="inline-flex min-h-11 shrink-0 items-center border-2 border-navy px-3 font-num text-[16px] font-bold uppercase text-navy hover:bg-panel">
           Now
         </Link>
-      </nav>
+        }
+      />
       <RatingsTable rows={rows} />
       <p className="mt-3 text-[13px] text-muted">
         Scores may be corrected if a mistake is found. Records count forfeits; ratings leave them out. Under each team: games played and games rated, through that Sunday.

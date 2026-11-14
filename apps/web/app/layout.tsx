@@ -2,6 +2,7 @@ import "@fontsource-variable/inter";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { ReactNode } from "react";
@@ -34,10 +35,10 @@ const barlow = localFont({
 const SECTIONS = [
   { href: "/scores", label: "Scores" },
   { href: "/playoffs", label: "Playoffs" },
-  { href: "/results", label: "Results" },
-  { href: "/rankings", label: "Rankings" },
-  { href: "/standings", label: "Standings" },
   { href: "/programs", label: "Programs" },
+  { href: "/rankings", label: "Rankings" },
+  { href: "/results", label: "Results" },
+  { href: "/standings", label: "Standings" },
   { href: "/championships", label: "Championships" },
   { href: "/records", label: "Records" },
   { href: "/search", label: "Search" },
@@ -59,6 +60,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between px-4">
               <Link href="/" className="inline-flex min-h-11 items-center font-num text-[26px] font-bold tracking-wide sm:min-h-12">
                 {SITE_NAME}
+              </Link>
+              {/* A fan's quickest way to a team: on a phone the nav below scrolls and Search is its last stop, so the header
+                  carries it too, always in view. From `sm` up the whole nav shows. */}
+              <Link href="/search" aria-label="Search" className="inline-flex size-11 items-center justify-center hover:text-white sm:hidden">
+                <Search aria-hidden="true" className="size-6" strokeWidth={2.5} />
               </Link>
               {/* On a phone the sections scroll sideways; the right edge fades out to show there is more, and the footer lists them all. */}
               <MainNav sections={SECTIONS} />
