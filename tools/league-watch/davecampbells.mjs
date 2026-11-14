@@ -8,6 +8,10 @@
 // (the rows packages/db/live.mjs sends). It reads only teams, kickoff, status, scores and forfeit flags (the period only
 // for the run summary's counts, ADR 0042): never
 // a spread, ranking, poll or `winner` field. Nothing is saved to this repo. A 403 or 429 stops the read at once.
+// By hand, `--fields` after the same two flags writes nothing and prints, for the games under way, the field names and how
+// many games hold each clock, period or update-time format (to find a field such as the game clock), then each of tonight's
+// due games: the team asked, its games tonight (status and school names, again with no status filter when none is Live or
+// Upcoming) and whether one matched. Never a score.
 //
 // Finals, as a private cross-check of MaxPreps (ADR 0026, the same permission):
 //   node tools/league-watch/davecampbells.mjs --finals <private playoffs.csv> --report <private davecampbells-<season>/>
@@ -116,6 +120,66 @@ export function periodLabel(summary) {
   if (q) return `Q${q[1]}`;
   if (/^(ot|overtime)\s*\d*$/i.test(t)) return "OT";
   return null;
+}
+
+/** The game clock's formats among the games under way, for each live run's summary: "19 null" or "12 \"9:99\", 7 null"
+ * (digits shown as 9). It is how we learn the night the feed first fills summary.periodRemainingTime. Never a value. */
+export function clockFormats(items) {
+  const counts = new Map();
+  for (const item of items.filter(isLive)) {
+    const v = item?.summary?.periodRemainingTime;
+    const f = v === null || v === undefined ? "null" : `${typeof v} "${String(v).replace(/\d/g, "9").slice(0, 16)}"`;
+    counts.set(f, (counts.get(f) ?? 0) + 1);
+  }
+  return counts.size ? [...counts].sort((a, b) => b[1] - a[1]).map(([f, n]) => `${n} ${f}`).join(", ") : "no game under way";
+}
+
+/** `--fields`, per bracket game due tonight: which of its teams was asked (their slug), how many of that team's Live and
+ * Upcoming games fall on tonight's date, their status and the feed's school names, and whether the game matched one of
+ * ours. School names and statuses only: never a score. */
+export function dueReport(due, { date, theirs, ours, listed }) {
+  const matched = new Set(matchTonight([...listed.values()].flat(), { date, due, ours }).map((m) => m.key));
+  return due.filter((r) => r.game_date === date).map((r) => {
+    const t = theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away));
+    const head = `${r.away} at ${r.home}:`;
+    if (!t) return `${head} no mapped team`;
+    if (!listed.has(t)) return `${head} asked ${t}, no team id`;
+    const tonight = listed.get(t).filter((x) => {
+      const at = new Date(x?.scheduledKickoff ?? "");
+      return !Number.isNaN(at.getTime()) && centralDate(at) === date;
+    });
+    const games = tonight.map((x) => `${x?.status ?? x?.summary?.status} [${(x?.participants ?? []).map((p) => p?.schoolName).join(" v ")}]`);
+    const hit = [...matched].some((k) => k.includes(slugify(r.home)) && k.includes(slugify(r.away)));
+    return `${head} asked ${t}, ${listed.get(t).length} listed, ${tonight.length} tonight${games.length ? `: ${games.join("; ")}` : ""}; matched ${hit ? "yes" : "no"}`;
+  });
+}
+
+/** `--live <playoffs.csv> --fields` (by hand, to find a field; writes nothing): for the games under way, each distinct item
+ * shape (field names only, three levels deep), and for each field whose name speaks of the clock, the period or an update
+ * time (clock, time, remain, period, quarter, updated), how many games hold each value format (digits shown as 9, so
+ * "4:12" is "9:99"), with one example. Never a team, a score or any other value. */
+export function liveFields(items) {
+  const shapes = new Set();
+  const formats = new Map();
+  const visit = (value, at) => {
+    if (value === null || typeof value !== "object") return;
+    for (const [k, v] of Object.entries(value)) {
+      const here = at ? `${at}.${k}` : k;
+      if (v !== null && typeof v === "object") visit(v, here);
+      else if (/clock|time|remain|period|quarter|updated/i.test(k) && !/zone/i.test(k)) {
+        const key = `${here} ${v === null ? "null" : `${typeof v} "${String(v).replace(/\d/g, "9")}"`}`;
+        const f = formats.get(key) ?? { n: 0, example: v };
+        f.n++;
+        formats.set(key, f);
+      }
+    }
+  };
+  const live = items.filter(isLive);
+  for (const item of live) {
+    shapes.add(`shape: ${shapeOf(item, 3)}`);
+    visit(item, "");
+  }
+  return [`${live.length} games under way`, ...shapes, ...[...formats].sort().map(([k, f]) => `${k}: ${f.n} game(s), e.g. ${JSON.stringify(f.example)}`)];
 }
 
 /** Minutes-since-kickoff buckets for the period log. */
@@ -526,9 +590,32 @@ async function live() {
   const client = createClient();
   const items = [];
   let ids = 0;
+  const listed = new Map();
   for (const t of teams) {
     const id = await teamId(client, t, seasonId);
-    if (id) (ids++, items.push(...(await liveAndUpcoming(client, seasonId, id))));
+    if (id) {
+      ids++;
+      const got = await liveAndUpcoming(client, seasonId, id);
+      listed.set(t, got);
+      items.push(...got);
+    }
+  }
+  if (process.argv.includes("--fields")) {
+    console.log(liveFields(items).join("\n") || "no game under way in the feed's answers");
+    console.log(dueReport(due, { date, theirs, ours, listed }).join("\n"));
+    // A team with no Live or Upcoming game tonight: its games of tonight with no status filter (a final is not Live).
+    const onDate = (x) => {
+      const at = new Date(x?.scheduledKickoff ?? "");
+      return !Number.isNaN(at.getTime()) && centralDate(at) === date;
+    };
+    for (const [t, got] of listed) {
+      if (got.some(onDate)) continue;
+      const id = await teamId(client, t, seasonId);
+      const all = await client.getData(`/api/public/game-schedules?seasonId=${encodeURIComponent(seasonId)}&teamId=${encodeURIComponent(id)}&sort=NEWEST&size=5`);
+      const tonight = (Array.isArray(all?.items) ? all.items : []).filter(onDate);
+      console.log(`${t}, any status: ${tonight.length} tonight${tonight.length ? `: ${tonight.map((x) => `${x?.status} [${(x?.participants ?? []).map((p) => p?.schoolName).join(" v ")}]`).join("; ")}` : ""}`);
+    }
+    return;
   }
   const rows = liveRowsFromItems(items, { date, due, ours });
   const seen = new Set(matchTonight(items, { date, due, ours }).map((m) => m.key));
@@ -539,6 +626,7 @@ async function live() {
   if (items.length && !seen.size) console.warn(`none of tonight's games matched; a listed game looks like ${shapeOf(items[0])}`);
   const unmapped = due.filter((r) => !theirs.has(slugify(r.home)) && !theirs.has(slugify(r.away))).length;
   summary(`Second live read: ${due.length} games due (${unmapped} with no mapped team), ${teams.length} teams asked, ${ids} ids found, ${items.length} games listed, ${seen.size} of tonight's games found, ${rows.filter((r) => !r.finished).length} under way, ${rows.filter((r) => r.finished).length} finished.`);
+  summary(`Game clock (summary.periodRemainingTime) in the games under way: ${clockFormats(items)}.`);
   summary(`Second source's period (not shown on pages) by minutes since kickoff, games under way: ${periodByMinutes(items)}.`);
 }
 

@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { bracketFields, DETAIL_COLUMNS, gamesOnLines, kickoffRows, mergeKickoffs, missingDetails, opponentRows, placeFields, positionProblems } from "./davecampbells.mjs";
+import { bracketFields, clockFormats, DETAIL_COLUMNS, dueReport, gamesOnLines, kickoffRows, liveFields, mergeKickoffs, missingDetails, opponentRows, placeFields, positionProblems } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLate, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -542,6 +542,48 @@ test("--merge-details lays an earlier read over the file without overwriting a f
   const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "davecampbells.mjs"), "--merge-details", fresh, "--out", out], { encoding: "utf8", env: { ...process.env, HTTPS_PROXY: "http://127.0.0.1:9" } });
   assert.equal(r.status, 0, r.stderr);
   assert.equal(readFileSync(out, "utf8"), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:30:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
+});
+
+test("--fields lists the clock and period fields of games under way by format, never a team or a score", () => {
+  const game = (status, clock) => ({
+    status,
+    summary: { homeScore: 28, awayScore: 14, period: 3, periodRemainingTime: clock, lastUpdatedUtc: 1794618000.5 },
+    participants: [{ schoolName: "Alpha", score: 28 }, { schoolName: "Bravo", score: 14 }],
+    venue: { timezone: "America/Chicago" },
+  });
+  const lines = liveFields([game("Live", "4:12"), game("Live", null), game("Final", "0:00")]);
+  assert.equal(lines[0], "2 games under way");
+  assert.ok(lines.includes('summary.periodRemainingTime string "9:99": 1 game(s), e.g. "4:12"'));
+  assert.ok(lines.includes("summary.periodRemainingTime null: 1 game(s), e.g. null"));
+  assert.ok(lines.includes('summary.period number "9": 2 game(s), e.g. 3'));
+  const text = lines.join("\n");
+  for (const hidden of ["Alpha", "Bravo", "28", "14", "Chicago", "0:00"]) assert.ok(!text.replace(/shape: .*/g, "").includes(hidden), hidden);
+});
+
+test("each live run logs the game clock's formats among games under way, never a value", () => {
+  const game = (status, periodRemainingTime) => ({ status, summary: { period: 2, periodRemainingTime } });
+  assert.equal(clockFormats([]), "no game under way");
+  assert.equal(clockFormats([game("Live", null), game("Live", undefined), game("Final", "0:00")]), "2 null");
+  assert.equal(clockFormats([game("Live", "4:12"), game("In Progress", "11:05"), game("Live", "10:59"), game("Live", null)]), '2 string "99:99", 1 string "9:99", 1 null');
+});
+
+test("--fields reports each due game by school names and status, never a score", () => {
+  const due = [
+    { game_date: "2026-11-13", home: "Alpha", away: "Bravo" },
+    { game_date: "2026-11-13", home: "Delta", away: "Echo" },
+    { game_date: "2026-11-13", home: "Golf", away: "Hotel" },
+    { game_date: "2026-11-06", home: "India", away: "Juliet" },
+  ];
+  const theirs = new Map([["alpha", "alpha-a"], ["delta", "delta-d"]]);
+  const ours = new Map([["alpha-a", "alpha"], ["delta-d", "delta"]]);
+  const item = { status: "Live", scheduledKickoff: "2026-11-14T01:00:00Z", summary: { homeScore: 21, awayScore: 14 }, participants: [{ schoolName: "Bravo", score: 14 }, { schoolName: "Alpha", score: 21 }] };
+  const listed = new Map([["alpha-a", [item]], ["delta-d", []]]);
+  const lines = dueReport(due, { date: "2026-11-13", theirs, ours, listed });
+  assert.equal(lines.length, 3);
+  assert.match(lines[0], /^Bravo at Alpha: asked alpha-a, 1 listed, 1 tonight: Live \[Bravo v Alpha\]; matched (yes|no)$/);
+  assert.equal(lines[1], "Echo at Delta: asked delta-d, 0 listed, 0 tonight; matched no");
+  assert.equal(lines[2], "Hotel at Golf: no mapped team");
+  assert.ok(!lines.join("\n").match(/21|14/));
 });
 
 test("merging the two sources: on the same score, the row that says finished wins, then the one with a period", () => {
