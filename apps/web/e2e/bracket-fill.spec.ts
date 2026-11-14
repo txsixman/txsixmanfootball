@@ -31,7 +31,7 @@ async function builtRows() {
   return brackets.flatMap((b) =>
     b.rounds.flatMap((r) =>
       r.built.map((g) => ({
-        bracket: b, round: r, text: g.sides.map(sideText).join(" vs "), projected: g.projection && projectionText(g.projection),
+        bracket: b, round: r, text: g.sides.map(sideText).join(" vs "), sides: g.sides.map(sideText), projected: g.projection && projectionText(g.projection),
         teams: g.sides.flatMap((s) => ("team" in s ? [programFor(alignments, s.team, b.league)?.slug].filter(Boolean) : [])) as string[],
       })),
     ),
@@ -46,7 +46,8 @@ test("each bracket page shows the games its bracket sets, with no date or site, 
     const shown = page.locator("li[data-built]");
     await expect(shown).toHaveCount(list.length);
     for (const r of list) {
-      const row = shown.filter({ hasText: r.text });
+      // Each side on its own line, as a listed game's two teams are.
+      const row = shown.filter({ hasText: r.sides[0] }).filter({ hasText: r.sides[1] });
       await expect(row).toHaveCount(1);
       await expect(row).toContainText("Next game · date and site not listed yet");
       if (r.projected) await expect(row.getByText(PROJECTED)).toHaveText(`Projected: ${r.projected}`);

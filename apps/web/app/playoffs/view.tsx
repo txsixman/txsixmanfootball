@@ -96,7 +96,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
                   </span>
                 </h3>
                 {r.games.length > 0 && <GameList games={r.games} league={league} alignments={alignments} identities={identities} today={today} showStatus={!past} />}
-                {r.built.length > 0 && <BuiltList games={r.built} league={league} alignments={alignments} />}
+                {r.built.length > 0 && <BuiltList games={r.built} league={league} alignments={alignments} identities={identities} />}
               </section>
             ))}
           </section>
