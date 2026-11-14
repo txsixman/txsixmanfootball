@@ -4,6 +4,7 @@ import { loadAlignments } from "@/lib/alignments";
 import { playoffsDescription } from "@/lib/descriptions";
 import { bracketHref, bracketLabel, LEAGUES, loadBrackets, playoffLeagues, playoffSeasons } from "@/lib/brackets";
 import { loadIdentities } from "@/lib/identity";
+import { playoffsIntro } from "@/lib/intros";
 import { centralClock } from "@/lib/playoff-status";
 import { TabNav } from "../tab-nav";
 import { PageHeader, SectionBar } from "../ui";
@@ -47,7 +48,12 @@ export async function PlayoffsView({ league, season }: { league: League; season?
 
   return (
     <section aria-labelledby="playoffs">
-      <PageHeader id="playoffs" eyebrow={`${year} season · ${brackets.length} ${brackets.length === 1 ? "bracket" : "brackets"}`} title="Playoffs" />
+      <PageHeader
+        id="playoffs"
+        eyebrow={`${year} season · ${brackets.length} ${brackets.length === 1 ? "bracket" : "brackets"}`}
+        title="Playoffs"
+        note={playoffsIntro({ league, season: year, brackets: brackets.map((b) => b.name), past, chances: brackets.some((b) => b.chances || b.regionChances?.length) })}
+      />
       {seasons.length > 1 && <TabNav label="Season" wrap tabs={seasonTabs} current={seasonTabs[seasons.indexOf(year)].href} />}
       <TabNav label="League" tabs={leagues.map((l) => ({ href: leagueHref(l, past ? year : undefined), label: l }))} current={leagueHref(league, past ? year : undefined)} />
       {!past && (
