@@ -36,7 +36,7 @@ export function kickoffState(game: { date: string; kickoff?: string }, now: Date
 }
 
 /** Where a game with no kickoff time may be under way: its game date's evening in Central, 5:00 PM to midnight. */
-export const EVENING_FROM_HOUR = 17;
+const EVENING_FROM_HOUR = 17;
 const centralHour = (now: Date) => Number(now.toLocaleString("en-US", { timeZone: "America/Chicago", hour: "numeric", hourCycle: "h23" }));
 
 /** True when any of these games (with no final) may be under way at `now`, so the page reads live scores: from kickoff to
