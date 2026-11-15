@@ -49,6 +49,24 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Where the keyboard is, on every page: a 3px ring in the theme's navy (the browser's own was 1px and thin gray on the
+   band). On the header and footer band it takes the links' white. Inside the header's sideways-scrolling section strip it
+   is drawn inside the link, because the strip clips anything outside it (a ring there showed only its two sides). In the
+   base layer, so an element's own outline class (`outline-none` on <main>, the skip link's) still wins. */
+@layer base {
+  :focus-visible {
+    outline: 3px solid var(--color-navy);
+    outline-offset: 2px;
+  }
+  header :focus-visible,
+  footer :focus-visible {
+    outline-color: currentColor;
+  }
+  header nav :focus-visible {
+    outline-offset: -3px;
+  }
+}
+
 /* Shared type and control styles, so every page speaks in the same voice. Page titles are h1, section titles h2,
    sub-sections h3 (a rule under them). A link or button that stands alone is at least 44px tall (tests enforce it). */
 @utility kicker {
@@ -64,7 +82,7 @@ body {
   @apply border-b-2 border-navy pb-1 font-num text-[16px] font-bold uppercase tracking-wider text-navy;
 }
 @utility section-note {
-  @apply mt-2 text-[14px] text-muted;
+  @apply mt-2 max-w-prose text-[14px] text-muted;
 }
 @utility link-more {
   @apply inline-flex min-h-11 items-center text-[14px] font-semibold text-navy underline;

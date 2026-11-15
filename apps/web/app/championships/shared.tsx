@@ -43,7 +43,7 @@ export function Bracket({ id, title, finals, link, yearLinks = true }: { id: str
           <tr className="font-num text-[13px] uppercase tracking-wider text-muted">
             <th scope="col" className="w-16 py-1.5 pl-3 text-left font-semibold">Season</th>
             <th scope="col" className="py-1.5 text-left font-semibold">Champion and runner-up</th>
-            <th scope="col" className="w-24 py-1.5 pr-3 text-right font-semibold">Score</th>
+            <th scope="col" className="w-16 py-1.5 pr-3 text-right font-semibold sm:w-24">Score</th>
           </tr>
         </thead>
         <tbody>
@@ -67,6 +67,9 @@ export function Bracket({ id, title, finals, link, yearLinks = true }: { id: str
                   <span aria-hidden="true" className="w-12 shrink-0 pr-2 text-right text-[13px]">over</span>
                   <Team name={f.runnerUp} link={link} crest={false} />
                 </span>
+                {/* On a phone a long note ("Mercy Rule-9:45 3rd Quarter") ran three lines down the narrow score column: it reads
+                    here, under the teams, instead. One of the two copies is always display:none, so it is read once. */}
+                {f.championScore != null && f.scoreNote && <span className="block pb-2 text-[13px] leading-tight text-muted sm:hidden">{f.scoreNote}</span>}
               </td>
               <td className="py-2 pr-3 text-right font-num text-[17px] tabular-nums text-ink">
                 {f.championScore == null ? (
@@ -74,7 +77,7 @@ export function Bracket({ id, title, finals, link, yearLinks = true }: { id: str
                 ) : (
                   <>
                     {f.championScore}-{f.runnerUpScore}
-                    {f.scoreNote && <span className="block font-sans text-[13px] leading-tight text-muted">{f.scoreNote}</span>}
+                    {f.scoreNote && <span className="hidden font-sans text-[13px] leading-tight text-muted sm:block">{f.scoreNote}</span>}
                   </>
                 )}
               </td>
