@@ -73,6 +73,12 @@ export const districtId = (key: string) => `d-${key.replace(/[^a-z0-9]+/gi, "-")
 export const standingsHref = (d: Pick<DistrictStandings, "league" | "division" | "key">) =>
   `${d.league !== "UIL" ? `/standings/${d.league.toLowerCase()}` : d.division === "II" ? "/standings/division-2" : "/standings"}#${districtId(d.key)}`;
 
+/** A district's own page: "UIL Division I|8" → /standings/district/uil-division-i-district-8. */
+export const districtHref = (d: Pick<DistrictStandings, "key">) => {
+  const [heading, district] = d.key.split("|");
+  return `/standings/district/${slugify(`${heading} district ${district}`)}`;
+};
+
 export const ordinal = (n: number) => `${n}${["th", "st", "nd", "rd"][n % 100 >= 11 && n % 100 <= 13 ? 0 : Math.min(n % 10, 4) % 4] ?? "th"}`;
 
 /** "4-1" or "4-1-1". */

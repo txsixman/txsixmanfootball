@@ -21,7 +21,7 @@ import { whyItMoved } from "@/lib/why-moved";
 import { seasonHref } from "../../rankings/view";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { tonightsDate } from "@/lib/tonight";
-import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
+import { districtHref, loadStandings, ordinal, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
 import { playedCounts } from "@/lib/season-results";
 import { shownBefore } from "@/lib/pregame";
@@ -388,7 +388,7 @@ export default async function ProgramPage({ params }: Props) {
                 </Stat>
                 {standing && (
                   <Stat label="District" sub={`${wl(standing.rows[place - 1].district)} in district`}>
-                    <Link href={standingsHref(standing)} className="inline-flex min-h-11 items-center underline underline-offset-2">
+                    <Link href={districtHref(standing)} className="inline-flex min-h-11 items-center underline underline-offset-2">
                       {ordinal(place)} of {standing.rows.length}
                     </Link>
                   </Stat>
