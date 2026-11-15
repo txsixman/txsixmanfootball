@@ -22,6 +22,7 @@ import { generateStaticParams as rankingWeeks } from "../rankings/week/[week]/pa
 import { generateStaticParams as recordOrgs } from "../records/[org]/page";
 import { generateStaticParams as results } from "../results/[[...path]]/page";
 import { generateStaticParams as games } from "../scores/[id]/page";
+import { generateStaticParams as seasonHubs } from "../seasons/[year]/page";
 import { generateStaticParams as series } from "../series/[first]/[second]/page";
 import { generateStaticParams as standings } from "../standings/[group]/page";
 import { generateStaticParams as weeks } from "../weeks/[[...path]]/page";
@@ -34,7 +35,7 @@ import { generateStaticParams as weeks } from "../weeks/[[...path]]/page";
 export const KINDS = ["sections", "programs", "scores", "series", "results", "weeks"] as const;
 type Kind = (typeof KINDS)[number];
 
-const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "playoffs/this-round", "results", "rankings", "rankings/how", "about/ratings", "standings", "programs", "records", "championships", "matchup"];
+const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "playoffs/this-round", "results", "rankings", "rankings/how", "about/ratings", "standings", "programs", "records", "championships", "matchup", "seasons"];
 const SAMPLE_GAMES = new Set(demoGames.map((g) => g.id));
 
 const PATHS: Record<Kind, () => Promise<string[]>> = {
@@ -51,6 +52,7 @@ const PATHS: Record<Kind, () => Promise<string[]>> = {
     ...(await playoffSeasonLeagues()).map((p) => `playoffs/season/${p.season}/${p.league}`),
     ...(await brackets()).map((p) => `playoffs/bracket/${p.slug}`),
     ...(await recordOrgs()).map((p) => `records/${p.org}`),
+    ...(await seasonHubs()).map((p) => `seasons/${p.year}`),
   ],
   programs: async () => [
     ...(await programs()).map((p) => `programs/${p.slug}`),
