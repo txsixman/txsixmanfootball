@@ -141,3 +141,12 @@ test("a program's season: record and rank, the round it reached, what the page l
   assert.doesNotMatch(long, /…/);
   assert.doesNotMatch(d.programSeasonDescription(facts), /\b(won|beat|winner)\b|\d\s*[-–]\s*\d\d/);
 });
+
+test("a State Championship year names each game's schools in alphabetical order, never a winner, and fits long names", () => {
+  const two = clean(d.championshipYearDescription({ year: 2019, games: [{ division: "I", teams: ["Zeta", "Alpha"] }, { division: "II", teams: ["Mid", "Beta"] }] }));
+  assert.equal(two, "The 2019 UIL six-man State Championship games: Division I, Alpha and Zeta; Division II, Beta and Mid. The champion, runner-up and score of each.");
+  assert.equal(clean(d.championshipYearDescription({ year: 1987, games: [{ division: "", teams: ["Lohn", "Wellman"] }] })), "The 1987 UIL six-man State Championship game: Lohn and Wellman. The champion, runner-up and score, with each school's page.");
+  const long = clean(d.championshipYearDescription({ year: 2019, games: [{ division: "I", teams: [LONG, LONG] }, { division: "II", teams: [LONG, LONG] }] }));
+  assert.match(long, /^The 2019 UIL six-man State Championship games in Division I and Division II\./);
+  assert.doesNotMatch(two, /\bfinals?\b/i);
+});
