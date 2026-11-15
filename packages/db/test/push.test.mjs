@@ -62,6 +62,14 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "create_thread", anon: false }, // migration 0015: signed-in fans only
     { proname: "delete_my_account", anon: false },
     { proname: "edit_post", anon: false },
+    // migration 0022: email alerts. Signed-in fans (email_my_settings, email_set_optins), anon only where Supabase has the roles (email_unsubscribe), the email_sender role (the rest)
+    { proname: "email_adult", anon: false },
+    { proname: "email_mark_sent", anon: false },
+    { proname: "email_my_settings", anon: false },
+    { proname: "email_pending_game_alerts", anon: false },
+    { proname: "email_record_game_events", anon: false },
+    { proname: "email_set_optins", anon: false },
+    { proname: "email_unsubscribe", anon: false },
     { proname: "fan_actor", anon: false },
     { proname: "fan_post_counts", anon: false },
     { proname: "fan_rate_check", anon: false },

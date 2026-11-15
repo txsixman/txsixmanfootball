@@ -49,6 +49,8 @@ jobs:
         run: npm ci --prefix tools/push && npm --prefix tools/push test
       - name: IndexNow ping (which sitemap pages to send)
         run: npm --prefix tools/indexnow test
+      - name: Email alert sender (events, message, headers, Resend outcomes)
+        run: node --test tools/email/*.test.mjs
       - name: School logos, colors and mascots (sources, colors, files)
         run: npm --prefix tools/school-identity test
       - name: History readers (UIL state finals)

@@ -219,6 +219,8 @@ const SIGNED_IN_FUNCTIONS = [
   "public.create_thread(text, text, text)", "public.reply_to_thread(uuid, text)",
   // Push alerts tied to the account (migration 0023, ADR 0054): link and unlink one browser's subscription to auth.uid().
   "public.link_push_subscription(text, text, text)", "public.unlink_push_subscription(text)",
+  // Email alerts (migration 0022, ADR 0053): own opt-ins only. The sender's functions are not here: only the role email_sender runs them.
+  "public.email_my_settings()", "public.email_set_optins(text, text[])",
 ];
 
 // Public reads, open to anon and authenticated alike: they return display names, text and counts, never a user id,
@@ -227,6 +229,8 @@ const ANON_FUNCTIONS = [
   "public.list_comments(text, integer, integer)", "public.fan_score_status(text)", "public.forum_boards()",
   "public.forum_threads(text, integer, integer)", "public.forum_thread_info(uuid)", "public.forum_posts(uuid, integer, integer)",
   "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)", "public.live_scores()", "public.results_read_at()",
+  // One-click email unsubscribe (migration 0022): no session; the random token in the emailed link is the proof.
+  "public.email_unsubscribe(uuid)",
 ];
 
 /** Schemas the project owns and the API could reach. */
