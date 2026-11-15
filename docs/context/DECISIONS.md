@@ -63,6 +63,7 @@
 | [0061](../adr/0061-owner-hide-mute-and-reported-list.md) | The owner sees every reported post (most reports first, never who reported) and can hide a post or mute an account for 1 to 90 days by hand, each written to the audit log with his reason; reports still hide posts on their own | Proposed Nov 15, 2026 |
 | [0062](../adr/0062-fan-score-reports-in-the-corrections-list.md) | Fan score reports are listed read-only on the owner's corrections page, marked where they differ from the final; they never change a game, and a fix is a cited correction as before | Proposed Nov 15, 2026 |
 | [0063](../adr/0063-taiao-kickoffs-and-sites-from-its-bracket.md) | TAIAO bracket games take their kickoff and site from TAIAO's own bracket page (read as a visitor, every morning read), name and city only, never an address; never overwriting a kept value (ADR 0041) | Proposed Nov 15, 2026 |
+| [0064](../adr/0064-where-game-sites-come-from.md) | Where a game's site comes from, league by league: the second source for UIL brackets, TAIAO's own bracket for TAIAO, TAPPS and TCAF bracket sites by hand only (their data is not allowed), no home-school guess for bracket games, and a regular-season game names the home team's own field when one is clear for that season | Proposed Nov 15, 2026 |
 
 Not in an ADR:
 - Interviews are cut from the plan (the owner, Nov 10, 2026; see `docs/plan/v1.2-notes.md`).

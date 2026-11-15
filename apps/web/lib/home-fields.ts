@@ -4,7 +4,7 @@ import { HOME_FIELD_COLUMNS, HomeFieldRow, parseCsv } from "./data-schemas.ts";
 import { memo } from "./memo.ts";
 import { slugify } from "./slug.ts";
 
-// Each program's own field (ADR 0061): data/seed/schools/home-fields.csv, by program slug, from where it played its regular-season
+// Each program's own field (ADR 0064): data/seed/schools/home-fields.csv, by program slug, from where it played its regular-season
 // home games. Read at build time; a missing file means none is known. No page names where a field came from (ADR 0010).
 
 /** Each program's field ("Jaybird Stadium, Jayton") and the season it was seen, by program slug. */

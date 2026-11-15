@@ -1,4 +1,4 @@
-// Home fields (lib/home-fields.ts, ADR 0061): a regular-season game names the home team's own field when it is known for
+// Home fields (lib/home-fields.ts, ADR 0064): a regular-season game names the home team's own field when it is known for
 // that season and the game is not marked neutral. Invented teams and places only.
 //   node --test apps/web/scripts/
 import assert from "node:assert/strict";

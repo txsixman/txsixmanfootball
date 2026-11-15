@@ -684,7 +684,7 @@ test("games on a Central date: each side's name, score and forfeit flag, never t
   assert.ok(!gamesOnLines(items, "all").join("\n").match(/-10|winner/i));
 });
 
-// Venues (ADR 0061): invented teams and places only.
+// Venues (ADR 0064): invented teams and places only.
 test("venue rows: one a game with our program at home, its phase, and the venue's name and city, never its address", async () => {
   const { venueRows, venueCounts, VENUE_COLUMNS, phaseOf } = await import("./davecampbells.mjs");
   const ours = new Map([["wren-wrens", "wren"], ["lark-owls", "lark"]]);

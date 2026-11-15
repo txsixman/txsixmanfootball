@@ -63,7 +63,7 @@ export const DetailRow = z.object({
   site_city: z.union([z.literal(""), z.string().max(60).regex(SITE_WORDS, "plain words: letters, digits, spaces and . ' & ( ) / -")]),
 }).refine((r) => r.site_name || !r.site_city, "a site city with no site name");
 
-/** data/seed/schools/home-fields.csv (ADR 0061): each program's own field, by its slug, from where it played its regular-season home
+/** data/seed/schools/home-fields.csv (ADR 0064): each program's own field, by its slug, from where it played its regular-season home
  * games (tools/league-watch/home-fields.mjs), name and city in plain words; the season it was seen. No source column. */
 export const HOME_FIELD_COLUMNS = ["program", "site_name", "site_city", "season"];
 export const HomeFieldRow = z.object({

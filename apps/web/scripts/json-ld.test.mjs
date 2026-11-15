@@ -64,7 +64,7 @@ test("a game with a kickoff uses the full UTC time, and a bracket game's site is
   assert.equal(e.description, undefined);
 });
 
-test("a known home field (ADR 0061) is the place by name, and home and away are still named", () => {
+test("a known home field (ADR 0064) is the place by name, and home and away are still named", () => {
   const e = valid(ld.gameJsonLd(game({ venue: "Jaybird Stadium, Jayton (home)" }), { url }));
   assert.deepEqual(e.location, { "@type": "Place", name: "Jaybird Stadium, Jayton" });
   assert.equal(e.homeTeam.name, "Jayton");

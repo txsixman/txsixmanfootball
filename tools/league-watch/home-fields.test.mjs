@@ -30,3 +30,8 @@ test("a new season replaces a program's field; programs it does not give stay", 
   assert.equal(out, `${HOME_FIELD_COLUMNS.join(",")}\nlark,Owl Field,Wrenville,2026\nwren,Wren Field,Wrenville,2025\n`);
   assert.throws(() => mergeHomeFields("a,b\n", []), /expected program/);
 });
+
+test("a rerun for the same season keeps a kept row, so a hand fix stays", () => {
+  const kept = `${HOME_FIELD_COLUMNS.join(",")}\nlark,Fixed Field,Wrenville,2026\n`;
+  assert.equal(mergeHomeFields(kept, [{ program: "lark", site_name: "Owl Field", site_city: "Wrenville", season: "2026" }]), kept);
+});

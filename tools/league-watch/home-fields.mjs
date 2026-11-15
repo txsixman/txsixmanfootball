@@ -1,4 +1,4 @@
-// Home fields (ADR 0061): each program's own field, from where it played its regular-season home games. Run by hand after
+// Home fields (ADR 0064): each program's own field, from where it played its regular-season home games. Run by hand after
 // a venues read (davecampbells.mjs --venues <year>, private):
 //   node tools/league-watch/home-fields.mjs <year> --private <private data repo> [--out data/seed/schools/home-fields.csv]
 // reads <private>/davecampbells-<year>/venues.csv and writes data/seed/schools/home-fields.csv: program (its slug), the field's name
@@ -38,7 +38,8 @@ export function mergeHomeFields(text, fresh) {
   const kept = text.trim() ? parseCsv(text, "home-fields.csv") : { header: HOME_FIELD_COLUMNS.join(","), rows: [] };
   if (kept.header !== HOME_FIELD_COLUMNS.join(",")) throw new Error(`home-fields.csv: expected ${HOME_FIELD_COLUMNS.join(",")}`);
   const out = new Map(kept.rows.map((r) => [r.program, r]));
-  for (const r of fresh) out.set(r.program, r);
+  // A kept row (a hand fix included) stays for its season; only a newer season's field replaces it.
+  for (const r of fresh) if (!out.has(r.program) || Number(r.season) > Number(out.get(r.program).season)) out.set(r.program, r);
   const rows = [...out.values()].sort((a, b) => a.program.localeCompare(b.program));
   return [HOME_FIELD_COLUMNS.join(","), ...rows.map((r) => HOME_FIELD_COLUMNS.map((c) => r[c]).join(","))].join("\n") + "\n";
 }
