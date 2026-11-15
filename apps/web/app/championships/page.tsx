@@ -52,7 +52,7 @@ function Bracket({ id, title, finals, link }: { id: string; title: string; final
       <SectionBar id={id} title={title} aside={span(finals)} className="" />
       <table className="w-full border-collapse text-[15px]">
         <caption className="sr-only">
-          {title} state championship games, newest first
+          {title} State Championship games, newest first
         </caption>
         <thead>
           <tr className="font-num text-[13px] uppercase tracking-wider text-muted">
@@ -123,7 +123,7 @@ export default async function ChampionshipsPage() {
         size="md"
         eyebrow={first === undefined ? "UIL six-man" : `UIL six-man · ${first} to ${latest}`}
         title="State Championships"
-        note={`${finals.length} state championship games. Division I and Division II since 2006; one state champion a year before that.`}
+        note={`${finals.length} State Championship games. Division I and Division II since 2006; one state champion a year before that.`}
       />
 
       <nav aria-label="Jump to" className="mt-4 flex flex-wrap gap-2">
@@ -157,7 +157,7 @@ export default async function ChampionshipsPage() {
 
       {noFinal.length > 0 && first !== undefined && (
         <p className="mt-6 max-w-prose text-[14px] text-muted">
-          Before {first}, UIL six-man playoffs had no state championship game:{" "}
+          Before {first}, UIL six-man playoffs had no State Championship game:{" "}
           {noFinalSpans(noFinal)
             .map((s) => `they ended at ${s.playedTo} ${s.from === s.to ? `in ${s.from}` : `from ${s.from} to ${s.to}`}`)
             .join(", and ")}

@@ -1,13 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
-import { LIVE_SCORES_URL } from "./live-route";
+import { LIVE_SCORES_URL, noLiveScores } from "./live-route";
 
 // The live score in place on Tonight and on the home page's My teams (ADR 0039): a game under way sits under In progress
 // with its live line ("Unconfirmed", no leader); one the live read says is over (ADR 0043) sits under Final with its score
 // and when it was read. My teams' next game shows the score from the school's side. Each keeps its projection beside the
 // outcome (ADR 0044). Every request to Supabase is answered
-// from a fixture; the game is one of tonight's, from the loaders, so the test follows the data.
-test.use({ serviceWorkers: "block" });
+// from a fixture, never the real project (a real game under way would add its "Now: ..." line to a projection): "none"
+// from noLiveScores, replaced by a fixed row in the tests that serve one. The game is one of tonight's, from the
+// loaders, so the test follows the data.
+noLiveScores(test);
 
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" };
 const AS_OF = String.raw`as of \d{1,2}:\d{2} (AM|PM) CT`;
@@ -113,7 +115,12 @@ test("Tonight: each game with a projection shows it beside its outcome, in the f
   const night = await loadNight().finally(() => process.chdir(was));
   const games = [...new Map(night.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games)).filter((g) => g.projected).map((g) => [g.id, g])).values()];
   if (!games.length) return test.skip(true, skipped("no game tonight has a projection"));
+  // Deterministic whatever is on tonight: no live read is served (noLiveScores above answers "none" and "no read"), and the
+  // page's clock stands an hour before the first kickoff, so no game is under way and no "Now: ..." joins a projection.
+  const kickoffs = games.map((g) => g.kickoff).filter((k): k is string => Boolean(k)).sort();
+  if (kickoffs.length) await page.clock.setFixedTime(new Date(Date.parse(kickoffs[0]) - 3600_000));
   await page.goto("/scores/tonight");
+  await expect(page.locator("[data-live-score]")).toHaveCount(0);
   for (const g of games) {
     const state = g.state === "later" ? "scheduled" : "final";
     const want = projectedLine(g.projected, { home: g.home, away: g.away, homeScore: g.homeScore, awayScore: g.awayScore, state, forfeit: g.state === "forfeit", disputed: g.unconfirmed });

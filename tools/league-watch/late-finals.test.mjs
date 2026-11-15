@@ -10,10 +10,18 @@ const csv = (rows) => [HEADER, ...rows.map((r) => HEADER.split(",").map((c) => r
 // 7:00 AM Central on Saturday Nov 14, 2026 (CST, UTC-6): Friday's night is over, Saturday's is not.
 const SAT_MORNING = new Date("2026-11-14T13:00:00Z");
 
-test("a game is late once its Central game night is over: from 6:00 AM the next morning, never a postponed one", () => {
+test("a game is late once its Central game night is over: from 3:00 AM the next morning, never a postponed one", () => {
   const rows = [row("2026-11-13", "Heron", "Lark"), row("2026-11-14", "Robin", "Crane"), row("2026-11-12", "Finch", "Jay", "40", "6"), row("2026-11-13", "Wren", "Owl", "", "", { end_reason: "postponed" })];
   assert.deepEqual(lateRows(rows, SAT_MORNING).map((r) => r.home), ["Heron"]);
-  assert.deepEqual(lateRows(rows, new Date("2026-11-14T11:59:00Z")).map((r) => r.home), [], "5:59 AM Central: Friday's night is not over");
+  assert.deepEqual(lateRows(rows, new Date("2026-11-14T08:59:00Z")).map((r) => r.home), [], "2:59 AM Central: Friday's night is not over");
+  assert.deepEqual(lateRows(rows, new Date("2026-11-14T09:00:00Z")).map((r) => r.home), ["Heron"], "3:00 AM Central: it is");
+});
+
+test("the morning read checks the night before: 11:23 UTC is 5:23 AM Central in November, 6:23 AM in October", () => {
+  const sat = [row("2026-11-14", "Robin", "Crane")];
+  assert.deepEqual(lateRows(sat, new Date("2026-11-15T11:23:00Z")).map((r) => r.home), ["Robin"], "Sunday's read checks Saturday");
+  assert.deepEqual(lateRows([row("2026-10-16", "Robin", "Crane")], new Date("2026-10-17T11:23:00Z")).map((r) => r.home), ["Robin"]);
+  assert.deepEqual(lateRows(sat, new Date("2026-11-15T04:30:00Z")).map((r) => r.home), [], "10:30 PM Saturday: still tonight");
 });
 
 const bracket = [

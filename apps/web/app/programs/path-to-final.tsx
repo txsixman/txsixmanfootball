@@ -53,7 +53,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
   return (
     <section aria-labelledby="path" className="mt-4">
       <h2 id="path" className="bg-navy py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white" style={{ boxShadow: `inset 8px 0 0 ${accent}` }}>
-        Path to the final
+        Path to the State Championship
       </h2>
       {paths.map(({ b, steps, next, ahead, state, region }) => (
         <div key={b.name}>

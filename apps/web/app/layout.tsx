@@ -12,7 +12,7 @@ import { SITE_NAME, SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
   title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
-  description: "Texas six-man football: scores, rankings, playoffs, standings and every state championship.",
+  description: "Texas six-man football: scores, rankings, playoffs, standings and every State Championship.",
   // Share cards and canonical links use the public address, whichever host served the page.
   metadataBase: new URL(SITE_URL),
 };

@@ -1,5 +1,5 @@
 // The series pages' rules (lib/series.ts): which pairs get a page, the address, the record from the first-named side and the
-// state finals between a pair. Invented schools only.   node --test apps/web/scripts/
+// State Championships between a pair. Invented schools only.   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { MIN_MEETINGS, finalsBetween, seriesHref, seriesPairs, seriesRecord } from "../lib/series.ts";

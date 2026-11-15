@@ -56,7 +56,7 @@ test("a game names its teams, date and round, never a score or a winner", () => 
   );
   assert.match(d.gameDescription({ ...base, playoff: "TAIAO D1 · Quarterfinal" }), /2025 TAIAO Division 1 quarterfinal playoff game\./);
   assert.match(d.gameDescription({ ...base, playoff: "TAPPS Division II · Semifinal" }), /2025 TAPPS Division II semifinal playoff game\./);
-  assert.match(d.gameDescription({ ...base, playoff: "TCAF · State final" }), /2025 TCAF state final playoff game\./);
+  assert.match(d.gameDescription({ ...base, playoff: "TCAF · State Championship" }), /2025 TCAF State Championship playoff game\./);
   assert.doesNotMatch(d.gameDescription({ ...base, date: undefined }), /undefined|, :/);
   assert.match(clean(d.gameDescription({ away: "Cedar Gap", home: "Salt Fork", season: 2026, scheduled: false, sample: true })), /invented schools: Cedar Gap vs Salt Fork/);
 });
@@ -99,7 +99,7 @@ test("an empty week or season reads plainly", () => {
   assert.equal(d.resultsDescription({ org: "TAPPS", season: 2026, week: 13, games: 0, scope: "latest" }), "Latest TAPPS six-man results: 2026 week 13, no games.");
   assert.equal(d.resultsDescription({ org: "UIL", season: 2026, week: 3, games: 1, scope: "week" }).slice(0, 39), "UIL 2026 week 3 six-man results: 1 game");
   assert.equal(d.recordsDescription({ org: "Independent", first: 2026, latest: 2026 }).slice(0, 44), "Independent six-man records for 2026: most p");
-  assert.equal(d.championshipsDescription({ games: 0 }), "Every UIL six-man state championship game. Division I and Division II since 2006, and the programs with the most state titles.");
+  assert.equal(d.championshipsDescription({ games: 0 }), "Every UIL six-man State Championship game. Division I and Division II since 2006, and the programs with the most state titles.");
 });
 
 test("a series: meetings since 2021, what the page lists, no score and no winner, and it fits with long names", () => {
@@ -112,10 +112,10 @@ test("a series: meetings since 2021, what the page lists, no score and no winner
 });
 
 test("a program's season: record and rank, the round it reached, what the page lists; no score and no winner; it fits with a long name", () => {
-  const facts = { name: "Jayton", season: 2024, games: 15, record: "13-2", rank: { place: 2, org: "UIL" }, playoff: "the state final" };
+  const facts = { name: "Jayton", season: 2024, games: 15, record: "13-2", rank: { place: 2, org: "UIL" }, playoff: "the State Championship" };
   assert.equal(
     clean(d.programSeasonDescription(facts)),
-    "Jayton 2024 six-man football: 13-2, 2nd in UIL. Playoffs: reached the state final. Every game, with its date, opponent and a projected margin.",
+    "Jayton 2024 six-man football: 13-2, 2nd in UIL. Playoffs: reached the State Championship. Every game, with its date, opponent and a projected margin.",
   );
   assert.equal(clean(d.programSeasonDescription({ ...facts, rank: undefined, playoff: undefined })), "Jayton 2024 six-man football: 13-2. Every game, with its date, opponent and a projected margin.");
   assert.equal(clean(d.programSeasonDescription({ name: "Dell City", season: 2022, games: 1 })), "Dell City 2022 six-man football: 1 game. Every game, with its date, opponent and a projected margin.");

@@ -196,7 +196,7 @@ export const ROUNDS = ["round-1", "bi-district", "area", "quarterfinal", "region
 /** "the regional round": how far a team went, as a phrase. Says which round it played, never whether it won (ADR 0004). */
 export function roundPhrase(round: string, league: string): string {
   const state = league === "UIL" ? "state " : "";
-  if (round === "final" || round === "state") return `the ${state}final`;
+  if (round === "final" || round === "state") return "the State Championship";
   if (round === "semifinal") return `the ${state}semifinal`;
   if (round === "round-1") return "the first round";
   if (round === "quarterfinal") return "the quarterfinal";

@@ -47,10 +47,13 @@ export async function playoffSeasons(): Promise<number[]> {
   return withGames.filter((s) => s !== undefined);
 }
 
+/** The last round of every league's bracket, as the site words it. */
+const STATE_CHAMPIONSHIP = "State Championship";
+
 export function roundLabel(round: string, league: string): string {
-  if (round === "state" || (round === "final" && league === "UIL")) return "State final";
+  if (round === "state" || round === "final") return STATE_CHAMPIONSHIP; // every league's last round (UIL "state", the others "final")
   if (round === "round-1") return "First round";
-  return round[0].toUpperCase() + round.slice(1); // Bi-district, Area, Regional, Quarterfinal, Semifinal, Final
+  return round[0].toUpperCase() + round.slice(1); // Bi-district, Area, Regional, Quarterfinal, Semifinal
 }
 
 /**

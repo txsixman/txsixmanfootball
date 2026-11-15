@@ -1,8 +1,8 @@
 // Late finals and missing finals (ADR 0046). Run by the Results watch after its morning read (and on a dispatch that is
 // not a game-day read), before the commit step:
 //   node tools/league-watch/late-finals.mjs <store dir: private/maxpreps-<season>> [--season <year>] [--second] [--missing <file>]
-// 1. A bracket game whose Central game night is over (from 6:00 AM Central the next morning, 12 hours past a 6:00 PM
-//    night; maxpreps.mjs gameNight) and that MaxPreps has still not scored takes its final from TAIAO's own bracket
+// 1. A bracket game whose Central game night is over (from 3:00 AM Central the next morning, nightOver; ADR 0050: the
+//    morning read starts at 5:23 AM Central in November, before maxpreps.mjs gameNight's 6:00 AM) and that MaxPreps has still not scored takes its final from TAIAO's own bracket
 //    (taiao.mjs readBrackets, for a TAIAO game) or the second source (davecampbells.mjs, with --second, for a game with a
 //    mapped team). Both: they must agree, else nothing is filled. Never a forfeit (ADR 0034): a game whose bracket text
 //    says forfeit, or whose score is 1-0 or 2-0, waits for MaxPreps or a hand capture; so does a 0-0. TAIAO's date must be
@@ -18,7 +18,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient, finalOf, footballSeasons, liveAndUpcoming, matchGames, ORIGIN, raise, teamId, teamMaps } from "./davecampbells.mjs";
-import { gameNight, slugify } from "./maxpreps.mjs";
+import { centralDate, slugify } from "./maxpreps.mjs";
 import { mergeStored, MOVES_FILE, movesCsv, parseCsv, PENDING_FILE, pendingCsv, readPending, rowKey } from "./store.mjs";
 import { PAGE as TAIAO_PAGE, readBrackets } from "./taiao.mjs";
 
@@ -29,8 +29,12 @@ export const NOTE = { taiao: "late final from the league bracket (ADR 0046)", se
 const scored = (r) => r.home_score !== "" && r.away_score !== "";
 const stopped = (r) => /postpon|cancel/i.test(r.end_reason ?? "");
 
+/** The last game night that is over at `now`'s Central date, from 3:00 AM Central (ADR 0050). Not gameNight's 6:00 AM:
+ * the morning read (11:23 UTC) is 5:23 AM Central from November to March, and it is the only run that checks. */
+export const nightOver = (now = new Date()) => centralDate(new Date(now.getTime() - 3 * 3600_000));
+
 /** Bracket rows with no score whose game night is over at `now` (a postponed or cancelled one is not owed). */
-export const lateRows = (rows, now) => rows.filter((r) => !scored(r) && !stopped(r) && r.game_date < gameNight(now));
+export const lateRows = (rows, now) => rows.filter((r) => !scored(r) && !stopped(r) && r.game_date < nightOver(now));
 
 /** A score that may be a forfeit's recorded 1-0 or 2-0, or a 0-0 placeholder: never filled from these sources. */
 const forfeitLike = (a, b) => (a === 0 && b === 0) || (Math.min(a, b) === 0 && [1, 2].includes(Math.max(a, b)));

@@ -2,10 +2,14 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { noLiveScores } from "./live-route";
 import { skipReason, upcoming } from "./upcoming";
 
 // "My teams" on the home page: the programs this browser follows (lib/push.ts keeps the list in localStorage under
 // "followed-programs"), each with its record, last result and next game, read from per-program files built with the site.
+
+// No live-score request reaches the network (e2e/live-route.ts): a followed game under way would add its live line.
+noLiveScores(test, false);
 
 const SHOTS = path.join(__dirname, ".results", "shots");
 const follow = (page: Page, slugs: string[]) =>

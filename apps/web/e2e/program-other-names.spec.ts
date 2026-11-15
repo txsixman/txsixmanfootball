@@ -22,12 +22,12 @@ test("otherNames: mergers with their year and finals, UIL spellings with the yea
   const aliases = { "Gail Borden County": "Borden County", Mozella: "Mozelle" };
   const finals = [final(1972, "O'Brien", "Jarrell"), final(1983, "Roscoe Highland", "Mozelle"), final(1997, "Borden County", "Valera Panther Creek"), final(2008, "Borden County", "Woodson")];
   expect(otherNames("knox-city", lineage, aliases)).toEqual([{ name: "O'Brien", note: "merged into this program in 1976" }]);
-  expect(otherNames("knox-city", lineage, aliases, { finals })).toEqual([{ name: "O'Brien", note: "merged into this program in 1976, state finals 1972" }]);
-  expect(otherNames("borden-county", lineage, aliases, { finals })).toEqual([{ name: "Gail Borden County", note: "in state final records between 1997 and 2008" }]);
-  expect(otherNames("borden-county", lineage, aliases)).toEqual([{ name: "Gail Borden County", note: "in state finals" }]);
+  expect(otherNames("knox-city", lineage, aliases, { finals })).toEqual([{ name: "O'Brien", note: "merged into this program in 1976, State Championships 1972" }]);
+  expect(otherNames("borden-county", lineage, aliases, { finals })).toEqual([{ name: "Gail Borden County", note: "in State Championship records between 1997 and 2008" }]);
+  expect(otherNames("borden-county", lineage, aliases)).toEqual([{ name: "Gail Borden County", note: "in State Championships" }]);
   expect(otherNames("valera-panther-creek", lineage, aliases, { finals }).map((n) => `${n.name}: ${n.note}`)).toEqual([
-    "Mozelle: merged into this program in 1986, state finals 1983",
-    "Mozella: in state finals 1983",
+    "Mozelle: merged into this program in 1986, State Championships 1983",
+    "Mozella: in State Championships 1983",
   ]);
   expect(otherNames("jayton", lineage, aliases)).toEqual([]);
   expect(otherNames("knox-city", [{ ...lineage[0], event: "rename" }], {})).toEqual([{ name: "O'Brien", note: "rename in 1976" }]);
@@ -41,25 +41,25 @@ test("otherNames: a name links only when its program has a page, and a program t
   expect(otherNames("wellman", lineage, {})).toEqual([{ name: "Wellman-Union", note: "this school merged into it in 1997" }]);
 });
 
-test("a merged-in school shows on its program's page, with its merger year and the seasons it played a state final", async ({ page }) => {
+test("a merged-in school shows on its program's page, with its merger year and the seasons it played a State Championship", async ({ page }) => {
   await page.goto("/programs/knox-city");
   const section = page.getByRole("region", { name: "Other names" });
   await expect(section).toContainText("O'Brien");
-  await expect(section).toContainText("merged into this program in 1976, state finals 1972");
+  await expect(section).toContainText("merged into this program in 1976, State Championships 1972");
   await expect(section.getByRole("link")).toHaveCount(0);
   await shot(page, "program-knox-city.png");
   await page.goto("/programs/wellman-union");
-  await expect(page.getByRole("region", { name: "Other names" })).toContainText(/Wellman.*merged into this program in 1997, state finals 1987/s);
+  await expect(page.getByRole("region", { name: "Other names" })).toContainText(/Wellman.*merged into this program in 1997, State Championships 1987/s);
 });
 
 test("a UIL spelling shows on its program's page with the years of the school's finals", async ({ page }) => {
   await page.goto("/programs/borden-county");
   const section = page.getByRole("region", { name: "Other names" });
-  await expect(section).toContainText(/Gail Borden County.*in state final records between 1997 and 20\d\d/s);
+  await expect(section).toContainText(/Gail Borden County.*in State Championship records between 1997 and 20\d\d/s);
   await page.goto("/programs/valera-panther-creek");
   const valera = page.getByRole("region", { name: "Other names" });
-  await expect(valera).toContainText(/Mozelle.*merged into this program in 1986, state finals 1983/s);
-  await expect(valera).toContainText(/Mozella.*in state finals 1983/s);
+  await expect(valera).toContainText(/Mozelle.*merged into this program in 1986, State Championships 1983/s);
+  await expect(valera).toContainText(/Mozella.*in State Championships 1983/s);
   await expect(valera).not.toContainText("http");
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });
