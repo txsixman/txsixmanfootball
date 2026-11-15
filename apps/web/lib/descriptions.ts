@@ -28,8 +28,8 @@ function fit(first: string | string[], ...more: (string | string[])[]): string {
 
 export const homeDescription = (season: number, orgs: string[]) =>
   fit(`Texas six-man football for ${season}: scores, rankings, playoff brackets and standings for ${list(orgs)}.`, [
-    "Every program, a rating for every team, and the state championship archive.",
-    "Every program and every state final.",
+    "Every program, a rating for every team, and the State Championship archive.",
+    "Every program and every State Championship.",
   ]);
 
 export const scoresDescription = (season: number) =>
@@ -53,10 +53,21 @@ export const programsDescription = (programs: number, orgs: string[]) =>
 export const championshipsDescription = ({ first, latest, games }: { first?: number; latest?: number; games: number }) =>
   fit(
     first === undefined
-      ? "Every UIL six-man state championship game."
-      : `Every UIL six-man state championship game, ${first} to ${latest}: ${count(games, "final")}.`,
+      ? "Every UIL six-man State Championship game."
+      : `Every UIL six-man State Championship game, ${first} to ${latest}: ${count(games, "State Championship game")}.`,
     ["Division I and Division II since 2006, and the programs with the most state titles.", "The programs with the most state titles."],
   );
+
+/** One year's State Championship: each game's two schools in alphabetical order (no winner in a description), `games` one per division. */
+export const championshipYearDescription = ({ year, games }: { year: number; games: { division: string; teams: [string, string] }[] }) => {
+  const pairs = games.map((g) => ({ division: g.division, text: [...g.teams].sort((a, b) => a.localeCompare(b)).join(" and ") }));
+  const named = pairs.map((p) => (p.division ? `Division ${p.division}, ${p.text}` : p.text)).join("; ");
+  const many = games.length > 1;
+  return fit(
+    [`The ${year} UIL six-man State Championship ${many ? "games" : "game"}: ${named}.`, `The ${year} UIL six-man State Championship ${many ? "games in Division I and Division II" : "game"}.`],
+    [`The champion, runner-up and score${many ? " of each" : ""}, with each school's page.`, `The champion, runner-up and score${many ? " of each" : ""}.`],
+  );
+};
 
 export const aboutRatingsDescription = () =>
   fit("What a six-man rating means: points better than an average team, the ± and rank range, games rated, the 45-point rule and forfeits.", [
@@ -101,6 +112,15 @@ export function standingsDescription({ label, season, teams, groups, districtPla
       ]);
 }
 
+/** One district's page: its standings and every district game's score. `label` is "UIL Division I District 8". */
+export function districtStandingsDescription({ label, season, teams, games }: { label: string; season: number; teams: number; games: number }) {
+  return fit(`${label} six-man standings for ${season}: ${count(teams, "team")}, ${count(games, "district game")} played.`, [
+    "District records, overall records, point difference and every district game.",
+    "District and overall records and every district game.",
+    "District and overall records.",
+  ]);
+}
+
 /** One league's playoffs, the latest season or a past one: `brackets` is how many it had. */
 export function playoffsDescription({ league, season, brackets, past }: { league: string; season: number; brackets: number; past: boolean }) {
   const base = `${season} ${league} six-man playoffs: ${count(brackets, "bracket")}`;
@@ -129,6 +149,19 @@ export const weeksIndexDescription = ({ org, first, latest }: { org: string; fir
 
 export const weekReviewDescription = ({ org, season, week, games }: { org: string; season: number; week: number; games: number }) =>
   fit(`${org} six-man ${season} week ${week} in review: ${count(games, "game")}.`, REVIEW);
+
+/** One season's hub page: how many games were read, across which organizations, and what the page holds. `past`: the season is over. */
+export const seasonDescription = ({ season, games, orgs, past }: { season: number; games: number; orgs: string[]; past: boolean }) =>
+  fit(`${season} Texas six-man football season: ${games.toLocaleString("en-US")} ${games === 1 ? "game" : "games"} across ${list(orgs)}.`, [
+    past ? "State Championships, final rankings, team leaders and every week of results." : "Rankings so far, team leaders and every week of results.",
+    "Rankings, team leaders and every week of results.",
+  ]);
+
+export const seasonsIndexDescription = ({ first, latest }: { first?: number; latest?: number }) =>
+  fit(first === undefined ? "Every Texas six-man football season on this site." : `Every Texas six-man football season on this site, ${first} to ${latest}.`, [
+    "Each season's State Championships, rankings, team leaders and week-by-week results.",
+    "Each season's rankings, team leaders and results.",
+  ]);
 
 /** "#3 in Division II" (UIL six-man's own divisions), "#1 in TAPPS" or "Not ranked": the text `rankLabel` gives a program page, in words. */
 export function rankPhrase(text: string): string {
@@ -171,7 +204,7 @@ type ProgramSeasonFacts = {
   record?: string;
   /** Its place among its organization's teams: "UIL" with place 3; absent for a team with too few games to be ranked. */
   rank?: { place: number; org: string };
-  /** The last playoff round it played, as a phrase: "the state final". */
+  /** The last playoff round it played, as a phrase: "the State Championship". */
   playoff?: string;
 };
 
@@ -204,7 +237,7 @@ export function gameDescription({ away, home, date, season, playoff, scheduled, 
   if (sample) return fit(`A sample six-man game between invented schools: ${away} vs ${home}.`, "It shows how the scoreboard reads.");
   const [group, round] = (playoff ?? "").split(" · ");
   const kind = playoff
-    ? `${season} ${group.replace(/\bD(I+|\d+)\b/, "Division $1")}${round ? ` ${round.toLowerCase()}` : ""} playoff game`
+    ? `${season} ${group.replace(/\bD(I+|\d+)\b/, "Division $1")}${round ? ` ${round === "State Championship" ? round : round.toLowerCase()}` : ""} playoff game`
     : `${season} season game`;
   const teams = `${away} vs ${home}`;
   return fit(

@@ -43,7 +43,7 @@ export function ProjectionSection({ result, detail, outcome }: { result: SeasonR
       </p>
       {!result.forfeit && <p className="pt-1 text-[15px] leading-5 text-ink">{distance(result, p.favorite, p.margin)}</p>}
       <p className="pt-1 text-[13px] leading-4 text-muted">
-        From both teams&rsquo; ratings at the end of the week before, once each had played four games. A projection, not a result.
+        From both teams&rsquo; ratings at the end of the week before, once each had four rated games (forfeits never count). A projection, not a result.
       </p>
     </Section>
   );

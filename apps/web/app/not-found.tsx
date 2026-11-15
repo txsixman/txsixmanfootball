@@ -33,13 +33,13 @@ export default function NotFound() {
       <ul className="mt-2 flex flex-wrap gap-2">
         {PLACES.map((p) => (
           <li key={p.href}>
-            <Link href={p.href} prefetch={false} className="flex min-h-11 items-center border border-line px-4 text-[15px] font-semibold text-navy hover:bg-navy hover:text-white">
+            <Link href={p.href} prefetch={false} className="flex min-h-11 items-center border border-line px-4 text-[15px] font-semibold text-navy hover:bg-band hover:text-white">
               {p.label}
             </Link>
           </li>
         ))}
         <li>
-          <Link href="/" prefetch={false} className="flex min-h-11 items-center border border-line px-4 text-[15px] font-semibold text-navy hover:bg-navy hover:text-white">
+          <Link href="/" prefetch={false} className="flex min-h-11 items-center border border-line px-4 text-[15px] font-semibold text-navy hover:bg-band hover:text-white">
             Home
           </Link>
         </li>

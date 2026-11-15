@@ -8,7 +8,7 @@ test.use({ serviceWorkers: "block" });
 noLiveScores(test); // the game pages ask for live scores: none reach the network
 test.setTimeout(600_000); // the dev server compiles each route the first time it is asked
 
-const SITE_WIDE = "Texas six-man football: scores, rankings, playoffs, standings and every state championship.";
+const SITE_WIDE = "Texas six-man football: scores, rankings, playoffs, standings and every State Championship.";
 const BETTING = /\b(spreads?|odds|lines?|bets?|betting|underdogs?|favou?rites?|locks?)\b/i;
 const SOURCE = /maxpreps|hudl|calpreps|sixmanfootball|dave campbell/i;
 const WINNER = /\b(won|beat|defeated|winner|victory)\b/i;
@@ -57,6 +57,8 @@ test("every kind of page has its own short description, with no betting word, so
     ["rankings week organization", first(/^\/rankings\/week\/\d+\/tapps$/)],
     ["standings group", "/standings/tapps"],
     ["standings division", "/standings/division-2"],
+    ["standings district", first(/^\/standings\/district\/uil-division-i-district-\d+$/)],
+    ["standings district, TAPPS", first(/^\/standings\/district\/tapps-/)],
     ["playoff league", "/playoffs/tapps"],
     ["playoff season", "/playoffs/season/2025"],
     ["playoff season league", "/playoffs/season/2025/tapps"],
@@ -65,6 +67,9 @@ test("every kind of page has its own short description, with no betting word, so
     ["week in review", first(/^\/weeks\/\d{4}\/\d+$/)],
     ["week in review, TAPPS", first(/^\/weeks\/\d{4}\/\d+\/tapps$/)],
     ["weeks, TAPPS", "/weeks/tapps"],
+    ["seasons", "/seasons"],
+    ["season", "/seasons/2025"],
+    ["season, current", "/seasons/2026"],
   ];
 
   const seen = new Map<string, string>();

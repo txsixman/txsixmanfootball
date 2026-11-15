@@ -99,7 +99,8 @@ test("a game under way shows its live score in the score itself on the game page
   const text = (await row.innerText()).replace(/\s+/g, " ");
   expect(text).toMatch(/^Live Q3 /i);
   await expect(row.locator(".decoration-dashed")).toHaveText(["14", "28"]);
-  expect(text).toMatch(/Unconfirmed/i);
+  expect(text.match(/Unconfirmed/gi)).toHaveLength(1); // one mark a row: the box, or the projection line's word
+  await expect(row.locator("p.border-dashed")).toHaveCount(0); // no full-width bar under the row
   expect(text).not.toMatch(/no score|In progress/i);
   for (const line of await row.locator("[data-projected]").allInnerTexts()) expect(line).toMatch(/^Projected: .+ · Now: 14–28 · Unconfirmed$/);
   await expect(row.locator("[data-live-score]")).toHaveText(/^Q3 · as of \d{1,2}:\d{2} (AM|PM) CT$/);

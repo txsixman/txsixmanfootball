@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { adminUserId, fanSignIn } from "@/lib/auth/config";
 import { getUser } from "@/lib/auth/server";
 
-// Delete my account: delete_my_account() (migration 0011) removes the Auth user (email and sign-in) and, by cascade, the
-// profile and the follows. Posts in later rounds hang off the profile the same way. Push alerts are per browser, not part
-// of the account: this browser's are stopped with "Stop alerts" on a program page. Nothing here logs who deleted what.
+// Delete my account: delete_my_account() (migrations 0011, 0012, 0023) removes the Auth user (email and sign-in) and, by
+// cascade, the profile and the follows; it deletes the account's push subscriptions (the browsers linked to it, ADR 0054)
+// first, explicitly. Posts in later rounds hang off the profile the same way. A browser's own, unlinked alerts (followed
+// signed out) are not the account's: "Stop alerts" on a program page ends those. Nothing here logs who deleted what.
 
 export type DeleteState = { error?: string };
 

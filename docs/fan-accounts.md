@@ -1,7 +1,8 @@
 # Fan accounts and following
 
 ADR 0018. Fans sign in with an emailed link or Google, pick a display name and give a birth year, and can follow teams on
-their account. Posts, score reports and comments come in later rounds and sit on the same profile.
+their account. Forums, game comments and score reports sit on the same profile and have their own switch, `FAN_POSTS`
+(ADR 0052), so they can open about a week after sign-in and follows.
 
 Sign-in itself is the shared foundation (`apps/web/lib/auth/`, `/sign-in`, `/auth/callback`, `proxy.ts`); the admin console
 uses it too (`docs/admin-console.md`). Every Supabase call is made on the server with the visitor's own session cookie
@@ -11,11 +12,41 @@ uses it too (`docs/admin-console.md`). Every Supabase call is made on the server
 
 Fan accounts are **off by default**. With `FAN_SIGNIN` missing (or anything but exactly `on`) the site is as it was:
 no "Sign in" link in the header, `/sign-in` is only the email form for accounts that already exist (the owner's way into
-`/admin`; no Google button, no sign-up wording), `/account` and `/account/welcome` send everyone home, `/privacy`, `/terms` and `/account/too-young` answer 404, `/api/follows`
-answers 404, the Follow button is the browser-only button, and `/api/me` answers `{ enabled: false, me: null }` without
+`/admin`; no Google button, no sign-up wording), `/account` and `/account/welcome` send everyone home, `/account/too-young` answers 404 (`/privacy` and `/terms` are always public, linked from the site footer), `/api/follows`
+answers 404, the Follow button is the browser-only button, and `/api/me` answers `{ enabled: false, posts: false, me: null }` without
 asking Supabase (except for a request that comes from an `/admin` page). The flag is read per request on the server and
-handed to the pages' scripts through `/api/me`, never a `NEXT_PUBLIC` constant: set it in Vercel and redeploy, no rebuild
-of the pages is needed. Everything below describes the "on" state.
+handed to the pages' scripts through `/api/me`, never a `NEXT_PUBLIC` constant: set it in Vercel and redeploy. The header,
+Follow button and `/api/*` follow it with no rebuild of the pages; the one exception is the static game page (see `FAN_POSTS` below). Everything below describes the "on" state.
+
+### The second switch: FAN_POSTS (ADR 0052)
+
+Forums, game comments and score reports are behind `FAN_POSTS`, which must be exactly `on` **and means nothing unless
+`FAN_SIGNIN` is on too** (`fanPosts()` in `lib/auth/config.ts`; server-only, read per request, never `NEXT_PUBLIC`).
+
+| `FAN_SIGNIN` | `FAN_POSTS` | What exists |
+|---|---|---|
+| not `on` | anything | The site as it was. `FAN_POSTS` alone opens nothing |
+| `on` | not `on` | Sign-in, the profile, `/account`, `/privacy`, `/terms`, follows and `/api/me`. Every posts surface answers as it does with fan accounts off: `/forums/**` and every `/api/fan/**` and `/api/games/[id]/comments`, `/score-report` route is a bare 404, and the game page has no comment or score-report block |
+| `on` | `on` | Everything in this document, posts included |
+
+- **A game page (`/scores/<id>`) is static** (`generateStaticParams`, `dynamicParams = false`), so it reads `FAN_POSTS` (and
+  `FAN_SIGNIN`) **at build time**, not per request. Flipping either in Vercel needs a redeploy, which rebuilds the pages: the
+  comment and score-report blocks appear or vanish only with that deploy. CI's launch job builds with the switches set, as Vercel does.
+  A page built with posts on and served after the flag goes off hides both blocks itself, because their routes then answer 404.
+  The forums, every `/api/*` route and `/api/me` read the flag per request.
+- `/api/me` answers `{ enabled, posts, me }`: `posts` is `FAN_POSTS` for the page scripts, never true while `enabled` is false.
+- **`/admin/moderation` stays open to the owner** whichever way the switch is set, so he can ban an account or show a post again
+  after turning posts off. With posts off it says so in one sentence and shows a post's place as text, not a link.
+- **The database has its own switch.** The site's routes are not the only way in: the posting functions are granted to signed-in
+  users, and the anon key and the project's address are public, so a fan can call them straight at Supabase with their own
+  session. Migration 0024 adds the one-row table `site_switch` (row `posts`, closed by default, no policy and no grant for the API
+  roles, every change written to `audit_log`) and `fan_actor()`, which every function that writes a post, thread, reply, flag, edit
+  or score report calls first, raises `posts_closed` while it is closed. Public reads and the owner's `admin_*` functions are not
+  behind it.
+- **To open posts, in this order:** (1) Supabase dashboard, SQL editor, run
+  `update site_switch set is_on = true where name = 'posts';` (2) Vercel, set `FAN_POSTS` to `on` (Production) and redeploy. To close
+  them, undo either one (`is_on = false`, or remove `FAN_POSTS` and redeploy); the closed one wins. Only the database closed: the
+  routes answer `posts_closed` ("Posting is not open yet."). Only the site closed: 404. Either way nothing is posted.
 
 ## What a fan sees
 
@@ -23,11 +54,13 @@ of the pages is needed. Everything below describes the "on" state.
 |---|---|
 | `/sign-in` | "Continue with Google" (whenever `FAN_SIGNIN` is on). The email link: for new fans only when `FAN_EMAIL_SIGNIN=on`; otherwise it sits behind "I already have an account" and only existing accounts get a link |
 | `/account/welcome` | Last step of sign-up: display name (3 to 24 characters) and birth year. Exactly 13 years back asks "Have you had your 13th birthday?" (used once, never stored). Under 13 deletes the account at once and shows `/account/too-young`. Anyone signed in without a profile is sent here first (`/auth/callback` after sign-in, and the header from any other page) |
-| `/account` | Display name, date joined, Sign out, Delete my account (a confirm step, then `delete_my_account()`), and an offer to copy this browser's follows into the account |
-| `/privacy`, `/terms` | Plain language, linked from `/sign-in`, `/account/welcome` and `/account` (the site footer is `app/layout.tsx`, owned by another change: add the two links there when it is free) |
+| `/account` | Display name, date joined, Sign out (it also stops the account's alerts on that browser, ADR 0054), Delete my account (a confirm step, then `delete_my_account()`, which also removes the account's push subscriptions), and an offer to copy this browser's follows into the account |
+| `/privacy`, `/terms` | Plain language, linked from `/sign-in`, `/account/welcome` and `/account` (and the site footer, on every page, whichever way `FAN_SIGNIN` is set) |
 | Header | "Sign in", or the display name. Filled in by the page's own script from `/api/me`, so static pages stay static |
-| Program page | The Follow button: signed out, push alerts on this browser as before; signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) |
+| Program page | The Follow button: signed out, push alerts on this browser as before; signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) and links this browser's push alerts to the account, so a follow on any device alerts every linked browser (ADR 0054) |
 | Home, My teams | The account's follows when signed in, else this browser's |
+| `/forums`, a board, a thread | Only while `FAN_POSTS` is on (otherwise 404). Anyone reads; a signed-in fan with a profile posts, replies, edits their own and flags others |
+| A game page | Only while `FAN_POSTS` is on: the comments block, and for a game with no score yet the fan score-report block. With it off the page is as it was |
 
 No age, birth year, email or school is shown anywhere. The birth year is stored in `profile.birth_year` and no function returns it.
 
@@ -40,11 +73,28 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
   The three functions are in `SIGNED_IN_FUNCTIONS` (`packages/db/load.mjs`): CI checks anon cannot run them.
 - **Server checks, then the database checks again.** Server actions and `/api/follows` validate with Zod, check the session
   (`getUser()` asks Supabase; never `getSession()`), and the database re-checks age, name shape, uniqueness, slug shape and the cap.
-- `/api/me` (GET) answers `{ enabled, me }`: `enabled` is `FAN_SIGNIN`; `me` is `null` when signed out, else
+- `/api/me` (GET) answers `{ enabled, posts, me }`: `enabled` is `FAN_SIGNIN`, `posts` is `FAN_POSTS` (and `FAN_SIGNIN`); `me` is `null` when signed out, else
   `{ displayName | null, follows, admin? }` (`null` name = sign-up unfinished; `admin` marks the owner's account, which is never
   sent to fan sign-up). No email, id or birth year. `/api/follows` (POST: follow, unfollow, import up to 100) needs a same-site
   `Origin`, a JSON body and a session. Both are in `proxy.ts`'s matcher (session refresh, `no-store`, `noindex`); the service
   worker never keeps `/api/`.
+- **Push alerts tied to the account (ADR 0054, migration 0023).** `push_subscription.user_id` (nullable, references `profile` on delete
+  cascade) links a browser's subscription to an account; signed-out browsers behave as before.
+  - **Link.** `POST /api/push/link` (same-site `Origin`, JSON, session; answers the program slugs left on the browser) calls
+    `link_push_subscription(endpoint, p256dh, auth)` on the fan's own session; the database sets `user_id = auth.uid()`, no id comes
+    from the browser. The Follow button links on a tap (asking permission if needed) and once per visit for a browser that already
+    shows alerts. It needs a finished profile. **At most 5 linked browsers per account** (a sixth replaces the least recently active).
+  - **Merge.** The browser's own follows are merged into the account at link time (a program the account already follows is skipped;
+    one that does not fit under the 100 cap stays on the browser's own list). `unfollow_program` also strips the program from the
+    account's linked browsers. The sender (`tools/push/send-finals.mjs`) sends one alert per browser: its own list joined with the
+    account's follows, each team once.
+  - **Unlink.** Sign-out reads the browser's own endpoint and sends it in the sign-out form; `signOut()` calls
+    `unlink_push_subscription(endpoint)` before ending the session. It matches the endpoint to `auth.uid()` (another account's or a made-up
+    endpoint changes nothing) and **deletes the row**, except that leftover own-list programs keep it, unlinked, for those alone. Unlink
+    never fails sign-out; a session already expired cannot unlink, and the row then goes when the push service reports it gone, with the
+    account, or when another account links that browser. Deleting the account removes its push subscriptions (`on delete cascade` and
+    explicitly in `delete_my_account()`, replaced by 0023).
+  - Both functions are in `SIGNED_IN_FUNCTIONS`. No endpoint, key or user id is logged anywhere.
 - A display name is checked by `lib/moderation/names.ts` (a small word list) before `create_profile`. The posts round replaces
   that file and keeps `displayNameProblem(name)`.
 - Nothing logs an email, a birth year, a token or a Supabase error.
@@ -54,7 +104,9 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
 | Variable | Public? | What it is |
 |---|---|---|
 | `FAN_SIGNIN` | server only | `on` turns fan accounts on (everything in this document). Missing or anything else: off, see "The switch" above. Redeploy after changing |
-| `FAN_EMAIL_SIGNIN` | server only | `on` (and `FAN_SIGNIN` on) lets the emailed link make NEW fan accounts. Missing or anything else: the link works for existing accounts only (it is how the owner signs in to `/admin`) and new fans see only "Continue with Google". Google is never behind it, only behind `FAN_SIGNIN`. **Turn it on after custom SMTP works** (below). Redeploy after changing |
+| `FAN_EMAIL_SIGNIN` | server only | `on` (and `FAN_SIGNIN` on) lets the emailed link make NEW fan accounts. Missing or anything else: the link works for existing accounts only (it is how the owner signs in to `/admin`) and new fans see only "Continue with Google". Google is never behind it, only behind `FAN_SIGNIN`. Custom SMTP through Resend is live (below), so this is unblocked: set it when you are ready for new fans to sign up by email. Redeploy after changing |
+
+| `FAN_POSTS` | server only | `on` (and `FAN_SIGNIN` on) turns on forums, game comments and score reports. Missing or anything else, or `FAN_SIGNIN` off: they do not exist and sign-in and follows work as before. **Open the database switch first** (`site_switch`, see "The second switch" above). Redeploy after changing |
 
 The Supabase variables are in `docs/admin-console.md`. Google needs no variable on the site: its client id and secret live in Supabase.
 
@@ -90,9 +142,11 @@ The Supabase variables are in `docs/admin-console.md`. Google needs no variable 
 Google signs in by the account's verified email: if you use the same email as your admin user, Supabase links the Google
 sign-in to that same user, so `ADMIN_USER_ID` still matches.
 
-## Owner's setup: email sign-up for new fans (after Resend works)
+## Owner's setup: email sign-up for new fans (Resend)
 
 Supabase's own email sender allows about 2 emails an hour, so new-fan email sign-up stays off until the project has its own sender.
+**Done:** custom SMTP through Resend is live and the sender is `TX Six-Man Football <no-reply@txsixmanfootball.com>` (`EMAIL_FROM`, the same sender
+the email alerts use, `docs/email-alerts.md`), so `FAN_EMAIL_SIGNIN` is unblocked. The steps are kept for rebuilding it.
 
 1. Resend: verify the sending domain, make an API key.
 2. Supabase, Authentication, Emails, SMTP Settings: Enable custom SMTP. Host `smtp.resend.com`, port `465`, username `resend`,
@@ -100,7 +154,7 @@ Supabase's own email sender allows about 2 emails an hour, so new-fan email sign
 3. Authentication, Emails, Templates: **Confirm signup** and **Magic Link** must both still contain `{{ .ConfirmationURL }}`
    (the defaults do). New fans get the first, existing ones the second.
 4. Send yourself a sign-in link and check it arrives and works.
-5. Only then set `FAN_EMAIL_SIGNIN` to `on` in Vercel (Production) and redeploy.
+5. Then set `FAN_EMAIL_SIGNIN` to `on` in Vercel (Production) and redeploy (unblocked now; it is the owner's call when).
 
 ## Before the pages are public
 
@@ -119,10 +173,10 @@ not offered, the erase above is what clears them.
 
 ## What the accounts round did not do
 
-- The footer links (`app/layout.tsx`) and the Follow-button screenshots: the header now ends with a "Sign in" link, so the
+- The Follow-button screenshots: the header now ends with a "Sign in" link, so the
   CI screenshot baselines that include the header need the usual `screenshots/<anything>` branch to approve the new look.
-- Push alerts stay per browser: they are not tied to the account and are not removed by deleting it (the person stops them
-  with Stop alerts, or by blocking notifications).
+- Push alerts were per browser here: ADR 0054 (above) later tied a signed-in browser's alerts to the account. A signed-out browser
+  is still per browser (stopped with Stop alerts, or by blocking notifications).
 
 ## Unfinished sign-ups are erased
 
@@ -137,3 +191,17 @@ the load, so the security check always runs.
 
 Not done here: reserved and slur display names enforced in the database (`create_profile`); the forums round adds them in
 migration 0013. `lib/moderation/names.ts` keeps `displayNameProblem(name)` for the form.
+
+## Account Center (ADR 0058)
+
+- **Migration 0026** adds `profile.name_changed_at` and, on `push_subscription`, `id` (a device id), `device_label`, `linked_at` and
+  `muted` (up to 100 team slugs), one trigger that clears a browser's label, link date and mutes when it leaves an account or
+  moves to another, and eleven signed-in functions, all in `SIGNED_IN_FUNCTIONS`: `my_account`, `change_display_name` (sign-up's
+  rules, once every 30 days), `label_push_subscription`, `my_devices`, `this_device`, `remove_my_device`,
+  `remove_all_my_devices`, `set_push_mute`, `my_push_mutes`, `export_my_data` and `my_activity`. None returns the birth year, a
+  push endpoint or key, or an unsubscribe token.
+- The site's one server module is `apps/web/lib/account/center.ts` (plain data or `{ error }`, never a database message). Routes:
+  `GET /api/account/export` (the JSON file), `POST /api/account/push-mute` and `POST /api/account/this-device` (same-site, JSON,
+  session), all in `proxy.ts`'s matcher; `/api/push/link` also stores the browser's short label (`deviceLabel`, from the
+  User-Agent, which is never stored).
+- The sender skips a program a browser has muted (`tools/push/send-finals.mjs`).

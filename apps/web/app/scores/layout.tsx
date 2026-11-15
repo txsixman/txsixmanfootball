@@ -5,7 +5,7 @@ import { EdgeToEdge } from "../ui";
 export default function ScoresLayout({ children }: { children: ReactNode }) {
   return (
     <EdgeToEdge>
-      <div className="mx-auto max-w-3xl border-line bg-white sm:border-x">{children}</div>
+      <div className="mx-auto max-w-3xl border-line bg-page sm:border-x">{children}</div>
     </EdgeToEdge>
   );
 }

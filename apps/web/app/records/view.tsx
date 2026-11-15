@@ -5,6 +5,7 @@ import { loadAlignments, programFor } from "@/lib/alignments";
 import { recordsDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { orgHref, type Org } from "@/lib/orgs";
+import { chanceText } from "@/lib/projection";
 import { loadRecords } from "@/lib/records";
 import { ratingSeasons } from "@/lib/ratings";
 import { resultSeasons } from "@/lib/weeks";
@@ -104,13 +105,13 @@ export async function RecordsView({ org }: { org: Org }) {
         id="surprises"
         title="Biggest surprises"
         rows={records.upsets.length}
-        note="The winner's chance to win before the game, from both teams' ratings at the end of the week before, once each had played four games. Forfeits are left out."
+        note="The winner's chance to win before the game, from both teams' ratings at the end of the week before, once each had four rated games. Forfeits are left out, and never count as rated games."
       >
         {records.upsets.map((u, i) => (
           <BoardRow
             key={`${u.date}-${u.winner}`}
             place={i + 1}
-            figure={u.chance < 0.01 ? "<1%" : `${Math.round(u.chance * 100)}%`}
+            figure={chanceText(u.chance)}
             unit="chance to win before the game"
           >
             <Side team={team(u.winner)} score={u.won} />

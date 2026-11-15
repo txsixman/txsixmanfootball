@@ -248,6 +248,44 @@ def test_a_robot_read_playoff_game_gets_the_playoff_share_of_a_home_edge_and_a_h
     assert s.g.edge.tolist() == [1.0, PLAYOFF_EDGE, 0.0] and 0 <= PLAYOFF_EDGE <= 1
 
 
+def test_a_state_championship_is_a_neutral_site_robot_read_or_hand_captured(tmp_path, monkeypatch):
+    """ADR 0057: no home edge in a State Championship ("final", UIL's "state"); other playoff rounds keep PLAYOFF_EDGE for
+    the listed home team. A hand capture that says "false" (a home field) still gets the whole edge."""
+    import run
+    from rows import PLAYOFF_EDGE, prepare
+
+    monkeypatch.setattr(run, "RESULTS", tmp_path)
+    header = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes\n"
+    robot = tmp_path / "maxpreps-2030"
+    robot.mkdir()
+    (robot / "games.csv").write_text(
+        header + "I,season,2030-09-05,Alpha,Beta,false,40,20,unknown,,https://example.test/1,\n"
+        "I,season,2030-11-27,Alpha,Gamma,false,30,28,unknown,,https://example.test/2,\n"
+        "I,season,2030-12-10,Alpha,Beta,false,30,21,unknown,,https://example.test/3,\n"
+        "I,season,2030-12-11,Gamma,Delta,false,30,21,unknown,,https://example.test/4,\n"
+    )
+    (robot / "playoffs.csv").write_text(
+        "league,division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period\n"
+        "UIL,I,semifinal,2030-11-27,Alpha,Gamma,,30,28,unknown,\n"
+        "UIL,I,state,2030-12-10,Alpha,Beta,,30,21,unknown,\n"
+        "TAPPS,I,final,2030-12-11,Gamma,Delta,,30,21,unknown,\n"
+    )
+    sites = run.playoff_sites(2030)
+    assert sites[("2030-11-27", frozenset(("Alpha", "Gamma")))] == PLAYOFF_EDGE
+    s = prepare([str(robot / "games.csv")], neutral=sites)
+    assert s.g.edge.tolist() == [1.0, PLAYOFF_EDGE, 0.0, 0.0]
+
+    hand = tmp_path / "seed" / "playoffs-2030.csv"
+    hand.parent.mkdir()
+    hand.write_text(
+        header + "I,final,2030-12-04,Alpha,Beta,,30,21,unknown,,,\n"  # not named: a neutral site
+        "I,final,2030-12-05,Gamma,Delta,false,30,21,unknown,,,\n"  # the capture says a home field
+        "I,semifinal,2030-11-27,Alpha,Gamma,,30,28,unknown,,,\n"
+    )
+    s = prepare([str(hand)])
+    assert s.g.edge.tolist() == [1.0, 0.0, 1.0]  # in date order: the semifinal, then the two finals
+
+
 def test_a_trend_holds_each_teams_rating_at_the_end_of_every_week(tmp_path):
     header = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes\n"
     rows = [
@@ -633,3 +671,90 @@ def test_a_season_starts_from_last_seasons_gap_to_its_group(tmp_path):
     assert prior.tolist() == [12.5, -7.5]  # half of the gap to last season's group mean
     assert groups.center.tolist() == [5.0]
     assert prior_for(s, None, Settings())[0].tolist() == [0.0, 0.0]
+
+
+def test_a_team_whose_every_rated_game_was_a_45_point_loss_is_marked(tmp_path):
+    from run import table
+
+    path = robot_file(
+        tmp_path,
+        [
+            ("2030-09-05", "Alpha", "Beta", 40, 20),
+            ("2030-09-12", "Beta", "Gamma", 28, 21),
+            ("2030-09-19", "Alpha", "Omega", 52, 0),  # Omega: a 45-point loss at home and away
+            ("2030-09-26", "Omega", "Gamma", 0, 48),
+            ("2030-10-03", "Gamma", "Alpha", 20, 27),
+            ("2030-10-10", "Beta", "Omega", 51, 6),
+        ],
+    )
+    rows = {r["team"]: r for r in table(path)["teams"]}
+    assert rows["Omega"].get("mercy_only") is True
+    assert not any(r.get("mercy_only") for name, r in rows.items() if name != "Omega")
+
+
+def test_a_season_is_stale_when_its_games_or_its_prior_change_and_the_chain_rerates_what_follows(tmp_path, monkeypatch):
+    """--chain (ADR 0057's companion, D4 of docs/audits/ratings-2026-11.md): each table stores the hash of its inputs and
+    of the prior season's file it started from, so a change anywhere re-rates that season and every one after it."""
+    import run
+
+    monkeypatch.setattr(run, "DATA", tmp_path)
+    monkeypatch.setattr(run, "RESULTS", tmp_path / "seed")
+    rows = [
+        ("09-05", "Alpha", "Beta", 40, 20),
+        ("09-12", "Beta", "Gamma", 28, 21),
+        ("09-19", "Gamma", "Alpha", 20, 27),
+        ("09-26", "Alpha", "Delta", 35, 14),
+        ("10-03", "Delta", "Beta", 21, 28),
+        ("10-10", "Gamma", "Delta", 30, 6),
+    ]
+    for year in (2030, 2031):
+        folder = tmp_path / "seed" / f"maxpreps-{year}"
+        folder.mkdir(parents=True)
+        robot_file(folder, [(f"{year}-{d}", h, a, hs, as_) for d, h, a, hs, as_ in rows])
+    run.chain(2031, 2030)
+    first, second = (json.loads((tmp_path / "ratings" / f"{y}.json").read_text()) for y in (2030, 2031))
+    assert run.stale(2030) is None and run.stale(2031) is None
+    assert second["model"]["prior_sha256"] == run.sha256_of(tmp_path / "ratings" / "2030.json")
+    assert first["inputs_sha256"] == run.season_inputs(2030)
+
+    # A corrected 2030 score: 2030 is stale for its inputs; the chain re-rates it, then 2031, which starts from it.
+    games = tmp_path / "seed" / "maxpreps-2030" / "games.csv"
+    games.write_text(games.read_text().replace(",40,20,", ",44,20,"))
+    assert "changed" in run.stale(2030)
+    run.chain(2031, 2030)
+    assert run.stale(2030) is None and run.stale(2031) is None
+    again = json.loads((tmp_path / "ratings" / "2031.json").read_text())
+    assert again["model"]["prior_sha256"] != second["model"]["prior_sha256"]
+
+    # A prior rewritten by hand (or re-rated alone) leaves the next season stale.
+    (tmp_path / "ratings" / "2030.json").write_text((tmp_path / "ratings" / "2030.json").read_text() + " ")
+    assert run.stale(2031) == "2030's table changed"
+
+
+def test_every_committed_season_starts_from_the_committed_season_before_it():
+    """The chain is current: each data/ratings/<season>.json names the hash of the file before it (`model.prior_sha256`).
+    If this fails, a season was re-rated without the ones after it: run.py --chain <latest season>."""
+    from pathlib import Path
+
+    import run
+
+    ratings = Path("../../data/ratings")
+    seasons = sorted(int(p.stem) for p in ratings.glob("[0-9][0-9][0-9][0-9].json"))
+    assert seasons[0] == run.FIRST_SEASON
+    for season in seasons[1:]:
+        table = json.loads((ratings / f"{season}.json").read_text())
+        assert table["model"]["prior_season"], season
+        assert table["model"].get("prior_sha256") == run.sha256_of(ratings / f"{season - 1}.json"), (
+            f"{season} was rated from another {season - 1} table: run.py --chain {seasons[-1]}"
+        )
+
+
+def test_a_playoff_rows_own_site_wins_over_its_round_as_on_the_site():
+    """Twin of fieldOf (apps/web/lib/projection.ts): "true" no edge, "false" the full edge, else the round decides."""
+    from rows import PLAYOFF_EDGE
+    from run import playoff_edge_of
+
+    assert playoff_edge_of({"neutral": "", "round": "final"}) == 0.0
+    assert playoff_edge_of({"neutral": "", "round": "area"}) == PLAYOFF_EDGE
+    assert playoff_edge_of({"neutral": "true", "round": "area"}) == 0.0
+    assert playoff_edge_of({"neutral": "false", "round": "final"}) == 1.0

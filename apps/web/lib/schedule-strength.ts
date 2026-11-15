@@ -1,7 +1,7 @@
 import { loadAlignments } from "./alignments";
-import { gameKey, loadSeasonResults, playoffGameKeys, type SeasonResult } from "./games";
+import { gameKey, loadSeasonResults, playoffFields, type SeasonResult } from "./games";
 import { memo } from "./memo";
-import { homeEdge, homeWinProbability } from "./projection";
+import { homeEdge, homeWinProbability, type Field } from "./projection";
 import { placeTeams } from "./rankings";
 import { rankedOrder } from "./rank-range";
 import { loadRatings, type RatingsTable } from "./ratings";
@@ -43,14 +43,14 @@ export const meetingScore = (m: Meeting) => (m.forfeit ? "Forfeit" : `${m.us}-${
 
 type Tally = { sos: number; wins: number; expected: number; games: number; best?: Meeting & { rating: number }; worst?: Meeting & { rating: number } };
 
-/** Every team's figures for one season. Pure: `benchmark` is the benchmark team's rating, `playoffs` the keys of the
- * season's playoff games (gameKey). Empty when the table cannot give a win probability. */
-export function scheduleStats(table: RatingsTable, results: SeasonResult[], playoffs: Set<string>, benchmark: number): Map<string, TeamSchedule> {
+/** Every team's figures for one season. Pure: `benchmark` is the benchmark team's rating, `playoffs` the season's playoff
+ * games by gameKey, each with its field (games.ts playoffFields). Empty when the table cannot give a win probability. */
+export function scheduleStats(table: RatingsTable, results: SeasonResult[], playoffs: ReadonlyMap<string, Field>, benchmark: number): Map<string, TeamSchedule> {
   const rating = new Map(table.teams.map((t) => [t.team, t.rating]));
   const tally = new Map<string, Tally>();
   for (const g of results) {
-    const neutral = playoffs.has(gameKey(g.date, g.home, g.away));
-    const edge = homeEdge(table, neutral);
+    const field = playoffs.get(gameKey(g.date, g.home, g.away));
+    const edge = homeEdge(table, field?.neutral ?? false, field?.trueNeutral ?? false);
     for (const [team, opponent, us, them, site] of [
       [g.home, g.away, g.homeScore, g.awayScore, edge],
       [g.away, g.home, g.awayScore, g.homeScore, -edge],
@@ -81,7 +81,7 @@ export function scheduleStats(table: RatingsTable, results: SeasonResult[], play
 /** A season's figures for the teams of one organization's page: the benchmark is that organization's own top teams. */
 const loadSchedules = memo(async (key: string): Promise<{ benchmark: number; stats: Map<string, TeamSchedule> }> => {
   const [season, league] = [Number(key.split(":")[0]), key.split(":")[1]];
-  const [table, results, playoffs, alignments] = await Promise.all([loadRatings(season), loadSeasonResults(season), playoffGameKeys(season), loadAlignments()]);
+  const [table, results, playoffs, alignments] = await Promise.all([loadRatings(season), loadSeasonResults(season), playoffFields(season), loadAlignments()]);
   const own = placeTeams(table.teams, alignments).placed.filter((r) => r.school.league === league);
   const top = rankedOrder(own).slice(0, BENCHMARK_TEAMS);
   const benchmark = top.length ? top.reduce((n, t) => n + t.rating, 0) / top.length : 0;

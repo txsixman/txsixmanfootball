@@ -8,6 +8,7 @@ import { CURRENT_SEASON } from "@/lib/season";
 import { SITE_URL } from "@/lib/site";
 import { lastmodFor, type SitemapDates, type SitemapEntry } from "@/lib/sitemap-xml";
 import { loadWeeks, resultSeasons } from "@/lib/weeks";
+import { generateStaticParams as championshipYears } from "../championships/[year]/page";
 import { generateStaticParams as playoffLeagues } from "../playoffs/[league]/page";
 import { generateStaticParams as brackets } from "../playoffs/bracket/[slug]/page";
 import { generateStaticParams as playoffSeasonLeagues } from "../playoffs/season/[season]/[league]/page";
@@ -22,19 +23,21 @@ import { generateStaticParams as rankingWeeks } from "../rankings/week/[week]/pa
 import { generateStaticParams as recordOrgs } from "../records/[org]/page";
 import { generateStaticParams as results } from "../results/[[...path]]/page";
 import { generateStaticParams as games } from "../scores/[id]/page";
+import { generateStaticParams as seasonHubs } from "../seasons/[year]/page";
 import { generateStaticParams as series } from "../series/[first]/[second]/page";
+import { generateStaticParams as districts } from "../standings/district/[id]/page";
 import { generateStaticParams as standings } from "../standings/[group]/page";
 import { generateStaticParams as weeks } from "../weeks/[[...path]]/page";
 
 // Every public page, built from the same lists that make the pages (each route's generateStaticParams), so a page and
 // its sitemap entry come and go together. /sitemap.xml is an index of one sitemap per kind of page (/sitemaps/<kind>.xml),
 // so Search Console counts what is indexed kind by kind. Left out: the invented sample pages and sample games, search,
-// the offline page, the embeds (all noindex), and the fan, sign-in and admin pages (privacy and terms too: they exist
-// only while fan accounts are on).
+// the offline page, the embeds (all noindex), and the fan, sign-in and admin pages (privacy and terms too: they are public
+// pages, linked from the footer, but not worth a sitemap entry).
 export const KINDS = ["sections", "programs", "scores", "series", "results", "weeks"] as const;
 type Kind = (typeof KINDS)[number];
 
-const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "playoffs/this-round", "results", "rankings", "rankings/how", "about/ratings", "standings", "programs", "records", "championships", "matchup"];
+const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "playoffs/this-round", "results", "rankings", "rankings/how", "about/ratings", "standings", "programs", "records", "championships", "matchup", "seasons"];
 const SAMPLE_GAMES = new Set(demoGames.map((g) => g.id));
 
 const PATHS: Record<Kind, () => Promise<string[]>> = {
@@ -46,11 +49,14 @@ const PATHS: Record<Kind, () => Promise<string[]>> = {
     ...(await rankingSeasons()).map((p) => `rankings/season/${p.season}`),
     ...(await rankingSeasonOrgs()).map((p) => `rankings/season/${p.season}/${p.org}`),
     ...standings().map((p) => `standings/${p.group}`),
+    ...(await districts()).map((p) => `standings/district/${p.id}`),
     ...playoffLeagues().map((p) => `playoffs/${p.league}`),
     ...(await playoffSeasons()).map((p) => `playoffs/season/${p.season}`),
     ...(await playoffSeasonLeagues()).map((p) => `playoffs/season/${p.season}/${p.league}`),
     ...(await brackets()).map((p) => `playoffs/bracket/${p.slug}`),
     ...(await recordOrgs()).map((p) => `records/${p.org}`),
+    ...(await championshipYears()).map((p) => `championships/${p.year}`),
+    ...(await seasonHubs()).map((p) => `seasons/${p.year}`),
   ],
   programs: async () => [
     ...(await programs()).map((p) => `programs/${p.slug}`),

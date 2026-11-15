@@ -32,9 +32,9 @@ from run import Last, playoff_sites, prior_for, rate, season_files, season_outsi
 from scipy.optimize import minimize, minimize_scalar
 from scipy.stats import norm
 
-SEASONS = tuple(range(2021, 2027))
+SEASONS = tuple(range(2018, 2027))  # every season the site rates: 2018 starts from no prior, as on the site
 FEW_GAMES = 4
-RHO_FIT_SEASONS = (2021, 2022, 2023, 2024)  # 2021 supplies the first prior; 2022 to 2024 are the games rho is fit on
+RHO_FIT_SEASONS = (2021, 2022, 2023, 2024)  # the games rho and tau are fit on (2018 to 2020 only chain into them)
 RHO_CHECK_SEASONS = (2025, 2026)
 G3_FROM = 2022
 G3_METRICS = ("mae", "brier")  # plan 8.4: "out-of-sample margin error and Brier score"

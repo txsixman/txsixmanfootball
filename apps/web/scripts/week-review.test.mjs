@@ -99,7 +99,7 @@ test("advancement: a round played this week, and who has a game in a later round
   const next = advancement([bracket], "2026-11-09", "2026-11-15");
   assert.deepEqual(next.map((a) => [a.round, a.games, a.last, a.wentOn, a.unlisted]), [["area", 1, false, [], 2]]);
   // The last round of a bracket has no later round to look in.
-  const final = advancement([{ name: "T", league: "TEST", rounds: [{ round: "final", label: "Final", games: [g("X", "Y", "2026-12-05", 20)] }] }], "2026-12-01", "2026-12-06");
+  const final = advancement([{ name: "T", league: "TEST", rounds: [{ round: "final", label: "State Championship", games: [g("X", "Y", "2026-12-05", 20)] }] }], "2026-12-01", "2026-12-06");
   assert.deepEqual(final.map((a) => [a.last, a.wentOn, a.unlisted]), [[true, [], 2]]);
   assert.deepEqual(advancement([bracket], "2027-01-01", "2027-01-07"), []);
   assert.deepEqual(advancement([], "2026-11-02", "2026-11-08"), []);

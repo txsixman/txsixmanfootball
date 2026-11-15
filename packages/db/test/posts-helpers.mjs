@@ -3,7 +3,7 @@ import { parseGames, seedGames } from "../games.mjs";
 import { migrate } from "../load.mjs";
 import { seedAlignments } from "../seed.mjs";
 
-// Shared setup for the posts tests (migrations 0013 to 0015): Supabase's roles and auth.uid(), a database with two
+// Shared setup for the posts tests (migrations 0013 to 0015, 0024): Supabase's roles and auth.uid(), a database with two
 // teams and two games, and fans made through create_profile like the real sign-up.
 export const ADMIN = "11111111-1111-4111-8111-111111111111";
 export const YEAR = Number(new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: "America/Chicago" }).format(new Date()));
@@ -13,7 +13,8 @@ const SRC = "https://example.test/bracket";
 /** A playoff game page's key, a regular season game's key (both unplayed), and a game already played. */
 export const KEYS = { playoff: "2026-bi-district-beta-at-alpha", regular: "2026-09-04-beta-at-alpha", played: "2026-09-11-alpha-at-beta" };
 
-export async function db({ games = true } = {}) {
+/** `posts`: the posts switch (migration 0024, closed on a fresh database) is opened, quietly, so the tests can post. Pass false to test it closed. */
+export async function db({ games = true, posts = true } = {}) {
   const d = new PGlite();
   await d.exec(`create role anon; create role authenticated;
     create schema auth;
@@ -21,6 +22,7 @@ export async function db({ games = true } = {}) {
     grant usage on schema auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   await migrate(d);
+  if (posts) await d.exec("alter table site_switch disable trigger site_switch_change; update site_switch set is_on = true where name = 'posts'; alter table site_switch enable trigger site_switch_change");
   await d.query("insert into admin_user (user_id) values ($1)", [ADMIN]);
   if (games) {
     const rows = ["Alpha", "Beta"].map((school) => ({ league: "TEST", division: "I", district: "1", school, source_url: SRC }));

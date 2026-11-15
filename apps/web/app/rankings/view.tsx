@@ -5,9 +5,10 @@ import { rankingsDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
 import { rankedList } from "@/lib/json-ld";
+import { loadSeasonResults } from "@/lib/games";
+import { coverageLine, seasonCoverage } from "@/lib/season-coverage";
 import { rankedOrder } from "@/lib/rank-range";
 import { placeTeams } from "@/lib/rankings";
-import { loadSeasonResults } from "@/lib/games";
 import { loadRatings, ratingSeasons } from "@/lib/ratings";
 import { schedulesFor } from "@/lib/schedule-strength";
 import { playedCounts } from "@/lib/season-results";
@@ -60,6 +61,12 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
     if (school.league !== org.league || ("division" in view && school.division !== view.division)) return [];
     return [{ ...r, ...(past && { was: undefined }), name: school.school, href: `/programs/${school.slug}`, identity: identities.get(school.slug) ?? EMPTY, schedule: stats.get(r.team), played: played.get(r.team) ?? 0 }];
   });
+  // Schools of this view with games read but no rating: every game so far a forfeit (forfeits are not rated). Without
+  // this line they would be missing from the table with no word why.
+  const ratedSlugs = new Set(placed.map((p) => p.school.slug));
+  const forfeitOnly = alignments.filter(
+    (a) => a.league === org.league && !("division" in view && a.division !== view.division) && !ratedSlugs.has(a.slug) && (played.get(a.school) ?? 0) > 0,
+  );
   // Where each opponent's program page is, for the best win and worst loss columns.
   const hrefs = new Map(alignments.filter((a) => a.league === org.league).map((a) => [a.school, `/programs/${a.slug}`]));
   const games = table.games.toLocaleString("en-US");
@@ -71,6 +78,7 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
       : "division" in view
         ? `${count}, rated on all ${games} games of the season.`
         : `${rows.length} ${org.label} ${rows.length === 1 ? "team" : "teams"} from ${games} games.`) + outsideNote;
+  const coverage = past ? coverageLine(seasonCoverage(alignments.filter((a) => a.league === org.league), await loadSeasonResults(table.season))) : undefined;
   const orgBase = past ? `/rankings/season/${table.season}` : "/rankings";
 
   const ranked = rankedOrder([...rows]); // the table's order, teams with too few games left out
@@ -79,6 +87,7 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
     <section aria-labelledby="rankings">
       {ranked.length > 0 && <JsonLd data={rankedList(`${table.season} ${view.eyebrow} six-man rankings`, ranked.map((r) => ({ name: r.name, href: r.href! })))} />}
       <RankingsHeader eyebrow={`${table.season} season · ${view.eyebrow}`} note={table.games ? note : undefined} />
+      {coverage && <p id="season-coverage" className="mt-1 max-w-prose text-[14px] leading-5 text-muted">{coverage}</p>}
       {seasons.length > 1 && (
         <TabNav label="Season" wrap tabs={seasons.map((y) => ({ href: seasonHref(y, seasons[0], org), label: String(y) }))} current={seasonHref(table.season, seasons[0], org)} />
       )}
@@ -94,6 +103,18 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
       {rows.length ? (
         <>
           <RatingsTable rows={rows} hrefs={hrefs} />
+          {forfeitOnly.length > 0 && (
+            <div className="mt-3">
+              <p id="forfeit-only" className="text-[14px] leading-5 text-muted">Not rated, every game so far a forfeit:</p>
+              <ul aria-labelledby="forfeit-only" className="flex flex-wrap gap-x-4">
+                {forfeitOnly.map((a) => (
+                  <li key={a.slug}>
+                    <Link href={`/programs/${a.slug}`} className="inline-flex min-h-11 items-center font-semibold text-navy underline">{a.school}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className="mt-3 text-[13px] text-muted">Scores may be corrected if a mistake is found.</p>
           <HowToRead schedule basis />
         </>

@@ -13,17 +13,18 @@ reporters, LLC, attorney, sponsors or owner talk; `txsixmanfootball.com` may be 
 | Schema migrates | Done: PGlite in tests, and live on Supabase since Nov 10, 2026 |
 | Ratings prototype on captured games | Done: `/rankings` rates 1,227 games of the 2026 season (ADR 0008) across 275 teams |
 
-**G3 (Apr 18, 2027) passes today** (Nov 12, after the ratings round, `docs/research/ratings-before-after-2026-11-11.md`):
-`run.py --backtest` (`services/ratings/backtest.py`, ~4 min) rates each week from earlier games only, 2021 to 2026, and
-writes `data/ratings/backtest.json`. From 2022 on (2,906 games) the model beats both baselines every season: winner picked
-86.8% vs Elo 77.0% and last season's rating 74.1%; margin error 12.5 vs 21.2 and 22.0 points; log loss 0.308 vs 0.468 and
-0.515. The site's table uses the same model: last season's rating is each team's starting point, kept at 0.6 of its gap
-from its league (rho 0.6, the owner Nov 12: less carryover than the best-scoring 1.0; tau 30 tuned at it), each league (UIL
-Division I and II, TAPPS, TAIAO, TCAF, Independent) has its own mean, robot-read playoff games get the listed home team's
-full home edge, forfeits (1-0, 2-0) and 0-0 games are not rated, duplicate games are dropped, and outside schools that
-played two or more of ours stay in the fit as hidden teams (`outside.csv`). Win probability is logistic(margin / 15.57),
-calibrated on walk-forward predictions (">99%" shown only above 99.5%). Rate the seasons in order, 2021 to 2026, because
-each reads the one before it. Open: the 45-point rule means very large margins are underpredicted, so those chances stay capped.
+**G3 (Apr 18, 2027) passes today** (Nov 14, after the ratings audit, `docs/audits/ratings-2026-11.md`):
+`run.py --backtest` (`services/ratings/backtest.py`, ~5 min) rates each week from earlier games only, 2018 to 2026, and
+writes `data/ratings/backtest.json`. From 2022 on (2,999 games) the model beats both baselines every season: winner picked
+86.4% vs Elo 76.7% and last season's rating 74.2%; margin error 12.6 vs 21.2 and 22.0 points; log loss 0.308 vs 0.469 and
+0.517. The site's table uses the same model: last season's rating is each team's starting point, kept at 0.6 of its gap
+from its league (rho 0.6, the owner Nov 12: less carryover than the best-scoring 1.0; tau 25 tuned at it, from the 2018-on backtest), each league (UIL
+Division I and II, TAPPS, TAIAO, TCAF, Independent) has its own mean, robot-read playoff games give the listed home team the
+full home edge (`PLAYOFF_EDGE` 1.0) except a State Championship, a true neutral site everywhere (ADR 0057), forfeits (1-0, 2-0) and 0-0 games are not rated, duplicate games are dropped, and outside schools that
+played two or more of ours stay in the fit as hidden teams (`outside.csv`). Win probability is logistic(margin / 14.56),
+calibrated on walk-forward predictions (">99%" shown above 99%; a list of title chances rounds by largest remainder, so it sums to 100%). Each season
+reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order wherever a season's inputs or prior changed (the CI
+`ratings-table` job runs it). A team needs four rated games (not four played) for a projection. Open: the 45-point rule means very large margins are underpredicted, so those chances stay capped.
 
 ## The site (`apps/web`, Vercel, open to search engines at `txsixmanfootball.com` (`app/sitemap.xml`, `app/robots.ts`, `lib/site.ts`); `www` redirects there, and `txsixmanfootballcom.vercel.app` and previews send `noindex`)
 - **Organizations never mix (ADR 0012, the owner Nov 11):** UIL, TAPPS, TAIAO, TCAF and Independent each get their own tab, list and
@@ -68,10 +69,11 @@ each reads the one before it. Open: the 45-point rule means very large margins a
 - **Programs** `/programs` (find-a-school box, grouped by organization) and a page per school (rank within its
   organization or UIL division): colors and logo (ADR 0006), rank, district
   place, a rank-by-week line (`trend.tsx`), a rating-by-week chart (Observable Plot, drawn at build time), most-played opponents with the record against each, season by season (all-time record and playoff trips; per season record, place, last playoff round), season scores with opponent links, playoff projections,
-  state championships (merged schools' too, via lineage), other names (merged schools and state-final spellings, `otherNames` in `lib/lineage.ts`) Also rank range, rating give-or-take, a Record and schedule section (record strength, opponents' rating, best win, worst loss; forfeits left out, a forfeit loss can be the worst loss and shows as "Forfeit") and Why the rating moved (each week's biggest miss against the projection, `lib/why-moved.ts`).
+  State Championships (merged schools' too, via lineage), other names (merged schools and State Championship spellings, `otherNames` in `lib/lineage.ts`) Also rank range, rating give-or-take, a Record and schedule section (record strength, opponents' rating, best win, worst loss; forfeits left out, a forfeit loss can be the worst loss and shows as "Forfeit") and Why the rating moved (each week's biggest miss against the projection, `lib/why-moved.ts`).
 - **Program seasons** `/programs/<slug>/<season>` (1,522 pages: every program and season from 2021 with at least one game read, so "Jayton football 2024" has its own page): the school's crest and organization, the season's record (playoffs counted, a forfeit a win or a loss, ADR 0013), its rank within its own organization and final rating (the program page's season row, `programSeason` in `lib/program-seasons.ts`), the last playoff round played, and every game oldest first with its round, the ratings' projection from the week before (`lib/pregame.ts`), a forfeit as the word, no winner named (ADR 0004), a link to its game page, to the opponent's season page (else its program page) and to the pair's series page. Each program page's season row links to it; the sitemap lists it; it inherits the program's share card, adds no client script and is left out of the site search (the program page stays the one entry)
 - **Records** `/records` (UIL), `/records/<org>`: most points in a game, most by both teams, biggest surprises (week-before ratings), longest winning runs, unbeaten seasons (2021 on)
 - **Series** `/series/<a>/<b>` (slugs in alphabetical order; the reversed address is a 404): one page per pair of current programs that met 3 or more times since 2021 (965 pairs; a pair of two organizations is fine, ranks never shown). Both crests, the record from the first-named side (a forfeit counts, ADR 0013), every meeting newest first with its round and game page (a forfeit shows the word), UIL finals between them, and a projection if they met now (rating, projected margin, win probability; links to Matchup). `lib/series.ts` holds the rules; program pages link their games count to it, and the sitemap lists it. No client script, no share card
+- **Seasons** `/seasons` (every season with games, newest first) and `/seasons/<year>` (every season with games, FIRST_SEASON to the current, one static page each; `lib/season-hub.ts`, `app/seasons/`): games read and programs that played, the UIL state finals that year (champion, runner-up, score, from UIL's archive; the current season says the finals are in December), then each organization on its own (ADR 0012): its top five by rating (final for a past season), top three for points per game and for fewest allowed per game (teams with 6+ played games, forfeits left out entirely, `lib/season-leaders.ts`; scores unconfirmed, so the page says so), and links to its rankings, results, playoffs, week in review and records; then every results week and week in review of the season. The season under way links the bare addresses (`/results`, `/rankings`, `/playoffs`). Linked from the footer only (not the header nav); in the sitemap (the sections kind, `app/sitemaps/lists.ts`; lastmod the season's latest game)
 - **State Championships** `/championships` (was `/champions`): every UIL six-man final 1972 to 2025, Division I and II
   since 2006, one division before, most titles
 - **Search Console** (done): the owner set up a domain property, and `https://txsixmanfootball.com/sitemap.xml` was
@@ -90,7 +92,8 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   in-progress page has been seen
 - **Embeddable scoreboard** (ADR 0023): `/embed/programs/<slug>` for every program, a static route handler (`app/embed/`, `lib/embed-html.ts`): crest,
   record, last three results, next game, a link back; light, dark or auto by `?theme=`; framable by any site (the only route that is), no
-  cookies or client bundle, noindex, under 30 KB. Each program page has a "Put this on your site" block with the iframe as text
+  cookies or client bundle, noindex, under 30 KB. Each program page has a "Put this on your site" block with the iframe as text,
+  then one plain link to the program page under it (an iframe passes no link; the plain one does; offered, never sent)
 - **Share** button on program and game pages: the phone's share sheet, else copies the link (`app/share-button.tsx`)
 - Installable to a phone's home screen (manifest, generated icon), and works offline for visited pages (Serwist:
   pages network first, cached ones served for 30 minutes at most); share cards per program (`opengraph-image.tsx`)
@@ -108,7 +111,7 @@ each reads the one before it. Open: the 45-point rule means very large margins a
   current alignments are known. Past team-seasons get league only (`pastTeamSeasons` in `load.mjs`). The reader retries
   twice, never follows a redirect, skips open dates, and drops games listed twice with different scores (coverage.txt).
   `run.py --season` writes ratings with `sd`, `rated`, `was` (Monday-to-Sunday weeks, as on `/results`), `trend` and `rated_trend` by week (from week 4), `home_field`, `sigma`, `playoff_edge`, `calibration`, `group_means` and a `report` of forfeits, duplicates, ties and outside games; seasons chain, so rate 2021 to 2026 in order
-- State finals: `tools/history/uil-champions.mjs` from UIL's archive; names mapped in `uil-aliases.json`; lineage by
+- State Championships: `tools/history/uil-champions.mjs` from UIL's archive; names mapped in `uil-aliases.json`; lineage by
   hand in `data/seed/lineage/programs.csv` (TEA's consolidation list): 49 of 52 finalists reach a current program
   (O'Brien became Knox City, 1976; the other three, Jarrell, Marathon and Christoval, are still independent districts that no longer play
   six-man, so no lineage)

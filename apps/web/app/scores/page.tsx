@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { loadAlignments, programFor, slugify } from "@/lib/alignments";
 import { sideText } from "@/lib/bracket-fill";
+import { loadFinals } from "@/lib/champions";
 import { loadBrackets } from "@/lib/brackets";
 import { scoresDescription } from "@/lib/descriptions";
 import { loadGames } from "@/lib/games";
 import { EMPTY, loadIdentities } from "@/lib/identity";
+import { scoresEdge } from "@/lib/intros";
 import { projectionText } from "@/lib/projection";
-import { CURRENT_SEASON } from "@/lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { weekHref } from "@/lib/week-review-hrefs";
 import { latestReview } from "@/lib/week-review-load";
 import { EmptyState, PageHeader } from "../ui";
@@ -32,16 +34,22 @@ export default async function ScoresPage() {
     ),
   );
   const review = await latestReview();
+  const edge = scoresEdge({ firstSeason: FIRST_SEASON, firstFinal: Math.min(...(await loadFinals()).map((f) => f.season)) });
   if (games.length) {
     const identities = await loadIdentities();
     const crests = Object.fromEntries(
       games.flatMap((g) => [g.home.name, g.away.name]).map((name) => [name, identities.get(slugify(name)) ?? EMPTY]),
     );
-    return <Board games={games} eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" crests={crests} weekInReview={review && { href: weekHref(review.season, review.week), label: `Week in review: ${review.season} week ${review.week}` }} next={next} />;
+    return (
+      <>
+        <Board games={games} eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" crests={crests} weekInReview={review && { href: weekHref(review.season, review.week), label: `Week in review: ${review.season} week ${review.week}` }} next={next} />
+        <p className="mx-auto max-w-prose px-3 py-4 text-[14px] leading-5 text-muted">{edge}</p>
+      </>
+    );
   }
   return (
     <section aria-labelledby="scores" className="px-3 py-4">
-      <PageHeader id="scores" eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" />
+      <PageHeader id="scores" eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" note={edge} />
       <EmptyState action={{ href: "/scores/sample", label: "See a sample Friday night" }}>
         No games entered yet. Playoff games appear here as they come in.
       </EmptyState>

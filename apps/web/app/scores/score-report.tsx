@@ -25,11 +25,14 @@ export function ScoreReport({ gameKey, away, home, date }: { gameKey: string; aw
   const [homeScore, setHomeScore] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // The route answers 404 while posts are off (ADR 0052): a page built while they were on then hides this block.
+  const [off, setOff] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const r = await fetch(`/api/games/${encodeURIComponent(gameKey)}/score-report`);
       if (r.ok) setStatus((await r.json()) as Status);
+      else if (r.status === 404) setOff(true);
     } catch {
       // Without the count the block still works: it just shows no number.
     }
@@ -53,6 +56,7 @@ export function ScoreReport({ gameKey, away, home, date }: { gameKey: string; aw
   }
 
   const open = !date || today() >= date;
+  if (off) return null;
   return (
     <section aria-labelledby="fan-report" className="mt-5 px-3">
       <h2 id="fan-report" className="mb-1 border-b-2 border-navy pb-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">

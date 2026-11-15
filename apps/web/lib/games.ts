@@ -4,7 +4,7 @@ import { pregameShown } from "./pregame";
 import path from "node:path";
 import type { Game, Team } from "./demo-games";
 import { heading, programFor, slugify, type Alignment } from "./alignments";
-import { project, projectionText } from "./projection";
+import { projectAt, projectionText, fieldOf, type Field } from "./projection";
 import { GAME_COLUMNS, parseCsv, PlayedGameRow, PlayoffRow, RESULT_COLUMNS, RobotPlayoffRow } from "./data-schemas";
 import { loadRatings } from "./ratings";
 import { roundLabel } from "./brackets";
@@ -119,7 +119,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
     const projection = played
       ? beforeBy.get(season)!.get(gameKey(r.game_date, r.home, r.away))
       : ratings.season === season
-        ? project(ratings, home.name, away.name, r.neutral !== "false", r.neutral === "true")
+        ? projectAt(ratings, { home: home.name, away: away.name, ...fieldOf(r.neutral, r.round) })
         : undefined;
     return {
       id: playoffGameId(season, r),
@@ -152,11 +152,11 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
 
 /** A season's playoff game for the bracket page: hand capture or robot-read, team names as our alignments spell them.
  * Scores are absent until played; a forfeit carries no score to show (ADR 0004). */
-export type PlayoffGame = {
+export type PlayoffGame = Field & {
   league: string; bracket: string; round: string; date: string; home: string; away: string;
   /** The league's division as the files write it ("I", "2", "III Small School"), for its bracket slots (ADR 0047). */
   division: string;
-  homeScore?: number; awayScore?: number; forfeit: boolean; neutral: boolean;
+  homeScore?: number; awayScore?: number; forfeit: boolean;
   /** A played game: its final score is confirmed, however it was read, unless the sources give it different winners (ADR 0040). */
   confirmed: boolean;
   /** Kickoff in UTC, for a game not yet played, when known (lib/kickoffs.ts, ADR 0036). */
@@ -179,7 +179,7 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
       away: name(r.away),
       ...(played ? { homeScore: h, awayScore: a } : {}),
       forfeit: r.end_reason === "forfeit" || (played && forfeitScore(h, a)),
-      neutral: r.neutral !== "false",
+      ...fieldOf(r.neutral, r.round),
       confirmed: played && !isDisputed(disputed, r.game_date, r.home, r.away), // a final is confirmed unless disputed (ADR 0040)
       ...(!played && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
     };
@@ -187,7 +187,11 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
 }
 
 /** Playoff games with their bracket ("TAPPS Division II Large School") and round, team names as our alignments spell them. */
-export type BracketGame = { bracket: string; round: string; home: string; away: string; played: boolean; neutral: boolean };
+export type BracketGame = Field & {
+  bracket: string; round: string; home: string; away: string; played: boolean;
+  /** The winner of a played game that is a confirmed final and not a tie (ADR 0040); absent otherwise. */
+  winner?: string;
+};
 
 // Playoff rounds in bracket order, earliest first. UIL plays bi-district, area, regional, semifinal, state; the private
 // leagues play round-1 (or none), quarterfinal, semifinal, final.
@@ -196,7 +200,7 @@ export const ROUNDS = ["round-1", "bi-district", "area", "quarterfinal", "region
 /** "the regional round": how far a team went, as a phrase. Says which round it played, never whether it won (ADR 0004). */
 export function roundPhrase(round: string, league: string): string {
   const state = league === "UIL" ? "state " : "";
-  if (round === "final" || round === "state") return `the ${state}final`;
+  if (round === "final" || round === "state") return "the State Championship";
   if (round === "semifinal") return `the ${state}semifinal`;
   if (round === "round-1") return "the first round";
   if (round === "quarterfinal") return "the quarterfinal";
@@ -219,10 +223,16 @@ export const playoffReach = memo(async (season: number): Promise<Map<string, { r
 /** The key two files agree on for one game: date and both teams (spelling and order of the teams do not matter). */
 export const gameKey = (date: string, home: string, away: string) => [date, ...[slugify(home), slugify(away)].sort()].join("|");
 
-/** `gameKey` of each playoff game of a season: playoff sites are mostly neutral (see run.py playoff_sites), and
- * games.csv holds playoff games too, so standings and pregame use this to tell them from regular-season games. */
+/** `gameKey` of each playoff game of a season: games.csv holds playoff games too, so standings use this to tell them from
+ * regular-season games. */
 export async function playoffGameKeys(season: number): Promise<Set<string>> {
-  return new Set((await playoffRows([season])).map(({ r }) => gameKey(r.game_date, r.home, r.away)));
+  return new Set((await playoffFields(season)).keys());
+}
+
+/** Each playoff game of a season by `gameKey`, with its field (`fieldOf`: the listed home team's playoff share, none at a
+ * State Championship or a true neutral site), as services/ratings/run.py playoff_sites gives the fit. */
+export async function playoffFields(season: number): Promise<Map<string, Field>> {
+  return new Map((await playoffRows([season])).map(({ r }) => [gameKey(r.game_date, r.home, r.away), fieldOf(r.neutral, r.round)]));
 }
 
 export type { SeasonResult };

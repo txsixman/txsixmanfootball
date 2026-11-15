@@ -4,7 +4,7 @@ import { resultSeasons } from "./weeks";
 
 // How well the week-before projections picked games (lib/pregame.ts): for each band of the favorite's win probability,
 // how many games, how often the ratings said the favorite would win (`expected`, their average win probability) and how
-// often it did. Only games pregame judges count: both teams with four games played,
+// often it did. Only games pregame judges count: both teams with four rated games,
 // no ties, no forfeits. It says how often the ratings were right, never which result was "correct" (ADR 0004).
 
 type Band = { from: number; to: number; games: number; favoriteWon: number; expected: number };

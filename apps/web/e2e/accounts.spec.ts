@@ -2,16 +2,21 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 // Fan accounts (ADR 0018). FAN_SIGNIN decides what the server does, so the tests come in two sets: with it unset (the
-// default, and CI) fan accounts are off and the site is as it was; with FAN_SIGNIN=on on the server under test they are on:
+// default) fan accounts are off and the site is as it was; with FAN_SIGNIN=on on the server under test they are on:
 //   E2E_PORT=3072 FAN_SIGNIN=on apps/web/node_modules/.bin/playwright test -c apps/web/playwright.config.ts e2e/accounts.spec.ts
+// FAN_POSTS (ADR 0052) is a second switch inside the "on" set: sign-in and follows are the same either way, and only the
+// `posts` field of /api/me tells them apart here (e2e/posts.spec.ts covers the posts pages). CI runs the "on" set with FAN_POSTS
+// off and with FAN_POSTS=on.
 // The browser-side tests answer /api/me with a stub, so they run either way. No Supabase project is configured here, so
 // every real call to the account routes answers as "signed out".
 const ON = process.env.FAN_SIGNIN === "on";
+// What /api/me says about posts: on only with sign-in on as well.
+const POSTS = ON && process.env.FAN_POSTS === "on";
 // The production build (CI) registers the site's service worker, which would fetch /api itself, past page.route. Block
 // it, so every stub below sees every request.
 test.use({ serviceWorkers: "block" });
 
-const me = (answer: { displayName: string | null; follows: string[]; admin?: boolean } | null) => ({ enabled: true, me: answer });
+const me = (answer: { displayName: string | null; follows: string[]; admin?: boolean } | null) => ({ enabled: true, posts: POSTS, me: answer });
 
 const axe = (page: Page) => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
 const BETTING = /\b(spread|spreads|odds|betting|wager|parlay)\b/i;
@@ -30,29 +35,29 @@ test.describe("fan accounts off (FAN_SIGNIN unset: the default)", () => {
     await expect(page.getByRole("button", { name: /Google/ })).toHaveCount(0);
     const text = await page.locator("main").innerText();
     expect(text).not.toMatch(/13|birth year|display name|terms|privacy|new here|account/i);
-    await expect(page.getByRole("link", { name: /^(Privacy|Terms)$/ })).toHaveCount(0);
+    await expect(page.locator("main").getByRole("link", { name: /^(Privacy|Terms)$/ })).toHaveCount(0);
     expect((await axe(page)).violations.map((v) => v.id)).toEqual([]);
   });
 
   test("the header has no Sign in link and the Follow button offers no sign-in", async ({ page }) => {
     const asked = page.waitForResponse((r) => r.url().endsWith("/api/me"), { timeout: 20_000 });
     await page.goto("/programs/jayton");
-    expect(await (await asked).json()).toEqual({ enabled: false, me: null });
+    expect(await (await asked).json()).toEqual({ enabled: false, posts: false, me: null });
     await page.waitForTimeout(500);
     await expect(page.getByRole("link", { name: /Sign in/ })).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Admin" })).toHaveCount(0);
   });
 
-  test("the privacy, terms and under-13 pages do not exist while fan accounts are off", async ({ request }) => {
-    for (const path of ["/privacy", "/terms", "/account/too-young"]) expect((await request.get(path)).status(), path).toBe(404);
+  test("the under-13 page does not exist while fan accounts are off", async ({ request }) => {
+    for (const path of ["/account/too-young"]) expect((await request.get(path)).status(), path).toBe(404);
   });
 
   test("the account routes answer null and 404 without asking anyone", async ({ request, baseURL }) => {
     const answer = await request.get("/api/me");
-    expect(await answer.json()).toEqual({ enabled: false, me: null });
+    expect(await answer.json()).toEqual({ enabled: false, posts: false, me: null });
     // From an admin page the route still answers (with no session cookie, still nobody).
     const fromAdmin = await request.get("/api/me", { headers: { referer: `${baseURL}/admin` } });
-    expect(await fromAdmin.json()).toEqual({ enabled: false, me: null });
+    expect(await fromAdmin.json()).toEqual({ enabled: false, posts: false, me: null });
     const write = await request.post("/api/follows", { headers: { origin: baseURL! }, data: { op: "follow", slug: "jayton" } });
     expect(write.status()).toBe(404);
   });
@@ -77,8 +82,8 @@ test.describe("fan accounts on (FAN_SIGNIN=on)", () => {
     await expect(page.getByLabel("Email")).toBeHidden();
     await summary.click();
     await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
-    await expect(page.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
+    await expect(page.locator("main").getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+    await expect(page.locator("main").getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
     await expect(page.getByText("You must be 13 or older.")).toBeVisible();
     expect((await axe(page)).violations.map((v) => v.id)).toEqual([]);
   });
@@ -89,9 +94,16 @@ test.describe("fan accounts on (FAN_SIGNIN=on)", () => {
     await expect(page.getByRole("link", { name: "Sign in to follow on every device" })).toBeVisible();
   });
 
+  test("sign-in and follows are the same with posts off or on; only the posts routes and pages follow FAN_POSTS", async ({ request }) => {
+    expect((await request.get("/api/fan/me")).status()).toBe(POSTS ? 200 : 404);
+    expect((await request.get("/forums")).status()).toBe(POSTS ? 200 : 404);
+    expect((await request.get("/sign-in")).status()).toBe(200);
+    expect((await request.get("/account")).status()).toBe(200);
+  });
+
   test("the follow route refuses a foreign or malformed write, and a signed-out one", async ({ request, baseURL }) => {
     const answer = await request.get("/api/me");
-    expect(await answer.json()).toEqual({ enabled: true, me: null });
+    expect(await answer.json()).toEqual({ enabled: true, posts: POSTS, me: null });
     expect(answer.headers()["cache-control"]).toContain("no-store");
     const post = (headers: Record<string, string>, data: unknown) => request.post("/api/follows", { headers, data });
     expect((await post({}, { op: "follow", slug: "jayton" })).status()).toBe(403); // no Origin
@@ -129,7 +141,15 @@ for (const [path, heading] of [["/privacy", "Privacy"], ["/terms", "Terms"]] as 
       }
       expect(text).toMatch(/under 13[\s\S]*deleted/i);
       expect(text).toMatch(/delete your account/i);
-      expect(text).toMatch(/under 18 goes to any third party/);
+      expect(text).not.toMatch(/under 18 goes to any third party/); // ADR 0056: email goes to the email service for 18 or older by birth year
+      expect(text).toMatch(/accounts\s+18 or older by birth year/);
+      expect(text).toMatch(/email address goes to our email service only to send the emails you turned on/i);
+      expect(text).toMatch(/Unsubscribe link/);
+      expect(text).toMatch(/at most 5 browsers/i);
+      expect(text).toMatch(/short device label/i);
+      expect(text).toMatch(/never keep the browser.s full identifying text/i);
+      expect(text).toMatch(/Download my data/);
+      expect(text).toMatch(/Sign out of all devices/);
     }
     expect((await axe(page)).violations.map((v) => v.id)).toEqual([]);
     const m = await page.evaluate(() => ({

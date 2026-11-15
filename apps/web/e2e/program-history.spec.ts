@@ -42,7 +42,7 @@ test(`every season ${FIRST_SEASON} to ${CURRENT_SEASON} has a row: record, place
     await expect(row).toContainText(/[+−]\d+\.\d\s*rating/);
   }
   // How far it went says which round it played, never whether it won.
-  await expect(season(page, 2024)).toContainText("Playoffs: reached the state final");
+  await expect(season(page, 2024)).toContainText("Playoffs: reached the State Championship");
   await expect(season(page, 2022)).toContainText(/Playoffs: reached the area round/);
   await expect(season(page, 2021)).toContainText("Playoffs: reached the regional round");
   await expect(seasons(page).getByText(new RegExp(`^\\d+-\\d+(-\\d+)? from ${FIRST_SEASON} to ${CURRENT_SEASON} · playoffs in \\d of ${CURRENT_SEASON - FIRST_SEASON + 1} seasons$`))).toBeVisible();
@@ -144,10 +144,10 @@ test("every past playoff game names its round and links to its game page; no gam
   await row.locator("summary").click();
   const games = row.locator("details li");
   expect(await games.count()).toBeGreaterThanOrEqual(15);
-  // 2024: bi-district, area, regional, semifinal and the state final.
+  // 2024: bi-district, area, regional, semifinal and the State Championship.
   const playoff = games.filter({ hasText: /UIL Division II · /i });
   await expect(playoff).toHaveCount(5);
-  for (const round of [/Bi-District/i, /Area/i, /Regional/i, /Semifinal/i, /State Final|Final/i]) await expect(playoff.filter({ hasText: round }).first()).toBeVisible();
+  for (const round of [/Bi-District/i, /Area/i, /Regional/i, /Semifinal/i, /State Championship/i]) await expect(playoff.filter({ hasText: round }).first()).toBeVisible();
   const hrefs = await playoff.evaluateAll((lis) => lis.map((li) => [...li.querySelectorAll("a")].map((a) => a.getAttribute("href")).filter((h) => h?.startsWith("/scores/"))));
   for (const h of hrefs) expect(h.length).toBe(1);
   expect(new Set(hrefs.flat()).size).toBe(5);
@@ -202,14 +202,15 @@ for (const slug of ["jayton", "dell-city", "calvert"]) {
   });
 }
 
-test("\"Put this on your site\" holds the iframe as text to copy, and no iframe is on the page", async ({ page }) => {
+test("\"Put this on your site\" holds the iframe and a plain link to the program page as text to copy, and no iframe is on the page", async ({ page }) => {
   await open(page, "jayton");
   const block = page.locator("details").filter({ has: page.getByText("Put this on your site", { exact: true }) });
   await expect(block).toHaveCount(1);
   await expect(block.locator("details, summary")).toHaveCount(1); // only its own summary
   await block.getByText("Put this on your site", { exact: true }).click();
   await expect(block.locator("pre code")).toHaveText(
-    `<iframe src="https://txsixmanfootball.com/embed/programs/jayton" title="Jayton scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>`,
+    `<iframe src="https://txsixmanfootball.com/embed/programs/jayton" title="Jayton scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>\n` +
+      `<p><a href="https://txsixmanfootball.com/programs/jayton">Jayton football scores and schedule</a></p>`,
   );
   await expect(block).toContainText("?theme=dark");
   await expect(page.locator("iframe")).toHaveCount(0);

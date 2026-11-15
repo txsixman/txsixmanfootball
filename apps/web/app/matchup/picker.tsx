@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Identity } from "@/lib/identity";
 import { project, projectionParts } from "@/lib/projection";
-import { signed } from "@/lib/signed";
+import { ratingText } from "@/lib/signed";
 import { type Meeting, pairKey } from "@/lib/meetings";
 import type { RatingsTable } from "@/lib/ratings";
 import { Crest } from "../programs/crest";
 
-export type MatchupTeam = { slug: string; name: string; group: string; rating: number; record: string; identity: Identity };
+export type MatchupTeam = { slug: string; name: string; group: string; rating: number; mercy_only?: true; record: string; identity: Identity };
 
 const longDate = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -53,7 +53,7 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
   const select = (label: string, value: string, set: (v: string) => void) => (
     <label className="block">
       <span className="font-num text-[14px] font-bold uppercase tracking-wider text-muted">{label}</span>
-      <select value={value} onChange={(e) => set(e.target.value)} className="mt-1 block h-12 w-full border-2 border-navy bg-white px-2 text-[16px] text-ink">
+      <select value={value} onChange={(e) => set(e.target.value)} className="mt-1 block h-12 w-full border-2 border-navy bg-page px-2 text-[16px] text-ink">
         <option value="">Choose a team</option>
         {groups.map((g) => (
           <optgroup key={g} label={g}>
@@ -84,7 +84,7 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
                 key={v}
                 className={`relative flex min-h-12 items-center justify-center px-1.5 py-1 text-center text-[14px] font-semibold leading-tight has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-navy ${
                   v === "neutral" ? "" : "border-l-2 border-navy"
-                } ${site === v ? "bg-navy text-white" : "bg-white text-navy"}`}
+                } ${site === v ? "bg-band text-white" : "bg-page text-navy"}`}
               >
                 <input type="radio" name="site" value={v} checked={site === v} onChange={() => setSite(v)} className="absolute inset-0 size-full cursor-pointer opacity-0" />
                 <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>
@@ -97,7 +97,7 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
       <section aria-live="polite" aria-label="Projection" className="mt-5 border-2 border-navy bg-panel lg:mt-0">
         {p ? (
           <>
-            <dl className="grid grid-cols-2 border-b-2 border-navy bg-white">
+            <dl className="grid grid-cols-2 border-b-2 border-navy bg-page">
               {[ta!, tb!].map((t, i) => (
                 <div key={t.slug} className={`min-w-0 px-3 py-3 ${i ? "border-l border-line" : ""}`}>
                   <dt>
@@ -106,7 +106,7 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
                       <span className="min-w-0 [overflow-wrap:anywhere]">{t.name}</span>
                     </Link>
                   </dt>
-                  <dd className="mt-1 text-[14px] text-muted">Rating {signed(t.rating)} · {t.record}</dd>
+                  <dd className="mt-1 text-[14px] text-muted">Rating {ratingText(t)} · {t.record}</dd>
                 </div>
               ))}
             </dl>
@@ -115,12 +115,12 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
               <p className="mt-1 font-num text-[36px] font-bold uppercase leading-none text-navy">{projectionParts(p).margin}</p>
               <p className="mt-1 text-[17px] text-ink">{projectionParts(p).chance}</p>
               {/* Team 1 navy, team 2 red, as the squares in their names; the win probability in words is above. */}
-              <div aria-hidden="true" className="mt-3 flex h-3 bg-red">
-                <span className="bg-navy" style={{ width: `${Math.round(share1 * 100)}%` }} />
+              <div aria-hidden="true" className="mt-3 flex h-3 bg-alert">
+                <span className="bg-band" style={{ width: `${Math.round(share1 * 100)}%` }} />
               </div>
               <div aria-hidden="true" className="mt-1.5 flex justify-between gap-3 text-[13px] text-muted">
-                <span className="flex min-w-0 items-center gap-1.5"><span className="size-2.5 shrink-0 bg-navy" /><span className="truncate">{ta!.name}</span></span>
-                <span className="flex min-w-0 items-center gap-1.5"><span className="truncate">{tb!.name}</span><span className="size-2.5 shrink-0 bg-red" /></span>
+                <span className="flex min-w-0 items-center gap-1.5"><span className="size-2.5 shrink-0 bg-band" /><span className="truncate">{ta!.name}</span></span>
+                <span className="flex min-w-0 items-center gap-1.5"><span className="truncate">{tb!.name}</span><span className="size-2.5 shrink-0 bg-alert" /></span>
               </div>
             </div>
             <div className="border-t border-line px-4 pb-3 pt-3">

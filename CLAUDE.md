@@ -23,11 +23,13 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `services/ratings/`: censored-margin model (a season starts from last season and from each league's level; win chance is
   calibrated, `model.py`), Elo baseline, simulated-season comparison; `rows.py`: the one rule for what counts as a rated game
   (forfeits, 0-0 and duplicates out; unlisted opponents in as hidden teams); `backtest.py`: Gate G3's walk-forward
-  backtest (`run.py --backtest`, ~4 min on 10 cores, writes `data/ratings/backtest.json`; rerun it after the model or a season's
+  backtest from 2018 (`run.py --backtest`, ~5 min on 10 cores, writes `data/ratings/backtest.json`; rerun it after the model or a season's
   games change, then copy its rho, tau and calibration scale into `model.SETTINGS` / `CALIBRATION`; a test fails if they drift)
 - `data/ratings/<season>.json`: the ratings table `/rankings` shows, written by `services/ratings/run.py --season` (the
-  `ratings-table` job in `main.yml` and `results-watch.yml` commit it; both rate with `PRIVATE_DATA`, below). Never edit by hand. A season starts from the one before it, so
-  after a model change rerun 2021, 2022, ... 2026 in that order. Fields are listed at the top of `run.py`
+  `ratings-table` job in `main.yml` and `results-watch.yml` commit it; both rate with `PRIVATE_DATA`, below). Never edit by hand. A season starts from the one before it (each table
+  stores its prior's `prior_sha256` and its own `inputs_sha256`), so after a model change run `run.py --chain 2026`: it re-rates
+  2018 on, every season whose games, corrections, ratings code or prior changed, in order (the CI job runs the same; a test fails
+  if a committed table's prior is not the committed season before it). Fields are listed at the top of `run.py`
 - `data/seed/uil-2026-28/`: UIL alignments (with regions), the 2026 playoff capture file, and `bracket-2026.csv`: UIL's
   own bracket by hand (G1 to G31, seeds, regions and feeds; ADR 0047)
 - `data/seed/brackets/<season>.csv`: TAIAO's bracket slots, written by `tools/league-watch/taiao.mjs`, never by hand (ADR 0047)
@@ -74,6 +76,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   wrong; `contact-sheet.mjs` draws every logo on white and navy
 - `apps/web`: Next.js site (Vercel, Root Directory `apps/web`); `lib/score-display.ts` holds the winner and
   verification rules (ADR 0004); `lib/demo-games.ts` is invented schools only
+- `apps/web/app/playoffs/tree/`: the bracket drawing on each bracket page (ADR 0049): `board.tsx` (tree and by-round views),
+  `data.ts`, `image.tsx` (the share and full-size PNGs); layout math in `lib/bracket-layout.ts`, box content in
+  `lib/bracket-tree.ts`; `/playoffs/bracket/sample` is invented schools only (`lib/demo-bracket.ts`)
 - `apps/web/app/embed/`: the embeddable scoreboard, `/embed/programs/<slug>` (ADR 0023): the only route that may be framed; its page and CSP are built in `lib/embed-html.ts`
 - `tools/push/`: score alerts (web-push), sent by `results-watch.yml` after it pushes new finals; subscriptions in
   Supabase `push_subscription` (migration 0008)
@@ -98,7 +103,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   build, in one command, with a pass/fail summary; run it before pushing. The commands it runs are listed below
 - `uv run --directory services/ratings pytest -q`: ratings tests
 - `uv run --directory services/ratings python run.py --simulate`: compare models on simulated seasons
-- `uv run --directory services/ratings python run.py --season 2026`: rate every game file of a season into `data/ratings`
+- `uv run --directory services/ratings python run.py --season 2026`: rate every game file of a season into `data/ratings`;
+  `--chain 2026` re-rates 2018 to 2026 where stale
 - `NODE_USE_ENV_PROXY=1 node tools/league-watch/maxpreps.mjs [--season 2026]`: read results (~12 min; the env var lets
   Node use the sandbox proxy)
 - `uv run --directory services/ratings python run.py --json ../../apps/web/lib/demo-ratings.json sample-games.csv`:

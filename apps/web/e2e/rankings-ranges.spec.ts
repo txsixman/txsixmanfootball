@@ -70,7 +70,7 @@ test("strength of record, schedule, best win and worst loss; a forfeit is never 
       game("3", "Us", "Mid", 2, 0, true), // a forfeit win over Mid: no figure, never the best win
       game("4", "Weak", "Mid", 0, 2, true), // a forfeit loss for Weak to Mid: a worst loss, shown as a word
     ],
-    new Set(),
+    new Map(),
     30, // a benchmark team as good as Us
   );
   const us = stats.get("Us")!;
@@ -88,8 +88,8 @@ test("strength of record, schedule, best win and worst loss; a forfeit is never 
   expect(meetingScore(weak.worst!)).toBe("Forfeit");
   expect(weak.best).toBeUndefined();
   // A harder schedule earns more record strength for the same wins: beating Strong counts for more than beating Weak.
-  const beatStrong = scheduleStats(table, [game("1", "Strong", "Us", 0, 7)], new Set(), 30).get("Us")!;
-  const beatWeak = scheduleStats(table, [game("1", "Weak", "Us", 0, 7)], new Set(), 30).get("Us")!;
+  const beatStrong = scheduleStats(table, [game("1", "Strong", "Us", 0, 7)], new Map(), 30).get("Us")!;
+  const beatWeak = scheduleStats(table, [game("1", "Weak", "Us", 0, 7)], new Map(), 30).get("Us")!;
   expect(beatStrong.sor).toBeGreaterThan(beatWeak.sor);
 });
 

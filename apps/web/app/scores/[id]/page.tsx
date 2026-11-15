@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
 import { gameDescription } from "@/lib/descriptions";
-import { fanSignIn } from "@/lib/auth/config";
+import { fanPosts } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
 import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, playoffLabels, resolveGame } from "@/lib/game-pages";
@@ -11,14 +11,18 @@ import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
 import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
+import { loadWeeks } from "@/lib/weeks";
+import { weekHref as resultsWeekHref } from "../../results/paths";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
+import { gameNeighbours } from "@/lib/neighbours";
 import { projectedLine } from "@/lib/outcome";
 import { currentPeriod, isForfeit, outcomeOf, playedPeriods } from "@/lib/score-display";
 import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
 import { ShareButton } from "../../share-button";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { Follow } from "../../programs/follow";
 import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
@@ -90,12 +94,12 @@ function Linescore({ g }: { g: Game }) {
               <span className="sr-only">Team</span>
             </th>
             {[1, 2, 3, 4].map((n) => (
-              <th key={n} scope="col" className={`w-12 py-1 pr-2 font-semibold ${current === n ? "bg-navy text-white" : ""}`}>
+              <th key={n} scope="col" className={`w-12 py-1 pr-2 font-semibold ${current === n ? "bg-band text-white" : ""}`}>
                 {n}
                 {current === n && <span className="sr-only"> (in progress)</span>}
               </th>
             ))}
-            <th scope="col" className="w-14 bg-red py-1 pr-2 font-bold text-white">
+            <th scope="col" className="w-14 bg-alert py-1 pr-2 font-bold text-white">
               T<span className="sr-only">otal</span>
             </th>
           </tr>
@@ -138,11 +142,28 @@ export default async function GamePage({ params }: Props) {
   };
   // The two programs' series page, when they have met often enough to have one (lib/series.ts).
   const [awaySlug, homeSlug] = [programOf(g.away)?.slug, programOf(g.home)?.slug];
+  // Score alerts for each team that has a program page (the page's own Follow button, as it is there).
+  const followable = [
+    { school: g.away.name, slug: awaySlug },
+    { school: g.home.name, slug: homeSlug },
+  ].flatMap(({ school, slug }) => (slug ? [{ school, slug }] : []));
   const series = !sample && awaySlug && homeSlug && (await seriesPartners()).get(awaySlug)?.has(homeSlug) ? seriesHref(awaySlug, homeSlug) : undefined;
-  // Fan comments and score reports exist only while FAN_SIGNIN is "on" (read when the page is built; flip it and redeploy).
-  const fan = fanSignIn();
+  // Where the game sits: its bracket and next round, its results week, each team's season (lib/neighbours.ts).
+  const around = sample ? [] : await gameNeighbours({ season: found?.season ?? CURRENT_SEASON, date: g.date, home: g.home.name, away: g.away.name, resultId: found?.result.id });
+  // Fan comments and score reports exist only while FAN_POSTS (and FAN_SIGNIN) is "on" (read when the page is built; flip it and
+  // redeploy). If a page built with them on is served after the flag goes off, their routes answer 404 and the blocks hide themselves.
+  const fan = fanPosts();
   const live = g.state === "live";
-  const back = sample ? { href: "/scores/sample", name: "Scoreboard" } : own ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, name: own.season === CURRENT_SEASON ? "Results" : `${own.season} results` } : { href: "/scores", name: "Scoreboard" };
+  // Back to where the game is listed: a season game's own results week (the season's week numbers, ADR 0012), a playoff
+  // or sample game's scoreboard.
+  const week = own && g.date ? (await loadWeeks(own.season)).findLast((w) => w.monday <= g.date!) : undefined;
+  const back = sample
+    ? { href: "/scores/sample", name: "Scoreboard" }
+    : own && week
+      ? { href: resultsWeekHref(own.season, week.number, orgOfLabel(g.league)), name: own.season === CURRENT_SEASON ? `Week ${week.number} results` : `${own.season} week ${week.number}` }
+      : own
+        ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, name: own.season === CURRENT_SEASON ? "Results" : `${own.season} results` }
+        : { href: "/scores", name: "Scoreboard" };
   const places = [
     [g.away.name, detail?.places.away],
     [g.home.name, detail?.places.home],
@@ -155,7 +176,7 @@ export default async function GamePage({ params }: Props) {
 
       <GameLiveRead date={g.date} kickoff={g.kickoff} watch={!sample && !!g.date && g.state === "scheduled"}>
       <header>
-        <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-red" : "bg-navy"}`}>
+        <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-alert" : "bg-band"}`}>
           <span>
             {live ? "Live" : g.status}
             {/* A real game not yet played: its kickoff status at the moment of viewing (ADR 0036). */}
@@ -184,6 +205,22 @@ export default async function GamePage({ params }: Props) {
       </GameLiveRead>
 
       <Linescore g={g} />
+
+      {followable.length > 0 && (
+        <section aria-labelledby="game-alerts" data-pagefind-ignore className="mt-5 px-3">
+          <h2 id="game-alerts" className="font-num text-[14px] font-bold uppercase tracking-wider text-navy">
+            Follow these teams
+          </h2>
+          <div className="mt-2 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap">
+            {followable.map((t) => (
+              <Follow key={t.slug} slug={t.slug} school={t.school} compact />
+            ))}
+          </div>
+          <p className="mt-1 text-[13px] text-muted">
+            Alerts use this browser&apos;s push address and the teams you follow; signed out, no name, email or phone. Signed in, both are kept with your account until you sign out or delete it. On an iPhone, add this site to your Home Screen first.
+          </p>
+        </section>
+      )}
 
       <section aria-labelledby="details" className="mt-5 px-3 pb-1">
         <h2 id="details" className="mb-0.5 border-b-2 border-navy pb-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">
@@ -240,6 +277,20 @@ export default async function GamePage({ params }: Props) {
         </div>
       )}
       {!detail && <div className="pb-6" />}
+
+      {around.length > 0 && (
+        <nav aria-label="Around this game" className="px-3 pb-6">
+          <ul>
+            {around.map((n) => (
+              <li key={n.href}>
+                <Link href={n.href} prefetch={false} className="link-more">
+                  {n.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
 
       {fan && !sample && g.state === "scheduled" && <ScoreReport gameKey={id} away={g.away.name} home={g.home.name} date={g.date} />}
 

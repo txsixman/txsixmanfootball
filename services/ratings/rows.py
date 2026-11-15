@@ -52,7 +52,12 @@ HIDDEN_MIN_OPPONENTS = 2
 # the season's home edge it earned is 1.65 (SE 0.43), and walk-forward log loss on the 491 scored playoff games falls at
 # every step from a share of 0 (0.3655) to 1 (0.3621; mean margin miss 14.3 to 14.1): see docs/research/ratings-before-
 # after-2026-11-11.md. A share is capped at 1, so the listed home team gets the whole edge. A hand capture says for itself.
+# The listed home team is usually the higher seed, so the share likely measures seeding more than the field (ADR 0057);
+# a seeding term is to be tested against it on the 2027 season. Until then: the listed home team, not a neutral site.
 PLAYOFF_EDGE = 1.0
+# A State Championship is played at a neutral site (ADR 0057): no home edge, robot-read or hand-captured, unless a hand
+# capture says the site is a home field. Twin of STATE_CHAMPIONSHIP_ROUNDS in apps/web/lib/projection.ts.
+STATE_CHAMPIONSHIP_ROUNDS = frozenset({"final", "state"})
 
 
 def forfeit_score(a: int, b: int) -> bool:
@@ -74,7 +79,8 @@ class Game:
     away_score: int
     end_reason: str
     edge: (
-        float  # share of the season's home edge the home team gets: 1 home, 0 neutral, PLAYOFF_EDGE robot-read playoff
+        float  # share of the season's home edge the home team gets: 1 home, 0 neutral or a State Championship,
+        # PLAYOFF_EDGE another robot-read playoff game
     )
     kind: str  # rated | forfeit | no_contest | duplicate
 
@@ -87,10 +93,11 @@ class Game:
         return self.end_reason in MERCY or (self.end_reason == "unknown" and abs(self.margin) >= 45)
 
 
-def read_files(paths, neutral: frozenset = frozenset(), corrections: Corrections | None = None):
+def read_files(paths, neutral: dict | frozenset = frozenset(), corrections: Corrections | None = None):
     """Each played game once, in file order: a game already read (same date and teams) from an earlier file is skipped,
-    so the first file wins. `neutral` keys are robot-read playoff games (they get PLAYOFF_EDGE of a home edge), unless a
-    hand capture, which says for itself. `corrections` (default: data/corrections, corrections.py) merge program names,
+    so the first file wins. `neutral` keys are robot-read playoff games: a dict gives each one's share of a home edge
+    (run.py playoff_sites: 0 for a State Championship, else PLAYOFF_EDGE), a set gives each PLAYOFF_EDGE. A hand capture
+    says for itself, and its State Championship is a neutral site unless it says "false". `corrections` (default: data/corrections, corrections.py) merge program names,
     fix scores and drop games listed in error, before any of the rules above look at a row."""
     if corrections is None:
         corrections = load_corrections()
@@ -121,7 +128,9 @@ def read_files(paths, neutral: frozenset = frozenset(), corrections: Corrections
                 if r["neutral"] == "true":
                     edge = 0.0
                 elif raw_key in neutral and "maxpreps-" in str(path):
-                    edge = PLAYOFF_EDGE
+                    edge = neutral[raw_key] if isinstance(neutral, dict) else PLAYOFF_EDGE
+                elif r["neutral"] != "false" and r.get("round") in STATE_CHAMPIONSHIP_ROUNDS:
+                    edge = 0.0
                 else:
                     edge = 1.0
                 yield Game(r["game_date"], home, away, home_score, away_score, end_reason, edge, "rated")
@@ -212,7 +221,7 @@ class Season:
 def prepare(
     paths,
     outside: str | Path | None = None,
-    neutral: frozenset = frozenset(),
+    neutral: dict | frozenset = frozenset(),
     before: str | None = None,
     corrections: Corrections | None = None,
 ) -> Season | None:

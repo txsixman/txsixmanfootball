@@ -80,7 +80,7 @@ export default async function SeriesPage({ params }: Props) {
 
   return (
     <EdgeToEdge>
-    <article aria-labelledby="series" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
+    <article aria-labelledby="series" className="mx-auto max-w-3xl border-line bg-page pb-6 sm:border-x">
       <Breadcrumbs trail={[{ name: "Home", href: "/" }, { name: "Programs", href: "/programs" }, { name: title, href: `/series/${first}/${second}` }]} />
       <header className="px-3 pt-5">
         <p className="text-[12px] font-bold uppercase tracking-widest text-red">Series since {since}</p>
@@ -127,7 +127,7 @@ export default async function SeriesPage({ params }: Props) {
 
       {finals.length > 0 && (
         <section aria-labelledby="finals" className="mt-6">
-          <SectionBar id="finals" title="State finals" className="mt-2" />
+          <SectionBar id="finals" title="State Championships" className="mt-2" />
           <ul>
             {finals.map((f) => (
               <li key={`${f.season}-${f.division}`} className="grid min-h-12 grid-cols-[3.5rem_1fr_auto] items-center gap-x-3 border-b border-line px-3 py-1.5">
@@ -141,7 +141,7 @@ export default async function SeriesPage({ params }: Props) {
               </li>
             ))}
           </ul>
-          <p className="px-3 pt-1 text-[13px] text-muted">UIL state finals the two programs played each other in, merged schools included.</p>
+          <p className="px-3 pt-1 text-[13px] text-muted">UIL State Championships the two programs played each other in, merged schools included.</p>
         </section>
       )}
 

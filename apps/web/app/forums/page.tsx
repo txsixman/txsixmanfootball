@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { fanSignIn } from "@/lib/auth/config";
+import { fanPosts } from "@/lib/auth/config";
 import { BOARDS } from "@/lib/forum-boards";
 import { loadBoards } from "@/lib/forums";
 import { PageHeader } from "../ui";
 import { when } from "./when";
 
-// The forums: a few fixed boards. Read by anyone; posting needs a signed-in account (the boards' pages). Per request and
-// noindex for now (proxy.ts sends the same header).
+// The forums: a few fixed boards. Read by anyone; posting needs a signed-in account (the boards' pages). A 404 unless
+// FAN_POSTS is on (ADR 0052). Per request and noindex for now (proxy.ts sends the same header).
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Forums", robots: { index: false, follow: false } };
 
 export default async function ForumsPage() {
-  if (!fanSignIn()) notFound();
+  if (!fanPosts()) notFound();
   const counts = new Map((await loadBoards())?.map((b) => [b.slug, b]) ?? []);
   return (
     <section aria-labelledby="forums">

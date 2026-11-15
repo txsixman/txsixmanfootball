@@ -5,16 +5,29 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { changeAccountFollows, fetchMe, type Me } from "@/lib/account/follows";
-import { followedHere, pushSupported, setFollow } from "@/lib/push";
+import { dropFromThisBrowser, followedHere, linkToAccount, pushSupported, setFollow } from "@/lib/push";
 
 type State = "loading" | "unsupported" | "off" | "on" | "busy";
+
+/** Whether this tab has already linked the browser to the account (linking again changes nothing, so once is enough). */
+function linkedThisVisit(set = false): boolean {
+  try {
+    if (set) sessionStorage.setItem("push-linked", "1");
+    return sessionStorage.getItem("push-linked") === "1";
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Follow one program. Signed out: "Alert me to finals", a browser push alert when a new final score of theirs is read,
  * remembered on this browser (as it always was). Signed in: the same button also follows on the account (My teams on every
- * device), and where this browser cannot show alerts it still follows on the account. Push alerts stay per browser.
+ * device), and where this browser cannot show alerts it still follows on the account. Signed in, this browser's push
+ * subscription is also linked to the account (ADR 0054), so the account's follows on any device are what it alerts for.
+ * `compact` is the button and its answer only, for a page that shows more than one (a game's two teams): the page gives the
+ * heading and the stored-data note once, and a browser that cannot show alerts sees no button from a signed-out visitor.
  */
-export function Follow({ slug, school }: { slug: string; school: string }) {
+export function Follow({ slug, school, compact = false }: { slug: string; school: string; compact?: boolean }) {
   const [state, setState] = useState<State>("loading");
   const [note, setNote] = useState("");
   const [me, setMe] = useState<Me | null>(null);
@@ -37,6 +50,8 @@ export function Follow({ slug, school }: { slug: string; school: string }) {
       setMe(answer);
       // Signed in: following on the account counts, and so does a browser that cannot show alerts.
       setState(here || answer.follows.includes(slug) ? "on" : "off");
+      // A browser that already shows alerts is linked to the account, once a visit (never asks for permission).
+      if (supported && Notification.permission === "granted" && !linkedThisVisit()) void linkToAccount(false).then((done) => done && linkedThisVisit(true)).catch(() => {});
     });
     return () => {
       live = false;
@@ -48,15 +63,7 @@ export function Follow({ slug, school }: { slug: string; school: string }) {
     const before = state;
     setState("busy");
     setNote("");
-    if (signedIn) {
-      try {
-        await changeAccountFollows({ op: turnOn ? "follow" : "unfollow", slug });
-      } catch (e) {
-        setState(before);
-        setNote((e as Error).message === "limit" ? "An account follows at most 100 teams. Unfollow one first." : "That did not work. Check your connection and try again.");
-        return;
-      }
-    }
+    if (signedIn) return toggleSignedIn(turnOn, before);
     if (!canPush) {
       setState(turnOn ? "on" : "off");
       setNote(turnOn ? `Following ${school}.` : `Unfollowed ${school}.`);
@@ -65,28 +72,60 @@ export function Follow({ slug, school }: { slug: string; school: string }) {
     try {
       await setFollow(slug, turnOn);
       setState(turnOn ? "on" : "off");
-      setNote(signedIn ? (turnOn ? `Following ${school}. You will get its final scores as alerts on this browser.` : `Unfollowed ${school}.`) : turnOn ? `Alerts on: you will get ${school}'s final scores.` : `Alerts off for ${school}.`);
+      setNote(turnOn ? `Alerts on: you will get ${school}'s final scores.` : `Alerts off for ${school}.`);
     } catch (e) {
-      const blocked = (e as Error).message === "permission";
-      if (signedIn) {
-        // The account change went through; only the browser's alerts did not.
-        setState(turnOn ? "on" : "off");
-        setNote(blocked ? `${turnOn ? "Following" : "Unfollowed"} ${school}. Notifications are blocked for this site, so no alerts here. Allow them in your browser's site settings to get them.` : `${turnOn ? "Following" : "Unfollowed"} ${school}, but alerts on this browser did not change. Try again.`);
-      } else {
-        setState(turnOn ? "off" : "on");
-        setNote(blocked ? "Notifications are blocked for this site. Allow them in your browser's site settings, then try again." : "That did not work. Check your connection and try again.");
+      setState(turnOn ? "off" : "on");
+      setNote((e as Error).message === "permission" ? "Notifications are blocked for this site. Allow them in your browser's site settings, then try again." : "That did not work. Check your connection and try again.");
+    }
+  }
+
+  /**
+   * Signed in: link this browser to the account first (its own follows move onto the account, so an unfollow cannot be undone
+   * by a stale list merged later), then change the account. Where alerts are blocked or the link failed, the account change
+   * still goes through; only this browser's alerts did not.
+   */
+  async function toggleSignedIn(turnOn: boolean, before: State) {
+    let alerts: "ok" | "none" | "blocked" | "failed" = canPush ? "ok" : "none";
+    if (canPush) {
+      try {
+        await linkToAccount(turnOn);
+      } catch (e) {
+        if ((e as Error).message === "permission") alerts = "blocked";
+        else if (!turnOn) {
+          setState(before);
+          setNote("That did not work. Check your connection and try again.");
+          return;
+        } else alerts = "failed";
       }
     }
+    try {
+      await changeAccountFollows({ op: turnOn ? "follow" : "unfollow", slug });
+    } catch (e) {
+      setState(before);
+      setNote((e as Error).message === "limit" ? "An account follows at most 100 teams. Unfollow one first." : "That did not work. Check your connection and try again.");
+      return;
+    }
+    if (!turnOn) dropFromThisBrowser(slug);
+    setState(turnOn ? "on" : "off");
+    const did = turnOn ? "Following" : "Unfollowed";
+    if (alerts === "none") setNote(`${did} ${school}.`);
+    else if (alerts === "blocked") setNote(`${did} ${school}. Notifications are blocked for this site, so no alerts here. Allow them in your browser's site settings to get them.`);
+    else if (alerts === "failed") setNote(`${did} ${school}, but alerts on this browser did not change. Try again.`);
+    else setNote(turnOn ? `Following ${school}. You will get its final scores as alerts on this browser.` : `Unfollowed ${school}.`);
   }
 
   // Rendered on the server too, with the button off until this browser is checked: a section that appeared only after
   // the page's script ran was its largest late paint (Lighthouse LCP 3.2 s on phone). Kept out of the search index.
   const on = state === "on";
+  if (compact && state === "unsupported" && !signedIn) return null;
+  const Root = compact ? "div" : "section";
   return (
-    <section aria-labelledby="alerts" data-pagefind-ignore className="mt-6 px-3">
-      <h2 id="alerts" className="font-num text-[20px] font-bold uppercase tracking-wide text-navy">
-        {signedIn ? "Follow" : "Score alerts"}
-      </h2>
+    <Root {...(compact ? {} : { "aria-labelledby": "alerts" })} data-pagefind-ignore className={compact ? "min-w-0" : "mt-6 px-3"}>
+      {!compact && (
+        <h2 id="alerts" className="font-num text-[20px] font-bold uppercase tracking-wide text-navy">
+          {signedIn ? "Follow" : "Score alerts"}
+        </h2>
+      )}
       {state === "unsupported" && !signedIn ? (
         <p className="mt-1 text-[14px] text-muted">
           This browser cannot show alerts. On an iPhone, add this site to your Home Screen first, then open it from there.
@@ -102,9 +141,9 @@ export function Follow({ slug, school }: { slug: string; school: string }) {
           </p>
         </>
       )}
-      {signedIn ? (
+      {compact ? null : signedIn ? (
         <p className="mt-1 text-[13px] text-muted">
-          Stored: the programs you follow, on your account. Alerts, where this browser can show them, use only this browser&apos;s push address.
+          Stored: the programs you follow, on your account, and, once you allow alerts, this browser&apos;s push address, kept with your account until you sign out or delete it.
         </p>
       ) : (
         <p className="mt-1 text-[13px] text-muted">
@@ -117,6 +156,6 @@ export function Follow({ slug, school }: { slug: string; school: string }) {
           )}
         </p>
       )}
-    </section>
+    </Root>
   );
 }

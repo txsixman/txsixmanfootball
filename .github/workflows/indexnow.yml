@@ -1,0 +1,40 @@
+# After each production deploy: tell IndexNow (Bing, and so DuckDuckGo and Yahoo) which public pages changed, so they are
+# found in minutes. Sends only our own public URLs, from the live sitemap (tools/indexnow/ping.mjs). The key is public by
+# design (apps/web/public/<key>.txt). Google does not use IndexNow. No secrets; reads only the repo.
+# Runs when "Post-deploy smoke" passes on main, except its scheduled fallback run (not a new deploy).
+name: IndexNow
+
+on:
+  workflow_run:
+    workflows: ["Post-deploy smoke"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Send pages changed on or after this UTC date (YYYY-MM-DD); empty means 2 days back"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'schedule')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Send changed pages to IndexNow
+        env:
+          SINCE: ${{ inputs.since }}
+        run: node tools/indexnow/ping.mjs --since "${SINCE:-$(date -u -d '2 days ago' +%F)}"

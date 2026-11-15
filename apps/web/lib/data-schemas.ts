@@ -221,6 +221,7 @@ export const RatingsTable = z.object({
       was: z.number().nullable().optional(),
       trend: z.array(z.number().nullable()).optional(),
       rated_trend: z.array(z.number().int().nonnegative().nullable()).optional(),
+      mercy_only: z.literal(true).optional(),
     }).loose(),
   ),
 }).loose();

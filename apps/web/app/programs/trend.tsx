@@ -1,7 +1,9 @@
 import { slugify } from "@/lib/slug";
 
-// A program's rank within its organization at the end of each week of the season, one line (1 at the top). Server-rendered SVG: each
-// point carries a native tooltip, and a table under it gives the same numbers to screen readers. The viewBox is about a
+// A program's rank within its organization at the end of each week of the season, one line (1 at the top). Server-rendered SVG: the
+// drawing is one image with a summary for its label, and a table under it gives every number to screen readers. A
+// tooltip and an invisible target for each point were four more elements a point, in the page twice (markup and its
+// data), for numbers the table already has. The viewBox is about a
 // phone's width and the drawing stops growing at 480px, so labels stay near 14 to 20px wherever it is seen.
 
 export type TrendPoint = { week: string; rank: number; of: number };
@@ -40,7 +42,7 @@ export function RankTrend({ points, color = "var(--color-navy, #0a2a5e)" }: { po
         <path d={line} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
         {points.map((p, i) => (
           <g key={p.week}>
-            <circle cx={x(i)} cy={y(p.rank)} r={4} fill={color} stroke="#fff" strokeWidth={2} />
+            <circle cx={x(i)} cy={y(p.rank)} r={4} fill={color} stroke="var(--color-page)" strokeWidth={2} />
             {/* A larger, invisible target carries the tooltip. */}
             <circle cx={x(i)} cy={y(p.rank)} r={12} fill="transparent">
               <title>{`Week ending ${short(p.week)}: #${p.rank} of ${p.of}`}</title>

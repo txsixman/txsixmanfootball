@@ -23,6 +23,16 @@ export function fanSignIn(env: Record<string, string | undefined> = process.env)
 }
 
 /**
+ * Whether fan posts exist: forums, game comments and score reports (ADR 0052). They open about a week after sign-in and follows,
+ * behind their own switch. FAN_POSTS must be exactly "on" (server-only, read at request time, never NEXT_PUBLIC), and it means nothing
+ * unless fan sign-in is on too: no accounts, no posts. Off, every posts surface answers as it does with fan accounts off (404 or
+ * hidden). The database has its own switch (migration 0024) for calls that skip the site.
+ */
+export function fanPosts(env: Record<string, string | undefined> = process.env): boolean {
+  return fanSignIn(env) && env.FAN_POSTS === "on";
+}
+
+/**
  * Whether the emailed sign-in link may make a NEW account. FAN_EMAIL_SIGNIN must be exactly "on" (server-only, set once the
  * project's own email sender works: Supabase's built-in sender allows about two emails an hour). Anything else, or nothing,
  * keeps the email form for existing accounts only (it is how the admin signs in). "Continue with Google" is never behind

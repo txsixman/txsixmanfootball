@@ -29,8 +29,8 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
     const next = b.rounds.flatMap((r) => r.built.map((g) => ({ ...g, label: r.label }))).find((g) => g.sides.some((s) => "team" in s && s.team === school));
     return [{
       b, steps, next, ahead: !next && pair ? aheadFor(table, pair, school) : undefined,
-      state: b.chances?.find((c) => c.team === school)?.chance,
-      region: b.regionChances?.flatMap((r) => r.chances).find((c) => c.team === school)?.chance, // a team is in one region
+      state: b.chances?.find((c) => c.team === school)?.shown,
+      region: b.regionChances?.flatMap((r) => r.chances).find((c) => c.team === school)?.shown, // a team is in one region
     }];
   });
   if (!paths.length) return null;
@@ -52,8 +52,8 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
 
   return (
     <section aria-labelledby="path" className="mt-4">
-      <h2 id="path" className="bg-navy py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white" style={{ boxShadow: `inset 8px 0 0 ${accent}` }}>
-        Path to the final
+      <h2 id="path" className="bg-band py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white" style={{ boxShadow: `inset 8px 0 0 ${accent}` }}>
+        Path to the State Championship
       </h2>
       {paths.map(({ b, steps, next, ahead, state, region }) => (
         <div key={b.name}>
@@ -136,14 +136,14 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
           </ol>
           {(state != null || region != null) && (
             <p className="px-3 pt-2 text-[15px] font-semibold text-ink">
-              {region != null && <span className="block">Region title chance: {chanceText(region)}</span>}
-              {state != null && <span className="block">State title chance: {chanceText(state)}</span>}
+              {region != null && <span className="block">Region title chance: {region}</span>}
+              {state != null && <span className="block">State title chance: {state}</span>}
             </p>
           )}
         </div>
       ))}
       <p className="px-3 pt-2 text-[13px] text-muted">
-        Scores may be corrected if a mistake is found. A team&rsquo;s next game shows who went on. Projections use the current ratings, on a neutral field unless the game is at a home site.
+        Scores may be corrected if a mistake is found. A team&rsquo;s next game shows who went on. Projections use the current ratings, with the home edge for the listed home team, except in the State Championship, a neutral site.
       </p>
     </section>
   );

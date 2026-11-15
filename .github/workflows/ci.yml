@@ -47,6 +47,10 @@ jobs:
         run: npm ci --prefix tools/league-watch && npm --prefix tools/league-watch test
       - name: Push alert sender (new finals, who gets which alert)
         run: npm ci --prefix tools/push && npm --prefix tools/push test
+      - name: IndexNow ping (which sitemap pages to send)
+        run: npm --prefix tools/indexnow test
+      - name: Email alert sender (events, message, headers, Resend outcomes)
+        run: node --test tools/email/*.test.mjs
       - name: School logos, colors and mascots (sources, colors, files)
         run: npm --prefix tools/school-identity test
       - name: History readers (UIL state finals)
@@ -205,6 +209,117 @@ jobs:
           path: apps/web/e2e/.results
           retention-days: 7
 
+  # The launch switches (docs/fan-accounts.md): the account and posts specs against the site as Vercel will serve it once FAN_SIGNIN
+  # (and then FAN_POSTS) are set, so flipping them in Vercel cannot break production. Three configs, each its OWN production build
+  # with the switches set, not web-build's artifact: the switches are read per request almost everywhere, but a game page is
+  # built statically and reads FAN_SIGNIN when it is built (app/scores/[id]/page.tsx: its comments and score-report blocks), and
+  # Vercel builds with its environment, so a build without the switch cannot show what the flip will. The first two need no
+  # Supabase project, and CI has none: the account and posts specs run as a signed-out visitor, the browser-side ones stub
+  # /api/me, and with no NEXT_PUBLIC_SUPABASE_* every real call fails closed as "signed out". The third, signin-stub, is the
+  # signed-in side: the specs start a stand-in for Supabase's API on E2E_STUB_PORT (a node http stub, no project and no secret)
+  # and the site is built pointing at it, so /account, its server actions and its routes run for a signed-in fan. NEXT_PUBLIC_*
+  # values are inlined at build time, which is why the stub's address is set before the build. No secret is set here.
+  # launch-scope repeats web-build's `site` filter (keep the two lists the same) so a docs-only change builds nothing here.
+  launch-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read # paths-filter lists a pull request's files through the API
+    outputs:
+      site: ${{ steps.filter.outputs.site }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        id: filter
+        with:
+          predicate-quantifier: every
+          filters: |
+            site:
+              - '!docs/**'
+              - '!**/*.md'
+              - '!tools/**'
+              - '!services/**'
+              - '!packages/**'
+              - '!ruff.toml'
+              - '!.github/dependabot.yml'
+              - '!.github/workflows/!(ci).yml'
+
+  web-launch:
+    needs: launch-scope
+    if: needs.launch-scope.outputs.site == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # the build (up to 10, as web-build), then a handful of specs
+    permissions:
+      contents: read
+    container: mcr.microsoft.com/playwright:v1.65.0-noble # the same tag as web-pages
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - config: signin # FAN_SIGNIN=on, FAN_POSTS unset
+            posts: ""
+            stub: ""
+          - config: signin-posts # FAN_SIGNIN=on, FAN_POSTS=on
+            posts: "on"
+            stub: ""
+          - config: signin-stub # FAN_SIGNIN, FAN_POSTS and EMAIL_ALERTS on, and the site pointed at a stand-in for Supabase
+            posts: "on"
+            stub: "on"
+    name: web-launch (${{ matrix.config }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci --prefix apps/web
+      - name: The container's Playwright is the one apps/web installs
+        run: '[ "$(npx --prefix apps/web playwright --version)" = "Version 1.65.0" ] || { echo "Update the container tag above to match @playwright/test"; exit 1; }'
+      # Set with GITHUB_ENV so an unset switch is really unset (an empty string is not the same to every reader). The build and
+      # the server Playwright starts below both inherit them.
+      - name: The switches for this config
+        env:
+          POSTS: ${{ matrix.posts }}
+          STUB: ${{ matrix.stub }}
+        run: |
+          echo "FAN_SIGNIN=on" >> "$GITHUB_ENV"
+          if [ "$POSTS" = on ]; then echo "FAN_POSTS=on" >> "$GITHUB_ENV"; fi
+          if [ "$STUB" = on ]; then
+            # The stand-in for Supabase (e2e/account-center.spec.ts, e2e/email-alerts.spec.ts) listens here; the site is built and
+            # started pointing at it. The anon key is any non-empty text: the stub never checks it.
+            {
+              echo "EMAIL_ALERTS=on"
+              echo "E2E_STUB_PORT=54999"
+              echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54999"
+              echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=stub"
+            } >> "$GITHUB_ENV"
+          fi
+      - name: Account, posts and footer specs on a build with the switches set (${{ matrix.config }})
+        working-directory: apps/web
+        # The Playwright container's default shell is sh, which has no shopt or arrays.
+        shell: bash
+        run: |
+          shopt -s nullglob
+          # Every account spec (accounts, push-account, ...), the posts and email specs, and the footer's.
+          specs=(e2e/*account*.spec.ts e2e/posts.spec.ts e2e/email-*.spec.ts e2e/footer-legal.spec.ts)
+          workers=2
+          if [ -n "${E2E_STUB_PORT-}" ]; then
+            # Only the specs that sign a fan in against the stub, one worker: both bind the same stub port.
+            specs=(e2e/account-center.spec.ts e2e/email-alerts.spec.ts)
+            workers=1
+          fi
+          echo "FAN_SIGNIN=$FAN_SIGNIN FAN_POSTS=${FAN_POSTS-unset} E2E_STUB_PORT=${E2E_STUB_PORT-unset} workers=$workers; specs: ${specs[*]}"
+          # No E2E_BUILT: playwright.config.ts builds (the same `npm run build` Vercel runs) and then starts the site.
+          npx playwright test -c playwright.config.ts --workers="$workers" "${specs[@]}"
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: launch-test-results-${{ matrix.config }}
+          path: apps/web/e2e/.results
+          retention-days: 7
+
   # Speed and accessibility scores on mobile settings, on the shared build (lighthouserc.cjs), two pages a job. Its own
   # check, beside the shards, and not part of `web`. Run with npx, pinned, so its 300-odd packages stay out of the
   # site's own install (and Vercel's).
@@ -275,11 +390,11 @@ jobs:
           if-no-files-found: ignore
 
   # The site's one pass or fail. It fails unless web-checks and web-build succeeded and, when the site changed, every
-  # page-test shard did too (failed, cancelled or skipped all fail it). Docs only: no shards, and it passes. Lighthouse
+  # page-test shard and every launch-config check (web-launch) did too (failed, cancelled or skipped all fail it). Docs only: no shards, and it passes. Lighthouse
   # is its own check.
   web:
     if: always()
-    needs: [web-checks, web-build, web-pages]
+    needs: [web-checks, web-build, web-pages, web-launch]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -294,7 +409,8 @@ jobs:
             echo "Docs only: no build and no page tests." | tee -a "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          [ "$(echo "$NEEDS" | jq -r '.["web-pages"].result')" = success ]
+          [ "$(echo "$NEEDS" | jq -r '.["web-pages"].result')" = success ] || exit 1
+          [ "$(echo "$NEEDS" | jq -r '.["web-launch"].result')" = success ]
 
   # Every commit a pull request adds has the project's own address (or a GitHub bot's) as author and committer, so a
   # personal address never reaches the public history (.github/scripts/commit-emails.sh). The address is never printed.

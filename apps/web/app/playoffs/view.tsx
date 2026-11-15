@@ -4,7 +4,10 @@ import { loadAlignments } from "@/lib/alignments";
 import { playoffsDescription } from "@/lib/descriptions";
 import { bracketHref, bracketLabel, latestRound, LEAGUES, loadBrackets, playoffLeagues, playoffSeasons } from "@/lib/brackets";
 import { loadIdentities } from "@/lib/identity";
+import { playoffsIntro } from "@/lib/intros";
+import { rankedList } from "@/lib/json-ld";
 import { centralClock } from "@/lib/playoff-status";
+import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { PageHeader, SectionBar } from "../ui";
 import { ChanceList } from "./chance-list";
@@ -47,7 +50,14 @@ export async function PlayoffsView({ league, season }: { league: League; season?
 
   return (
     <section aria-labelledby="playoffs">
-      <PageHeader id="playoffs" eyebrow={`${year} season · ${brackets.length} ${brackets.length === 1 ? "bracket" : "brackets"}`} title="Playoffs" />
+      <PageHeader
+        id="playoffs"
+        eyebrow={`${year} season · ${brackets.length} ${brackets.length === 1 ? "bracket" : "brackets"}`}
+        title="Playoffs"
+        note={playoffsIntro({ league, season: year, brackets: brackets.map((b) => b.name), past, chances: brackets.some((b) => b.chances || b.regionChances?.length) })}
+      />
+      {/* The brackets of the latest season, each with its own page (a past season has none). */}
+      {!past && brackets.length > 0 && <JsonLd data={rankedList(`${league} playoff brackets`, brackets.map((b) => ({ name: b.name, href: bracketHref(b.name) })))} />}
       {seasons.length > 1 && <TabNav label="Season" wrap tabs={seasonTabs} current={seasonTabs[seasons.indexOf(year)].href} />}
       <TabNav label="League" tabs={leagues.map((l) => ({ href: leagueHref(l, past ? year : undefined), label: l }))} current={leagueHref(league, past ? year : undefined)} />
       {!past && (
@@ -64,7 +74,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
             <SectionBar id={id} title={b.name} aside={`Latest: ${latestRound(b)!.label}`} className="" />
             {!past && (
               <Link href={bracketHref(b.name)} className="flex min-h-11 items-center justify-between border-b border-line px-3 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
-                {bracketLabel(b)} bracket page: current round first
+                The {bracketLabel(b)} bracket, latest round first
                 <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
               </Link>
             )}
@@ -104,7 +114,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
       })}
       <p className="mt-6 text-[13px] text-muted">
         Away team first. Scores may be corrected if a mistake is found. A team&rsquo;s next game shows who went on.
-        {!past && " Projections and region and state title chances use the current ratings, on a neutral field unless the game is at a home site. A region\u2019s chances show once its two area games or its regional game are set."}
+        {!past && " Projections and region and state title chances use the current ratings, with the home edge for the listed home team, except in the State Championship, a neutral site. A region\u2019s chances show once its two area games or its regional game are set."}
       </p>
     </section>
   );

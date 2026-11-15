@@ -9,10 +9,12 @@ import { RatingsTable as RatingsSchema, parseJson } from "./data-schemas";
  * definition (services/ratings/rows.py); `rated_outside`: its games against schools we do not list, which also inform it.
  * `sd`: the rating's standard deviation (rating +/- sd is a range the data cannot tell apart). `was`: the rating through
  * the Sunday before the latest results week, null if unrated then. `trend`, `rated_trend`: the rating and `rated` through
- * each week in the table's `weeks`, null before the team had a rated game. */
+ * each week in the table's `weeks`, null before the team had a rated game. `mercy_only`: every rated game was a loss by
+ * the 45-point rule, so the rating is a ceiling, not a measure (shown with "≤" and no give-or-take: `ratingText`). */
 export type RatingRow = {
   team: string; rating: number; rated: number; won: number; lost: number; tied: number;
   sd?: number; rated_outside?: number; was?: number | null; trend?: (number | null)[]; rated_trend?: (number | null)[];
+  mercy_only?: true;
 };
 
 /** A rating must move more than this many points in a week before the rankings show an arrow: smaller moves are noise
@@ -72,4 +74,4 @@ const readTable = memo(async (year: number | undefined): Promise<RatingsTable & 
 
 export const record = ({ won, lost, tied }: Pick<RatingRow, "won" | "lost" | "tied">) => (tied ? `${won}-${lost}-${tied}` : `${won}-${lost}`);
 
-export { signed } from "./signed";
+export { ratingText, signed } from "./signed";

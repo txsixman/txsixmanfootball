@@ -217,6 +217,14 @@ const SIGNED_IN_FUNCTIONS = [
   "public.admin_unhide_post(uuid, text)", "public.admin_unmute(uuid, text)", "public.admin_set_ban(uuid, boolean, text)",
   "public.admin_moderation_overview()", "public.submit_score_report(text, integer, integer)",
   "public.create_thread(text, text, text)", "public.reply_to_thread(uuid, text)",
+  // Push alerts tied to the account (migration 0023, ADR 0054): link and unlink one browser's subscription to auth.uid().
+  "public.link_push_subscription(text, text, text)", "public.unlink_push_subscription(text)",
+  // Email alerts (migration 0022, ADR 0053): own opt-ins only. The sender's functions are not here: only the role email_sender runs them.
+  "public.email_my_settings()", "public.email_set_optins(text, text[])",
+  // The Account Center (migration 0026, ADR 0058): each acts on auth.uid()'s own rows. None returns the birth year, an endpoint, a key or a token.
+  "public.my_account()", "public.change_display_name(text)", "public.label_push_subscription(text, text)", "public.my_devices()",
+  "public.this_device(text)", "public.remove_my_device(uuid)", "public.remove_all_my_devices()", "public.set_push_mute(text, text, boolean)",
+  "public.my_push_mutes(text)", "public.export_my_data()", "public.my_activity(integer)",
 ];
 
 // Public reads, open to anon and authenticated alike: they return display names, text and counts, never a user id,
@@ -225,6 +233,8 @@ const ANON_FUNCTIONS = [
   "public.list_comments(text, integer, integer)", "public.fan_score_status(text)", "public.forum_boards()",
   "public.forum_threads(text, integer, integer)", "public.forum_thread_info(uuid)", "public.forum_posts(uuid, integer, integer)",
   "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)", "public.live_scores()", "public.results_read_at()",
+  // One-click email unsubscribe (migration 0022): no session; the random token in the emailed link is the proof.
+  "public.email_unsubscribe(uuid)",
 ];
 
 /** Schemas the project owns and the API could reach. */

@@ -10,8 +10,10 @@ import { ORGS, type Org } from "@/lib/orgs";
 import { resultSeasons, weekLabel } from "@/lib/weeks";
 import { marginOf } from "@/lib/week-review";
 import { indexHref, weekHref } from "@/lib/week-review-hrefs";
+import { weekNeighbours } from "@/lib/neighbours";
 import { loadWeekReview, orgWeeks, reviewedWeeks, type PlacedMover, type WeekReview } from "@/lib/week-review-load";
 import { TabNav } from "../tab-nav";
+import { WeekStrip } from "../week-strip";
 import { BoardRow, EmptyState, PageHeader, SectionBar } from "../ui";
 
 // The week in review: one week of one organization (ADR 0012), from the same games, ratings and projections as the Results,
@@ -104,6 +106,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
   const lastOf = async (s: number) => (await reviewedWeeks(s, org)).at(-1)!.number;
   // A season's tab opens its last week; the tab of the season being read stays on this week, so it is the current one.
   const seasonTabs = await Promise.all(seasons.map(async (s) => ({ href: weekHref(s, s === season ? week : await lastOf(s), org), label: String(s) })));
+  const { rankings } = await weekNeighbours({ season, week, org });
   const at = weeks.findIndex((w) => w.number === week);
   const [earlier, later] = [weeks[at - 1], weeks[at + 1]];
   const byDay = Map.groupBy(review.games, (g) => g.status);
@@ -125,22 +128,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
         current={weekHref(season, week, org)}
       />
       {seasons.length > 1 && <TabNav label="Season" wrap tabs={seasonTabs} current={weekHref(season, week, org)} />}
-      <nav aria-label="Week" className="mt-3 flex flex-wrap gap-1.5">
-        {weeks.map((w) => (
-          <Link
-            key={w.number}
-            href={weekHref(season, w.number, org)}
-            prefetch={false}
-            aria-current={w.number === week ? "page" : undefined}
-            aria-label={`Week ${w.number}, from ${weekLabel(w.monday)}`}
-            className={`inline-flex size-11 items-center justify-center border-2 border-navy font-num text-[17px] font-bold ${
-              w.number === week ? "bg-navy text-white" : "text-navy hover:bg-panel"
-            }`}
-          >
-            {w.number}
-          </Link>
-        ))}
-      </nav>
+      <WeekStrip prefetch={false} weeks={weeks.map((w) => ({ number: w.number, href: weekHref(season, w.number, org), label: `Week ${w.number}, from ${weekLabel(w.monday)}`, current: w.number === week }))} />
       <p className="mt-3 text-[13px] text-muted">
         Away team first. Scores may be corrected if a mistake is found. Rankings and projections use the
         ratings at the end of the week before.
@@ -181,7 +169,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
       <Section
         id="projection"
         title="Furthest from the projection"
-        note="Games whose final margin was furthest from the projected margin, from both teams' ratings at the end of the week before (once each had played four games). The number is points from the projection, counting any margin past 45 as 45 (the 45-point rule). Forfeits are left out."
+        note="Games whose final margin was furthest from the projected margin, from both teams' ratings at the end of the week before (once each had four rated games; forfeits never count). The number is points from the projection, counting any margin past 45 as 45 (the 45-point rule). Forfeits are left out."
       >
         {review.furthest.length ? (
           <ol>
@@ -296,6 +284,11 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
         <Link href={`/results/${season}/${week}${org === ORGS[0] ? "" : `/${org.slug}`}`} className="link-more">
           Week {week} results
         </Link>
+        {rankings && (
+          <Link href={rankings.href} className="link-more">
+            {rankings.label}
+          </Link>
+        )}
       </nav>
     </section>
   );

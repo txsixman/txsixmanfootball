@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { heading, loadAlignments, placeLabel, programFor, slugify, uniquePrograms } from "@/lib/alignments";
 import { finalScore, loadFinals } from "@/lib/champions";
+import { programEdge } from "@/lib/intros";
 import { programDescription, rankPhrase } from "@/lib/descriptions";
 import { titlesBySlug } from "@/lib/program-titles";
 import { loadCorrections } from "@/lib/correction-files";
@@ -14,13 +15,13 @@ import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
 import { loadRanked, rankLabel } from "@/lib/rankings";
 import { ratedFromOutsideOnly, OUTSIDE_ONLY_NOTE } from "@/lib/outside-only";
-import { FEW_GAMES, loadRatings, ratingSeasons, record, signed } from "@/lib/ratings";
+import { FEW_GAMES, loadRatings, ratingSeasons, ratingText, record, signed } from "@/lib/ratings";
 import { meetingScore, schedulesFor, type Meeting } from "@/lib/schedule-strength";
 import { whyItMoved } from "@/lib/why-moved";
 import { seasonHref } from "../../rankings/view";
-import { CURRENT_SEASON } from "@/lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { tonightsDate } from "@/lib/tonight";
-import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
+import { districtHref, loadStandings, ordinal, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
 import { playedCounts } from "@/lib/season-results";
 import { shownBefore } from "@/lib/pregame";
@@ -75,6 +76,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const NAVY = "#0a2a5e";
+const DARK_PAGE = "#0d1526";
 
 /** A section: the site's navy heading band, with a stripe in one of the school's own colors down its left edge. */
 function Section({ id, title, accent, children, className = "mt-7" }: { id: string; title: string; accent: string; children: ReactNode; className?: string }) {
@@ -82,7 +84,7 @@ function Section({ id, title, accent, children, className = "mt-7" }: { id: stri
     <section aria-labelledby={id} className={className}>
       <h2
         id={id}
-        className="bg-navy py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white"
+        className="bg-band py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white"
         style={{ boxShadow: `inset 8px 0 0 ${accent}` }}
       >
         {title}
@@ -146,9 +148,10 @@ export default async function ProgramPage({ params }: Props) {
   };
   const { theme } = identity;
   // The school's own colors carry the page without hurting contrast: the heading stripe is whichever of its colors shows
-  // up on navy, and the rank line uses the school's main color only where it stands out on white.
+  // up on navy, and the rank line uses the school's main color only where it stands out on both the light and the dark
+  // page (globals.css --color-page); otherwise the theme's own navy.
   const accent = [theme.stripe, theme.bg, theme.fg].find((c): c is string => !!c && contrast(c, NAVY) >= 3) ?? "#ffffff";
-  const lineColor = contrast(theme.bg, "#ffffff") >= 3 ? theme.bg : NAVY;
+  const lineColor = contrast(theme.bg, "#ffffff") >= 3 && contrast(theme.bg, DARK_PAGE) >= 3 ? theme.bg : "var(--color-navy)";
   const mates = all.filter(
     (a) => a.slug !== slug && a.league === school.league && a.division === school.division && a.region === school.region && a.district === school.district,
   );
@@ -199,9 +202,9 @@ export default async function ProgramPage({ params }: Props) {
 
   /** A game row: date, opponent (and a projection or round), score. Every game links to its page: the score is the link,
    * stretched over the row, and the opponent's name stays its own link above it. */
-  const GameRow = ({ r, big = true }: { r: Row; big?: boolean }) => {
+  const GameRow = ({ r }: { r: Row }) => {
     const score = (
-      <span className={`font-num font-bold tabular-nums text-ink ${big ? "text-[22px]" : "text-[19px]"}`}>
+      <span className="font-num text-[22px] font-bold tabular-nums text-ink">
         {r.score ??
           // The next game, while under way, shows its live score here (ADR 0021); every other unplayed game, the arrow.
           (r.id === next?.id && r.date ? (
@@ -243,6 +246,37 @@ export default async function ProgramPage({ params }: Props) {
             score
           )}
         </div>
+      </li>
+    );
+  };
+
+  /** A game of a past season, in the least markup (about 100 a page, each sent twice: as HTML and in the page data): the same
+   * date, opponent with its crest (the shared CrestSlot), projection or round and score as `GameRow`, laid out by `.pg` in globals.css. The score is
+   * the link to the game's page, stretched over the row; the opponent's name stays its own link above it. */
+  const PastGame = ({ r }: { r: Row }) => {
+    const opponent = programFor(all, r.opponent, school.league);
+    const prefix = `${lead(r)} `;
+    return (
+      <li>
+        <span>{r.status}</span>
+        <div>
+          <p>
+            {opponentCrest(r.opponent)}
+            {opponent ? (
+              <>
+                {prefix}
+                <Link href={`/programs/${opponent.slug}`}>{r.opponent}</Link>
+              </>
+            ) : (
+              `${prefix}${r.opponent}`
+            )}
+          </p>
+          {r.note && <small>{r.note}</small>}
+          {r.projected && <small data-projected>{r.projected}</small>}
+        </div>
+        <Link href={r.href} aria-label={`${r.status} ${lead(r)} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}>
+          {r.score}
+        </Link>
       </li>
     );
   };
@@ -290,7 +324,7 @@ export default async function ProgramPage({ params }: Props) {
   const page = (
     <EdgeToEdge>
       {/* data-pagefind-body: this page is in the site search (app/search). */}
-      <article data-pagefind-body aria-labelledby="school" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
+      <article data-pagefind-body aria-labelledby="school" className="mx-auto max-w-3xl border-line bg-page pb-6 sm:border-x">
         <Breadcrumbs trail={[{ name: "Home", href: "/" }, { name: "Programs", href: "/programs" }, { name: school.school, href: `/programs/${slug}` }]} />
         <JsonLd data={programJsonLd({ name: school.school, slug, league: school.league === "Independent" ? undefined : school.league, logo: identity.logo && identity.logo.aspect <= HEADER_CREST_MAX_ASPECT ? identity.logo.src : undefined })} />
         <header className="px-3 pb-3 pt-5" style={{ background: theme.bg, color: theme.fg, borderBottom: `6px solid ${theme.stripe ?? theme.bg}` }}>
@@ -349,12 +383,12 @@ export default async function ProgramPage({ params }: Props) {
                     <span className="inline-flex min-h-11 items-center">{rankLabel(ranked).text}</span>
                   )}
                 </Stat>
-                <Stat label="Rating" sub={ranked.sd != null && ranked.rated >= FEW_GAMES ? `give or take ${Math.round(ranked.sd)}` : undefined}>
-                  {signed(ranked.rating)}
+                <Stat label="Rating" sub={ranked.mercy_only ? "every game a 45-point loss" : ranked.sd != null && ranked.rated >= FEW_GAMES ? `give or take ${Math.round(ranked.sd)}` : undefined}>
+                  {ratingText(ranked)}
                 </Stat>
                 {standing && (
                   <Stat label="District" sub={`${wl(standing.rows[place - 1].district)} in district`}>
-                    <Link href={standingsHref(standing)} className="inline-flex min-h-11 items-center underline underline-offset-2">
+                    <Link href={districtHref(standing)} className="inline-flex min-h-11 items-center underline underline-offset-2">
                       {ordinal(place)} of {standing.rows.length}
                     </Link>
                   </Stat>
@@ -373,11 +407,12 @@ export default async function ProgramPage({ params }: Props) {
             <p className="mt-4 border-t border-current/30 pt-3 text-[15px] font-semibold">Not rated yet: a rating appears once this team has a game on record.</p>
           )}
         </header>
+        <p className="px-3 pt-3 text-[14px] leading-5 text-muted">{programEdge({ name: school.school, firstSeason: FIRST_SEASON })}</p>
 
         {(next || latest) && (
           <section aria-label="Next and latest game" className="grid gap-px border-b border-line bg-line sm:grid-cols-2">
             {next && (
-              <div className="bg-white px-3 py-2.5">
+              <div className="bg-page px-3 py-2.5">
                 {/* A game dated before tonight with no score yet is waiting on its score, not still to play. */}
                 <p className="text-[12px] font-bold uppercase tracking-widest text-red">{next.date < tonightsDate() ? "Score not in yet" : "Next game"}</p>
                 {next.href ? (
@@ -403,7 +438,7 @@ export default async function ProgramPage({ params }: Props) {
               </div>
             )}
             {latest && (
-              <div className="bg-white px-3 py-2.5">
+              <div className="bg-page px-3 py-2.5">
                 <p className="text-[12px] font-bold uppercase tracking-widest text-red">Latest score</p>
                 <div className="flex min-h-11 items-center justify-between gap-2 text-[16px] font-semibold text-ink">
                   <span>
@@ -606,11 +641,11 @@ export default async function ProgramPage({ params }: Props) {
                 {played.length > 0 && (
                   <details className="px-3 pb-2">
                     <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">
-                      {line.season} games ({played.length})
+                      {`${line.season} games (${played.length})`}
                     </summary>
-                    <ul className="border-t border-line">
+                    <ul className="pg">
                       {played.map((r) => (
-                        <GameRow key={r.id} r={r} big={false} />
+                        <PastGame key={r.id} r={r} />
                       ))}
                     </ul>
                     <p className="pt-1 text-[13px] text-muted">Playoff games name their round.</p>
@@ -655,7 +690,7 @@ export default async function ProgramPage({ params }: Props) {
         )}
 
         {finals.length > 0 && (
-          <Section id="finals" title="State championships" accent={accent}>
+          <Section id="finals" title="State Championships" accent={accent}>
             <p className="px-3 pt-2 font-num text-[20px] font-bold text-ink">
               {titles === 0 ? "No UIL state titles" : titles === 1 ? "1 UIL state title" : `${titles} UIL state titles`}
               {finals.length > titles && `, ${finals.length - titles} runner-up ${finals.length - titles === 1 ? "finish" : "finishes"}`}
@@ -730,7 +765,7 @@ export default async function ProgramPage({ params }: Props) {
         {/* The embeddable scoreboard (ADR 0023): the iframe is text to copy, never an element on this page. */}
         <details data-pagefind-ignore className="mx-3 mt-6 border-t border-line">
           <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">Put this on your site</summary>
-          <p className="text-[14px] text-ink">Copy this into your school or booster page to show {school.school}&rsquo;s record, latest scores and next game.</p>
+          <p className="text-[14px] text-ink">Copy this into your school or booster page to show {school.school}&rsquo;s record, latest scores and next game, with a link to the full schedule.</p>
           <pre className="mt-2 whitespace-pre-wrap break-words border border-line bg-panel p-3 text-[13px] text-ink">
             <code>{embedSnippet(slug, school.school)}</code>
           </pre>

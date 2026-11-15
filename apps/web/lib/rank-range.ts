@@ -17,8 +17,10 @@ import { FEW_GAMES, type RatingRow } from "./ratings";
 export type Entry = Pick<RatingRow, "team" | "rating" | "rated" | "sd">;
 export type Placed = { rank?: number; range?: { best: number; worst: number }; tier?: number };
 
-/** Best first, ties by name: the order every table lists its ranked teams in. */
-export const byRating = (a: Pick<Entry, "team" | "rating">, b: Pick<Entry, "team" | "rating">) => b.rating - a.rating || a.team.localeCompare(b.team);
+/** Best first: the order every table lists its ranked teams in. Ratings are rounded to tenths in the file, which
+ * services/ratings/run.py writes in order of the unrounded rating, so two teams equal here keep the file's order (sort is
+ * stable): the better team on the unrounded rating stays first. */
+export const byRating = (a: Pick<Entry, "rating">, b: Pick<Entry, "rating">) => b.rating - a.rating;
 
 /** Teams with enough games to take a rank, best first. */
 export const rankedOrder = <T extends Entry>(rows: T[]): T[] => rows.filter((r) => r.rated >= FEW_GAMES).sort(byRating);

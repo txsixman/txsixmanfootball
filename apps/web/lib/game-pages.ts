@@ -68,7 +68,7 @@ export const playoffLabels = memo(async (season: number) =>
 
 type Going = { record: string; rating?: number };
 export type GameDetail = {
-  /** What the ratings said the week before (lib/pregame.ts), when both teams had played four games. */
+  /** What the ratings said the week before (lib/pregame.ts), when both teams had four rated games. */
   projection?: Projection;
   /** Each team's record, and with a projection its rating, at the start of the game. */
   going: { home: Going; away: Going };

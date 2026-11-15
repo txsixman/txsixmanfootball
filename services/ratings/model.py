@@ -31,7 +31,7 @@ class Settings:
     `rho`: how much of last season's gap from its group a team keeps; `sigma_center` and `sigma_sd`: the weak prior on
     game-to-game noise (points; sd of its log); `group_sd`: how far a group's mean may move from last season's."""
 
-    tau: float = 30.0
+    tau: float = 25.0
     # The owner, Nov 12, 2026: less carryover than the grid's best (1.0); backtest.py tunes the rest at 0.6.
     rho: float = 0.6
     sigma_center: float = 17.0
@@ -48,7 +48,7 @@ SETTINGS = Settings()
 # projected margin, with a constant scale in points. Set from the walk-forward backtest (backtest.py, which reports the same
 # numbers it fit and fails a test if these drift): the fit's own normal, with its sigma, was 0.36 log loss against 0.31
 # here, and a constant scale beat the same family scaled by each week's sigma (backtest.json, calibration.candidates).
-CALIBRATION: dict = {"family": "logistic", "scale": 15.57}
+CALIBRATION: dict = {"family": "logistic", "scale": 14.56}
 
 
 @dataclass(frozen=True)

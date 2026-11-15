@@ -3,7 +3,7 @@ import { pregame } from "./pregame";
 import { loadRatings } from "./ratings";
 
 // Why a team's rating moved: for each week of the season, the game that went furthest from what the ratings projected
-// the week before (lib/pregame.ts: judged once both teams had four games, no ties, no forfeits). The distance is the
+// the week before (lib/pregame.ts: judged once both teams had four rated games, no ties, no forfeits). The distance is the
 // team's own margin minus its projected margin, both clipped at the 45-point rule, which a final cannot show beyond.
 // A week whose biggest miss is under MIN_SURPRISE points went as projected and is left out.
 
