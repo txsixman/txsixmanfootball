@@ -76,6 +76,7 @@ test("every other page kind fits, names its organization and season, and differs
         d.rankingsWeekDescription({ label: org, season, week: 9 }),
         d.standingsDescription({ label: org, season, teams: 79, groups: 16, districtPlay: true }),
         d.standingsDescription({ label: org, season, teams: 46, groups: 6, districtPlay: false }),
+        d.districtStandingsDescription({ label: `${org} Division III District 4`, season, teams: 6, games: 15 }),
         d.playoffsDescription({ league: org, season, brackets: 3, past: season < 2026 }),
         d.bracketDescription({ name: `${org} Division III Large School`, season, latestRound: "Quarterfinal" }),
         d.recordsDescription({ org, first: 2021, latest: season }),
@@ -95,6 +96,11 @@ test("every other page kind fits, names its organization and season, and differs
   assert.equal(new Set(all).size, all.length, "two descriptions alike");
   assert.match(d.rankingsDescription({ label: "TAPPS", season: 2024, games: 1163, past: true }), /^TAPPS six-man rankings for 2024, final: .*1,163 games/);
   assert.match(d.standingsDescription({ label: "TAIAO", season: 2026, teams: 46, groups: 6, districtPlay: false }), /46 teams in 6 groups, by division and region/);
+  assert.equal(
+    d.districtStandingsDescription({ label: "UIL Division I District 8", season: 2026, teams: 5, games: 10 }),
+    "UIL Division I District 8 six-man standings for 2026: 5 teams, 10 district games played. District and overall records and every district game.",
+  );
+  assert.match(d.districtStandingsDescription({ label: "TCAF District 2", season: 2026, teams: 4, games: 0 }), /4 teams, no district games played\./);
 });
 
 test("an empty week or season reads plainly", () => {
@@ -117,15 +123,22 @@ test("a season hub: games read, the organizations, and what the page holds; past
   const orgs = ["UIL", "TAPPS", "TAIAO", "TCAF"];
   assert.equal(
     clean(d.seasonDescription({ season: 2025, games: 1230, orgs, past: true })),
-    "2025 Texas six-man football season: 1,230 games across UIL, TAPPS, TAIAO and TCAF. State finals, final rankings, team leaders and every week of results.",
+    "2025 Texas six-man football season: 1,230 games across UIL, TAPPS, TAIAO and TCAF. State Championships, final rankings, team leaders and every week of results.",
   );
   assert.equal(
     clean(d.seasonDescription({ season: 2026, games: 1227, orgs, past: false })),
     "2026 Texas six-man football season: 1,227 games across UIL, TAPPS, TAIAO and TCAF. Rankings so far, team leaders and every week of results.",
   );
   assert.match(clean(d.seasonDescription({ season: 2026, games: 1, orgs: ["Independent"], past: false })), /: 1 game across Independent\./);
-  assert.equal(clean(d.seasonsIndexDescription({ first: 2021, latest: 2026 })), "Every Texas six-man football season on this site, 2021 to 2026. Each season's state finals, rankings, team leaders and week-by-week results.");
-  assert.equal(clean(d.seasonsIndexDescription({})), "Every Texas six-man football season on this site. Each season's state finals, rankings, team leaders and week-by-week results.");
+  assert.equal(clean(d.seasonsIndexDescription({ first: 2021, latest: 2026 })), "Every Texas six-man football season on this site, 2021 to 2026. Each season's State Championships, rankings, team leaders and week-by-week results.");
+  assert.equal(clean(d.seasonsIndexDescription({})), "Every Texas six-man football season on this site. Each season's State Championships, rankings, team leaders and week-by-week results.");
+  // The last playoff round is always the State Championship; "final" is only a score status.
+  for (const text of [
+    d.seasonDescription({ season: 2025, games: 1230, orgs, past: true }),
+    d.seasonDescription({ season: 2025, games: 1230, orgs: [...orgs, "Independent"], past: true }),
+    d.seasonsIndexDescription({ first: 2021, latest: 2026 }),
+    d.seasonsIndexDescription({}),
+  ]) assert.doesNotMatch(text, /state finals?\b/i, text);
 });
 
 test("a program's season: record and rank, the round it reached, what the page lists; no score and no winner; it fits with a long name", () => {

@@ -25,6 +25,7 @@ import { generateStaticParams as results } from "../results/[[...path]]/page";
 import { generateStaticParams as games } from "../scores/[id]/page";
 import { generateStaticParams as seasonHubs } from "../seasons/[year]/page";
 import { generateStaticParams as series } from "../series/[first]/[second]/page";
+import { generateStaticParams as districts } from "../standings/district/[id]/page";
 import { generateStaticParams as standings } from "../standings/[group]/page";
 import { generateStaticParams as weeks } from "../weeks/[[...path]]/page";
 
@@ -48,6 +49,7 @@ const PATHS: Record<Kind, () => Promise<string[]>> = {
     ...(await rankingSeasons()).map((p) => `rankings/season/${p.season}`),
     ...(await rankingSeasonOrgs()).map((p) => `rankings/season/${p.season}/${p.org}`),
     ...standings().map((p) => `standings/${p.group}`),
+    ...(await districts()).map((p) => `standings/district/${p.id}`),
     ...playoffLeagues().map((p) => `playoffs/${p.league}`),
     ...(await playoffSeasons()).map((p) => `playoffs/season/${p.season}`),
     ...(await playoffSeasonLeagues()).map((p) => `playoffs/season/${p.season}/${p.league}`),

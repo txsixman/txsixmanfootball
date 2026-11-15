@@ -57,6 +57,8 @@ test("every kind of page has its own short description, with no betting word, so
     ["rankings week organization", first(/^\/rankings\/week\/\d+\/tapps$/)],
     ["standings group", "/standings/tapps"],
     ["standings division", "/standings/division-2"],
+    ["standings district", first(/^\/standings\/district\/uil-division-i-district-\d+$/)],
+    ["standings district, TAPPS", first(/^\/standings\/district\/tapps-/)],
     ["playoff league", "/playoffs/tapps"],
     ["playoff season", "/playoffs/season/2025"],
     ["playoff season league", "/playoffs/season/2025/tapps"],

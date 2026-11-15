@@ -82,7 +82,7 @@ test("the index lists every season with games, newest first, each linking to its
   await checkWords(page, []);
 });
 
-test("2025: the UIL finals, one section per organization with five ranked teams, leaders and week links", async ({ page, request }) => {
+test("2025: the UIL State Championships, one section per organization with five ranked teams, leaders and week links", async ({ page, request }) => {
   const { hubs } = await fixtures();
   const hub = hubs.get(2025)!;
   expect(hub.orgs.map((o) => o.org.label)).toContain("UIL");
@@ -170,14 +170,15 @@ test("every past season's hub carries the coverage line, with no more schools pl
   }
 });
 
-test("2026: the finals are in December, with the playoffs one tap away; links use the bare addresses", async ({ page, request }) => {
+test("2026: the State Championships are in December, with the playoffs one tap away; links use the bare addresses", async ({ page, request }) => {
   const { hubs, CURRENT_SEASON } = await fixtures();
   const hub = hubs.get(CURRENT_SEASON)!;
   expect(hub.latest).toBe(true);
   await checkPage(page, `/seasons/${CURRENT_SEASON}`);
   const finals = page.locator("section[aria-labelledby='finals']");
+  await expect(finals.getByRole("heading", { level: 2 })).toHaveText("UIL State Championships");
   if (hub.finals.length === 0) {
-    await expect(finals).toContainText("state finals are in December");
+    await expect(finals).toContainText("State Championships are in December");
     await expect(finals.getByRole("link", { name: "UIL playoffs" })).toHaveAttribute("href", "/playoffs");
   }
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${CURRENT_SEASON} season`);
@@ -217,7 +218,7 @@ test("a season page fits a phone and every target is at least 44px (phone width)
   }
 });
 
-test("every season's page answers 200 with a state final or a note, and the site footer links the index", async ({ page }) => {
+test("every season's page answers 200 with a State Championship or a note, and the site footer links the index", async ({ page }) => {
   const { seasons, hubs } = await fixtures();
   for (const s of seasons) {
     expect((await page.goto(`/seasons/${s}`))?.status(), String(s)).toBe(200);

@@ -112,6 +112,15 @@ export function standingsDescription({ label, season, teams, groups, districtPla
       ]);
 }
 
+/** One district's page: its standings and every district game's score. `label` is "UIL Division I District 8". */
+export function districtStandingsDescription({ label, season, teams, games }: { label: string; season: number; teams: number; games: number }) {
+  return fit(`${label} six-man standings for ${season}: ${count(teams, "team")}, ${count(games, "district game")} played.`, [
+    "District records, overall records, point difference and every district game.",
+    "District and overall records and every district game.",
+    "District and overall records.",
+  ]);
+}
+
 /** One league's playoffs, the latest season or a past one: `brackets` is how many it had. */
 export function playoffsDescription({ league, season, brackets, past }: { league: string; season: number; brackets: number; past: boolean }) {
   const base = `${season} ${league} six-man playoffs: ${count(brackets, "bracket")}`;
@@ -144,13 +153,13 @@ export const weekReviewDescription = ({ org, season, week, games }: { org: strin
 /** One season's hub page: how many games were read, across which organizations, and what the page holds. `past`: the season is over. */
 export const seasonDescription = ({ season, games, orgs, past }: { season: number; games: number; orgs: string[]; past: boolean }) =>
   fit(`${season} Texas six-man football season: ${games.toLocaleString("en-US")} ${games === 1 ? "game" : "games"} across ${list(orgs)}.`, [
-    past ? "State finals, final rankings, team leaders and every week of results." : "Rankings so far, team leaders and every week of results.",
+    past ? "State Championships, final rankings, team leaders and every week of results." : "Rankings so far, team leaders and every week of results.",
     "Rankings, team leaders and every week of results.",
   ]);
 
 export const seasonsIndexDescription = ({ first, latest }: { first?: number; latest?: number }) =>
   fit(first === undefined ? "Every Texas six-man football season on this site." : `Every Texas six-man football season on this site, ${first} to ${latest}.`, [
-    "Each season's state finals, rankings, team leaders and week-by-week results.",
+    "Each season's State Championships, rankings, team leaders and week-by-week results.",
     "Each season's rankings, team leaders and results.",
   ]);
 

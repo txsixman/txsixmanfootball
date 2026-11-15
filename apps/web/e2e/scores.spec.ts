@@ -121,9 +121,10 @@ test("a program page shows its ranking", async ({ page }) => {
   await page.goto("/programs/jayton");
   await expect(page.getByRole("link", { name: /^#\d+ in Division I$/ })).toHaveAttribute("href", "/rankings/division-1");
   const district = page.getByRole("link", { name: /^\d+(st|nd|rd|th) of \d+$/ });
-  await expect(district).toHaveAttribute("href", /^\/standings#d-uil-division-i-/);
+  await expect(district).toHaveAttribute("href", /^\/standings\/district\/uil-division-i-district-\d+$/);
   await district.click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Standings");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^District \d+$/);
+  await expect(page.getByRole("table").getByRole("link", { name: "Jayton" })).toBeVisible();
   await page.goto("/programs/jayton");
   const games = page.getByRole("region", { name: "2026 games" });
   const opponent = games.getByRole("link").first();
