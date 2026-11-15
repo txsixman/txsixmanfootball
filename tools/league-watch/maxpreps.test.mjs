@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, playoffsCsv, relabelRounds, roundsFor, UNLISTED_BRACKET_LEAGUES, unlistedBracketGames, withoutNearCopies, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, playoffsCsv, pickTeamPage, relabelRounds, roundsFor, splitTcafDivisions, UNLISTED_BRACKET_LEAGUES, unlistedBracketGames, withoutNearCopies, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -111,6 +111,8 @@ test("maps MaxPreps playoff brackets to our leagues, and skips the rest", () => 
   assert.deepEqual(bracketOf("TAIAO 2020 Football Championships", "Division 2"), { league: "TAIAO", division: "2" });
   assert.deepEqual(bracketOf("TAIAO 2026 Football Championships", "Division II"), { league: "TAIAO", division: "2" });
   assert.deepEqual(bracketOf("2026 TCAF Football State Championships", "TCAF"), { league: "TCAF", division: "Six-Man" });
+  assert.deepEqual(bracketOf("TCAF 2019 Football State Championships", "6 Man I"), { league: "TCAF", division: "Six-Man", part: "I" });
+  assert.deepEqual(bracketOf("2021 TCAF Football State Championships", "6-Man II"), { league: "TCAF", division: "Six-Man", part: "II" });
   assert.equal(bracketOf("2026 UIL Texas Football State Championships", "2026 Football 2A D1"), null);
 });
 
@@ -544,4 +546,38 @@ test("a past bracket game listed twice a day or two apart with one score keeps i
   assert.equal(kept.dropped, 1);
   // A different score, or three days apart, is another game.
   assert.equal(withoutNearCopies([head, row("2022-11-18", "A", "B", 46, 0), row("2022-11-19", "A", "B", 40, 0), row("2022-11-22", "A", "B", 46, 0)].join("\n") + "\n", "").dropped, 0);
+});
+
+test("a school linked to two pages keeps the one that says six-man (2018 Wilson: a Dallas 11-man page)", () => {
+  const dallas = "https://example.test/tx/dallas/wilson-wildcats/football/";
+  const wilson = "https://example.test/tx/wilson/wilson-mustangs/football/";
+  const football = new Map([[dallas, { kind: "11", name: "Division 5A-1" }], [wilson, { kind: "6", name: "Division 1A 6 Man 2" }]]);
+  assert.equal(pickTeamPage([wilson, dallas], football), wilson);
+  assert.equal(pickTeamPage([dallas], new Map([[dallas, { kind: null }]])), dallas, "one page: it stands");
+  assert.equal(pickTeamPage([wilson, dallas], new Map()), dallas, "the season under way reads no football: the last seen, as before");
+  assert.equal(pickTeamPage(["a", dallas], new Map([[dallas, { kind: "11" }]])), "a", "a page not known as 11-man beats one that is");
+});
+
+test("a TCAF season with two six-man divisions is split only when the whole season shows them (ADR 0070)", () => {
+  const head = "league,division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes";
+  const row = (round, date, home, away) => `TCAF,Six-Man,${round},${date},${home},${away},,30,20,unknown,,https://example.test/${date},`;
+  const games = [
+    ["I", "semifinal", "2019-11-15", "A", "B"], ["I", "semifinal", "2019-11-15", "C", "D"], ["I", "final", "2019-11-23", "A", "C"],
+    ["II", "quarterfinal", "2019-11-08", "E", "F"], ["II", "semifinal", "2019-11-15", "E", "G"], ["II", "semifinal", "2019-11-15", "H", "J"], ["II", "final", "2019-11-23", "E", "H"],
+  ];
+  const text = [head, ...games.map(([, ...g]) => row(...g)), "UIL,I,final,2019-12-12,K,L,,40,0,unknown,,https://example.test/u,"].join("\n") + "\n";
+  const parts = new Map(games.map(([d, , date, home, away]) => [[date, ...[home.toLowerCase(), away.toLowerCase()].sort()].join("|"), d]));
+  const split = splitTcafDivisions(text, parts);
+  assert.equal(split.split, "I (3) and II (4)");
+  assert.deepEqual(split.text.trim().split("\n").slice(1).map((l) => l.split(",")[1]), ["I", "I", "I", "II", "II", "II", "II", "I"]);
+  // Rounds are then named per division: TCAF I's semifinals stay semifinals, its State Championship game stays the final.
+  assert.equal(relabelRounds(split.text).relabeled, 0);
+  // A game this read does not name keeps the whole season as one bracket.
+  const missing = new Map([...parts].slice(1));
+  assert.deepEqual(splitTcafDivisions(text, missing), { text, split: null, kept: "1 of 7 games with no division named" });
+  // A division that is not a whole bracket (two State Championship games) keeps it too.
+  const wrong = new Map([...parts].map(([k, d], i) => [k, i === 6 ? "I" : d]));
+  assert.match(splitTcafDivisions(text, wrong).kept, /^division I is not a whole bracket/);
+  // One division named (2022 to 2024 name only "6-Man II"): nothing to split, nothing to say.
+  assert.deepEqual(splitTcafDivisions(text, new Map([...parts].map(([k]) => [k, "II"]))), { text, split: null, kept: null });
 });

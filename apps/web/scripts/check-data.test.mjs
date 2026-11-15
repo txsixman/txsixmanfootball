@@ -155,4 +155,8 @@ test("a voided playoff listing that later reads a score is named for review, nev
   assert.deepEqual(voidedButScored([row("Gamma", "Delta", "20", "14")], fixes, "f.csv"), [], "a game no correction touches");
   const [line] = voidedButScored([row("Beta", "Alpha", "28", "30")], fixes, "f.csv");
   assert.match(line, /^f\.csv: 2026-11-20 Alpha at Beta is voided .* now reads 30-28; re-examine the correction$/);
+  // Reviewed with the score in view (ADR 0070): games.csv holds the same voided game and score, so nothing is new.
+  const stored = { game_date: "2026-11-20", home: "Alpha", away: "Beta", home_score: "30", away_score: "28", end_reason: "" };
+  assert.deepEqual(voidedButScored([row("Beta", "Alpha", "28", "30")], fixes, "f.csv", [stored]), []);
+  assert.equal(voidedButScored([row("Beta", "Alpha", "28", "31")], fixes, "f.csv", [stored]).length, 1, "another score is new");
 });

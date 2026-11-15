@@ -23,7 +23,7 @@ About 72 hours. At 10 hours a week the phase has about 100.
   playoff files (for example San Marcos Academy's 2021 TAPPS Division I games), because a past season reads only the
   schools in today's alignments. Find them from the schedule pages of the schools that are listed, with the bracket's
   later rounds as the check. **Done Nov 15, 2026 (ADR 0069)**: 2018 to 2025 reread; a listed school's bracket game
-  against an unlisted school is kept, named as the source names it. Left: TCAF's two-division seasons read as one bracket.
+  against an unlisted school is kept, named as the source names it. TCAF's 2018 to 2021 two-division seasons split, Done Nov 15, 2026 (ADR 0070).
 - **Same pair and score, more than 2 days apart** and **same-night doubles**: done Nov 15, 2026 (ADR 0068). Voided:
   2018 Veribest at Bronte (10-22), 2019 McLean and White Deer (10-18), 2021 Rule at Throckmorton (10-08), 2018 Rotan at
   Guthrie. Kept as real rematches: 2024 Abbott and Aquilla, 2025 Ira at Robert Lee. Kept with what was checked: 2018

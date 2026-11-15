@@ -208,11 +208,12 @@ export function checkIntegrity(today = new Date().toISOString().slice(0, 10)) {
   const warnings = [];
   const seasons = readdirSync(path.join(root, "data/seed")).flatMap((d) => /^maxpreps-(\d{4})$/.exec(d)?.[1] ?? []).map(Number).sort();
   for (const season of seasons) {
-    const games = fixed(read(seed(`maxpreps-${season}`, "games.csv"), s.RESULT_COLUMNS, s.PlayedGameRow));
+    const storedGames = read(seed(`maxpreps-${season}`, "games.csv"), s.RESULT_COLUMNS, s.PlayedGameRow);
+    const games = fixed(storedGames);
     const captured = CAPTURES.filter((c) => c.season === season).flatMap((c) => fixed(read(c.file, s.GAME_COLUMNS, s.PlayoffRow)).map((r) => ({ ...r, league: c.league })));
     const seen = new Set(captured.map(gameKey));
     const robotRows = read(seed(`maxpreps-${season}`, "playoffs.csv"), ["league", ...s.RESULT_COLUMNS], s.RobotPlayoffRow);
-    warnings.push(...voidedButScored(robotRows, fixes, `maxpreps-${season}/playoffs.csv`));
+    warnings.push(...voidedButScored(robotRows, fixes, `maxpreps-${season}/playoffs.csv`, storedGames));
     const robot = fixed(robotRows).filter((r) => !seen.has(gameKey(r)));
     const current = season === CURRENT_SEASON;
     const out = checkSeason({ season, current, games, playoffs: [...captured, ...robot], programs: current ? programs : undefined, listed: programs, today });
@@ -231,11 +232,16 @@ export function checkIntegrity(today = new Date().toISOString().slice(0, 10)) {
 /**
  * Playoff listings a correction voids that now read a score. A listing is voided while it has no score (a placeholder that
  * contradicts the league's own bracket); a score read for it later means the game may have been played after all, so it
- * is named in the run summary to re-examine the correction, never dropped silently.
+ * is named in the run summary to re-examine the correction, never dropped silently. A void reviewed with the score in
+ * view is not new: when the season's games.csv lists the same voided game with the same score (`reviewed`, its rows as
+ * stored), the correction was made against that score (ADR 0070) and nothing is said.
  */
-export function voidedButScored(rows, fixes, file) {
+export function voidedButScored(rows, fixes, file, reviewed = []) {
+  const sig = (r) => [r.game_date, ...[`${slugify(r.home)}:${r.home_score}`, `${slugify(r.away)}:${r.away_score}`].sort()].join("|");
+  const scored = (r) => r.home_score !== "" && r.away_score !== "";
+  const known = new Set(reviewed.filter((r) => scored(r) && applyToGame(fixes, r) === null).map(sig));
   return rows
-    .filter((r) => r.home_score !== "" && r.away_score !== "" && applyToGame(fixes, r) === null)
+    .filter((r) => scored(r) && applyToGame(fixes, r) === null && !known.has(sig(r)))
     .map((r) => `${file}: ${r.game_date} ${r.away} at ${r.home} is voided by data/corrections/games.csv but now reads ${r.away_score}-${r.home_score}; re-examine the correction`);
 }
 
