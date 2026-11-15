@@ -269,8 +269,15 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
     expect(main).not.toMatch(BIRTH_YEAR);
     expect(main.split(EMAIL)).toHaveLength(2); // the email appears once
     expect(await page.content()).not.toContain(ENDPOINT);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow).toBe(0);
+    // No sideways scroll on a phone. On a failure the message names the innermost elements that stick out past the screen.
+    const { overflow, wide } = await page.evaluate(() => {
+      const width = document.documentElement.clientWidth;
+      const out = [...document.querySelectorAll("body *")].filter((e) => e.getBoundingClientRect().right > width + 1);
+      const innermost = out.filter((e) => !out.some((o) => o !== e && e.contains(o)));
+      const describe = (e: Element) => `${e.tagName.toLowerCase()}.${String(e.getAttribute("class") ?? "").slice(0, 80)} right=${Math.round(e.getBoundingClientRect().right)} "${(e.textContent ?? "").trim().slice(0, 40)}"`;
+      return { overflow: document.documentElement.scrollWidth - width, wide: innermost.slice(0, 5).map(describe) };
+    });
+    expect(overflow, wide.join("\n")).toBe(0);
   });
 
   test("the nav anchors scroll to their sections; sticky from the md breakpoint, a plain jump list on a phone", async ({ page }) => {
