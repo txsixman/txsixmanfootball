@@ -9,7 +9,7 @@ import { demoGames, type Game, type Team } from "@/lib/demo-games";
 import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, playoffLabels, resolveGame } from "@/lib/game-pages";
 import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
-import { addressLine, directionsUrl } from "@/lib/address";
+import { kickoffTime } from "@/lib/kickoff";
 import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { loadWeeks } from "@/lib/weeks";
@@ -31,6 +31,7 @@ import { GamePreviewSection } from "../game-preview";
 import { GameKickoffStatus, GameLiveRead, GameScore } from "../live-game";
 import { Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
+import { SiteAddress } from "../directions";
 import { hasCard } from "./card/ids";
 import { gameTitle } from "@/lib/titles";
 
@@ -207,28 +208,18 @@ export default async function GamePage({ params }: Props) {
 
       <Linescore g={g} />
 
-      {followable.length > 0 && (
-        <section aria-labelledby="game-alerts" data-pagefind-ignore className="mt-5 px-3">
-          <h2 id="game-alerts" className="font-num text-[14px] font-bold uppercase tracking-wider text-navy">
-            Follow these teams
-          </h2>
-          <div className="mt-2 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap">
-            {followable.map((t) => (
-              <Follow key={t.slug} slug={t.slug} school={t.school} compact />
-            ))}
-          </div>
-          <p className="mt-1 text-[13px] text-muted">
-            Alerts use this browser&apos;s push address and the teams you follow; signed out, no name, email or phone. Signed in, both are kept with your account until you sign out or delete it. On an iPhone, add this site to your Home Screen first.
-          </p>
-        </section>
-      )}
-
       <section aria-labelledby="details" className="mt-5 px-3 pb-1">
         <h2 id="details" className="mb-0.5 border-b-2 border-navy pb-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">
           Game details
         </h2>
         <dl>
-          {g.date && !sample && <Fact label="Date">{longDate(g.date)}</Fact>}
+          {/* A game still to play: the day and kickoff together, the first thing a fan heading there looks for. */}
+          {g.date && !sample && (
+            <Fact label={g.state === "scheduled" && g.kickoff ? "Kickoff" : "Date"}>
+              {longDate(g.date)}
+              {g.state === "scheduled" && g.kickoff && <span className="block font-semibold">{kickoffTime(g.kickoff)}</span>}
+            </Fact>
+          )}
           {g.verification !== "none" && (
             <Fact label="Verified">
               <Verification g={g} />
@@ -245,20 +236,7 @@ export default async function GamePage({ params }: Props) {
           {g.projected && !(found && detail?.projection) && <Fact label="Projection"><span data-projected>{projectedLine(g.projected, outcomeOf(g))}</span>. A projection, not a result.</Fact>}
           <Fact label="Site">
             {g.venue}
-            {/* The site's street address and a maps search for it (ADR 0066): no key, no embedded map, no source named. */}
-            {g.address && (
-              <span className="block" data-address>
-                <span className="block">{addressLine(g.address)}</span>
-                <a
-                  href={directionsUrl(g.venue, g.address)}
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-red"
-                  data-directions
-                >
-                  Directions<span className="sr-only"> to {g.venue.replace(/ \(home\)$/, "")}, a map search</span>
-                </a>
-              </span>
-            )}
+            {g.address && <SiteAddress site={g.venue} address={g.address} />}
           </Fact>
           {places.length > 0 && (
             <Fact label="Plays in">
@@ -272,6 +250,22 @@ export default async function GamePage({ params }: Props) {
           {g.stream && <Fact label="Listen or watch">{g.stream}</Fact>}
         </dl>
       </section>
+
+      {followable.length > 0 && (
+        <section aria-labelledby="game-alerts" data-pagefind-ignore className="mt-5 px-3">
+          <h2 id="game-alerts" className="font-num text-[14px] font-bold uppercase tracking-wider text-navy">
+            Follow these teams
+          </h2>
+          <div className="mt-2 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap">
+            {followable.map((t) => (
+              <Follow key={t.slug} slug={t.slug} school={t.school} compact />
+            ))}
+          </div>
+          <p className="mt-1 text-[13px] text-muted">
+            Alerts use this browser&apos;s push address and the teams you follow; signed out, no name, email or phone. Signed in, both are kept with your account until you sign out or delete it. On an iPhone, add this site to your Home Screen first.
+          </p>
+        </section>
+      )}
 
       {detail && (
         <div className="pb-6">

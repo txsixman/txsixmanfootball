@@ -136,6 +136,13 @@ test.describe("phone", () => {
     await page.goto(bracketHref(b.name));
     await expect(tree(page)).toBeHidden();
     const bar = rounds(page).getByRole("navigation");
+    // It opens on the round being played: the first with a game still to play, or the last once all are played.
+    const order = [...new Set(b.tree.map((n) => n.round))];
+    const playing = order.find((r) => b.tree.some((n) => n.round === r && (n.state === "upcoming" || n.state === "open"))) ?? order.at(-1)!;
+    const playingLabel = b.tree.find((n) => n.round === playing)!.label;
+    await expect(bar.locator("[aria-current=true]")).toHaveText(playingLabel);
+    await expect.poll(async () => (await rounds(page).getByRole("group", { name: playingLabel }).boundingBox())!.x).toBeLessThan(40);
+    await bar.getByRole("button", { name: /^Bi-district$/i }).click();
     await expect(bar.locator("[aria-current=true]")).toHaveText(/Bi-district/i);
     await bar.getByRole("button", { name: /^Area$/i }).click();
     await expect(bar.locator("[aria-current=true]")).toHaveText(/Area/i);

@@ -104,7 +104,13 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
   const [team, setTeam] = useState<string | null>(null);
   const [fit, setFit] = useState(false);
   const [scale, setScale] = useState(1);
-  const [current, setCurrent] = useState(0);
+  // The round being played: the first with a game still to play (all played: the last). The rounds strip opens on it, so a
+  // phone on game night lands on this week's games, not the first round's finals.
+  const playing = useMemo(() => {
+    const i = data.rounds.findIndex((r) => r.ids.some((id) => ["upcoming", "open"].includes(data.boxes.find((b) => b.id === id)!.state)));
+    return i < 0 ? data.rounds.length - 1 : i;
+  }, [data]);
+  const [current, setCurrent] = useState(playing);
   const [wide, setWide] = useState<boolean | null>(null); // null until the browser says, so the server's page matches
   const [copied, setCopied] = useState(false);
   const treeBox = useRef<HTMLDivElement>(null);
@@ -135,6 +141,16 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
     ro.observe(el);
     return () => ro.disconnect();
   }, [geo.width]);
+
+  // Open the strip on the round being played, at once (no smooth scroll on load), with its bar button in view.
+  useEffect(() => {
+    const el = strip.current;
+    const col = el?.children[playing] as HTMLElement | undefined;
+    if (!el || !col || !playing) return;
+    el.scrollLeft = col.offsetLeft - el.offsetLeft;
+    const bar = el.previousElementSibling?.children[playing] as HTMLElement | undefined;
+    bar?.parentElement?.scrollTo({ left: bar.offsetLeft - 16 });
+  }, [playing, shown]);
 
   // The round in view in the rounds strip, for the bar held over it.
   const onStrip = () => {

@@ -16,7 +16,7 @@ import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { PageHeader } from "../ui";
 import { ChanceList } from "./chance-list";
-import { BuiltList, GameList } from "./game-list";
+import { BuiltList, GameList, roundCount } from "./game-list";
 import { BracketBoard } from "./tree/board";
 import { treeData } from "./tree/data";
 
@@ -133,8 +133,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
           <h2 className="border-b-2 border-navy px-3 pb-1 font-num text-[22px] font-bold uppercase tracking-wider text-navy">
             {r.label}{" "}
             <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">
-              · {r.games.length} {r.games.length === 1 ? "game" : "games"}
-              {r.built.length ? ` · ${r.built.length} more set by the bracket` : ""}
+              · {roundCount(r)}
               {r === current ? " · current round" : ""}
             </span>
           </h2>
