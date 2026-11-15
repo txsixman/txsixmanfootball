@@ -17,6 +17,7 @@ const load = async (name) => {
 };
 const { gameStatus, centralClock, currentRound } = await load("playoff-status");
 const { pairsOf, aheadFor, previewOf, gamesOf } = await load("playoff-path");
+const { project, projectAt, fieldOf } = await load("projection");
 test.after(() => rmSync(tmp, { recursive: true, force: true }));
 
 const TODAY = "2026-11-13";
@@ -101,4 +102,19 @@ test("a team's games in a bracket, in round order", () => {
   const list = rounds(["quarterfinal", game("quarterfinal", "A", "H", { homeScore: 50, awayScore: 0 }), game("quarterfinal", "B", "G")], ["semifinal", game("semifinal", "C", "A")]);
   assert.deepEqual(gamesOf(list, "A").map((s) => [s.round, s.opponent, s.home]), [["quarterfinal", "H", true], ["semifinal", "C", false]]);
   assert.deepEqual(gamesOf(list, "Z"), []);
+});
+
+test("a row's neutral value reads one way on every page: \"true\" no edge, \"false\" the home field, \"\" the playoff share", () => {
+  assert.deepEqual(fieldOf("true"), { neutral: true, trueNeutral: true });
+  assert.deepEqual(fieldOf("false"), { neutral: false });
+  assert.deepEqual(fieldOf(""), { neutral: true });
+  const edged = { ...table, playoff_edge: 1 };
+  const at = (neutral) => projectAt(edged, { home: "D", away: "C", ...fieldOf(neutral) });
+  assert.deepEqual(at("true"), project(edged, "D", "C", true, true)); // what /scores shows for the same row
+  assert.equal(at("true").favorite, "C"); // C (+4) over D (+2), no edge
+  assert.equal(at("").favorite, "D"); // the listed home team's playoff share of 4 points
+  assert.equal(at("false").margin, at("").margin); // the whole share at playoff_edge 1
+  // The bracket's pairing preview reads the game's site the same way (it gave a true neutral site the playoff share).
+  const [pair] = pairsOf(rounds(["semifinal", game("semifinal", "D", "C", fieldOf("true")), game("semifinal", "A", "B")]));
+  assert.equal(previewOf(edged, pair).sides[0].team, "C");
 });

@@ -5,7 +5,7 @@ import { heading, loadAlignments, type Alignment } from "./alignments";
 import { parseCsv } from "./data-schemas";
 import { memo } from "./memo";
 import { type BracketGame, loadPlayoffGames, type PlayoffGame } from "./games";
-import { project } from "./projection";
+import { project, type Field } from "./projection";
 import { loadRatings, type RatingsTable } from "./ratings";
 import { CURRENT_SEASON } from "./season";
 
@@ -28,11 +28,11 @@ export type BracketChances = { bracket: string; round: "final" | "semifinal" | "
 /** One region's chance to win its region title, from its two area games ("area") or its regional game ("regional"). */
 export type RegionChances = { bracket: string; region: string; round: "area" | "regional"; chances: Chance[] };
 
-/** Win probability of `a` over `b`, or undefined when either is unrated. With no `neutral` it is a pairing that has not
- * been made, or a final: a true neutral field, no edge either way. A listed game passes its own flag, and a playoff game the
- * data calls neutral still gives its listed home team the fitted playoff edge (lib/projection.ts). */
-const beats = (t: RatingsTable, a: string, b: string, neutral?: boolean) => {
-  const p = project(t, a, b, neutral ?? true, neutral === undefined);
+/** Win probability of `a` over `b`, or undefined when either is unrated. With no `site` it is a pairing that has not
+ * been made, or a final: a true neutral field, no edge either way. A listed game passes its own site, and a playoff game the
+ * data does not call a home field still gives its listed home team the fitted playoff edge (lib/projection.ts). */
+const beats = (t: RatingsTable, a: string, b: string, site?: Field) => {
+  const p = project(t, a, b, site?.neutral ?? true, site ? (site.trueNeutral ?? false) : true);
   return p && (p.favorite === a ? p.winProbability : 1 - p.winProbability);
 };
 
@@ -65,7 +65,7 @@ const byChance = (d: Dist): Chance[] => [...d].map(([team, chance]) => ({ team, 
 
 /** The winner of a game already on the schedule, at its own site. */
 function playedAt(t: RatingsTable, g: BracketGame): Dist | undefined {
-  const p = beats(t, g.home, g.away, g.neutral);
+  const p = beats(t, g.home, g.away, g);
   return p == null ? undefined : new Map([[g.home, p], [g.away, 1 - p]]);
 }
 
@@ -181,7 +181,7 @@ export function bracketTitleChances(t: RatingsTable, alignments: Alignment[], te
   const asGames: BracketGame[] = games.map((g) => {
     const won = g.confirmed && g.homeScore != null && g.awayScore != null && g.homeScore !== g.awayScore;
     const winner = won ? (g.homeScore! > g.awayScore! ? g.home : g.away) : undefined;
-    return { bracket: name, round: g.round, home: g.home, away: g.away, played: g.homeScore != null, neutral: g.neutral, ...(winner ? { winner } : {}) };
+    return { bracket: name, round: g.round, home: g.home, away: g.away, played: g.homeScore != null, neutral: g.neutral, ...(g.trueNeutral ? { trueNeutral: true as const } : {}), ...(winner ? { winner } : {}) };
   });
   if (games[0]?.league !== "UIL") return titleChances(t, asGames);
   const region = new Map(alignments.filter((a) => a.league === "UIL" && heading(a) === name).map((a) => [a.school, a.region]));
