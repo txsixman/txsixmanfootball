@@ -217,7 +217,7 @@ export default async function GamePage({ params }: Props) {
             ))}
           </div>
           <p className="mt-1 text-[13px] text-muted">
-            Alerts use only this browser&apos;s push address and the teams you follow; no name, email or phone. On an iPhone, add this site to your Home Screen first.
+            Alerts use this browser&apos;s push address and the teams you follow; signed out, no name, email or phone. Signed in, both are kept with your account until you sign out or delete it. On an iPhone, add this site to your Home Screen first.
           </p>
         </section>
       )}
