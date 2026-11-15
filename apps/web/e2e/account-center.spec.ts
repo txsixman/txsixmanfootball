@@ -272,7 +272,12 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
     // No sideways scroll on a phone. On a failure the message names the innermost elements that stick out past the screen.
     const { overflow, wide } = await page.evaluate(() => {
       const width = document.documentElement.clientWidth;
-      const out = [...document.querySelectorAll("body *")].filter((e) => e.getBoundingClientRect().right > width + 1);
+      // An element inside its own scroll strip (the header's links) is clipped there, so it cannot widen the page.
+      const clipped = (e: Element) => {
+        for (let p = e.parentElement; p && p !== document.body; p = p.parentElement) if (getComputedStyle(p).overflowX !== "visible") return true;
+        return false;
+      };
+      const out = [...document.querySelectorAll("body *")].filter((e) => e.getBoundingClientRect().right > width + 1 && !clipped(e));
       const innermost = out.filter((e) => !out.some((o) => o !== e && e.contains(o)));
       const describe = (e: Element) => `${e.tagName.toLowerCase()}.${String(e.getAttribute("class") ?? "").slice(0, 80)} right=${Math.round(e.getBoundingClientRect().right)} "${(e.textContent ?? "").trim().slice(0, 40)}"`;
       return { overflow: document.documentElement.scrollWidth - width, wide: innermost.slice(0, 5).map(describe) };
