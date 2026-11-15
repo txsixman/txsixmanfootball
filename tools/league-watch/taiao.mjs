@@ -9,7 +9,7 @@
 // The bracket tabs also give each division's slots and what feeds them (ADR 0047): main() writes them to
 // data/seed/brackets/<season>.csv (parseBracketSlots, bracketRows).
 // `node taiao.mjs --details --out <game details file>` fills each TAIAO bracket game still to play with the
-// bracket's kickoff and site, name and city only (ADR 0060), never overwriting a kept value (ADR 0041).
+// bracket's kickoff and site, name and city only (ADR 0063), never overwriting a kept value (ADR 0041).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -194,7 +194,7 @@ const NOT_SITE = /livestream|watch|tickets|forfeit|\bTBD\b/i;
  * One division's bracket, from the text its tab shows (after the "Division N Playoffs" heading): each game's code, its
  * named teams (home marked "(H)") with any score, its date ("YYYY-MM-DD", the season's year; January the next), its
  * Central kickoff time ("19:30", null when none is shown), its site line as the page writes it (null when none, or
- * "Location TBD"; venueOf keeps only a name and a city of it, ADR 0060), and whether its text says forfeit. A game with
+ * "Location TBD"; venueOf keeps only a name and a city of it, ADR 0063), and whether its text says forfeit. A game with
  * a "Winner …" or "BYE" side has fewer than two teams. Nothing else is kept.
  */
 export function parseBracket(text, season = Number(SEASON)) {
@@ -260,7 +260,7 @@ const text = () =>
     console.log(await page.locator("main").innerText());
   });
 
-// ---- Kickoffs and sites from the bracket (ADR 0060, under ADR 0041's rules) ----
+// ---- Kickoffs and sites from the bracket (ADR 0063, under ADR 0041's rules) ----
 
 /** A street address's road words: a city follows the last of them when no comma sets it off. */
 const ROAD = /^(?:dr|drive|st|street|rd|road|ave|avenue|blvd|boulevard|ln|lane|hwy|highway|pkwy|parkway|way|ct|court|cir|circle|pl|place|trl|trail|loop|spur|point|pt)\.?$/i;

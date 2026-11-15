@@ -67,3 +67,19 @@ export const sudo = async (d, sql, params) => {
   await d.exec("reset role");
   return d.query(sql, params);
 };
+
+/**
+ * Moves the last minute's posts, edits, flags and score reports by these accounts 61 seconds back, so a test can make more
+ * than the per-minute limit allows (migration 0027) and still test the 10-minute and 24-hour ones. Leaves the role reset.
+ */
+export async function cool(d, ...ids) {
+  await d.exec("reset role");
+  const back = "interval '61 seconds'";
+  const recent = "> now() - interval '1 minute'";
+  await d.query(`update post set created_at = created_at - ${back} where author_id = any($1) and created_at ${recent}`, [ids]);
+  await d.query(`update post_edit e set edited_at = e.edited_at - ${back} from post p where p.id = e.post_id and p.author_id = any($1) and e.edited_at ${recent}`, [ids]);
+  await d.query(`update post_flag set created_at = created_at - ${back} where flagger_id = any($1) and created_at ${recent}`, [ids]);
+  await d.exec("alter table fan_score_report disable trigger fan_score_report_no_edit");
+  await d.query(`update fan_score_report set reported_at = reported_at - ${back} where reporter_id = any($1) and reported_at ${recent}`, [ids]);
+  await d.exec("alter table fan_score_report enable trigger fan_score_report_no_edit");
+}

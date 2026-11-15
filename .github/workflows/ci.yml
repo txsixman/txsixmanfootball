@@ -287,7 +287,7 @@ jobs:
           echo "FAN_SIGNIN=on" >> "$GITHUB_ENV"
           if [ "$POSTS" = on ]; then echo "FAN_POSTS=on" >> "$GITHUB_ENV"; fi
           if [ "$STUB" = on ]; then
-            # The stand-in for Supabase (e2e/account-center.spec.ts, e2e/email-alerts.spec.ts) listens here; the site is built and
+            # The stand-in for Supabase (e2e/account-center.spec.ts, e2e/email-alerts.spec.ts, e2e/posts-signed-in.spec.ts) listens here; the site is built and
             # started pointing at it. The anon key is any non-empty text: the stub never checks it.
             {
               echo "EMAIL_ALERTS=on"
@@ -306,8 +306,8 @@ jobs:
           specs=(e2e/*account*.spec.ts e2e/posts.spec.ts e2e/email-*.spec.ts e2e/footer-legal.spec.ts)
           workers=2
           if [ -n "${E2E_STUB_PORT-}" ]; then
-            # Only the specs that sign a fan in against the stub, one worker: both bind the same stub port.
-            specs=(e2e/account-center.spec.ts e2e/email-alerts.spec.ts)
+            # Only the specs that sign a fan in against the stub, one worker: they all bind the same stub port.
+            specs=(e2e/account-center.spec.ts e2e/email-alerts.spec.ts e2e/posts-signed-in.spec.ts)
             workers=1
           fi
           echo "FAN_SIGNIN=$FAN_SIGNIN FAN_POSTS=${FAN_POSTS-unset} E2E_STUB_PORT=${E2E_STUB_PORT-unset} workers=$workers; specs: ${specs[*]}"

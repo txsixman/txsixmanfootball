@@ -191,8 +191,8 @@ test("comment refusals: bad shape 422, a game the database does not know 404, te
   // A new account may not post links (checked here first).
   const link = await send({ gameKey: KEYS.regular, body: "See https://example.com" });
   assert.deepEqual([link.status, link.body.error], [422, "links_not_allowed"]);
-  // A new account's limit is 3 posts in 10 minutes; the 4th is the database's rate_limited.
-  for (let i = 0; i < 3; i++) assert.equal((await send({ gameKey: KEYS.regular, body: `Comment ${i}` })).status, 200);
+  // A new account's limit is 2 posts a minute (and 3 in 10 minutes); the 3rd in a minute is the database's rate_limited.
+  for (let i = 0; i < 2; i++) assert.equal((await send({ gameKey: KEYS.regular, body: `Comment ${i}` })).status, 200);
   const fast = await send({ gameKey: KEYS.regular, body: "One more." });
   assert.deepEqual([fast.status, fast.body.error], [429, "rate_limited"]);
 });

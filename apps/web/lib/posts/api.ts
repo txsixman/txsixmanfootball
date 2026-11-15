@@ -19,6 +19,7 @@ const MESSAGES: Record<string, [number, string]> = {
   muted: [403, "Your account is paused from posting for now."],
   rate_limited: [429, "You are doing that too fast. Try again in a few minutes."],
   blocked_text: [422, "That cannot be posted. Slurs and threats are not allowed."],
+  betting_text: [422, "That cannot be posted. Gambling talk is not allowed."],
   links_not_allowed: [422, `Accounts under ${NEW_ACCOUNT_DAYS} days old cannot post links.`],
   too_many_links: [422, "Up to 2 links in a post."],
   bad_text: [422, "Write plain text, 1 to 2,000 characters."],

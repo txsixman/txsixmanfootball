@@ -6,7 +6,7 @@ import type { ForumPost } from "@/lib/forums";
 import { send, useMe } from "../../../posts/client";
 import { Composer, PostItem, WhyNotForm, canPost } from "../../../posts/post-parts";
 
-/** A thread's posts for this page (edit own, flag others) and the reply box. A reply sends the reader to the page it lands on. */
+/** A thread's posts for this page (edit own, report others) and the reply box. A reply sends the reader to the page it lands on. */
 export function ThreadView({ threadId, initial, replyPage, next }: { threadId: string; initial: ForumPost[]; replyPage: number; next: string }) {
   const me = useMe();
   const router = useRouter();
@@ -24,7 +24,7 @@ export function ThreadView({ threadId, initial, replyPage, next }: { threadId: s
     <>
       <ul className="mt-3 border-t-2 border-navy">
         {posts.map((p) => (
-          <PostItem key={p.id} post={p} me={me} onEdited={(id, body) => setPosts((all) => all.map((x) => (x.id === id ? { ...x, body, edited: true } : x)))} />
+          <PostItem key={p.id} post={p} me={me} next={next} onEdited={(id, body) => setPosts((all) => all.map((x) => (x.id === id ? { ...x, body, edited: true } : x)))} />
         ))}
       </ul>
       <div className="mt-4">
