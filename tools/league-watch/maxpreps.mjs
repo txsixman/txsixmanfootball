@@ -378,6 +378,30 @@ export function relabelRounds(text) {
   return { text: [header, ...out].join("\n") + "\n", relabeled, changes: [...changes].map(([k, n]) => `${k} (${n})`), partial };
 }
 
+/**
+ * A past bracket game the source lists twice, a day or two apart with the same score (one copy on each team's page), is
+ * one game (ADR 0069). A fresh playoffs.csv row is left out when another fresh or stored row of the same bracket has the
+ * same two teams and score within two days, later (a fresh pair keeps its later copy, as data/corrections does) or
+ * stored (a stored row stands, ADR 0031). Two copies under one round would also load as one database game whose date
+ * flips on every load. Returns the fresh text and how many rows were left out.
+ */
+export function withoutNearCopies(fresh, storedText) {
+  const { header, rows } = parseCsv(fresh, "playoffs.csv");
+  if (!rows.length) return { text: fresh, dropped: 0 };
+  const stored = parseCsv(storedText, "playoffs.csv").rows;
+  const sig = (r) => [r.league, r.division, ...[`${slugify(r.home)}:${r.home_score}`, `${slugify(r.away)}:${r.away_score}`].sort()].join("|");
+  const days = (a, b) => Math.abs(Date.parse(a) - Date.parse(b)) / 86_400_000;
+  const scored = (r) => r.home_score !== "" && r.away_score !== "";
+  const keep = rows.filter((r) => {
+    if (!scored(r)) return true;
+    const near = (o) => o !== r && scored(o) && o.game_date !== r.game_date && sig(o) === sig(r) && days(o.game_date, r.game_date) <= 2;
+    return !stored.some(near) && !rows.some((o) => near(o) && o.game_date > r.game_date);
+  });
+  const lines = fresh.trimEnd().split("\n");
+  const text = [header, ...lines.slice(1).filter((_, i) => keep.includes(rows[i]))].join("\n") + "\n";
+  return { text, dropped: rows.length - keep.length };
+}
+
 export function playoffsCsv(games, bySlug) {
   // An unlisted side (ADR 0069) carries its own name; every other team is named as our alignments name it.
   const nameOf = (t) => t.label ?? bySlug.get(t.slug).school;
@@ -659,7 +683,13 @@ async function main() {
   const changes = [];
   const storeLines = [];
   const counted = {};
-  for (const [name, fresh] of [["games.csv", toCsv(kept, bySlug)], ["playoffs.csv", playoffsCsv([...bracket.values()], bySlug)]]) {
+  for (const [name, read] of [["games.csv", toCsv(kept, bySlug)], ["playoffs.csv", playoffsCsv([...bracket.values()], bySlug)]]) {
+    let fresh = read;
+    if (name === "playoffs.csv" && SEASON < DEFAULT_SEASON) {
+      const near = withoutNearCopies(read, stored(name));
+      fresh = near.text;
+      if (near.dropped) storeLines.push(`playoffs.csv: ${near.dropped} bracket games listed twice a day or two apart with the same score, the earlier copy left out (ADR 0069).`);
+    }
     const m = mergeStored({ file: name, stored: stored(name), fresh, pending, readTeam, now });
     // A past season read in full names its stored bracket rounds again from the whole bracket (ADR 0069).
     if (name === "playoffs.csv" && full && SEASON < DEFAULT_SEASON) {

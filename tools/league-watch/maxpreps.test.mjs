@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, playoffsCsv, relabelRounds, roundsFor, UNLISTED_BRACKET_LEAGUES, unlistedBracketGames, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, playoffsCsv, relabelRounds, roundsFor, UNLISTED_BRACKET_LEAGUES, unlistedBracketGames, withoutNearCopies, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -530,4 +530,18 @@ test("a private bracket week with more games than its round holds is an earlier 
   assert.deepEqual(roundsFor(fits), ["quarterfinal", "quarterfinal", "semifinal", "final"]);
   const uil = ["2021-11-12", "2021-11-19", "2021-11-19", "2021-11-19"].map((date) => ({ league: "UIL", division: "1A-1", date }));
   assert.deepEqual(roundsFor(uil), ["semifinal", "state", "state", "state"]);
+});
+
+test("a past bracket game listed twice a day or two apart with one score keeps its later copy, and a stored row stands (ADR 0069)", () => {
+  const head = "league,division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes";
+  const row = (date, home, away, hs, as) => `TAPPS,II,quarterfinal,${date},${home},${away},,${hs},${as},unknown,,https://example.test/${date},`;
+  const fresh = [head, row("2022-11-18", "Covenant", "Coram", 46, 0), row("2022-11-19", "Covenant", "Coram", 46, 0), row("2022-11-25", "Abilene", "Covenant", 16, 26), row("2022-11-26", "Covenant", "Abilene", 26, 16), row("2022-11-25", "Live Oak", "Pasadena", 28, 78)].join("\n") + "\n";
+  const none = withoutNearCopies(fresh, "");
+  assert.equal(none.dropped, 2);
+  assert.deepEqual(none.text.trim().split("\n").slice(1).map((l) => l.split(",")[3]), ["2022-11-19", "2022-11-26", "2022-11-25"]);
+  // A stored copy stands: the fresh one a day later is left out, not the stored one.
+  const kept = withoutNearCopies([head, row("2022-11-19", "Covenant", "Coram", 46, 0)].join("\n") + "\n", [head, row("2022-11-18", "Coram", "Covenant", 0, 46)].join("\n") + "\n");
+  assert.equal(kept.dropped, 1);
+  // A different score, or three days apart, is another game.
+  assert.equal(withoutNearCopies([head, row("2022-11-18", "A", "B", 46, 0), row("2022-11-19", "A", "B", 40, 0), row("2022-11-22", "A", "B", 46, 0)].join("\n") + "\n", "").dropped, 0);
 });

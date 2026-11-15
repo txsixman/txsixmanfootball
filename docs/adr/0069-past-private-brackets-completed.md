@@ -24,7 +24,9 @@ again.
    page. The bracket name is matched in each season's spelling ("6 Man Division II", "6-Man II"; TAIAO "Division 2").
 2. **The other team is named as the source names it.** If that name is one of our schools' names, or two unlisted pages
    share it, the city is added ("Veritas (Austin)"), so it never reads as a listed school. Commas and quotes are dropped.
-   Two copies of one game that disagree on the score are left out and counted in `coverage.txt`.
+   Two copies of one game that disagree on the score are left out and counted in `coverage.txt`. A bracket game listed
+   twice a day or two apart with the same score (once on each team's page) keeps one row, the later copy, as
+   `data/corrections` does; a stored row always stands (`withoutNearCopies`).
 3. **Normal capture path.** Rows go into the private `maxpreps-<season>/playoffs.csv` with the game's source page in
    `source_url`, through the store's merge (ADR 0031). A stored row's teams, date, score and source are never
    overwritten. `publish.mjs` copies the facts to `data/seed`.
