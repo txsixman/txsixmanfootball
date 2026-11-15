@@ -120,9 +120,28 @@ test("in any season a school playing twice in a night, or a game listed twice, f
   const twice = past([game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-09-05", "Guthrie", "Jayton", "6", "52")]);
   assert.deepEqual(twice.hard.map((h) => h.key), ["duplicate 2023-09-05|guthrie|jayton"]);
   assert.match(twice.hard[0].text, /^2023: one game listed twice, 2023-09-05 Jayton at Guthrie 52-6 is a copy of the game on 2023-09-04/);
-  // Three days apart, or a different score, is two games.
-  assert.equal(past([game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-09-07", "Jayton", "Guthrie", "52", "6")]).hard.length, 0);
+  // A different score is two games.
   assert.equal(past([game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-09-05", "Jayton", "Guthrie", "52", "8")]).hard.length, 0);
+});
+
+test("the same pair and score more than two days apart is a far copy to review, in any season (ADR 0068)", () => {
+  // Three days apart is not the duplicate rule's one game: it is named for review, never folded in.
+  const far = past([game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-11-10", "Guthrie", "Jayton", "6", "52")]);
+  assert.deepEqual(far.hard.map((h) => h.key), ["far-copy 2023-11-10|guthrie|jayton"]);
+  assert.match(far.hard[0].text, /^2023: the same two teams and score 67 days apart, 2023-11-10 Jayton at Guthrie 52-6 and 2023-09-04 Guthrie at Jayton 6-52: void the copy/);
+  assert.equal(far.soft.length, 0);
+  assert.deepEqual(run([game("2026-09-04", "Jayton", "Guthrie", "52", "6"), game("2026-09-07", "Jayton", "Guthrie", "52", "6")]).hard.map((h) => h.key), ["far-copy 2026-09-07|guthrie|jayton"]);
+  // A third listing is named against the first; a copy the two-day rule already caught is not named again.
+  const three = past([game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-09-05", "Jayton", "Guthrie", "52", "6"), game("2023-10-04", "Jayton", "Guthrie", "52", "6")]);
+  assert.deepEqual(three.hard.map((h) => h.key), ["duplicate 2023-09-05|guthrie|jayton", "far-copy 2023-10-04|guthrie|jayton"]);
+  // Not a copy: another score, another opponent, a forfeit twice, a 0-0 placeholder, or a game not played yet.
+  for (const rows of [
+    [game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-10-04", "Jayton", "Guthrie", "52", "8")],
+    [game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-10-04", "Jayton", "Kress", "52", "6")],
+    [game("2023-09-04", "Jayton", "Guthrie", "2", "0"), game("2023-10-04", "Jayton", "Guthrie", "2", "0")],
+    [game("2023-09-04", "Jayton", "Guthrie", "0", "0"), game("2023-10-04", "Jayton", "Guthrie", "0", "0")],
+    [game("2023-09-04", "Jayton", "Guthrie", "52", "6"), game("2023-10-04", "Jayton", "Guthrie")],
+  ]) assert.equal(past(rows).hard.length, 0);
 });
 
 test("exceptions excuse a known problem and fail once they match nothing", () => {

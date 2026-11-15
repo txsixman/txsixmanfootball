@@ -23,11 +23,10 @@ About 72 hours. At 10 hours a week the phase has about 100.
   playoff files (for example San Marcos Academy's 2021 TAPPS Division I games), because a past season reads only the
   schools in today's alignments. Find them from the schedule pages of the schools that are listed, with the bracket's
   later rounds as the check.
-- **Same pair and score, more than 2 days apart**: five likely copies the duplicate rule (2 days) does not catch
-  (2018 Veribest at Bronte, 2019 McLean and White Deer, 2021 Rule at Throckmorton, 2024 Abbott and Aquilla, 2025 Ira at
-  Robert Lee). Each needs a reviewed void with evidence, not a wider rule.
-- **Same-night doubles kept as known exceptions** (`data/integrity-exceptions.json`): 2018 Rotan and Rankin, 2020
-  Lorenzo, 2022 Christian Heritage Classical, 2026 Logos Prep. Void the wrong game once a source says which.
+- **Same pair and score, more than 2 days apart** and **same-night doubles**: done Nov 15, 2026 (ADR 0068). Voided:
+  2018 Veribest at Bronte (10-22), 2019 McLean and White Deer (10-18), 2021 Rule at Throckmorton (10-08), 2018 Rotan at
+  Guthrie. Kept as real rematches: 2024 Abbott and Aquilla, 2025 Ira at Robert Lee. Kept with what was checked: 2018
+  Rankin, 2020 Lorenzo, 2022 Christian Heritage Classical, 2026 Logos Prep. `check-data` now fails a new far copy.
 
 ## Moved out of Phase 1
 - **Score-entry form**: the plan puts score entry in Phase 3 (reporter app, web form, SMS). A form before then has no

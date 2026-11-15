@@ -1,27 +1,32 @@
 [
   {
     "key": "two-games 2026-08-20 logos-preparatory-academy-sugar-land",
-    "reason": "One game listed twice by the source, once on each Second Baptist University-Model campus's schedule (UM-North and UM-Memorial), both a 47-0 loss at Logos Prep. The source does not say which campus played, so neither row can be voided without inventing the fact. Settle it with a correction (void the wrong one) once the right campus is known.",
-    "reviewed": "2026-11-13"
-  },
-  {
-    "key": "two-games 2018-09-21 rotan",
-    "reason": "Rotan is listed at Guthrie (38-7, set up in May with a named field, on both schools' schedules) and at Moran (22-15, entered five days after the game, on both schools' schedules). Both versions are on the source and neither carries a forfeit mark or a copied score, so neither row can be voided without inventing the fact. Void the wrong one with a correction once the right opponent is known.",
-    "reviewed": "2026-11-13"
+    "reason": "One game listed twice by the source, once on each Second Baptist University-Model campus's schedule (UM-North and UM-Memorial), both a 47-0 loss at Logos Prep. Checked Nov 15 on all three campuses' schedules and Logos Prep's: UM-Memorial's listing (7 PM) was added on 8-28, eight days after the game; UM-North's (5 PM) on 10-21, the day UM-North's whole season was filled in; both campuses played again the next week (UM-North 8-27, UM-Memorial 8-28) and the Cypress campus played 8-21; no other source in the data lists the game. Nothing says which campus played, so neither row can be voided without inventing the fact. Settle it with a correction (void the wrong one) once the right campus is known.",
+    "reviewed": "2026-11-15"
   },
   {
     "key": "two-games 2018-11-02 rankin",
-    "reason": "Rankin is listed against Marfa (70-0 at Rankin, a conference game set up in March, on both schools' schedules and in Rankin's district round-robin slot) and against the Lubbock Titans (78-66 at a neutral site, entered the day before). The district slot favors Marfa, but the source does not mark either game false, so neither row is voided on that alone. Void the wrong one with a correction once known.",
-    "reviewed": "2026-11-14"
+    "reason": "Rankin is listed against Marfa (70-0 at Rankin, a conference game set up in March, on both schools' schedules) and against the Lubbock Titans (78-66 at a neutral site at 6 PM, set up the day before). Checked Nov 15 on all three schedules: the district round robin puts Marfa at Rankin that night (Balmorhea-Marfa and Fort Davis-Rankin the week before, Fort Davis-Balmorhea the same night, Balmorhea-Rankin and Marfa-Fort Davis the week after), which favors Marfa. But the Titans had their own 11-02 game (El Paso HomeSchool, set up in July) deleted and set up the Rankin game the evening before together with two later games, which also fits a late replacement for a Marfa game not played. Both stories fit the schedules, so neither row is voided. Void the wrong one with a correction once known.",
+    "reviewed": "2026-11-15"
   },
   {
     "key": "two-games 2020-09-04 lorenzo",
-    "reason": "Lorenzo is listed against Kingdom Preparatory Academy-Lubbock (neutral site) and against Lazbuddie (at Lorenzo), both 68-32 and both set up in June and on both schools' schedules, so the score was copied onto one wrong opponent. Neither schedule says which, so neither row can be voided without inventing the fact. Void the wrong one with a correction once the right opponent is known.",
-    "reviewed": "2026-11-13"
+    "reason": "Lorenzo is listed against Kingdom Preparatory Academy-Lubbock (neutral site) and against Lazbuddie (at Lorenzo), both 68-32 and both set up in June and on both schools' schedules, so the score was copied onto one wrong opponent. Checked Nov 15 on all three schedules: both listings came from the June entries that set up the rest of each school's season; the day after the game a neutral-site Lorenzo v Lazbuddie 32-68 listing was added and then deleted, which names Lazbuddie but at a neutral site like the Kingdom Prep row; neither Kingdom Prep nor Lazbuddie has another game that week. Nothing says which opponent played, so neither row can be voided without inventing the fact. Void the wrong one with a correction once the right opponent is known.",
+    "reviewed": "2026-11-15"
   },
   {
     "key": "two-games 2022-09-16 christian-heritage-classical-school-longview",
-    "reason": "Christian Heritage Classical School-Longview is listed against The Highlands School-Irving (90-63 at 7:30 PM, set up in August) and against Leveretts Chapel (70-56 at a neutral site, date only, entered the next day). Both are on both schools' schedules with different scores; the neutral game may really have been played the next day, which the source does not say. Neither row can be voided without inventing the fact; correct the date or void the wrong one once known.",
-    "reviewed": "2026-11-13"
+    "reason": "Christian Heritage Classical School-Longview is listed against The Highlands School-Irving (90-63 at 7:30 PM, set up in August) and against Leveretts Chapel (70-56 at a neutral site, date only, entered the next morning). Checked Nov 15 on all three schedules: Leveretts Chapel's own game that night (at home to Fruitvale, set up in July) was deleted; Highlands lists the 7:30 PM game; none of the three plays again before the next Thursday. Both games are on both schools' schedules with different scores; the neutral game may really have been played the next day, which the source does not say. Neither row can be voided without inventing the fact; correct the date or void the wrong one once known.",
+    "reviewed": "2026-11-15"
+  },
+  {
+    "key": "far-copy 2024-11-29|abbott|aquilla",
+    "reason": "Two real games, both 58-8 to Abbott on both schools' schedules: the district game at Aquilla on 11-08 (set up in June) and the UIL Division I regional on 11-29 at a neutral site (set up 11-22, the night of the area round both won). Checked Nov 15: each team has one game in each of those weeks, Abbott went on to the semifinal against Gordon on 12-07 and Aquilla's season ended on 11-29, so both games were played. The same score may be copied onto one of them, but no source gives another score, so both stay.",
+    "reviewed": "2026-11-15"
+  },
+  {
+    "key": "far-copy 2025-11-14|ira|robert-lee",
+    "reason": "Two real games, both 60-14 to Robert Lee at Robert Lee on both schools' schedules: a non-district game on 9-12 (set up in June) and the UIL Division I bi-district playoff on 11-14 (set up 11-08, when the pairing was made). Checked Nov 15: each team has one game in each of those weeks, Robert Lee went on to the area round against Turkey Valley on 11-21 and Ira's season ended on 11-14, so both games were played. The same score may be copied onto one of them, but no source gives another score, so both stay.",
+    "reviewed": "2026-11-15"
   }
 ]

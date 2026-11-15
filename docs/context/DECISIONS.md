@@ -98,3 +98,7 @@ Not in an ADR:
   linked browser for the account's follows, one alert a browser. Sign-out deletes that browser's subscription (kept,
   unlinked, only for follows that did not fit); deleting the account deletes them too. Signed-out browsers unchanged
   (Nov 14, 2026).
+- **A far copy is reviewed, never folded in** (ADR 0068): the same two teams and score more than two days apart fails
+  `check-data` in every season until a correction voids the copy (when the schedules name the real game) or a reviewed
+  exception keeps both; the two-day duplicate rule stays as it is. The Nov 14 audit's ten cases were settled: four voids,
+  two real rematches kept, four same-night doubles kept with what was checked (Nov 15, 2026).
