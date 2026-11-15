@@ -20,7 +20,7 @@
  "group_means": {
   "Independent": -24.3,
   "Outside": -41.1,
-  "TAIAO": -17.8,
+  "TAIAO": -17.9,
   "TAPPS": 8.0,
   "TCAF": -26.0,
   "UIL I": 21.0,
@@ -9501,7 +9501,7 @@
    "trend": [
     -87.2,
     -94.4,
-    -96.1,
+    -96.0,
     -96.7,
     -98.4,
     -98.1,
@@ -9703,5 +9703,5 @@
   4.5,
   4.5
  ],
- "inputs_sha256": "ab5f381bf67750c3704256dfacabbb68af5af9e2bb935f72b795d2e50b024278"
+ "inputs_sha256": "f87f98af5ef758befc9f520d2672e5ad64ccbde02c8de5bc7f909540c855e88d"
 }
