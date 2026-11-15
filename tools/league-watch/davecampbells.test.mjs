@@ -683,3 +683,28 @@ test("games on a Central date: each side's name, score and forfeit flag, never t
   assert.equal(gamesOnLines(items, "all").length, 3);
   assert.ok(!gamesOnLines(items, "all").join("\n").match(/-10|winner/i));
 });
+
+// Venues (ADR 0061): invented teams and places only.
+test("venue rows: one a game with our program at home, its phase, and the venue's name and city, never its address", async () => {
+  const { venueRows, venueCounts, VENUE_COLUMNS, phaseOf } = await import("./davecampbells.mjs");
+  const ours = new Map([["wren-wrens", "wren"], ["lark-owls", "lark"]]);
+  const side = (participantType, team) => ({ participantType, websiteUrl: `https://www.davecampbells.com/team/${team}` });
+  const venue = { venueId: "v1", locationName: "Wren Field, North", addressLine1: "100 Main St", city: "Wrenville", postalCode: "79000" };
+  const items = [
+    { scheduledKickoff: "2026-09-05T00:00:00Z", seasonPhase: "", playoffRound: null, venue, participants: [side("HOME", "wren-wrens"), side("AWAY", "robin-robins")] },
+    { scheduledKickoff: "2026-09-05T00:00:00Z", seasonPhase: "", venue, participants: [side("HOME", "wren-wrens"), side("AWAY", "robin-robins")] },
+    { scheduledKickoff: "2026-11-14T01:00:00Z", seasonPhase: "Playoffs", playoffRound: "Bi-District", venue: { venueId: "v2", locationName: "Neutral Bowl", city: "Finch" }, participants: [side("HOME", "lark-owls"), side("AWAY", "wren-wrens")] },
+    { scheduledKickoff: "2026-09-12T00:00:00Z", venue, participants: [side("HOME", "robin-robins"), side("AWAY", "wren-wrens")] },
+  ];
+  const rows = venueRows(items, { ours, slugs: new Set(), renamed: new Map(), season: 2026 });
+  assert.deepEqual(rows, [
+    { game_date: "2026-09-04", home: "wren", away: "robin-robins", phase: "regular", venue_id: "v1", site_name: "Wren Field - North", site_city: "Wrenville" },
+    { game_date: "2026-11-13", home: "lark", away: "wren", phase: "playoff", venue_id: "v2", site_name: "Neutral Bowl", site_city: "Finch" },
+  ]);
+  assert.deepEqual(VENUE_COLUMNS, Object.keys(rows[0]));
+  assert.ok(!JSON.stringify(rows).includes("Main St") && !JSON.stringify(rows).includes("79000"), "no address or postal code");
+  assert.equal(phaseOf({ seasonPhase: "Regular" }), "regular");
+  const line = venueCounts(rows);
+  assert.equal(line, "Venues: 2 games with one of our programs at home; regular 1 (a venue name 1, a city 1, a venue id 1); playoff 1 (a venue name 1, a city 1, a venue id 1).");
+  for (const word of ["wren", "lark", "Wrenville", "Finch"]) assert.ok(!line.includes(word));
+});

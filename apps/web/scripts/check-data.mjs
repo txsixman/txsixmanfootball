@@ -47,6 +47,7 @@ function files() {
       list.push({ file: seed(`brackets/${f}`), csv: [s.BRACKET_COLUMNS, s.BracketSlotRow] });
     }
   }
+  if (existsSync(path.join(root, seed("schools/home-fields.csv")))) list.push({ file: seed("schools/home-fields.csv"), csv: [s.HOME_FIELD_COLUMNS, s.HomeFieldRow] });
   if (existsSync(path.join(root, seed("game-details")))) {
     for (const f of readdirSync(path.join(root, seed("game-details"))).filter((f) => /^\d{4}\.csv$/.test(f))) {
       list.push({ file: seed(`game-details/${f}`), csv: [s.DETAIL_COLUMNS, s.DetailRow] });

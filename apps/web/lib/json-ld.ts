@@ -52,11 +52,14 @@ export const programJsonLd = (p: { name: string; slug: string; league?: string; 
   ...(p.league && { memberOf: { "@type": "SportsOrganization", name: p.league } }),
 });
 
-/** The site the game page names: a home field, a neutral site, or a bracket game's site ("Shotwell Stadium, Abilene",
- * ADR 0041). A site "not listed" is left out, never guessed. */
+/** The site the game page names: a home field (by name, "Jaybird Stadium, Jayton", ADR 0061, or as "Jayton home field"),
+ * a neutral site, or a bracket game's site ("Shotwell Stadium, Abilene", ADR 0041). A site "not listed" is left out, never
+ * guessed. */
 function placeName(venue: string): string | undefined {
-  if (/^(Site not listed|Neutral site or not listed)/.test(venue)) return undefined;
-  return /\(home\)$/.test(venue) ? venue.replace(/ \(home\)$/, " home field") : venue;
+  if (/^(Site not listed|Neutral site or not listed|Neutral site$)/.test(venue)) return undefined;
+  if (!/\(home\)$/.test(venue)) return venue;
+  const field = venue.replace(/ \(home\)$/, "");
+  return field.includes(", ") ? field : `${field} home field`;
 }
 
 /**

@@ -12,6 +12,8 @@ import { slugify } from "./slug.ts";
  * (`<season>-<round>-<away>-at-<home>`, loadGames), so it links there and has no second page; every other game is its own page. */
 export type SeasonResult = {
   id: string; href: string; date: string; status: string; home: string; away: string; homeScore: number; awayScore: number; forfeit: boolean;
+  /** The row is marked a neutral site (games.csv `neutral` "true"). */
+  neutral?: boolean;
 };
 
 
@@ -58,6 +60,7 @@ export function buildSeasonResults(
         homeScore: Number(r.home_score),
         awayScore: Number(r.away_score),
         forfeit: forfeitScore(Number(r.home_score), Number(r.away_score)),
+        ...(r.neutral === "true" ? { neutral: true } : {}),
       },
     ];
   });

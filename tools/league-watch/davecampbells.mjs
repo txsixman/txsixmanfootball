@@ -831,6 +831,85 @@ async function history() {
     ` (skipped: ${skipped.notOurs} with a team not ours, ${skipped.notFinished} not finished, ${skipped.noDate} with no date, ${skipped.forfeitUnflagged} forfeits naming no side)`);
 }
 
+// ---- Venues (ADR 0061): where each game of a season is played, to measure where sites can come from ----
+//   node tools/league-watch/davecampbells.mjs --venues <year> --private <private data repo>
+// reads each mapped team's games of the season (one team-id request and one schedule request a team, 2.5 s apart) and
+// writes <private>/davecampbells-<year>/venues.csv: one row a game with one of our programs at home, its phase (regular or
+// playoff), and the venue's id, name and city as ADR 0041 keeps them (never an address). The log is counts only.
+export const VENUE_COLUMNS = ["game_date", "home", "away", "phase", "venue_id", "site_name", "site_city"];
+
+/** A game's phase: "playoff" when the feed gives it a playoff round or a playoff season phase, else "regular". */
+export const phaseOf = (item) => (item?.playoffRound || /playoff|post/i.test(String(item?.seasonPhase ?? "")) ? "playoff" : "regular");
+
+/**
+ * One row a game whose home team is one of our programs (the map, else the school name among `slugs`), each game once.
+ * The away side is ours or the feed's own team slug. The venue is kept as ADR 0041 keeps a site: name and city, plain words.
+ */
+export function venueRows(items, { ours, slugs, renamed, season }) {
+  const rows = new Map();
+  for (const item of items) {
+    const kickoff = new Date(item?.scheduledKickoff ?? NaN);
+    if (Number.isNaN(kickoff.getTime())) continue;
+    const parts = Array.isArray(item.participants) ? item.participants : [];
+    const [h, a] = ["HOME", "AWAY"].map((t) => parts.find((p) => p?.participantType === t));
+    const program = (p) => p && (ours.get(teamSlugOf(p.websiteUrl)) ?? programByName(p.schoolName, slugs, teamSlugOf(p.websiteUrl)));
+    const home = program(h) && asOf(program(h), season, renamed);
+    if (!home) continue;
+    const away = (program(a) && asOf(program(a), season, renamed)) || teamSlugOf(a?.websiteUrl) || slugify(String(a?.schoolName ?? "")) || "unknown";
+    const date = centralDate(kickoff);
+    const key = gameKey(date, home, away);
+    if (rows.has(key)) continue;
+    const name = siteText(item.venue?.locationName, 80) || siteText(item.venue?.siteLabel, 80);
+    rows.set(key, {
+      game_date: date,
+      home,
+      away,
+      phase: phaseOf(item),
+      venue_id: /^[\w-]{1,64}$/.test(String(item.venue?.venueId ?? "")) ? String(item.venue.venueId) : "",
+      site_name: name,
+      site_city: name ? siteText(item.venue?.city, 60) : "",
+    });
+  }
+  return [...rows.values()].sort((x, y) => x.game_date.localeCompare(y.game_date) || x.home.localeCompare(y.home));
+}
+
+/** Counts for the log: never a team or a place. */
+export function venueCounts(rows) {
+  const by = (phase) => rows.filter((r) => r.phase === phase);
+  const line = (phase) => {
+    const r = by(phase);
+    return `${phase} ${r.length} (a venue name ${r.filter((x) => x.site_name).length}, a city ${r.filter((x) => x.site_city).length}, a venue id ${r.filter((x) => x.venue_id).length})`;
+  };
+  return `Venues: ${rows.length} games with one of our programs at home; ${line("regular")}; ${line("playoff")}.`;
+}
+
+async function venues() {
+  const arg = (f) => (process.argv.includes(f) ? process.argv[process.argv.indexOf(f) + 1] : null);
+  const year = Number(arg("--venues"));
+  const root = arg("--private");
+  if (!Number.isInteger(year) || !root) throw new Error("usage: davecampbells.mjs --venues <year> --private <private data repo>");
+  const client = createClient();
+  const seasonId = footballSeasons(await client.getData("/api/public/seasons")).get(year);
+  if (!seasonId) return console.log(`${year}: the feed lists no high school football season`);
+  const { theirs, ours } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
+  const { slugs, renamed } = knownPrograms(path.join(path.dirname(TEAMS_FILE), "..", "..", "data", "seed"));
+  const items = [];
+  let teams = 0;
+  for (const theirSlug of new Set(theirs.values())) {
+    const id = await teamId(client, theirSlug, seasonId);
+    if (!id) continue;
+    teams++;
+    items.push(...(await liveAndUpcoming(client, seasonId, id)));
+  }
+  const phases = [...new Set(items.map((x) => String(x?.seasonPhase ?? "")))].filter((x) => /^[\w -]{0,30}$/.test(x)).join(", ");
+  const rows = venueRows(items, { ours, slugs, renamed, season: year });
+  const dir = path.join(root, `davecampbells-${year}`);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, "venues.csv"), [VENUE_COLUMNS.join(","), ...rows.map((r) => VENUE_COLUMNS.map((c) => r[c]).join(","))].join("\n") + "\n");
+  console.log(`${year}: ${teams} of ${theirs.size} teams found, ${items.length} games read; season phases seen: ${phases}`);
+  console.log(venueCounts(rows));
+}
+
 /** `--team <year> <their slug>`: one team's game list in a season, with no status filter: how many games and which
  * statuses, so a season that reads nothing is one look away. Counts and status names only. */
 async function team() {
@@ -1130,5 +1209,5 @@ async function gamesOn() {
   console.log(lines.length ? lines.join("\n") : `${theirSlug}: no game on ${date}`);
 }
 
-const MODES = { "--finals": finals, "--bracket-fields": bracketFieldsMode, "--seasons": seasons, "--history": history, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents, "--games-on": gamesOn };
+const MODES = { "--finals": finals, "--bracket-fields": bracketFieldsMode, "--seasons": seasons, "--history": history, "--venues": venues, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents, "--games-on": gamesOn };
 if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(Object.entries(MODES).find(([f]) => process.argv.includes(f))?.[1] ?? live);

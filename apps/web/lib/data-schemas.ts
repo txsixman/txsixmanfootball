@@ -63,6 +63,16 @@ export const DetailRow = z.object({
   site_city: z.union([z.literal(""), z.string().max(60).regex(SITE_WORDS, "plain words: letters, digits, spaces and . ' & ( ) / -")]),
 }).refine((r) => r.site_name || !r.site_city, "a site city with no site name");
 
+/** data/seed/schools/home-fields.csv (ADR 0061): each program's own field, by its slug, from where it played its regular-season home
+ * games (tools/league-watch/home-fields.mjs), name and city in plain words; the season it was seen. No source column. */
+export const HOME_FIELD_COLUMNS = ["program", "site_name", "site_city", "season"];
+export const HomeFieldRow = z.object({
+  program: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "a program slug"),
+  site_name: z.string().min(1).max(80).regex(SITE_WORDS, "plain words: letters, digits, spaces and . ' & ( ) / -"),
+  site_city: z.string().min(1).max(60).regex(SITE_WORDS, "plain words: letters, digits, spaces and . ' & ( ) / -"),
+  season: z.string().regex(/^\d{4}$/, "a season, 2026"),
+});
+
 /** data/seed/brackets/<season>.csv: which games feed which (ADR 0047), written by a robot from a league's own bracket. A side
  * is a team as the bracket names it, "bye", or "winner:<slot>" (a slot of the same bracket). No source column (ADR 0010). */
 export const BRACKET_COLUMNS = ["league", "division", "round", "slot", "a", "b"];
