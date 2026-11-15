@@ -275,9 +275,12 @@ jobs:
           if [ "$POSTS" = on ]; then echo "FAN_POSTS=on" >> "$GITHUB_ENV"; fi
       - name: Account, posts and footer specs on a build with the switches set (${{ matrix.config }})
         working-directory: apps/web
+        # The Playwright container's default shell is sh, which has no shopt or arrays.
+        shell: bash
         run: |
           shopt -s nullglob
-          specs=(e2e/accounts.spec.ts e2e/posts.spec.ts e2e/account-*.spec.ts e2e/footer-legal.spec.ts)
+          # Every account spec (accounts, push-account, ...), the posts and email specs, and the footer's.
+          specs=(e2e/*account*.spec.ts e2e/posts.spec.ts e2e/email-*.spec.ts e2e/footer-legal.spec.ts)
           echo "FAN_SIGNIN=$FAN_SIGNIN FAN_POSTS=${FAN_POSTS-unset}; specs: ${specs[*]}"
           # No E2E_BUILT: playwright.config.ts builds (the same `npm run build` Vercel runs) and then starts the site.
           npx playwright test -c playwright.config.ts --workers=2 "${specs[@]}"
