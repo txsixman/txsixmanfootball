@@ -273,6 +273,10 @@ test("an override needs a known op, a uuid and a reason; nothing else reaches th
     assert.equal(ModerateInput.safeParse(bad).success, false, JSON.stringify(bad).slice(0, 60));
   }
   assert.equal(ModerateInput.parse({ op: "unmute", id, reason: "=HYPERLINK(1)" }).reason, "HYPERLINK(1)");
+  // A mute needs its length, 1 to 90 days (ADR 0060); a hide takes none.
+  assert.deepEqual(ModerateInput.parse({ op: "mute", id, reason: "cool off", days: "7" }), { op: "mute", id, reason: "cool off", days: 7 });
+  for (const days of ["", "0", "91", "7.5", "1e1"]) assert.equal(ModerateInput.safeParse({ op: "mute", id, reason: "cool off", days }).success, false, days);
+  assert.deepEqual(ModerateInput.parse({ op: "hide", id, reason: "rude", days: "" }), { op: "hide", id, reason: "rude" });
 });
 
 test("each override calls its one admin function with the admin's session, and maps the database's answers", async () => {
@@ -284,11 +288,15 @@ test("each override calls its one admin function with the admin's session, and m
   assert.equal(await moderate(fake(), { op: "unmute", id, reason: "fine" }), "done");
   assert.equal(await moderate(fake(), { op: "ban", id, reason: "spam" }), "done");
   assert.equal(await moderate(fake(), { op: "unban", id, reason: "appeal" }), "done");
+  assert.equal(await moderate(fake(), { op: "hide", id, reason: "rude" }), "done");
+  assert.equal(await moderate(fake(), { op: "mute", id, reason: "cool off", days: 3 }), "done");
   assert.deepEqual(calls, [
     ["admin_unhide_post", { p_post: id, p_reason: "fine" }],
     ["admin_unmute", { p_user: id, p_reason: "fine" }],
     ["admin_set_ban", { p_user: id, p_banned: true, p_reason: "spam" }],
     ["admin_set_ban", { p_user: id, p_banned: false, p_reason: "appeal" }],
+    ["admin_hide_post", { p_post: id, p_reason: "rude" }],
+    ["admin_mute", { p_user: id, p_days: 3, p_reason: "cool off" }],
   ]);
   assert.equal(await moderate(fake({ code: "42501", message: "admin_only" }), { op: "ban", id, reason: "spam" }), "denied");
   assert.equal(await moderate(fake({ code: "P0001", message: "not_found" }), { op: "ban", id, reason: "spam" }), "already");
@@ -299,8 +307,19 @@ test("the overview is empty lists on odd data and null when refused", async () =
   const { moderationOverview } = await import("../lib/admin/moderation.ts");
   const answer = (data, error = null) => ({ rpc: async () => ({ data, error }) });
   assert.equal(await moderationOverview(answer(null, { code: "42501", message: "admin_only" })), null);
-  assert.deepEqual(await moderationOverview(answer({ hidden_posts: "x" })), { hidden_posts: [], restricted: [] });
-  assert.deepEqual(await moderationOverview(answer({ hidden_posts: [], restricted: [{ user_id: "u" }] })), { hidden_posts: [], restricted: [{ user_id: "u" }] });
+  assert.deepEqual(await moderationOverview(answer({ hidden_posts: "x" })), { flagged_posts: [], hidden_posts: [], restricted: [] });
+  assert.deepEqual(await moderationOverview(answer({ hidden_posts: [], restricted: [{ user_id: "u" }] })), { flagged_posts: [], hidden_posts: [], restricted: [{ user_id: "u" }] });
+  assert.deepEqual((await moderationOverview(answer({ flagged_posts: [{ id: "p" }] }))).flagged_posts, [{ id: "p" }]);
+});
+
+test("the fan score report list is read-only, one call, and null when refused (ADR 0061)", async () => {
+  const { fanScoreReports } = await import("../lib/admin/moderation.ts");
+  const calls = [];
+  const answer = (data, error = null) => ({ rpc: async (fn, args) => (calls.push([fn, args]), { data, error }) });
+  assert.equal(await fanScoreReports(answer(null, { code: "42501", message: "admin_only" })), null);
+  assert.deepEqual(await fanScoreReports(answer("x")), []);
+  assert.deepEqual(await fanScoreReports(answer([{ game_key: "k", scores: null }])), [{ game_key: "k", scores: [] }]);
+  assert.deepEqual(calls.map(([fn, args]) => [fn, args]), [["admin_fan_score_reports", undefined], ["admin_fan_score_reports", undefined], ["admin_fan_score_reports", undefined]]);
 });
 
 test("the game and alignment readers go by header names, so the public files without source_url or notes read the same", () => {

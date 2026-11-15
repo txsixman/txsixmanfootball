@@ -4,7 +4,7 @@ import list from "./wordlist.json" with { type: "json" };
 // Twin of moderation_normalize() and the checks in packages/db/migrations/0013_moderation.sql: change both together. The shared
 // test vectors (vectors.json, run by scripts/moderation.test.mjs and packages/db/test/moderation.test.mjs) fail if they drift.
 //
-// What a post may not say or contain, checked before it is saved (ADR 0018). The database checks the same rules again
+// What a post may not say or contain, checked before it is saved (ADR 0018; betting talk, ADR 0059). The database checks the same rules again
 // (post_text_check in migration 0013, same terms in moderation_term): this copy gives the fan a clear answer without a
 // round trip, and the database copy is the one that cannot be skipped.
 
@@ -32,7 +32,7 @@ export function normalize(text: string): string {
     .trim();
 }
 
-export type TextProblem = "bad_text" | "blocked_text" | "links_not_allowed" | "too_many_links";
+export type TextProblem = "bad_text" | "blocked_text" | "betting_text" | "links_not_allowed" | "too_many_links";
 
 const MAX_POST_LENGTH = 2000;
 export const MAX_TITLE_LENGTH = 120;
@@ -53,6 +53,12 @@ export function isBlocked(text: string): boolean {
     list.squash.some((w) => squashed.includes(w)) ||
     THREATS.some((t) => t.test(padded))
   );
+}
+
+/** True when the text talks about betting: a term from the open list's betting kind, as a whole word or phrase (ADR 0059). Twin of moderation_betting(). */
+export function isBetting(text: string): boolean {
+  const padded = ` ${normalize(text)} `;
+  return list.betting.some((w) => padded.includes(` ${w} `));
 }
 
 // Every address in a post, counted over the whole text (not word by word, so a bracket, a colon, an apostrophe or a
@@ -103,6 +109,7 @@ export function checkText(raw: string, { established, max = MAX_POST_LENGTH }: {
   // eslint-disable-next-line no-control-regex
   if (text.length === 0 || text.length > max || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u206f]/.test(text) || normalize(text) === "") return "bad_text";
   if (isBlocked(text)) return "blocked_text";
+  if (isBetting(text)) return "betting_text";
   const links = linkCount(text);
   // A new account gets no address of any kind: a scheme or www. anywhere, however spaced or hidden.
   if (!established && (links > 0 || /:\/\/|www\./.test(strip(text)))) return "links_not_allowed";

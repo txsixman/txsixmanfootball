@@ -225,6 +225,8 @@ const SIGNED_IN_FUNCTIONS = [
   "public.my_account()", "public.change_display_name(text)", "public.label_push_subscription(text, text)", "public.my_devices()",
   "public.this_device(text)", "public.remove_my_device(uuid)", "public.remove_all_my_devices()", "public.set_push_mute(text, text, boolean)",
   "public.my_push_mutes(text)", "public.export_my_data()", "public.my_activity(integer)",
+  // Posts launch (migration 0027, ADRs 0060 and 0061): the owner's hide, mute and fan score report list; each refuses anyone not is_admin().
+  "public.admin_hide_post(uuid, text)", "public.admin_mute(uuid, integer, text)", "public.admin_fan_score_reports()",
 ];
 
 // Public reads, open to anon and authenticated alike: they return display names, text and counts, never a user id,

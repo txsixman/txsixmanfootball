@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import fold from "../lib/moderation/fold.json" with { type: "json" };
-import { checkText, isBlocked, linkCount, normalize, splitLinks } from "../lib/moderation/check.ts";
+import { checkText, isBetting, isBlocked, linkCount, normalize, splitLinks } from "../lib/moderation/check.ts";
 import { displayNameProblem } from "../lib/moderation/names.ts";
 
 const vectors = JSON.parse(readFileSync(new URL("../lib/moderation/vectors.json", import.meta.url), "utf8"));
@@ -12,6 +12,13 @@ const vectors = JSON.parse(readFileSync(new URL("../lib/moderation/vectors.json"
 test("every shared vector is blocked or let through as the database does", () => {
   for (const v of vectors.blocked) assert.equal(isBlocked(v.text), v.blocked, JSON.stringify(v.text));
   for (const v of vectors.links) assert.equal(linkCount(v.text), v.links, JSON.stringify(v.text));
+  for (const v of vectors.betting) assert.equal(isBetting(v.text), v.betting, JSON.stringify(v.text));
+});
+
+test("betting talk is refused after slurs and threats, in a post and a title (ADR 0059)", () => {
+  assert.equal(checkText("What are the odds?", { established: true }), "betting_text");
+  assert.equal(checkText("Over/under", { established: false, max: 120 }), "betting_text");
+  assert.equal(checkText("I bet we win, great offensive line", { established: true }), null);
 });
 
 test("every invisible or combining character is dropped from inside a word", () => {

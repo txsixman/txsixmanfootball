@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { checkLive } from "../load.mjs";
-import { ADMIN, as, asFan, db, fan, fans, KEYS, newId, sudo, YEAR } from "./posts-helpers.mjs";
+import { ADMIN, as, asFan, cool, db, fan, fans, KEYS, newId, sudo, YEAR } from "./posts-helpers.mjs";
 
 // Moderation core and game comments (migration 0013, ADR 0018): the word list, links, rate limits, flags, mutes, edits,
 // The owner's overrides and account deletion. Everything is enforced by the database; the site's copy is a convenience.
@@ -15,7 +15,7 @@ test("the database's word list is the site's word list, row for row", async () =
   const d = await db({ games: false });
   const list = read("wordlist.json");
   const { rows } = await d.query("select kind, term from moderation_term order by kind, term");
-  const want = ["word", "squash", "threat"].flatMap((k) => list[k].map((t) => ({ kind: k, term: t })));
+  const want = ["word", "squash", "threat", "betting"].flatMap((k) => list[k].map((t) => ({ kind: k, term: t })));
   assert.deepEqual(rows, want.sort((a, b) => (a.kind + a.term < b.kind + b.term ? -1 : 1)));
 });
 
@@ -27,6 +27,9 @@ test("the database folds and checks text exactly as the site does (shared vector
   }
   for (const x of v.links) {
     assert.equal((await d.query("select post_link_count($1) as n", [x.text])).rows[0].n, x.links, JSON.stringify(x.text));
+  }
+  for (const x of v.betting) {
+    assert.equal((await d.query("select moderation_betting($1) as b", [x.text])).rows[0].b, x.betting, JSON.stringify(x.text));
   }
 });
 
@@ -115,12 +118,24 @@ test("every account is rate limited, a new one more tightly; edits count as post
   await asFan(d, young);
   const first = await comment(d, "one");
   await comment(d, "two");
+  // Per minute (migration 0027): a new account's third write in one minute is refused.
+  await assert.rejects(d.query("select edit_post($1, 'one, edited')", [first]), /rate_limited/);
+  await cool(d, young);
+  await asFan(d, young);
   await d.query("select edit_post($1, 'one, edited')", [first]);
+  await cool(d, young);
+  await asFan(d, young);
   await assert.rejects(comment(d, "four"), /rate_limited/);
   await assert.rejects(d.query("select edit_post($1, 'one, edited again')", [first]), /rate_limited/);
   const old = await fan(d, "Old Fan", { old: true });
   await asFan(d, old);
-  for (let i = 0; i < 8; i++) await comment(d, `post ${i}`);
+  for (let i = 0; i < 4; i++) await comment(d, `post ${i}`);
+  await assert.rejects(comment(d, "fifth in a minute"), /rate_limited/, "an established account: 4 a minute");
+  await cool(d, old);
+  await asFan(d, old);
+  for (let i = 4; i < 8; i++) await comment(d, `post ${i}`);
+  await cool(d, old);
+  await asFan(d, old);
   await assert.rejects(comment(d, "nine"), /rate_limited/);
   // Ten minutes later the short window clears, the daily one still counts.
   await sudo(d, "update post set created_at = now() - interval '11 minutes' where author_id = $1", [old]);
@@ -255,7 +270,11 @@ test("flagging is rate limited too", async () => {
   }
   const young = await fan(d, "Young Fan", { old: false });
   await asFan(d, young);
-  for (let i = 0; i < 5; i++) await d.query("select flag_post($1)", [pids[i]]);
+  for (let i = 0; i < 3; i++) await d.query("select flag_post($1)", [pids[i]]);
+  await assert.rejects(d.query("select flag_post($1)", [pids[3]]), /rate_limited/, "a new account: 3 flags a minute");
+  await cool(d, young);
+  await asFan(d, young);
+  for (let i = 3; i < 5; i++) await d.query("select flag_post($1)", [pids[i]]);
   await assert.rejects(d.query("select flag_post($1)", [pids[5]]), /rate_limited/);
 });
 
@@ -265,6 +284,7 @@ test("3 hidden posts in 30 days mute the author; older hidden posts do not count
   const flaggers = await fans(d, 3);
   const hide = async (pid) => {
     for (const f of flaggers) { await asFan(d, f); await d.query("select flag_post($1)", [pid]); }
+    await cool(d, ...flaggers);
   };
   const posts = [];
   for (let i = 0; i < 3; i++) { await asFan(d, author); posts.push(await comment(d, `post ${i}`)); }

@@ -53,8 +53,11 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
   );
   assert.deepEqual(routines.rows, [
     { proname: "add_comment", anon: false }, // migration 0013: posts, signed-in fans only
+    { proname: "admin_fan_score_reports", anon: false }, // migration 0027: the owner's lists and tools
     { proname: "admin_guard", anon: false },
+    { proname: "admin_hide_post", anon: false },
     { proname: "admin_moderation_overview", anon: false },
+    { proname: "admin_mute", anon: false },
     { proname: "admin_set_ban", anon: false },
     { proname: "admin_unhide_post", anon: false },
     { proname: "admin_unmute", anon: false },
@@ -89,6 +92,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "link_push_subscription", anon: false }, // migration 0023: signed-in fans link one browser to the account
     { proname: "list_comments", anon: false }, // migration 0013: a public read, granted to anon only where auth.uid() exists (Supabase)
     { proname: "live_scores", anon: true }, // migration 0016: the games under way, read-only, for anon and signed-in alike
+    { proname: "moderation_betting", anon: false }, // migration 0027: betting talk in posts
     { proname: "moderation_blocked", anon: false },
     { proname: "moderation_name_blocked", anon: false },
     { proname: "moderation_normalize", anon: false },

@@ -48,6 +48,49 @@ Forums, game comments and score reports are behind `FAN_POSTS`, which must be ex
   them, undo either one (`is_on = false`, or remove `FAN_POSTS` and redeploy); the closed one wins. Only the database closed: the
   routes answer `posts_closed` ("Posting is not open yet."). Only the site closed: 404. Either way nothing is posted.
 
+## Launch checklist: opening posts (about Sun Nov 22, 2026)
+
+Do these in order, in one sitting. Each step names how to check it worked.
+
+**Before (any day that week)**
+1. `main` has migration 0027 (ADRs 0059 to 0061) and the `Supabase` workflow run after it passed. Check in the Supabase SQL editor
+   (project `vhgnaihnyjdnaaergtcl`): `select to_regprocedure('admin_mute(uuid,integer,text)') is not null as ready;` answers `true`.
+2. Production already has `FAN_SIGNIN=on` and `/api/me` answers `"enabled":true,"posts":false`.
+3. The owner's own account can open `/admin/moderation` and `/admin/corrections` (he needs both the first night).
+
+**Open (about 15 minutes, most of it the redeploy)**
+1. Supabase SQL editor: `update site_switch set is_on = true where name = 'posts';` Check:
+   `select is_on from site_switch where name = 'posts';` answers `true` (the change is in `audit_log`, entity `site_switch`).
+2. Vercel, project `txsixmanfootball.com`, Settings, Environment Variables, **Production**: add `FAN_POSTS` with the value `on`
+   (exactly, lower case). Nothing else changes: `FAN_SIGNIN` stays `on`.
+3. Redeploy production (Deployments, the latest production deploy, Redeploy; leave "use existing build cache" off). The game pages
+   are static and only a new build adds their comment and score-report blocks (see "The second switch").
+4. Check, signed out: `/api/me` answers `"posts":true`; `/forums` lists the five boards; a game page shows Comments.
+5. Check, signed in on a fan account with a finished profile: post one comment on a game page and see it show. It
+   can stay, or be edited. Then open the game page signed out and check its Report link goes to sign-in.
+
+**Watch the first night (Friday games: 7 PM to midnight Central)**
+- `/admin/moderation`, Reported posts: anything reported once or twice that should go, hide it; an account doing it again, mute
+  it (1 to 90 days) or ban it. Every one asks for a reason and lands in `audit_log`.
+- `/admin/corrections`, Fan score reports: reports that differ from the final, marked "differs from the final". A real error is
+  fixed with the game's correction form, as any correction; a report never changes a score by itself.
+- Errors: `vercel logs --environment production` (the CLI, outside the sandbox) and look for `posts: database call failed`,
+  `comments: read failed`, `forums: read failed` or `score report: read failed`. Each line carries only a database error code.
+  More than a few a minute means the database is struggling: close posts (below) and look in the morning.
+- Volume, in the SQL editor: `select count(*) from post where created_at > now() - interval '1 hour';` and the same for
+  `post_flag` and `fan_score_report`. Every account is limited per minute, per 10 minutes and per day (ADR 0059), so a flood means
+  many accounts: close posts and look.
+
+**Turn posts off fast**
+1. **Seconds, no deploy:** Supabase SQL editor, `update site_switch set is_on = false where name = 'posts';` Every write
+   (comments, threads, replies, edits, reports, score reports) is refused at once with "Posting is not open yet." What is
+   already posted still shows.
+2. **To hide the pages too:** Vercel, delete `FAN_POSTS` (Production) and redeploy. The forums and every posts route answer 404,
+   and a game page built with posts on hides its blocks once the new deploy is live (their routes then answer 404). A Vercel
+   variable change applies only to a new deploy, so step 1 is the fast one.
+3. Moderation still works while closed: `/admin/moderation` stays open to the owner.
+4. To reopen, undo whichever you did. The closed one wins.
+
 ## What a fan sees
 
 | Where | What |
@@ -98,6 +141,17 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
 - A display name is checked by `lib/moderation/names.ts` (a small word list) before `create_profile`. The posts round replaces
   that file and keeps `displayNameProblem(name)`.
 - Nothing logs an email, a birth year, a token or a Supabase error.
+- **Posts launch (migration 0027, ADRs 0059 to 0061).** Every write is also limited per minute (`fan_rate_check`; new accounts:
+  posts 2, threads 1, reports of posts 3, score reports 2; established: 4, 2, 5, 3). Gambling talk is refused in posts and titles
+  (`moderation_betting`, the `betting` list in `lib/moderation/wordlist.json`, the shared vectors). Report shows on every other
+  fan's post for every viewer: signed out it links to sign-in and back. The owner's `/admin/moderation` lists every reported post
+  that is not hidden (most reports first, how many count, never who reported) and can hide a post (`admin_hide_post`) or mute an
+  account for 1 to 90 days (`admin_mute`), each written to `audit_log` with his reason. `/admin/corrections` lists fan score
+  reports from the last 60 days (`admin_fan_score_reports`, read-only), marked where they differ from the final. All three
+  functions are admin-only and in `SIGNED_IN_FUNCTIONS`.
+- **A deleted account** (`delete_my_account()`): its posts and every earlier version of them, its reports of posts and its
+  follows go; a thread it started goes with its replies; its score reports stay with no reporter (`reporter_id` set null), so a
+  confirmed score does not change. `/privacy` says so.
 
 ## Environment variables (Vercel, project `txsixmanfootball.com`, Production)
 

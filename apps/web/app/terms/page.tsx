@@ -39,14 +39,16 @@ export default function TermsPage() {
           <li>Posts, comments and score reports are public, and your display name shows with them.</li>
           <li>They are yours. By posting you let the site show, store and keep the edit history of them for as long as the post or the site exists.</li>
           <li>No slurs, threats, harassment or bullying. No private details about anyone, especially a student: no phone numbers, addresses, or where someone will be.</li>
+          <li>No gambling talk.</li>
           <li>No spam, no advertising, and no pictures or files (none can be uploaded). Accounts older than 7 days may post plain links, shown as text only.</li>
           <li>Do not report a score you do not know to be right. A fan-reported score is shown only once two different members, each older than 7 days, agree, or it matches what the site reads itself. Until then no winner is named.</li>
         </ul>
 
         <LegalH2>Moderation</LegalH2>
         <p className="mt-2">
-          Moderation is automatic: a word list blocks slurs and threats; three different members flagging a post hides it; three hidden
-          posts in 30 days mutes the account; edits keep their history. The site&apos;s owner may unhide, unmute or ban, and may remove
+          Moderation is automatic: a word list blocks slurs, threats and gambling talk; every account has limits on how fast it can
+          post; three different members reporting a post hides it; three hidden
+          posts in 30 days mutes the account; edits keep their history. The site&apos;s owner may hide, unhide, mute, unmute or ban, and may remove
           anything at any time. Because no one reviews posts first, a post can be seen before it is hidden.
         </p>
         </>

@@ -798,5 +798,71 @@
    917760,
    917999
   ]
+ ],
+ "betting": [
+  {
+   "text": "What are the odds they win?",
+   "betting": true
+  },
+  {
+   "text": "Who has the point spread for Friday",
+   "betting": true
+  },
+  {
+   "text": "I put a parlay on it",
+   "betting": true
+  },
+  {
+   "text": "0DDS look bad",
+   "betting": true
+  },
+  {
+   "text": "Over/under is 90",
+   "betting": true
+  },
+  {
+   "text": "money-line favorite",
+   "betting": true
+  },
+  {
+   "text": "Taking bets on the State Championship",
+   "betting": true
+  },
+  {
+   "text": "g a m b l i n g",
+   "betting": false
+  },
+  {
+   "text": "I bet we win by 40",
+   "betting": false
+  },
+  {
+   "text": "Their spread offense is tough",
+   "betting": false
+  },
+  {
+   "text": "Great offensive line and a pick six",
+   "betting": false
+  },
+  {
+   "text": "Against all the oddities",
+   "betting": false
+  },
+  {
+   "text": "Beat the odds",
+   "betting": true
+  },
+  {
+   "text": "wagering",
+   "betting": true
+  },
+  {
+   "text": "sports book",
+   "betting": false
+  },
+  {
+   "text": "",
+   "betting": false
+  }
  ]
 }
