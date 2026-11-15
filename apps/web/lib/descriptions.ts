@@ -144,13 +144,13 @@ export const weekReviewDescription = ({ org, season, week, games }: { org: strin
 /** One season's hub page: how many games were read, across which organizations, and what the page holds. `past`: the season is over. */
 export const seasonDescription = ({ season, games, orgs, past }: { season: number; games: number; orgs: string[]; past: boolean }) =>
   fit(`${season} Texas six-man football season: ${games.toLocaleString("en-US")} ${games === 1 ? "game" : "games"} across ${list(orgs)}.`, [
-    past ? "State finals, final rankings, team leaders and every week of results." : "Rankings so far, team leaders and every week of results.",
+    past ? "State Championships, final rankings, team leaders and every week of results." : "Rankings so far, team leaders and every week of results.",
     "Rankings, team leaders and every week of results.",
   ]);
 
 export const seasonsIndexDescription = ({ first, latest }: { first?: number; latest?: number }) =>
   fit(first === undefined ? "Every Texas six-man football season on this site." : `Every Texas six-man football season on this site, ${first} to ${latest}.`, [
-    "Each season's state finals, rankings, team leaders and week-by-week results.",
+    "Each season's State Championships, rankings, team leaders and week-by-week results.",
     "Each season's rankings, team leaders and results.",
   ]);
 

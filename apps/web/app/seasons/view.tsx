@@ -201,7 +201,7 @@ export async function SeasonHubView({ hub }: Props) {
       </div>
 
       <section aria-labelledby="finals" className="mt-8 scroll-mt-4">
-        <SectionBar id="finals" title="UIL state finals" aside={String(season)} className="" />
+        <SectionBar id="finals" title="UIL State Championships" aside={String(season)} className="" />
         {hub.finals.length ? (
           <ul>
             {hub.finals.map((f) => {
@@ -229,7 +229,7 @@ export async function SeasonHubView({ hub }: Props) {
         ) : (
           <div className="px-3 py-3">
             <p className="text-[15px] leading-6 text-ink">
-              {latest ? `The ${season} UIL state finals are in December. Until then, follow the brackets round by round.` : `UIL has no state final on record for ${season}.`}
+              {latest ? `The ${season} UIL State Championships are in December. Until then, follow the brackets round by round.` : `UIL has no State Championship on record for ${season}.`}
             </p>
             <Link href={latest ? "/playoffs" : "/championships"} className={LINK}>
               {latest ? "UIL playoffs" : "Every state championship"}

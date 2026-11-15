@@ -117,15 +117,22 @@ test("a season hub: games read, the organizations, and what the page holds; past
   const orgs = ["UIL", "TAPPS", "TAIAO", "TCAF"];
   assert.equal(
     clean(d.seasonDescription({ season: 2025, games: 1230, orgs, past: true })),
-    "2025 Texas six-man football season: 1,230 games across UIL, TAPPS, TAIAO and TCAF. State finals, final rankings, team leaders and every week of results.",
+    "2025 Texas six-man football season: 1,230 games across UIL, TAPPS, TAIAO and TCAF. State Championships, final rankings, team leaders and every week of results.",
   );
   assert.equal(
     clean(d.seasonDescription({ season: 2026, games: 1227, orgs, past: false })),
     "2026 Texas six-man football season: 1,227 games across UIL, TAPPS, TAIAO and TCAF. Rankings so far, team leaders and every week of results.",
   );
   assert.match(clean(d.seasonDescription({ season: 2026, games: 1, orgs: ["Independent"], past: false })), /: 1 game across Independent\./);
-  assert.equal(clean(d.seasonsIndexDescription({ first: 2021, latest: 2026 })), "Every Texas six-man football season on this site, 2021 to 2026. Each season's state finals, rankings, team leaders and week-by-week results.");
-  assert.equal(clean(d.seasonsIndexDescription({})), "Every Texas six-man football season on this site. Each season's state finals, rankings, team leaders and week-by-week results.");
+  assert.equal(clean(d.seasonsIndexDescription({ first: 2021, latest: 2026 })), "Every Texas six-man football season on this site, 2021 to 2026. Each season's State Championships, rankings, team leaders and week-by-week results.");
+  assert.equal(clean(d.seasonsIndexDescription({})), "Every Texas six-man football season on this site. Each season's State Championships, rankings, team leaders and week-by-week results.");
+  // The last playoff round is always the State Championship; "final" is only a score status.
+  for (const text of [
+    d.seasonDescription({ season: 2025, games: 1230, orgs, past: true }),
+    d.seasonDescription({ season: 2025, games: 1230, orgs: [...orgs, "Independent"], past: true }),
+    d.seasonsIndexDescription({ first: 2021, latest: 2026 }),
+    d.seasonsIndexDescription({}),
+  ]) assert.doesNotMatch(text, /state finals?\b/i, text);
 });
 
 test("a program's season: record and rank, the round it reached, what the page lists; no score and no winner; it fits with a long name", () => {

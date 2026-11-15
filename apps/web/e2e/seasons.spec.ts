@@ -176,8 +176,9 @@ test("2026: the finals are in December, with the playoffs one tap away; links us
   expect(hub.latest).toBe(true);
   await checkPage(page, `/seasons/${CURRENT_SEASON}`);
   const finals = page.locator("section[aria-labelledby='finals']");
+  await expect(finals.getByRole("heading", { level: 2 })).toHaveText("UIL State Championships");
   if (hub.finals.length === 0) {
-    await expect(finals).toContainText("state finals are in December");
+    await expect(finals).toContainText("State Championships are in December");
     await expect(finals.getByRole("link", { name: "UIL playoffs" })).toHaveAttribute("href", "/playoffs");
   }
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${CURRENT_SEASON} season`);
