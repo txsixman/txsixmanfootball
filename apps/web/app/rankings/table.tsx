@@ -88,7 +88,7 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
           const name = (
             <>
               <CrestSlot school={r.name} identity={r.identity} />
-              <span className="flex min-w-0 flex-col">
+              <span className="flex min-w-0 flex-col gap-0.5">
                 <span className="line-clamp-3 min-w-0 text-[14.5px] leading-[1.15]">{r.name}</span>
                 {outsideOnly && <span className="text-[13px] leading-4 text-muted">{OUTSIDE_ONLY_NOTE}</span>}
                 {place.range && (
@@ -113,7 +113,7 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
                 )}
                 {!few && <Moved by={moved?.get(r.team)} />}
               </td>
-              <th scope="row" className="text-left font-normal">
+              <th scope="row" className="py-1.5 text-left font-normal">
                 {(startsTier || startsNR) && (
                   <span className={`block pt-1 text-[12px] font-bold uppercase tracking-wider ${startsNR ? "text-muted" : "text-navy"}`}>
                     {startsNR ? `Not ranked: fewer than ${FEW_GAMES} games` : `Tier ${place.tier}`}

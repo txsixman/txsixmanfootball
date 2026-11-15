@@ -1,4 +1,5 @@
 import { heading, loadAlignments, programFor, type Alignment } from "./alignments";
+import type { Address } from "./address";
 import { bracketSlots, builtGames, derivedSlots, fill, ownSlots, type Side } from "./bracket-fill";
 import { treeGames, type TreeGame } from "./bracket-tree";
 import { loadSlotRows } from "./bracket-slots";
@@ -23,7 +24,7 @@ export type BracketRow = PlayoffGame & { projection?: Projection };
  * X–Y"), and the projection on a neutral field once both teams are known. No date or site: none is listed yet. */
 export type BuiltRow = { round: string; sides: [Side, Side]; projection?: Projection;
   /** The day, kickoff and site the facts file has for this pairing before any listing has it (ADR 0067). */
-  date?: string; kickoff?: string; site?: string };
+  date?: string; kickoff?: string; site?: string; address?: Address };
 /** A box of the tree view (ADR 0049): the slot, its round's label, and the projection of a game not yet played once both
  * teams are known (a listed game at its own site, a game no site lists yet on a neutral field). */
 type TreeRow = TreeGame<PlayoffGame> & { label: string; projection?: Projection };

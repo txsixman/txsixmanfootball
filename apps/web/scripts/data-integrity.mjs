@@ -6,6 +6,8 @@
 // history the robots no longer write; their other findings print as warnings, so they are known without blocking a deploy.
 //   - EVERY SEASON: no game is listed twice (the same two teams, the same score, at most two days apart: lib/duplicate-game.ts,
 //     the rule the ratings and the site's loaders apply too; void the later copy in data/corrections)
+//   - EVERY SEASON: no unreviewed far copy (the same two teams and score more than two days apart, ADR 0068): void the copy
+//     in data/corrections, or keep both with a reviewed exception
 //   - EVERY SEASON: no program plays two games on one date (a forfeit, 1-0 or 2-0, and a 0-0 no contest were not played, ADR 0004);
 //     two games a school really played that night (a tournament, a junior varsity game) go in data/integrity-exceptions.json
 //   - every played playoff game (playoffs.csv, and a hand capture) is in games.csv: same teams, date and score
@@ -73,6 +75,19 @@ export function checkSeason({ season, current, games, playoffs, programs, listed
   const copies = duplicateRows(games);
   for (const [i, first] of copies) {
     failEvery(`duplicate ${gameKey(games[i])}`, `one game listed twice, ${line(games[i])} is a copy of the game on ${games[first].game_date}: void the later one in data/corrections`);
+  }
+
+  // A likely copy the rule above does not catch (ADR 0068): the same two teams with the same score (each team's own) more
+  // than two days apart. It is never folded into one game by a wider rule: it is reviewed, then voided in data/corrections
+  // when the evidence names the real game, or kept in data/integrity-exceptions.json (a real rematch, or no source says
+  // which). A forfeit or a 0-0 no contest is no score to copy.
+  const scoreOf = (r) => [`${slugify(r.home)} ${+r.home_score}`, `${slugify(r.away)} ${+r.away_score}`].sort().join(" v ");
+  const kept = games.filter((r, i) => played(r) && !notPlayed(r) && !copies.has(i));
+  for (const rows of Map.groupBy(kept, scoreOf).values()) {
+    const [first, ...later] = rows.sort((a, b) => a.game_date.localeCompare(b.game_date));
+    for (const r of later) {
+      failEvery(`far-copy ${gameKey(r)}`, `the same two teams and score ${daysBetween(first.game_date, r.game_date)} days apart, ${line(r)} and ${line(first)}: void the copy in data/corrections, or record a reviewed exception`);
+    }
   }
 
   // One game a program a date. A playoff game is in both files: one game, counted once.

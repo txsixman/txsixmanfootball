@@ -35,13 +35,17 @@ function Side({ team, score }: { team: ReactNode; score: number }) {
   );
 }
 
-const Sub = ({ children }: { children: ReactNode }) => <span className="block truncate text-[13px] text-muted">{children}</span>;
+// Wraps rather than cutting off: "124-74 vs Covenant Classical-Fort Worth · Aug 29, 2025" is more than one phone line.
+const Sub = ({ children }: { children: ReactNode }) => <span className="block text-[13px] leading-snug text-muted">{children}</span>;
 
-/** The game's own page, from a records row. */
-const GameLink = ({ href, label }: { href: string; label: string }) => (
-  <Link href={href} prefetch={false} aria-label={`${label}, game page`} className="inline-flex min-h-11 items-center text-[13px] font-semibold text-navy underline underline-offset-2">
-    Game page
-  </Link>
+/** The game's date and its own page on one line, so a row is not a line taller for the link alone. */
+const GameLine = ({ date, href, label }: { date: string; href: string; label: string }) => (
+  <span className="flex flex-wrap items-center gap-x-3 text-[13px] text-muted">
+    {date}
+    <Link href={href} prefetch={false} aria-label={`${label}, game page`} className="inline-flex min-h-11 items-center font-semibold text-navy underline underline-offset-2">
+      Game page
+    </Link>
+  </span>
 );
 
 /** One organization's records (ADR 0012): teams and games of the others never appear, except as the other side of a game. */
@@ -84,8 +88,8 @@ export async function RecordsView({ org }: { org: Org }) {
         {records.mostPoints.map((g, i) => (
           <BoardRow key={`${g.date}-${g.team}`} place={i + 1} figure={g.points} unit="points">
             {team(g.team)}
-            <Sub>{`${g.points}-${g.against} vs ${g.opponent} · ${day(g.date)}`}</Sub>
-            <GameLink href={g.href} label={`${g.team} ${g.points}, ${g.opponent} ${g.against}`} />
+            <Sub>{`${g.points}-${g.against} vs ${g.opponent}`}</Sub>
+            <GameLine date={day(g.date)} href={g.href} label={`${g.team} ${g.points}, ${g.opponent} ${g.against}`} />
           </BoardRow>
         ))}
       </Board>
@@ -95,8 +99,7 @@ export async function RecordsView({ org }: { org: Org }) {
           <BoardRow key={`${g.date}-${g.team}`} place={i + 1} figure={g.points + g.against} unit="points combined">
             <Side team={team(g.team)} score={g.points} />
             <Side team={team(g.opponent)} score={g.against} />
-            <Sub>{day(g.date)}</Sub>
-            <GameLink href={g.href} label={`${g.team} ${g.points}, ${g.opponent} ${g.against}`} />
+            <GameLine date={day(g.date)} href={g.href} label={`${g.team} ${g.points}, ${g.opponent} ${g.against}`} />
           </BoardRow>
         ))}
       </Board>
@@ -116,8 +119,7 @@ export async function RecordsView({ org }: { org: Org }) {
           >
             <Side team={team(u.winner)} score={u.won} />
             <Side team={team(u.loser)} score={u.lost} />
-            <Sub>{day(u.date)}</Sub>
-            <GameLink href={u.href} label={`${u.winner} ${u.won}, ${u.loser} ${u.lost}`} />
+            <GameLine date={day(u.date)} href={u.href} label={`${u.winner} ${u.won}, ${u.loser} ${u.lost}`} />
           </BoardRow>
         ))}
       </Board>

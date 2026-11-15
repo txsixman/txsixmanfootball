@@ -63,3 +63,43 @@ test("a past game with no score is under Score not reported yet, not Later: /sco
   if (before.later) expect(after.notReported).toBeGreaterThan(0);
   if (after.notReported) await expect(page.locator("#not-reported h2")).toHaveText("Score not reported yet");
 });
+
+// Game night order on /scores (UIL, the default button): the round played last on top of the finals, and between game
+// nights this week's games (Later, then Next games) before last week's finals once the next game day is nearer.
+test("scores puts the newest finals first, and this week's games first midweek", async ({ page }) => {
+  const was = process.cwd();
+  process.chdir(path.join(__dirname, ".."));
+  const { lastDay, nextDay, newest } = await (async () => {
+    try {
+      const { loadAlignments } = await import("../lib/alignments");
+      const { loadGames } = await import("../lib/games");
+      const { loadBrackets } = await import("../lib/brackets");
+      const uil = (await loadGames(await loadAlignments())).filter((g) => g.league.startsWith("UIL ") && g.date);
+      const finals = uil.filter((g) => g.state === "final").sort((a, b) => b.date!.localeCompare(a.date!));
+      const last = finals[0]?.date;
+      const built = (await loadBrackets()).filter((b) => b.league === "UIL").flatMap((b) => b.rounds.flatMap((r) => r.built.flatMap((g) => (g.date ? [g.date] : []))));
+      const next = [...uil.filter((g) => g.state === "scheduled").map((g) => g.date!), ...built].filter((d) => !last || d > last).sort()[0];
+      return { lastDay: last, nextDay: next, newest: [...new Set(finals.filter((g) => g.date === last).map((g) => g.league))] };
+    } finally {
+      process.chdir(was);
+    }
+  })();
+  test.skip(!lastDay, "no UIL final yet");
+  const order = async (when: string) => {
+    await page.clock.setFixedTime(new Date(when));
+    await page.goto("/scores", { waitUntil: "networkidle" });
+    await expect(page.locator('[data-kickoff-status="pending"]')).toHaveCount(0);
+    return page.locator("main section[id]").evaluateAll((els) => els.map((e) => e.id));
+  };
+  const day = (d: string, plus: number) => new Date(Date.parse(`${d}T18:00:00Z`) + plus * 86_400_000).toISOString();
+  // The morning after the last game night: finals first, the newest round on top.
+  const after = await order(day(lastDay!, 1));
+  expect(newest).toContain(await page.locator("#final h3").first().textContent());
+  test.skip(!nextDay || Date.parse(nextDay) - Date.parse(lastDay!) < 3 * 86_400_000, "no later game day far enough off");
+  const upcoming = (ids: string[]) => ids.findIndex((id) => id === "later" || id === "next");
+  expect(upcoming(after)).toBeGreaterThan(after.indexOf("final"));
+  // The day before the next game day: this week's games first.
+  const before = await order(day(nextDay!, -1));
+  expect(upcoming(before)).toBeGreaterThanOrEqual(0);
+  expect(upcoming(before)).toBeLessThan(before.indexOf("final"));
+});

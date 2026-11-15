@@ -11,7 +11,7 @@ import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { PageHeader, SectionBar } from "../ui";
 import { ChanceList } from "./chance-list";
-import { BuiltList, GameList } from "./game-list";
+import { BuiltList, GameList, roundCount } from "./game-list";
 
 export type League = (typeof LEAGUES)[number];
 /** The latest season lives at /playoffs; past seasons at /playoffs/season/<year> (UIL) and .../<league>. */
@@ -101,8 +101,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
                 <h3 className="border-b-2 border-navy px-3 pb-1 font-num text-[20px] font-bold uppercase tracking-wider text-navy">
                   {r.label}{" "}
                   <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">
-                    · {r.games.length} {r.games.length === 1 ? "game" : "games"}
-                    {r.built.length ? ` · ${r.built.length} more set by the bracket` : ""}
+                    · {roundCount(r)}
                   </span>
                 </h3>
                 {r.games.length > 0 && <GameList games={r.games} league={league} alignments={alignments} identities={identities} today={today} showStatus={!past} />}

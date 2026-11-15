@@ -15,12 +15,12 @@
   "sigma_prior": 17.0,
   "group_sd": 15.0,
   "prior_season": true,
-  "prior_sha256": "5c432b29f9e574825edf5fd82d10d5d78e7e2b2e196c9730b53b76677e7131df"
+  "prior_sha256": "2f8cb360d413f52c8b20b01265b95e9668179e362b357f946f57e84a855928c0"
  },
  "group_means": {
   "Independent": -24.3,
   "Outside": -41.1,
-  "TAIAO": -17.9,
+  "TAIAO": -17.8,
   "TAPPS": 8.0,
   "TCAF": -26.0,
   "UIL I": 21.0,
@@ -9501,7 +9501,7 @@
    "trend": [
     -87.2,
     -94.4,
-    -96.0,
+    -96.1,
     -96.7,
     -98.4,
     -98.1,
@@ -9703,5 +9703,5 @@
   4.5,
   4.5
  ],
- "inputs_sha256": "f87f98af5ef758befc9f520d2672e5ad64ccbde02c8de5bc7f909540c855e88d"
+ "inputs_sha256": "9cfe44a47eaca4f4c56282e3684ce0ee7855afd281306942d9cdba17aa237599"
 }
