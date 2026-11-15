@@ -37,6 +37,7 @@ function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; other: Box
       )}
     </>
   );
+  if (side.projected) return <ProjectedRow side={side} projected={side.projected} />;
   if (!side.key) {
     return <span title={side.title ?? side.text} className={`relative flex h-11 items-center gap-1 px-1.5 text-[13px] ${side.bye ? "text-muted" : "italic text-muted"}`}>{text}</span>;
   }
@@ -50,6 +51,26 @@ function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; other: Box
     >
       {text}
     </button>
+  );
+}
+
+/** A side no game sets yet (ADR 0071): its most likely team, muted and marked "Projected", inside a dashed outline, so it
+ * never reads as a pairing. The game it waits on ("Winner of G17") is in its title. */
+function ProjectedRow({ side, projected }: { side: BoxSide; projected: NonNullable<BoxSide["projected"]> }) {
+  const said = "team" in projected ? `Projected: ${projected.team} · ${projected.chance}` : "Not enough games to project";
+  return (
+    <span data-projected title={`${side.title ?? side.text}. ${said}. A projection, not a result.`} className="relative mx-0.5 flex h-11 flex-col justify-center border border-dashed border-line px-1 text-[13px] text-muted">
+      {"team" in projected ? (
+        <>
+          <span className="flex items-center justify-between gap-1 text-[11px] font-semibold uppercase leading-[12px] tracking-wider">
+            Projected{" "}<span className="font-num tabular-nums">{projected.chance}</span>
+          </span>
+          <span className="min-w-0 break-words italic leading-[15px]">{projected.team}</span>
+        </>
+      ) : (
+        <span className="min-w-0 break-words italic leading-[15px]">Not enough games to project</span>
+      )}
+    </span>
   );
 }
 
@@ -239,6 +260,9 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
           </>
         ) : (
           <span>Tap a team to light its path. Tap a game for its page.</span>
+        )}
+        {data.boxes.some((b) => b.sides.some((s) => s.projected)) && (
+          <span data-projected-note>Dashed: the projected team, the most likely from the current ratings. A projection, not a result.</span>
         )}
         {/* The same games as a plain list, below the drawing: the way past it with a keyboard or a screen reader. */}
         {list && (

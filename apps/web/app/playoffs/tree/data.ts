@@ -4,6 +4,7 @@ import type { Bracket } from "@/lib/brackets";
 import { bracketGames } from "@/lib/game-pages";
 import { kickoffTime } from "@/lib/kickoff";
 import { kickoffOf, loadKickoffs, loadSites, NO_SITE, siteOf } from "@/lib/kickoffs";
+import type { Projected } from "@/lib/advancement";
 import { chanceText, projectionParts, type Projection } from "@/lib/projection";
 import { CURRENT_SEASON } from "@/lib/season";
 import { slugify } from "@/lib/slug";
@@ -14,7 +15,10 @@ import type { TreeGame, TreeState } from "@/lib/bracket-tree";
 // the projection of a game not yet played, and the address of its game page.
 
 /** `chance`: the side's chance to win a game not yet played ("74%"), shown where its score will go. */
-export type BoxSide = { text: string; title?: string; key?: string; program?: string; score?: number; won?: boolean; bye?: true; chance?: string };
+export type BoxSide = { text: string; title?: string; key?: string; program?: string; score?: number; won?: boolean; bye?: true; chance?: string;
+  /** A side no game sets yet: its most likely team and that team's chance to be there ("58%"), or too few games to say
+   * (ADR 0071). `text` still names the game it waits on ("Winner of G17"). */
+  projected?: { team: string; chance: string } | { unknown: true } };
 export type Box = {
   id: string; col: number; row: number; half: "left" | "right" | "center";
   label: string; code?: string; state: TreeState; sides: [BoxSide, BoxSide];
@@ -42,7 +46,7 @@ const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en
 const centralDate = (utc: string) => new Date(utc).toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 
 /** A box of the bracket as lib/brackets.ts gives it: the slot, its round's label, its projection. */
-type Node = TreeGame & { label: string; projection?: Projection };
+type Node = TreeGame & { label: string; projection?: Projection; projected?: [Projected | undefined, Projected | undefined] };
 /** What the site knows about a box beyond its bracket: the kickoff (UTC), the site, its game page, and whether to look
  * for a live score. */
 export type BoxInfo = { kickoff?: string; site?: string; href?: string; live?: boolean };
@@ -88,10 +92,11 @@ export function buildTree(name: string, league: string, tree: Node[], info: (n: 
     const date = g?.date ?? (kickoff && centralDate(kickoff));
     return {
       id: n.id, col: place.col, row: place.row, half: place.half, label: n.label, state: n.state,
-      sides: n.sides.map((s): BoxSide => {
+      sides: n.sides.map((s, i): BoxSide => {
         const slug = s.team ? program(s.team) : undefined;
         const p = n.projection;
         const chance = p && s.team ? chanceText(p.favorite === s.team ? p.winProbability : 1 - p.winProbability) : undefined;
+        const ahead = s.team ? undefined : n.projected?.[i];
         return {
           text: s.text,
           ...(s.title ? { title: s.title } : {}),
@@ -101,6 +106,7 @@ export function buildTree(name: string, league: string, tree: Node[], info: (n: 
           ...(s.score != null ? { score: s.score } : {}),
           ...(s.won ? { won: true } : {}),
           ...(s.bye ? { bye: true as const } : {}),
+          ...(ahead ? { projected: "team" in ahead ? { team: ahead.team, chance: chanceText(ahead.chance) } : { unknown: true as const } } : {}),
         };
       }) as [BoxSide, BoxSide],
       ...(n.code ? { code: n.code } : {}),

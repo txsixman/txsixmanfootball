@@ -7,8 +7,9 @@ import { memo } from "./memo";
 import { pairsOf, type Pair } from "./playoff-path";
 import { slugify } from "./slug";
 import { loadPlayoffGames, playoffLeagueSet, ROUNDS, type PlayoffGame } from "./games";
-import { project, projectAt, type Projection } from "./projection";
-import { loadRatings, ratingSeasons } from "./ratings";
+import { advancement, slotShares, type Advancement, type Projected, type WinChance } from "./advancement";
+import { project, projectAt, STATE_CHAMPIONSHIP_ROUNDS, type Projection } from "./projection";
+import { FEW_GAMES, loadRatings, ratingSeasons, type RatingsTable } from "./ratings";
 import { bracketTitleChances, loadBracketTemplate, type Chance, type RegionChances } from "./title-chances";
 import { loadPairDetails, pairDetailAfter } from "./kickoffs";
 import { CURRENT_SEASON } from "./season";
@@ -27,11 +28,29 @@ export type BuiltRow = { round: string; sides: [Side, Side]; projection?: Projec
   date?: string; kickoff?: string; site?: string; address?: Address };
 /** A box of the tree view (ADR 0049): the slot, its round's label, and the projection of a game not yet played once both
  * teams are known (a listed game at its own site, a game no site lists yet on a neutral field). */
-type TreeRow = TreeGame<PlayoffGame> & { label: string; projection?: Projection };
+type TreeRow = TreeGame<PlayoffGame> & { label: string; projection?: Projection;
+  /** Each side's most likely team while no game sets it (ADR 0071), in the order of `sides`. */
+  projected?: [Projected | undefined, Projected | undefined] };
 type BracketRound = { round: string; label: string; games: BracketRow[]; built: BuiltRow[] };
 /** `chances`: state title chances (the last four, or a template plus every region settled). `regionChances`: UIL region titles.
  * `pairs`: games whose winners meet next, so the next pairing is known (lib/playoff-path.ts). */
-export type Bracket = { name: string; league: string; rounds: BracketRound[]; tree: TreeRow[]; pairs: Pair[]; chances?: Chance[]; regionChances?: RegionChances[] };
+export type Bracket = { name: string; league: string; rounds: BracketRound[]; tree: TreeRow[]; pairs: Pair[]; chances?: Chance[]; regionChances?: RegionChances[];
+  /** This season's chance to reach each round still to be set and to win the State Championship (ADR 0071). */
+  advancement?: Advancement };
+
+/**
+ * The per-game win chance the game pages show (lib/projection.ts): a listed game at its own site, a pairing no site lists
+ * yet on a neutral field. undefined for a team with fewer than FEW_GAMES rated games, too few to project (ADR 0071).
+ */
+export function winChance(table: RatingsTable): WinChance<PlayoffGame> {
+  const rated = new Map(table.teams.map((t) => [slugify(t.team), t.rated]));
+  const enough = (team: string) => (rated.get(slugify(team)) ?? 0) >= FEW_GAMES;
+  return (a, b, game) => {
+    if (!enough(a) || !enough(b)) return undefined;
+    const p = game ? projectAt(table, game) : project(table, a, b, true, true);
+    return p && (p.favorite === a ? p.winProbability : 1 - p.winProbability);
+  };
+}
 
 /** A bracket's own page (/playoffs/bracket/<slug>), and its name without the league ("Division II Large School"; a league's one bracket keeps the league). */
 export const bracketSlug = (name: string) => slugify(name);
@@ -99,14 +118,20 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
     const slots = bracketSlots(slotRows, list, { league, division, regionOf, rename });
     // The tree's shape: the league's own bracket, else what the listed games show (ADR 0049).
     const own = ownSlots(slotRows, { league, division, rename });
-    const tree = treeGames(own.length ? own : derivedSlots(list, league === "UIL" ? "state" : "final", ROUNDS), list, ROUNDS).map((n): TreeRow => {
+    const shape = own.length ? own : derivedSlots(list, league === "UIL" ? "state" : "final", ROUNDS);
+    // Who is projected to come out of each side, and to reach each round (ADR 0071): this season only, a past one is played.
+    const win = winChance(ratings);
+    const shares = season === CURRENT_SEASON ? new Map(slotShares(shape, list, ROUNDS, win).map((s) => [s.slot, s])) : new Map();
+    const tree = treeGames(shape, list, ROUNDS).map((n): TreeRow => {
       const [a, b] = n.sides;
       const projection =
         n.state === "upcoming" && n.game ? projectAt(ratings, n.game)
         : n.state === "open" && a.team && b.team ? project(ratings, a.team, b.team, true, true)
         : undefined;
-      return { ...n, label: roundLabel(n.round, league), ...(projection ? { projection } : {}) };
+      const projected = n.state === "open" ? shares.get(n.id)?.projected : undefined;
+      return { ...n, label: roundLabel(n.round, league), ...(projection ? { projection } : {}), ...(projected?.some(Boolean) ? { projected } : {}) };
     });
+    const advance = season === CURRENT_SEASON ? advancement(shape, list, ROUNDS, win, STATE_CHAMPIONSHIP_ROUNDS) : undefined;
     // Past seasons are all played: their pages stay as listed.
     const built = (season === CURRENT_SEASON ? builtGames(fill(slots, list, ROUNDS)) : []).map(({ round, sides }): BuiltRow => {
       const [a, b] = sides;
@@ -130,6 +155,7 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
       name, league, rounds: ordered(rounds), tree, pairs: pairsOf(rounds, regionLookup(alignments, league, name)),
       ...(chances ? { chances } : {}),
       ...(found.regions.length ? { regionChances: found.regions } : {}),
+      ...(advance ? { advancement: advance } : {}),
     };
   });
   const order = (b: Bracket) => LEAGUES.indexOf(b.league as (typeof LEAGUES)[number]);

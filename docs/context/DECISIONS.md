@@ -103,3 +103,7 @@ Not in an ADR:
   `check-data` in every season until a correction voids the copy (when the schedules name the real game) or a reviewed
   exception keeps both; the two-day duplicate rule stays as it is. The Nov 14 audit's ten cases were settled: four voids,
   two real rematches kept, four same-night doubles kept with what was checked (Nov 15, 2026).
+- **Who is projected to go on, exactly** (ADR 0071): every side the bracket has not set shows its most likely team and
+  chance, dashed and muted; a "Chance to reach each round" table under each bracket and one line on a program page,
+  worked out slot by slot up the bracket from the game pages' own win chance. Finals stand; a team under four rated games
+  is "Not enough games to project" (Nov 15, 2026).

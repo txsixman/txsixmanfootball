@@ -15,6 +15,7 @@ import { SITE_URL } from "@/lib/site";
 import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { PageHeader } from "../ui";
+import { AdvanceTable } from "./advance-table";
 import { ChanceList } from "./chance-list";
 import { BuiltList, GameList, roundCount } from "./game-list";
 import { BracketBoard } from "./tree/board";
@@ -71,6 +72,8 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
       </div>
 
       <BracketBoard data={tree} imageBase={`${bracketHref(b.name)}/image`} />
+
+      {b.advancement && <AdvanceTable advancement={b.advancement} league={b.league} identities={identities} />}
 
       <div id="games-by-round" className="scroll-mt-4 print:hidden">
       {b.rounds.length > 1 && (

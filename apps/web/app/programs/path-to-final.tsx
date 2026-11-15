@@ -3,7 +3,7 @@ import Link from "next/link";
 import { KickoffStatus } from "../kickoff-status";
 import { loadAlignments, programFor } from "@/lib/alignments";
 import { sideText } from "@/lib/bracket-fill";
-import { bracketHref, loadBrackets, roundLabel } from "@/lib/brackets";
+import { type Bracket, bracketHref, loadBrackets, roundLabel } from "@/lib/brackets";
 import { gameDay } from "@/lib/game-day";
 import { EMPTY, loadIdentities, type Identity } from "@/lib/identity";
 import { aheadFor, gamesOf } from "@/lib/playoff-path";
@@ -13,6 +13,20 @@ import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
 import { DisputedMark } from "../playoffs/game-list";
 import { CrestSlot } from "../ui";
+
+/** "Projected: 61% to reach the regional round, 12% to win the State Championship." for a team still in (ADR 0071): the
+ * first round still to be set that it is not already in. "Not enough games to project." when it cannot be said. */
+function advanceLine(b: Pick<Bracket, "advancement" | "league">, school: string): string | undefined {
+  const a = b.advancement;
+  const row = a?.rows.find((r) => r.team === school);
+  if (!a || !row) return undefined;
+  if (row.title === undefined) return "Projected: not enough games to project.";
+  const title = row.title === 1 ? undefined : chanceText(row.title);
+  const i = row.reach.findIndex((p) => p !== 1);
+  const round = i < 0 ? undefined : roundLabel(a.rounds[i], b.league);
+  const reach = i < 0 || row.reach[i] === undefined ? undefined : `${chanceText(row.reach[i]!)} to reach ${round === "State Championship" ? "the State Championship" : `the ${round!.toLowerCase()} round`}`;
+  return `Projected: ${[reach, title && `${title} to win the State Championship`].filter(Boolean).join(", ")}.`;
+}
 
 /**
  * "Path to the final": this season's games of a team that is in a playoff bracket (one block per bracket: a school in
@@ -31,6 +45,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
     return [{
       b, steps, next, ahead: !next && pair ? aheadFor(table, pair, school) : undefined,
       state: b.chances?.find((c) => c.team === school)?.shown,
+      advance: advanceLine(b, school),
       region: b.regionChances?.flatMap((r) => r.chances).find((c) => c.team === school)?.shown, // a team is in one region
     }];
   });
@@ -56,7 +71,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
       <h2 id="path" className="bg-band py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white" style={{ boxShadow: `inset 8px 0 0 ${accent}` }}>
         Path to the State Championship
       </h2>
-      {paths.map(({ b, steps, next, ahead, state, region }) => (
+      {paths.map(({ b, steps, next, ahead, state, region, advance }) => (
         <div key={b.name}>
           <h3 className="border-b border-line">
             <Link href={bracketHref(b.name)} className="flex min-h-11 items-center justify-between px-3 font-num text-[17px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
@@ -143,10 +158,16 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
               </li>
             )}
           </ol>
-          {(state != null || region != null) && (
+          {(state != null || region != null || advance) && (
             <p className="px-3 pt-2 text-[15px] font-semibold text-ink">
+              {advance && (
+                <span data-advance className="block text-navy">
+                  {advance} <span className="font-normal text-muted">A projection, not a result.</span>
+                </span>
+              )}
               {region != null && <span className="block">Region title chance: {region}</span>}
-              {state != null && <span className="block">State title chance: {state}</span>}
+              {/* The line above says the same from the whole bracket. */}
+              {state != null && !advance && <span className="block">State title chance: {state}</span>}
             </p>
           )}
         </div>
