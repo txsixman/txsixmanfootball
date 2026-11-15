@@ -7,6 +7,7 @@ import { getUser } from "@/lib/auth/server";
 import { LegalLinks } from "../legal-links";
 import { DeleteAccount } from "./delete-account";
 import { SignOutButton } from "./sign-out-button";
+import { EmailAlerts } from "./email-alerts";
 import { ImportFollows } from "./import-follows";
 
 // Your account. Per request, never cached or indexed. It shows the display name and the date joined and nothing else: no
@@ -44,6 +45,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       </dl>
       <p className="mt-2 max-w-sm text-[13px] leading-5 text-muted">Your display name is the only thing others can see. Your email and birth year are never shown.</p>
       <ImportFollows />
+      <EmailAlerts />
       <SignOutButton className="mt-6" />
       <h2 className="mt-8 font-num text-[20px] font-bold uppercase tracking-wide text-navy">Delete my account</h2>
       <p className="mt-1 max-w-sm text-[14px] text-muted">Erases your display name, follows and sign-in. Push alerts are per browser: stop them with Stop alerts on a program page.</p>

@@ -125,7 +125,7 @@ test("display names: slurs and look-alikes are refused, ordinary Texas names are
 test("the pages' own scripts' routes are matched by the proxy (a session is refreshed, nothing is cached)", async () => {
   const { readFileSync } = await import("node:fs");
   const proxy = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8");
-  for (const p of ["/api/me", "/api/follows", "/account/:path*", "/auth/:path*", "/sign-in"]) assert.ok(proxy.includes(`"${p}"`), `proxy.ts matcher lacks ${p}`);
+  for (const p of ["/api/me", "/api/follows", "/api/push/:path*", "/account/:path*", "/auth/:path*", "/sign-in"]) assert.ok(proxy.includes(`"${p}"`), `proxy.ts matcher lacks ${p}`);
   const sw = readFileSync(new URL("../sw.ts", import.meta.url), "utf8");
   assert.match(sw, /\/\^\\\/\(api\|_vercel\)\\\//); // /api/ goes to the network only
 });

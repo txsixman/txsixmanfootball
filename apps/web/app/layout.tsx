@@ -92,7 +92,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   </Link>
                 ))}
               </nav>
-              <p className="mt-3 max-w-prose text-[13px] text-white/75">
+              {/* Always public (not behind FAN_SIGNIN): the site counts page views and offers push alerts with or without accounts. */}
+              <nav aria-label="About this site" className="flex gap-x-4">
+                {[
+                  { href: "/privacy", label: "Privacy" },
+                  { href: "/terms", label: "Terms" },
+                ].map((s) => (
+                  <Link key={s.href} href={s.href} className="inline-flex min-h-11 min-w-11 items-center text-[15px] text-white/85 hover:text-white hover:underline">
+                    {s.label}
+                  </Link>
+                ))}
+              </nav>
+              <p className="mt-1 max-w-prose text-[13px] text-white/75">
                 Ratings, projected margins and chances to win are estimates. Scores may be corrected if a mistake is found.
               </p>
               <ThemeToggle />

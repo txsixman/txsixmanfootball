@@ -31,8 +31,8 @@ import { generateStaticParams as weeks } from "../weeks/[[...path]]/page";
 // Every public page, built from the same lists that make the pages (each route's generateStaticParams), so a page and
 // its sitemap entry come and go together. /sitemap.xml is an index of one sitemap per kind of page (/sitemaps/<kind>.xml),
 // so Search Console counts what is indexed kind by kind. Left out: the invented sample pages and sample games, search,
-// the offline page, the embeds (all noindex), and the fan, sign-in and admin pages (privacy and terms too: they exist
-// only while fan accounts are on).
+// the offline page, the embeds (all noindex), and the fan, sign-in and admin pages (privacy and terms too: they are public
+// pages, linked from the footer, but not worth a sitemap entry).
 export const KINDS = ["sections", "programs", "scores", "series", "results", "weeks"] as const;
 type Kind = (typeof KINDS)[number];
 

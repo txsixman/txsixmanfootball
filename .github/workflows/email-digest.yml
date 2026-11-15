@@ -1,0 +1,68 @@
+# The weekly team digest (ADR 0055): one email on Monday morning to each fan who opted in on /account, covering the teams they
+# follow: last week's confirmed result, the ranking move, and the next game with its chance to win. tools/email/send-weekly-digest.mjs
+# asks the database who is due this ISO week's digest, works each team's facts out from the repo's data, sends through Resend, and
+# records each send for the week (so a week is never sent twice).
+#
+# When it runs: Mondays 7:30 AM Central (13:30 UTC; 8:30 in daylight time), once the 5:23 AM Results watch read has committed
+# Sunday's games. GitHub's own `schedule` has never fired reliably in this repo (ADR 0024), so it is gated by the repo variable LIVE like
+# the other weekly jobs, and a run started by hand any time Monday to Wednesday (Central) sends the same digest: a fan already sent
+# it for the week is skipped. By hand (workflow_dispatch), `dry_run` (the default) sends and records nothing and prints counts.
+#
+# It sends NOTHING, and says so in the run summary, until all of these are set; each is Brady's to make (docs/email-alerts.md):
+#   repo variable EMAIL_DIGEST=true (the switch), EMAIL_FROM, and EMAIL_POSTAL_ADDRESS (the postal address in every digest's footer)
+#   repo secrets RESEND_API_KEY and EMAIL_DB_PASSWORD
+# While EMAIL_POSTAL_ADDRESS is empty or unset the job REFUSES to send and fails, with the refused count in its summary.
+# It connects as the least-privilege role `email_sender` (migrations 0022 and 0025). No email address, name or error text is ever
+# printed: counts only.
+name: Weekly digest
+
+on:
+  schedule:
+    - cron: "30 13 * * 1"
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Send and record nothing; print how many digests are due and would be sent"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    if: ${{ github.event_name != 'schedule' || vars.LIVE == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # One send at a time, so two runs never race on who has been emailed (its own group: the game alerts run every ten minutes and a
+    # waiting digest must not be replaced by them).
+    concurrency:
+      group: email-digest
+      cancel-in-progress: false
+    env:
+      # Project vhgnaihnyjdnaaergtcl, through the IPv4 session pooler, as the least-privilege role. Not secrets.
+      PGHOST: aws-0-us-east-1.pooler.supabase.com
+      PGUSER: email_sender.vhgnaihnyjdnaaergtcl
+      PGPASSWORD: ${{ secrets.EMAIL_DB_PASSWORD }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+      EMAIL_DIGEST: ${{ vars.EMAIL_DIGEST }}
+      EMAIL_POSTAL_ADDRESS: ${{ vars.EMAIL_POSTAL_ADDRESS }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main # the newest main, including the results the Results watch run just committed
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # The sender uses packages/db's pinned pg. Skipped while the switch is off: the script then only writes its summary.
+      - name: Install the database client
+        if: ${{ vars.EMAIL_DIGEST == 'true' }}
+        run: npm ci --prefix packages/db
+      - name: Send the digests
+        run: |
+          args=()
+          if [ "$DRY_RUN" = true ]; then args+=(--dry-run); fi
+          node tools/email/send-weekly-digest.mjs "${args[@]}"

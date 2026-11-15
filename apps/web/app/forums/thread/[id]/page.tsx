@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { fanSignIn } from "@/lib/auth/config";
+import { fanPosts } from "@/lib/auth/config";
 import { loadThread, pageOf, POSTS_PER_PAGE } from "@/lib/forums";
 import { Pager } from "../../pager";
 import { ThreadView } from "./thread-view";
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Thread | Forums", robots: { index: f
 
 export default async function ThreadPage({ params, searchParams }: Props) {
   const { id } = await params;
-  if (!fanSignIn() || !z.uuid().safeParse(id).success) notFound();
+  if (!fanPosts() || !z.uuid().safeParse(id).success) notFound();
   const page = pageOf((await searchParams).page);
   const found = await loadThread(id, page);
   if (!found) notFound();

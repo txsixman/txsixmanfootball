@@ -22,7 +22,7 @@ test("follow stores only the endpoint, keys and sorted, unique program slugs; fo
   const cols = await d.query(
     "select column_name from information_schema.columns where table_name = 'push_subscription' order by ordinal_position",
   );
-  assert.deepEqual(cols.rows.map((r) => r.column_name), ["endpoint", "p256dh", "auth", "programs", "created_at", "updated_at", "confirmed_at"]);
+  assert.deepEqual(cols.rows.map((r) => r.column_name), ["endpoint", "p256dh", "auth", "programs", "created_at", "updated_at", "confirmed_at", "user_id"]);
   assert.deepEqual((await d.query("select programs from push_subscription")).rows[0].programs, ["guthrie", "jayton"]);
   await d.query("select push_follow($1, $2, $3, $4)", [ENDPOINT, P256DH, AUTH, ["strawn"]]);
   assert.deepEqual((await d.query("select programs from push_subscription")).rows, [{ programs: ["strawn"] }]);
@@ -62,6 +62,15 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "create_thread", anon: false }, // migration 0015: signed-in fans only
     { proname: "delete_my_account", anon: false },
     { proname: "edit_post", anon: false },
+    // migration 0022: email alerts. Signed-in fans (email_my_settings, email_set_optins), anon only where Supabase has the roles (email_unsubscribe), the email_sender role (the rest)
+    { proname: "email_adult", anon: false },
+    { proname: "email_mark_sent", anon: false },
+    { proname: "email_my_settings", anon: false },
+    { proname: "email_pending_digests", anon: false }, // migration 0025: the weekly digest, the email_sender role only
+    { proname: "email_pending_game_alerts", anon: false },
+    { proname: "email_record_game_events", anon: false },
+    { proname: "email_set_optins", anon: false },
+    { proname: "email_unsubscribe", anon: false },
     { proname: "fan_actor", anon: false },
     { proname: "fan_post_counts", anon: false },
     { proname: "fan_rate_check", anon: false },
@@ -74,6 +83,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "forum_thread_visible", anon: false },
     { proname: "forum_threads", anon: false },
     { proname: "is_admin", anon: false }, // migration 0010: not for anon, ever
+    { proname: "link_push_subscription", anon: false }, // migration 0023: signed-in fans link one browser to the account
     { proname: "list_comments", anon: false }, // migration 0013: a public read, granted to anon only where auth.uid() exists (Supabase)
     { proname: "live_scores", anon: true }, // migration 0016: the games under way, read-only, for anon and signed-in alike
     { proname: "moderation_blocked", anon: false },
@@ -94,6 +104,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "results_read_at", anon: true }, // migration 0017: when the last game-day read finished, read-only, for anon and signed-in alike
     { proname: "submit_score_report", anon: false }, // migration 0014: signed-in fans only
     { proname: "unfollow_program", anon: false },
+    { proname: "unlink_push_subscription", anon: false }, // migration 0023: sign-out unlinks that browser
   ]);
   await d.exec("set role anon");
   await assert.rejects(d.query("select * from push_subscription"), /permission denied/);

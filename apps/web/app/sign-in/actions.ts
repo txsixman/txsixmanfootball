@@ -54,9 +54,22 @@ export async function signInWithGoogle(data: FormData): Promise<void> {
   redirect(started.url);
 }
 
-/** Ends this browser's session (Supabase revokes its refresh token) and clears the cookies. Other devices stay signed in. */
-export async function signOut(): Promise<void> {
+/**
+ * Ends this browser's session (Supabase revokes its refresh token) and clears the cookies. Other devices stay signed in.
+ * When the page names this browser's push endpoint (the sign-out button does, ADR 0054), the account's alerts stop on it first:
+ * unlink_push_subscription matches it to the signed-in account, so naming another browser's endpoint changes nothing. The
+ * endpoint is a secret: never logged, and a failure here never stops the sign-out.
+ */
+export async function signOut(data?: FormData): Promise<void> {
   const supabase = await createAuthClient();
+  const endpoint = data?.get("pushEndpoint");
+  if (supabase && typeof endpoint === "string" && endpoint.length > 0 && endpoint.length <= 1024) {
+    try {
+      await supabase.rpc("unlink_push_subscription", { p_endpoint: endpoint });
+    } catch {
+      // Signing out comes first; the subscription goes when the push service reports it gone, or with the account.
+    }
+  }
   // scope "local": only this browser's session ends. (The default, "global", would sign the admin out everywhere.)
   await supabase?.auth.signOut({ scope: "local" });
   redirect("/sign-in");

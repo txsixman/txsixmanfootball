@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
 import { gameDescription } from "@/lib/descriptions";
-import { fanSignIn } from "@/lib/auth/config";
+import { fanPosts } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
 import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, playoffLabels, resolveGame } from "@/lib/game-pages";
@@ -150,8 +150,9 @@ export default async function GamePage({ params }: Props) {
   const series = !sample && awaySlug && homeSlug && (await seriesPartners()).get(awaySlug)?.has(homeSlug) ? seriesHref(awaySlug, homeSlug) : undefined;
   // Where the game sits: its bracket and next round, its results week, each team's season (lib/neighbours.ts).
   const around = sample ? [] : await gameNeighbours({ season: found?.season ?? CURRENT_SEASON, date: g.date, home: g.home.name, away: g.away.name, resultId: found?.result.id });
-  // Fan comments and score reports exist only while FAN_SIGNIN is "on" (read when the page is built; flip it and redeploy).
-  const fan = fanSignIn();
+  // Fan comments and score reports exist only while FAN_POSTS (and FAN_SIGNIN) is "on" (read when the page is built; flip it and
+  // redeploy). If a page built with them on is served after the flag goes off, their routes answer 404 and the blocks hide themselves.
+  const fan = fanPosts();
   const live = g.state === "live";
   // Back to where the game is listed: a season game's own results week (the season's week numbers, ADR 0012), a playoff
   // or sample game's scoreboard.
@@ -216,7 +217,7 @@ export default async function GamePage({ params }: Props) {
             ))}
           </div>
           <p className="mt-1 text-[13px] text-muted">
-            Alerts use only this browser&apos;s push address and the teams you follow; no name, email or phone. On an iPhone, add this site to your Home Screen first.
+            Alerts use this browser&apos;s push address and the teams you follow; signed out, no name, email or phone. Signed in, both are kept with your account until you sign out or delete it. On an iPhone, add this site to your Home Screen first.
           </p>
         </section>
       )}

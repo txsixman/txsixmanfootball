@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
-import { authEnv, fanSignIn } from "../auth/config";
+import { authEnv, fanPosts } from "../auth/config";
 import { createAuthClient, getUser } from "../auth/server";
 import { NEW_ACCOUNT_DAYS } from "../moderation/check";
 import { checkSameOriginJson } from "../same-origin";
@@ -31,15 +31,16 @@ const MESSAGES: Record<string, [number, string]> = {
   already_reported: [409, "You already reported this game."],
   bad_score: [422, "Enter a score for each team, 0 to 199, with no tie in a playoff game."],
   unknown_board: [404, "There is no such board."],
+  posts_closed: [403, "Posting is not open yet."],
   admin_only: [403, "Not allowed."],
   cross_site: [403, "Not allowed."],
 };
 
 const NO_STORE = "no-store, private";
 
-/** The answer for every fan route while FAN_SIGNIN is not "on": a plain 404, before anything reads a session or calls Supabase. Null when open. */
+/** The answer for every posts route while FAN_POSTS (and FAN_SIGNIN) is not "on": a plain 404, before anything reads a session or calls Supabase. Null when open. */
 export function closed(): NextResponse | null {
-  return fanSignIn() ? null : new NextResponse(null, { status: 404, headers: { "Cache-Control": NO_STORE } });
+  return fanPosts() ? null : new NextResponse(null, { status: 404, headers: { "Cache-Control": NO_STORE } });
 }
 
 export function fail(code: string): NextResponse {
