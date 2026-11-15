@@ -32,13 +32,13 @@ const expected = (id: string) =>
     const { outcomeOf } = await import("../lib/score-display");
     const { projectedLine } = await import("../lib/outcome");
     const { pregameShown, projectBefore } = await import("../lib/pregame");
-    const { projectionText } = await import("../lib/projection");
+    const { fieldOf, projectionText } = await import("../lib/projection");
     const { loadRatings } = await import("../lib/ratings");
     const g = (await loadGames(await loadAlignments())).find((x) => x.id === id)!;
     const season = Number(g.date!.slice(0, 4));
     const before = (await pregameShown(season)).byKey.get(gameKey(g.date!, g.home.name, g.away.name))!;
-    // The same, straight from the season's table: the week before the game, with the playoff home edge.
-    const direct = projectBefore(await loadRatings(season), { date: g.date!, home: g.home.name, away: g.away.name }, true)!;
+    // The same, straight from the season's table: the week before the game, at its playoff field (none at a State Championship).
+    const direct = projectBefore(await loadRatings(season), { date: g.date!, home: g.home.name, away: g.away.name }, fieldOf("", g.round))!;
     return { line: projectedLine(g.projected, outcomeOf(g))!, before: projectionText(before), direct: projectionText(direct) };
   });
 

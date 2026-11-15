@@ -5,7 +5,7 @@ import { heading, loadAlignments, type Alignment } from "./alignments";
 import { parseCsv } from "./data-schemas";
 import { memo } from "./memo";
 import { type BracketGame, loadPlayoffGames, type PlayoffGame } from "./games";
-import { project, type Field } from "./projection";
+import { chanceTexts, project, type Field } from "./projection";
 import { loadRatings, type RatingsTable } from "./ratings";
 import { CURRENT_SEASON } from "./season";
 
@@ -23,7 +23,8 @@ import { CURRENT_SEASON } from "./season";
 // meet in the area round, and which regions meet in the semifinals, are not in the data, so before that nothing is
 // shown rather than a guess. A hand-entered semifinal pairing (bracket-template.csv, not yet written) lets state title
 // chances show as soon as every region of a division is settled this way.
-export type Chance = { team: string; chance: number };
+/** `shown`: the chance as every page writes it, rounded with the rest of its list so the list adds up to 100% (chanceTexts). */
+export type Chance = { team: string; chance: number; shown: string };
 export type BracketChances = { bracket: string; round: "final" | "semifinal" | "regional"; chances: Chance[] };
 /** One region's chance to win its region title, from its two area games ("area") or its regional game ("regional"). */
 export type RegionChances = { bracket: string; region: string; round: "area" | "regional"; chances: Chance[] };
@@ -41,15 +42,16 @@ export function chancesFor(t: RatingsTable, games: BracketGame[]): BracketChance
   const semis = games.filter((g) => g.round === "semifinal");
   if (finals.length === 1 && !finals[0].played) {
     const [{ home, away }] = finals;
-    const p = beats(t, home, away);
+    const p = beats(t, home, away, finals[0]); // at its own field, as its game row: a State Championship is neutral (ADR 0057)
     if (p == null) return undefined;
-    return { bracket: games[0].bracket, round: "final", chances: [{ team: home, chance: p }, { team: away, chance: 1 - p }].sort((x, y) => y.chance - x.chance) };
+    return { bracket: games[0].bracket, round: "final", chances: shown([{ team: home, chance: p }, { team: away, chance: 1 - p }]) };
   }
   if (finals.length === 0 && semis.length === 2 && semis.every((g) => !g.played || g.winner)) {
-    // Each semifinal's winner: its winner when played, else either team by its chance, on a neutral field.
+    // Each semifinal's winner: its winner when played, else either team by its chance at the game's own field, as its row
+    // shows it. The two then meet in the State Championship, a neutral site (ADR 0057).
     const sides: (Dist | undefined)[] = semis.map((g) => {
       if (g.winner) return new Map([[g.winner, 1]]);
-      const p = beats(t, g.home, g.away);
+      const p = beats(t, g.home, g.away, g);
       return p == null ? undefined : new Map([[g.home, p], [g.away, 1 - p]]);
     });
     const final = sides[0] && sides[1] && meet(t, sides[0], sides[1]);
@@ -61,7 +63,13 @@ export function chancesFor(t: RatingsTable, games: BracketGame[]): BracketChance
 
 // A winner distribution: each team's chance to come out of a piece of the bracket.
 type Dist = Map<string, number>;
-const byChance = (d: Dist): Chance[] => [...d].map(([team, chance]) => ({ team, chance })).sort((x, y) => y.chance - x.chance);
+/** Most likely first, each with the text every page shows for it. */
+function shown(list: { team: string; chance: number }[]): Chance[] {
+  const sorted = [...list].sort((x, y) => y.chance - x.chance);
+  const texts = chanceTexts(sorted.map((c) => c.chance));
+  return sorted.map((c, i) => ({ ...c, shown: texts[i] }));
+}
+const byChance = (d: Dist): Chance[] => shown([...d].map(([team, chance]) => ({ team, chance })));
 
 /** The winner of a game already on the schedule, at its own site. */
 function playedAt(t: RatingsTable, g: BracketGame): Dist | undefined {

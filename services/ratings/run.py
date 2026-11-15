@@ -5,17 +5,24 @@ uv run python run.py ../../data/seed/uil-2026-28/playoffs-2026.csv
 uv run python run.py --json <table.json> <games.csv>...   the table the site shows (CI writes it, see ci.yml).
     Files are read in order; a game already read (same date and teams) is skipped, so list hand captures first.
 uv run python run.py --season 2026   the same, for every game file of that season, into data/ratings/2026.json. A season
-    starts from the one before it (data/ratings/2025.json), so rate seasons in order: 2021, 2022, ...
-uv run python run.py --backtest   Gate G3's walk-forward backtest over seasons 2021 to 2026, into data/ratings/backtest.json
+    starts from the one before it (data/ratings/2025.json), so rate seasons in order: 2018, 2019, ...
+uv run python run.py --chain 2026 [2018]   every season from 2018 (or the second year) to 2026 in that order, re-rating
+    each one whose table is stale (its inputs or its prior changed: `inputs_sha256`, `model.prior_sha256`) and every one
+    after it. CI's After merge runs it; a model change re-rates them all.
+uv run python run.py --backtest   Gate G3's walk-forward backtest over seasons 2018 to 2026, into data/ratings/backtest.json
 
 What data/ratings/<season>.json holds (the site's pages read it; every number is rounded to a tenth):
   season, games           rated games between listed schools (forfeits, no contests and duplicates left out, rows.py)
   games_outside           rated games against schools outside our alignments (hidden teams: they inform the fit)
   home_field, sigma       the season's home edge (points) and the model's game-to-game spread, as fit
-  playoff_edge            share of home_field the listed home team gets in a robot-read playoff game (rows.PLAYOFF_EDGE)
+  playoff_edge            share of home_field the listed home team gets in a robot-read playoff game (rows.PLAYOFF_EDGE);
+                          a State Championship gets none (a neutral site, ADR 0057)
   calibration             win probability = calibrated(margin, sigma): model.CALIBRATION, what the site shows instead of
                           the fit's raw normal chance (apps/web/lib/projection.ts is its twin)
-  model                   the settings the table was fit with (rho, tau, sigma prior, group sd) and `prior_season`
+  model                   the settings the table was fit with (rho, tau, sigma prior, group sd), `prior_season` and
+                          `prior_sha256` (the hash of the prior season's file it started from)
+  inputs_sha256           one hash of the season's game files, outside games, playoff sites, corrections and the ratings
+                          code (season_inputs)
   group_means             each group's mean rating (UIL I, UIL II, TAPPS, TAIAO, TCAF, Independent), points above the
                           average listed team
   report                  what was left out and why: forfeits, no_contests, duplicates, ties (non-zero, kept),
@@ -29,11 +36,16 @@ What data/ratings/<season>.json holds (the site's pages read it; every number is
                           games rated (apps/web/lib/week-rankings.ts reads rated_trend, it does not count its own)
     won, lost, tied       record over listed schools, forfeits in, duplicates and no contests out
     was                   rating through the Sunday before the latest results week (null if unrated then)
-    trend, rated_trend    rating and rated games through each week of `weeks` (null before a first rated game)
+    trend, rated_trend    rating and rated games through each week of `weeks` (null before a first rated game); the
+                          last week is the table's own rating and rated
+    mercy_only            true when every rated game was a loss by the 45-point rule: the rating is the prior's and the
+                          rule's, not a measure, so pages show it as "or lower"
+  Teams are listed best first by the unrounded rating, so two that round to the same tenth keep the fit's order.
 """
 
 import csv
 import datetime as dt
+import hashlib
 import json
 import sys
 from dataclasses import dataclass
@@ -53,7 +65,7 @@ from model import (
     simulate,
     subset,
 )
-from rows import DATA, PLAYOFF_EDGE, RESULTS, Season, prepare, require_private_data
+from rows import DATA, PLAYOFF_EDGE, RESULTS, STATE_CHAMPIONSHIP_ROUNDS, Season, prepare, require_private_data
 
 # Rounded to a tenth, so a rerun on another machine does not churn the file over floating-point noise.
 TENTH = 1
@@ -65,6 +77,11 @@ class Last:
 
     ratings: dict[str, float]
     group_means: dict[str, float]
+    sha256: str = ""  # of the file it was read from, written into the next table (`model.prior_sha256`)
+
+
+def sha256_of(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def last_from_file(season: int) -> Last | None:
@@ -73,7 +90,7 @@ def last_from_file(season: int) -> Last | None:
     if not path.exists():
         return None
     table = json.loads(path.read_text())
-    return Last({t["team"]: t["rating"] for t in table["teams"]}, table.get("group_means", {}))
+    return Last({t["team"]: t["rating"] for t in table["teams"]}, table.get("group_means", {}), sha256_of(path))
 
 
 def prior_for(s: Season, last: Last | None, st: Settings) -> tuple[np.ndarray, Groups]:
@@ -161,9 +178,18 @@ def table(
         return {"games": 0, "teams": []}
     r = rate(s, last, st)
     sd = centered_sd(r) if with_sd else None
+    # A team whose every rated game was a loss by the 45-point rule: the games say only "at least 45 worse" than each
+    # opponent, so its rating is the prior's and the rule's, not a measure; pages show it as "or lower" (`mercy_only`).
+    g = s.g
+    games_of = np.bincount(np.r_[g.home, g.away], minlength=len(s.teams))
+    lost45 = np.bincount(
+        np.r_[g.home[g.censored & (g.margin < 0)], g.away[g.censored & (g.margin > 0)]], minlength=len(s.teams)
+    )
     rows = []
+    raw = {}  # unrounded ratings, so teams that round to the same tenth keep the fit's order
     for i, name in enumerate(s.teams[: s.n_listed]):
         won, lost, tied = s.records.get(name, [0, 0, 0])
+        raw[name] = float(r.ratings[i])
         rows.append(
             {
                 "team": name,
@@ -174,9 +200,12 @@ def table(
                 "won": won,
                 "lost": lost,
                 "tied": tied,
+                **({"mercy_only": True} if games_of[i] and games_of[i] == lost45[i] else {}),
             }
         )
-    rows.sort(key=lambda row: (-row["rating"], row["team"]))
+    rows.sort(
+        key=lambda row: (-raw[row["team"]], row["team"])
+    )  # ties at a tenth: the fit's order (apps/web rank-range.ts)
     hidden = int(s.hidden_row.sum())
     # home_field and sigma let the site project a margin and a win probability for games not yet played.
     return {
@@ -192,6 +221,7 @@ def table(
             "sigma_prior": st.sigma_center,
             "group_sd": st.group_sd,
             "prior_season": bool(last),
+            **({"prior_sha256": last.sha256} if last and last.sha256 else {}),
         },
         "group_means": {k: round(v, TENTH) + 0.0 for k, v in sorted(r.group_means.items())},
         "report": s.report,
@@ -248,6 +278,8 @@ def same_table(old: dict, new: dict, tolerance: float = 0.15) -> bool:
         return False
     if old.get("calibration") != new.get("calibration") or old.get("model") != new.get("model"):
         return False
+    if old.get("inputs_sha256") != new.get("inputs_sha256"):
+        return False
     if not all(close(old.get(k), new.get(k), tolerance) for k in ("week_sigma", "week_home_field")):
         return False
     if old.get("group_means", {}).keys() != new.get("group_means", {}).keys() or any(
@@ -261,7 +293,7 @@ def same_table(old: dict, new: dict, tolerance: float = 0.15) -> bool:
             return False
         if ("sd" in was) != ("sd" in row) or ("sd" in row and abs(was["sd"] - row["sd"]) > tolerance):
             return False
-        keys = ("rated", "rated_outside", "won", "lost", "tied", "rated_trend")
+        keys = ("rated", "rated_outside", "won", "lost", "tied", "rated_trend", "mercy_only")
         if any(was.get(k) != row.get(k) for k in keys):
             return False
         if not close(was.get("trend", []), row.get("trend", []), tolerance):
@@ -337,6 +369,16 @@ def with_trend(
 
     previous = len(sundays) - 2  # the Sunday before the latest results week
     shown = list(range(skip, len(sundays)))
+    # The last Sunday is on or after the last game, so that week's fit is the table's own: write the table's values for
+    # it, so a week page never reads 0.1 off /rankings (two fits from different starts round differently).
+    latest = len(sundays) - 1
+    if snapshots[latest]:
+        snapshots[latest] = {
+            "rating": {row["team"]: row["rating"] for row in now["teams"]},
+            "rated": {row["team"]: row["rated"] for row in now["teams"]},
+            "sigma": now["sigma"],
+            "home_field": now["home_field"],
+        }
     now["weeks"] = [sundays[i].isoformat() for i in shown]
     now["week_sigma"] = [snapshots[i]["sigma"] if snapshots[i] else None for i in shown]
     now["week_home_field"] = [snapshots[i]["home_field"] if snapshots[i] else None for i in shown]
@@ -364,36 +406,112 @@ def season_outside(season: int) -> Path:
     return RESULTS / f"maxpreps-{season}" / "outside.csv"
 
 
-def playoff_sites(season: int) -> frozenset:
-    """Robot-read playoff games (ADR 0008). Their source marks every game home or away, but playoff games are mostly at
-    neutral sites, so each gets only PLAYOFF_EDGE of a home edge. A hand capture of the same game wins and says for itself."""
+def playoff_sites(season: int) -> dict:
+    """Robot-read playoff games (ADR 0008), each with the share of a home edge its listed home team gets: none in a State
+    Championship, a neutral site (ADR 0057); PLAYOFF_EDGE in any other round, where the listed home team, usually the
+    higher seed, did as well as a home team. A row's own `neutral` wins: "true" is no edge, "false" the full one. Twin of
+    fieldOf in apps/web/lib/projection.ts. A hand capture of the same game wins and says for itself."""
     path = RESULTS / f"maxpreps-{season}" / "playoffs.csv"
     if not path.exists():
-        return frozenset()
+        return {}
     with open(path, newline="") as f:
-        return frozenset((r["game_date"], frozenset((r["home"], r["away"]))) for r in csv.DictReader(f))
+        return {(r["game_date"], frozenset((r["home"], r["away"]))): playoff_edge_of(r) for r in csv.DictReader(f)}
+
+
+def playoff_edge_of(r: dict) -> float:
+    """The share of a home edge one playoffs.csv row's listed home team gets (see playoff_sites)."""
+    neutral = r.get("neutral", "")
+    if neutral == "true":
+        return 0.0
+    if neutral == "false":
+        return 1.0
+    return 0.0 if r.get("round") in STATE_CHAMPIONSHIP_ROUNDS else PLAYOFF_EDGE
+
+
+# The first season the site rates (twin of FIRST_SEASON in apps/web/lib/season.ts); it starts from no prior.
+FIRST_SEASON = 2018
+# The code a table depends on: a change to any of these is a model change, so --chain re-rates every season.
+CODE = ("model.py", "rows.py", "run.py", "corrections.py")
+
+
+def season_inputs(season: int) -> str:
+    """One hash of everything a season's table is made from except its prior: its game files, outside games and playoff
+    sites, the corrections, and the ratings code. A table stores it (`inputs_sha256`), so --chain can tell a season
+    whose inputs changed since it was rated."""
+    h = hashlib.sha256()
+    here = Path(__file__).resolve().parent
+    corrections = sorted((DATA / "corrections").glob("*.csv"))
+    sites = RESULTS / f"maxpreps-{season}" / "playoffs.csv"
+    for path in [
+        *map(Path, season_files(season)),
+        season_outside(season),
+        sites,
+        *corrections,
+        *(here / c for c in CODE),
+    ]:
+        h.update(str(path.relative_to(path.parents[1])).encode() + b"\0")
+        h.update(path.read_bytes() if path.exists() else b"(absent)")
+    return h.hexdigest()
+
+
+def stale(season: int) -> str | None:
+    """Why a season's committed table is out of date, or None when it is not: absent, made from other inputs, or made from
+    a prior table that has changed since (`model.prior_sha256`)."""
+    out = DATA / "ratings" / f"{season}.json"
+    if not out.exists():
+        return "no table"
+    old = json.loads(out.read_text())
+    if old.get("inputs_sha256") != season_inputs(season):
+        return "its games, corrections or the ratings code changed"
+    prior = DATA / "ratings" / f"{season - 1}.json"
+    if season > FIRST_SEASON and prior.exists() and old.get("model", {}).get("prior_sha256") != sha256_of(prior):
+        return f"{season - 1}'s table changed"
+    return None
+
+
+def rate_season(season: int) -> bool:
+    """Rate one season into data/ratings/<season>.json from the committed table before it; True when the file changed."""
+    files = season_files(season)
+    if not files:
+        sys.exit(f"no game files for {season}")
+    last = last_from_file(season) if season > FIRST_SEASON else None
+    result = {
+        "season": season,
+        **with_trend(files, playoff_sites(season), outside=season_outside(season), last=last),
+        "inputs_sha256": season_inputs(season),
+    }
+    out = DATA / "ratings" / f"{season}.json"
+    out.parent.mkdir(exist_ok=True)
+    if out.exists() and same_table(json.loads(out.read_text()), result):
+        print(f"{out}: unchanged ({result['games']} games)")
+        return False
+    out.write_text(json.dumps(result, indent=1) + "\n")
+    print(f"{out}: {result['games']} games, {len(result['teams'])} teams from {len(files)} files")
+    print(f"left out or flagged: {result['report']}")
+    return True
+
+
+def chain(last: int, first: int = FIRST_SEASON) -> None:
+    """Every season from `first` to `last`, oldest first, each from the one before: a season is re-rated when its table is
+    stale, and every season after one that changed is re-rated too, since it starts from it."""
+    moved = False
+    for season in range(first, last + 1):
+        why = "the season before it changed" if moved else stale(season)
+        if why is None:
+            print(f"{season}: up to date")
+            continue
+        print(f"{season}: re-rating ({why})")
+        moved = rate_season(season) or moved
 
 
 def main() -> None:
     if len(sys.argv) == 3 and sys.argv[1] == "--season":
         require_private_data()
-        season = int(sys.argv[2])
-        files = season_files(season)
-        if not files:
-            sys.exit(f"no game files for {season}")
-        last = last_from_file(season)
-        result = {
-            "season": season,
-            **with_trend(files, playoff_sites(season), outside=season_outside(season), last=last),
-        }
-        out = DATA / "ratings" / f"{season}.json"
-        out.parent.mkdir(exist_ok=True)
-        if out.exists() and same_table(json.loads(out.read_text()), result):
-            print(f"{out}: unchanged ({result['games']} games)")
-            return
-        out.write_text(json.dumps(result, indent=1) + "\n")
-        print(f"{out}: {result['games']} games, {len(result['teams'])} teams from {len(files)} files")
-        print(f"left out or flagged: {result['report']}")
+        rate_season(int(sys.argv[2]))
+        return
+    if len(sys.argv) in (3, 4) and sys.argv[1] == "--chain":
+        require_private_data()
+        chain(int(sys.argv[2]), *(int(a) for a in sys.argv[3:]))
         return
     if sys.argv[1:] == ["--backtest"]:
         from backtest import main as backtest_main

@@ -80,7 +80,7 @@ export default async function ThisRoundPage() {
         </>
       )}
       <p className="mt-6 text-[13px] text-muted">
-        Away team first. Projections use the current ratings, on a neutral field unless the game is at a home site.
+        Away team first. Projections use the current ratings, with the home edge for the listed home team, except in the State Championship, a neutral site.
       </p>
     </section>
   );

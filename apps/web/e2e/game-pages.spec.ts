@@ -38,7 +38,7 @@ async function build() {
     for (const r of results) if (test(r) && (await detail(r)).meetings.total >= 2) return r;
     throw new Error("no fixture game");
   };
-  // A game the ratings projected (both teams had four games) with earlier meetings, a forfeit, and a game too early to project.
+  // A game the ratings projected (both teams had four rated games) with earlier meetings, a forfeit, and a game too early to project.
   const projected = await withMeetings((r) => judged.has(r.id) && !r.forfeit);
   const forfeit = await withMeetings((r) => r.forfeit);
   const early = results.find((r) => !judged.has(r.id) && !r.forfeit)!;
@@ -138,7 +138,7 @@ test("a game after a forfeit lists it as the word, not the score", async ({ page
   await expect(row.first()).not.toContainText(/\b[0-2]-[0-2]\b/);
 });
 
-test("the week-before projection shows once both teams had four games, and how far the result was from it", async ({ page }) => {
+test("the week-before projection shows once both teams had four rated games, and how far the result was from it", async ({ page }) => {
   const { projected: r, early, projectedText } = await fixtures();
   await page.goto(r.href);
   const projection = page.getByRole("region", { name: "Projection before the game" });

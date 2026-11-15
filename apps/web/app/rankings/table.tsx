@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Identity } from "@/lib/identity";
 import { byRating, placeRows, rangeText, rankedOrder } from "@/lib/rank-range";
 import { ratedFromOutsideOnly, OUTSIDE_ONLY_NOTE } from "@/lib/outside-only";
-import { FEW_GAMES, movement, MOVE_THRESHOLD, record, signed, type RatingRow } from "@/lib/ratings";
+import { FEW_GAMES, movement, MOVE_THRESHOLD, ratingText, record, signed, type RatingRow } from "@/lib/ratings";
 import { meetingScore, type Meeting, type TeamSchedule } from "@/lib/schedule-strength";
 import { CrestSlot, PageHeader } from "../ui";
 
@@ -140,7 +140,7 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
               <td className="pr-1 text-right font-num tabular-nums">
                 {few ? (
                   <>
-                    <span className="block text-[20px] font-bold text-muted">{signed(r.rating)}</span>
+                    <span className="block text-[20px] font-bold text-muted">{ratingText(r)}</span>
                     {!outsideOnly && (
                       <span className="block text-[13px] font-semibold uppercase tracking-wide text-muted">
                         {r.rated} {r.rated === 1 ? "game" : "games"}
@@ -149,8 +149,8 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
                   </>
                 ) : (
                   <>
-                    <span className="block text-[20px] font-bold leading-6 text-navy">{signed(r.rating)}</span>
-                    {r.sd != null && (
+                    <span className="block text-[20px] font-bold leading-6 text-navy">{ratingText(r)}</span>
+                    {r.sd != null && !r.mercy_only && (
                       <span className="block text-[13px] leading-4 text-muted">
                         <span aria-hidden="true">±{Math.round(r.sd)}</span>
                         <span className="sr-only">give or take {Math.round(r.sd)}</span>
@@ -185,6 +185,7 @@ export function HowToRead({ schedule = false, basis = false }: { schedule?: bool
         <li>The projected margin between two teams is the difference in their ratings.</li>
         <li>A game ended by the 45-point rule counts as a win by at least 45, not by the score on the board.</li>
         <li>Forfeits count in the record but not the rating.</li>
+        <li>A rating marked ≤ belongs to a team that lost every rated game by the 45-point rule. Those games say only that it was at least 45 points worse, so its rating is that low or lower, with no ± figure.</li>
         {basis && (
           <li>
             Under each team: games played this season, and how many of them are rated. A rating rests on the rated games only; a forfeit is played but not rated.

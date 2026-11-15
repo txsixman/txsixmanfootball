@@ -21,7 +21,7 @@ import { loadWeeks, resultSeasons } from "./weeks";
 
 const TOP = 5;
 
-type HubTeam = { name: string; slug: string; record: string; rating: number };
+type HubTeam = { name: string; slug: string; record: string; rating: number; mercy_only?: true };
 /** `slug`: the program page, when the alignments list the team. */
 export type HubLeader = Leader & { slug?: string };
 export type OrgHub = {
@@ -80,7 +80,7 @@ export const loadSeasonHub = memo(async (season: number): Promise<SeasonHub> => 
   const orgs = await Promise.all(
     played.map(async (org): Promise<OrgHub> => {
       const rows = placed.filter((r) => r.school.league === org.league);
-      const top = rankedOrder(rows).slice(0, TOP).map((r) => ({ name: r.school.school, slug: r.school.slug, record: record(r), rating: r.rating }));
+      const top = rankedOrder(rows).slice(0, TOP).map((r) => ({ name: r.school.school, slug: r.school.slug, record: record(r), rating: r.rating, ...(r.mercy_only && { mercy_only: true as const }) }));
       const { scored, allowed } = teamLeaders(results, (team) => teamInOrg(schools, org, team));
       const withSlug = (l: Leader): HubLeader => ({ ...l, slug: programFor(alignments, l.team, org.league)?.slug });
       return {

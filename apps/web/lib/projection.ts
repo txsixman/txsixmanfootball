@@ -26,16 +26,25 @@ export function homeWinProbability(margin: number, table: Pick<RatingsTable, "ca
   return table.sigma == null ? undefined : normalCdf(margin / table.sigma);
 }
 
-/** The home edge in points a listed home team gets: the full `home_field`, or the `playoff_edge` share of it at a neutral site. */
+/** The home edge in points a listed home team gets: the full `home_field`, or in a playoff game not at a home field the
+ * `playoff_edge` share of it (the listed home team, not a neutral site: ADR 0057), or none at a true neutral site. */
 export function homeEdge(table: Pick<RatingsTable, "home_field" | "playoff_edge">, neutral: boolean, trueNeutral = false): number {
   return neutral ? (trueNeutral ? 0 : (table.home_field ?? 0) * (table.playoff_edge ?? 0)) : (table.home_field ?? 0);
 }
 
+/** The rounds that are a State Championship (UIL's "state", another league's "final"). Twin of STATE_CHAMPIONSHIP_ROUNDS
+ * in services/ratings/rows.py. */
+export const STATE_CHAMPIONSHIP_ROUNDS: ReadonlySet<string> = new Set(["final", "state"]);
+
 /** A listed game's field as its file writes `neutral`: "true" a true neutral site (no edge), "false" the home team's field,
- * "" not named (a robot-read playoff game gets the `playoff_edge` share). Read this one way on every page, the same as
- * services/ratings/rows.py. */
+ * "" not named (a robot-read playoff game gets the `playoff_edge` share: its listed home team, usually the higher seed,
+ * did as well as a home team). A State Championship is a true neutral site unless its row says "false" (ADR 0057). Read
+ * this one way on every page, the same as services/ratings/rows.py and run.py playoff_sites. */
 export type Field = { neutral: boolean; trueNeutral?: true };
-export const fieldOf = (neutral: string): Field => (neutral === "true" ? { neutral: true, trueNeutral: true } : { neutral: neutral !== "false" });
+export const fieldOf = (neutral: string, round?: string): Field =>
+  neutral === "true" || (neutral !== "false" && round !== undefined && STATE_CHAMPIONSHIP_ROUNDS.has(round))
+    ? { neutral: true, trueNeutral: true }
+    : { neutral: neutral !== "false" };
 
 /** `project` for a listed game at its own site. */
 export const projectAt = (table: RatingsTable, g: { home: string; away: string } & Field) => project(table, g.home, g.away, g.neutral, g.trueNeutral ?? false);
@@ -43,7 +52,7 @@ export const projectAt = (table: RatingsTable, g: { home: string; away: string }
 /**
  * undefined when either team is unrated, or the table predates home_field and sigma. `neutral` is a site the data calls
  * neutral or does not name, which for a robot-read playoff game still gives the listed home team `playoff_edge` of the
- * home edge (a fitted share: those games are mostly neutral but the listed home side did better); `trueNeutral` (the
+ * home edge (a fitted share: the listed home side, usually the higher seed, did as well as a home team); `trueNeutral` (the
  * Matchup picker's neutral button) gives none.
  */
 export function project(table: RatingsTable, home: string, away: string, neutral: boolean, trueNeutral = false): Projection | undefined {
@@ -61,6 +70,20 @@ export function project(table: RatingsTable, home: string, away: string, neutral
 
 /** A chance as a percent: never 100% or 0%. Every page shows a chance through this one helper (scripts/projected-vs-result.test.mjs). */
 export const chanceText = (p: number) => (p > 0.99 ? ">99%" : p < 0.01 ? "<1%" : `${Math.round(p * 100)}%`);
+
+/** Chances that make one whole (a bracket's title chances) as percents that add up to 100: largest-remainder rounding, so
+ * a list never reads 95% + 3% + 3%, then chanceText's caps (">99%", "<1%"). Same order as `ps`. */
+export function chanceTexts(ps: readonly number[]): string[] {
+  const shares = ps.map((p) => Math.floor(p * 100));
+  let left = 100 - shares.reduce((a, b) => a + b, 0);
+  const byRemainder = ps.map((p, i) => [p * 100 - shares[i], i] as const).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  for (const [, i] of byRemainder) {
+    if (left <= 0) break;
+    shares[i]++;
+    left--;
+  }
+  return ps.map((p, i) => (p > 0.99 || p < 0.01 ? chanceText(p) : `${Math.min(99, Math.max(1, shares[i]))}%`));
+}
 
 /** The two halves of the text: "Jayton by 12" and "74% chance to win" (the favorite's). A margin past 45 reads "by 45+", since the
  * game would end there; one that rounds to 0 reads "by less than 1", never a margin the win probability contradicts. */

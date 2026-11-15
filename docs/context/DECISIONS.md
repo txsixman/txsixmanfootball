@@ -51,6 +51,7 @@
 | [0048](../adr/0048-standings-by-district-area-and-region.md) | /standings has District, Area (the bi-district district pair, 2k-1 and 2k) and Region levels for UIL, kept in `?view=`; area and region tables rank every team by overall win %, then point difference; only levels the alignment holds (TAPPS, TCAF districts; TAIAO regions); no seed column until a seed is stored | Proposed Nov 14, 2026 |
 | [0049](../adr/0049-bracket-drawing.md) | Each bracket drawn as a tree (rounds as columns, halves meeting at the final; the league's own bracket, else the listed games' shape, never guessed), by round on phones; tap a team for its path; share and full-size images built with the site, print on one page | Proposed Nov 14, 2026 |
 | [0050](../adr/0050-late-finals-check-the-night-before-the-morning-read.md) | Late finals and the missing-finals alert count a game night as over from 3:00 AM Central, so the morning read (5:23 AM Central in November) checks the night before; the readers' 6:00 AM game night is unchanged | Proposed Nov 14, 2026 |
+| [0057](../adr/0057-state-championships-are-neutral-sites.md) | A State Championship is a true neutral site everywhere (row, title chance, ratings fit); other robot-read playoff games keep the full home edge for the listed home team; a seeding term is tested in 2027 | Proposed Nov 14, 2026 |
 
 Not in an ADR:
 - Interviews are cut from the plan (the owner, Nov 10, 2026; see `docs/plan/v1.2-notes.md`).

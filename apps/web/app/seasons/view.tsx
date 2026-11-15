@@ -6,7 +6,7 @@ import { finalLinker, type Linker } from "@/lib/final-linker";
 import { finalScore } from "@/lib/champions";
 import { loadLineage, successorOf } from "@/lib/lineage";
 import { orgHref, type Org } from "@/lib/orgs";
-import { signed } from "@/lib/ratings";
+import { ratingText } from "@/lib/ratings";
 import { LEADER_MIN_GAMES } from "@/lib/season-leaders";
 import { coverageLine } from "@/lib/season-coverage";
 import { type HubLeader, type OrgHub, type SeasonHub } from "@/lib/season-hub";
@@ -120,7 +120,7 @@ function OrgSection({ hub, o, identities }: { hub: SeasonHub; o: OrgHub; identit
       {o.top.length ? (
         <ol aria-labelledby={`${id}-top`} className="mt-1 border-t border-line">
           {o.top.map((t, i) => (
-            <BoardRow key={t.slug} place={i + 1} figure={signed(t.rating)} unit="rating">
+            <BoardRow key={t.slug} place={i + 1} figure={ratingText(t)} unit="rating">
               <TeamLine name={t.name} slug={t.slug} identities={identities} />
               <span className="block truncate text-[13px] text-muted">{t.record}</span>
             </BoardRow>

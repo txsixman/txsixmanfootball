@@ -12,8 +12,9 @@ import { bracketTitleChances, loadBracketTemplate, type Chance, type RegionChanc
 import { CURRENT_SEASON } from "./season";
 
 // A season's playoffs bracket by bracket, round by round. Scores are unconfirmed (ADR 0004, ADR 0008), so no game names a
-// winner; a team's next game shows who went on. Unplayed games carry a projection from that season's ratings, on a
-// neutral field unless the data says the game is at a home site. A finished season has no unplayed games, so it has
+// winner; a team's next game shows who went on. Unplayed games carry a projection from that season's ratings, at the
+// game's own field (projection.ts fieldOf): the listed home team's edge, none in a State Championship (ADR 0057). A next
+// round no site lists yet is on a neutral field. A finished season has no unplayed games, so it has
 // no projections and no title chances. Team names missing from today's alignments pass through as written.
 
 export type BracketRow = PlayoffGame & { projection?: Projection };

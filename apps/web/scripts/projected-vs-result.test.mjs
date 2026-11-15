@@ -18,7 +18,7 @@ const load = async (name) => {
   return import(pathToFileURL(outfile).href);
 };
 const { projectBefore } = await load("pregame");
-const { chanceText, project, projectionText } = await load("projection");
+const { chanceText, chanceTexts, project, projectionText } = await load("projection");
 test.after(() => rmSync(tmp, { recursive: true, force: true }));
 
 const final = (homeScore, awayScore, extra = {}) => ({ home: "Alpha", away: "Beta", homeScore, awayScore, state: "final", ...extra });
@@ -121,4 +121,14 @@ test("no page writes its own \">99%\" or \"<1%\": every chance goes through chan
     .filter((f) => /["'`]>99%|["'`]<1%/.test(readFileSync(f, "utf8")))
     .map((f) => path.relative(WEB, f));
   assert.deepEqual(own, []);
+});
+
+test("a list of chances that makes one whole adds up to 100%: largest remainder, then the caps", () => {
+  const sum = (texts) => texts.reduce((n, t) => n + Number(t.replace("%", "")), 0);
+  assert.deepEqual(chanceTexts([0.948, 0.026, 0.025]), ["95%", "3%", "2%"]); // each alone rounds to 95 + 3 + 3 = 101
+  assert.equal(sum(chanceTexts([0.4, 0.3, 0.2, 0.1])), 100);
+  assert.equal(sum(chanceTexts([0.333, 0.333, 0.334])), 100);
+  assert.deepEqual(chanceTexts([0.77, 0.23]), ["77%", "23%"]);
+  assert.deepEqual(chanceTexts([0.995, 0.005]), [">99%", "<1%"]); // the caps still hold
+  assert.deepEqual(chanceTexts([0.9, 0.095, 0.005]), ["90%", "10%", "<1%"]);
 });

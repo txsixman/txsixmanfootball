@@ -105,7 +105,7 @@ export async function RecordsView({ org }: { org: Org }) {
         id="surprises"
         title="Biggest surprises"
         rows={records.upsets.length}
-        note="The winner's chance to win before the game, from both teams' ratings at the end of the week before, once each had played four games. Forfeits are left out."
+        note="The winner's chance to win before the game, from both teams' ratings at the end of the week before, once each had four rated games. Forfeits are left out, and never count as rated games."
       >
         {records.upsets.map((u, i) => (
           <BoardRow

@@ -251,7 +251,7 @@ export default async function HowPage() {
           </tbody>
         </table>
         <p className="mt-2 text-[13px] text-muted">
-          Counted once both teams had played four games. Ties and forfeits are left out.
+          Counted once both teams had four rated games (the same four games that take a team off NR). Ties and forfeits are left out.
         </p>
       </section>
 
@@ -289,9 +289,9 @@ export default async function HowPage() {
         />
         <p className="mt-2 text-[13px] text-muted">
           Only games where both teams already had {FEW_GAMES} rated games count. Ties and forfeits are left out, and a miss
-          is counted as at most 45 points, since a game ends at a 45-point lead. The best figure in each row is in bold. 2021
-          has no earlier season, so there is no last-season figure for it and the total leaves it out. 2026 counts games
-          played so far. Scores may be corrected if a mistake is found.
+          is counted as at most 45 points, since a game ends at a 45-point lead. The best figure in each row is in bold. 2018
+          has no earlier season, so there is no last-season figure for it. The total counts 2022 to 2026, the seasons
+          the chance to win is calibrated on. 2026 counts games played so far. Scores may be corrected if a mistake is found.
         </p>
       </section>
 

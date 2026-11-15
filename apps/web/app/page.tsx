@@ -8,7 +8,7 @@ import { loadFinals } from "@/lib/champions";
 import { nightTitle } from "@/lib/game-night";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { loadRanked, type Ranked } from "@/lib/rankings";
-import { FEW_GAMES, signed } from "@/lib/ratings";
+import { FEW_GAMES, ratingText } from "@/lib/ratings";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { loadTitleChances } from "@/lib/title-chances";
@@ -49,7 +49,7 @@ function Top({ title, href, teams, identities }: {
               <Crest school={t.school.school} identity={identities.get(t.school.slug) ?? EMPTY} size={24} decorative />
               <span className="truncate">{t.school.school}</span>
             </Link>
-            <span className="font-num text-[18px] font-bold tabular-nums text-navy">{signed(t.rating)}</span>
+            <span className="font-num text-[18px] font-bold tabular-nums text-navy">{ratingText(t)}</span>
           </li>
         ))}
       </ol>

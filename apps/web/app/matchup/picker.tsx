@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Identity } from "@/lib/identity";
 import { project, projectionParts } from "@/lib/projection";
-import { signed } from "@/lib/signed";
+import { ratingText } from "@/lib/signed";
 import { type Meeting, pairKey } from "@/lib/meetings";
 import type { RatingsTable } from "@/lib/ratings";
 import { Crest } from "../programs/crest";
 
-export type MatchupTeam = { slug: string; name: string; group: string; rating: number; record: string; identity: Identity };
+export type MatchupTeam = { slug: string; name: string; group: string; rating: number; mercy_only?: true; record: string; identity: Identity };
 
 const longDate = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -106,7 +106,7 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
                       <span className="min-w-0 [overflow-wrap:anywhere]">{t.name}</span>
                     </Link>
                   </dt>
-                  <dd className="mt-1 text-[14px] text-muted">Rating {signed(t.rating)} · {t.record}</dd>
+                  <dd className="mt-1 text-[14px] text-muted">Rating {ratingText(t)} · {t.record}</dd>
                 </div>
               ))}
             </dl>

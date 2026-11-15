@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { EMPTY, type loadIdentities } from "@/lib/identity";
-import { chanceText } from "@/lib/projection";
 import { slugify } from "@/lib/slug";
+import type { Chance } from "@/lib/title-chances";
 import { CrestSlot } from "../ui";
 
 /** One list of title chances (a bracket's state title, or a UIL region's title), each team linked to its program. */
 export function ChanceList({ id, title, chances, identities }: {
-  id: string; title: string; chances: { team: string; chance: number }[]; identities: Awaited<ReturnType<typeof loadIdentities>>;
+  id: string; title: string; chances: Chance[]; identities: Awaited<ReturnType<typeof loadIdentities>>;
 }) {
   return (
     <section aria-labelledby={id} className="min-w-0">
@@ -25,7 +25,7 @@ export function ChanceList({ id, title, chances, identities }: {
                 <span className="block h-2 bg-alert" style={{ width: `${Math.max(2, pct)}%` }} />
               </span>
               <span className="w-12 text-right font-num text-[18px] font-bold tabular-nums text-navy">
-                {chanceText(c.chance)}
+                {c.shown}
               </span>
             </li>
           );

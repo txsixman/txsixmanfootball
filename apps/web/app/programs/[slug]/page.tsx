@@ -15,7 +15,7 @@ import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
 import { loadRanked, rankLabel } from "@/lib/rankings";
 import { ratedFromOutsideOnly, OUTSIDE_ONLY_NOTE } from "@/lib/outside-only";
-import { FEW_GAMES, loadRatings, ratingSeasons, record, signed } from "@/lib/ratings";
+import { FEW_GAMES, loadRatings, ratingSeasons, ratingText, record, signed } from "@/lib/ratings";
 import { meetingScore, schedulesFor, type Meeting } from "@/lib/schedule-strength";
 import { whyItMoved } from "@/lib/why-moved";
 import { seasonHref } from "../../rankings/view";
@@ -383,8 +383,8 @@ export default async function ProgramPage({ params }: Props) {
                     <span className="inline-flex min-h-11 items-center">{rankLabel(ranked).text}</span>
                   )}
                 </Stat>
-                <Stat label="Rating" sub={ranked.sd != null && ranked.rated >= FEW_GAMES ? `give or take ${Math.round(ranked.sd)}` : undefined}>
-                  {signed(ranked.rating)}
+                <Stat label="Rating" sub={ranked.mercy_only ? "every game a 45-point loss" : ranked.sd != null && ranked.rated >= FEW_GAMES ? `give or take ${Math.round(ranked.sd)}` : undefined}>
+                  {ratingText(ranked)}
                 </Stat>
                 {standing && (
                   <Stat label="District" sub={`${wl(standing.rows[place - 1].district)} in district`}>

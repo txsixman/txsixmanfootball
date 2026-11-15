@@ -18,6 +18,7 @@ const load = async (name) => {
 const { gameStatus, centralClock, currentRound } = await load("playoff-status");
 const { pairsOf, aheadFor, previewOf, gamesOf } = await load("playoff-path");
 const { project, projectAt, fieldOf } = await load("projection");
+const { chancesFor } = await load("title-chances");
 test.after(() => rmSync(tmp, { recursive: true, force: true }));
 
 const TODAY = "2026-11-13";
@@ -117,4 +118,27 @@ test("a row's neutral value reads one way on every page: \"true\" no edge, \"fal
   // The bracket's pairing preview reads the game's site the same way (it gave a true neutral site the playoff share).
   const [pair] = pairsOf(rounds(["semifinal", game("semifinal", "D", "C", fieldOf("true")), game("semifinal", "A", "B")]));
   assert.equal(previewOf(edged, pair).sides[0].team, "C");
+});
+
+test("a State Championship is a neutral site: its game row and its title chance give the same chance (ADR 0057)", () => {
+  assert.deepEqual(fieldOf("", "final"), { neutral: true, trueNeutral: true });
+  assert.deepEqual(fieldOf("", "state"), { neutral: true, trueNeutral: true });
+  assert.deepEqual(fieldOf("false", "state"), { neutral: false }); // a row that names a home field says for itself
+  assert.deepEqual(fieldOf("", "semifinal"), { neutral: true }); // earlier rounds: the listed home team's playoff share
+  const edged = { ...table, playoff_edge: 1 };
+  const final = { bracket: "B", round: "final", home: "D", away: "C", played: false, ...fieldOf("", "final") };
+  const row = projectAt(edged, final);
+  assert.equal(row.favorite, "C"); // C (+4) over D (+2), no edge for the listed home team
+  const { round, chances } = chancesFor(edged, [final]);
+  assert.equal(round, "final");
+  assert.equal(chances.find((c) => c.team === "C").chance, row.winProbability);
+  // An unplayed semifinal inside the last four counts at its own field, as its game row shows it.
+  const semis = [{ bracket: "B", round: "semifinal", home: "D", away: "C", played: false, ...fieldOf("", "semifinal") }, { bracket: "B", round: "semifinal", home: "A", away: "B", played: false, ...fieldOf("", "semifinal") }];
+  const withEdge = chancesFor(edged, semis).chances;
+  const without = chancesFor(table, semis).chances; // playoff_edge 0: no edge
+  assert.ok(withEdge.find((c) => c.team === "D").chance > without.find((c) => c.team === "D").chance);
+  // Every list of title chances is shown rounded with the rest of the list, so it adds up to 100%.
+  const shownSum = withEdge.reduce((n, c) => n + Number(c.shown.replace(/[<>%]/g, "")), 0);
+  assert.ok(withEdge.every((c) => /^(<1|>99|\d{1,2})%$/.test(c.shown)));
+  assert.ok(withEdge.some((c) => /[<>]/.test(c.shown)) || shownSum === 100, `${shownSum}`);
 });

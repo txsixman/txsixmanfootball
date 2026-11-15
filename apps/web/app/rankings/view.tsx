@@ -61,6 +61,12 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
     if (school.league !== org.league || ("division" in view && school.division !== view.division)) return [];
     return [{ ...r, ...(past && { was: undefined }), name: school.school, href: `/programs/${school.slug}`, identity: identities.get(school.slug) ?? EMPTY, schedule: stats.get(r.team), played: played.get(r.team) ?? 0 }];
   });
+  // Schools of this view with games read but no rating: every game so far a forfeit (forfeits are not rated). Without
+  // this line they would be missing from the table with no word why.
+  const ratedSlugs = new Set(placed.map((p) => p.school.slug));
+  const forfeitOnly = alignments.filter(
+    (a) => a.league === org.league && !("division" in view && a.division !== view.division) && !ratedSlugs.has(a.slug) && (played.get(a.school) ?? 0) > 0,
+  );
   // Where each opponent's program page is, for the best win and worst loss columns.
   const hrefs = new Map(alignments.filter((a) => a.league === org.league).map((a) => [a.school, `/programs/${a.slug}`]));
   const games = table.games.toLocaleString("en-US");
@@ -97,6 +103,18 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
       {rows.length ? (
         <>
           <RatingsTable rows={rows} hrefs={hrefs} />
+          {forfeitOnly.length > 0 && (
+            <p id="forfeit-only" className="mt-3 text-[14px] leading-5 text-muted">
+              Not rated, every game so far a forfeit:{" "}
+              {forfeitOnly.map((a, i) => (
+                <span key={a.slug}>
+                  {i > 0 && ", "}
+                  <Link href={`/programs/${a.slug}`} className="font-semibold text-navy underline">{a.school}</Link>
+                </span>
+              ))}
+              .
+            </p>
+          )}
           <p className="mt-3 text-[13px] text-muted">Scores may be corrected if a mistake is found.</p>
           <HowToRead schedule basis />
         </>

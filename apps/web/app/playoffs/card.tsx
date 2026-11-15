@@ -1,5 +1,4 @@
 import { latestRound, loadBrackets } from "@/lib/brackets";
-import { chanceText } from "@/lib/projection";
 import { CURRENT_SEASON } from "@/lib/season";
 import { pageCard } from "../page-card";
 import type { League } from "./view";
@@ -10,7 +9,7 @@ export async function playoffsCard(league: League, season = CURRENT_SEASON) {
   const lines = brackets.map((b) => {
     const name = b.name.replace(`${league} `, "") || league;
     const top = b.chances?.[0];
-    return top ? `${name} · ${top.team} ${chanceText(top.chance)}` : `${name} · ${latestRound(b)!.label}`;
+    return top ? `${name} · ${top.team} ${top.shown}` : `${name} · ${latestRound(b)!.label}`;
   });
   const more = lines.length > 3 ? [...lines.slice(0, 2), `and ${lines.length - 2} more brackets`] : lines;
   const kicker = brackets.some((b) => b.chances) ? `${season} ${league} · title chances` : `${season} ${league} · latest round`;

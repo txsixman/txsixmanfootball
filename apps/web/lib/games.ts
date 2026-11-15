@@ -119,7 +119,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
     const projection = played
       ? beforeBy.get(season)!.get(gameKey(r.game_date, r.home, r.away))
       : ratings.season === season
-        ? projectAt(ratings, { home: home.name, away: away.name, ...fieldOf(r.neutral) })
+        ? projectAt(ratings, { home: home.name, away: away.name, ...fieldOf(r.neutral, r.round) })
         : undefined;
     return {
       id: playoffGameId(season, r),
@@ -179,7 +179,7 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
       away: name(r.away),
       ...(played ? { homeScore: h, awayScore: a } : {}),
       forfeit: r.end_reason === "forfeit" || (played && forfeitScore(h, a)),
-      ...fieldOf(r.neutral),
+      ...fieldOf(r.neutral, r.round),
       confirmed: played && !isDisputed(disputed, r.game_date, r.home, r.away), // a final is confirmed unless disputed (ADR 0040)
       ...(!played && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
     };
@@ -223,10 +223,16 @@ export const playoffReach = memo(async (season: number): Promise<Map<string, { r
 /** The key two files agree on for one game: date and both teams (spelling and order of the teams do not matter). */
 export const gameKey = (date: string, home: string, away: string) => [date, ...[slugify(home), slugify(away)].sort()].join("|");
 
-/** `gameKey` of each playoff game of a season: playoff sites are mostly neutral (see run.py playoff_sites), and
- * games.csv holds playoff games too, so standings and pregame use this to tell them from regular-season games. */
+/** `gameKey` of each playoff game of a season: games.csv holds playoff games too, so standings use this to tell them from
+ * regular-season games. */
 export async function playoffGameKeys(season: number): Promise<Set<string>> {
-  return new Set((await playoffRows([season])).map(({ r }) => gameKey(r.game_date, r.home, r.away)));
+  return new Set((await playoffFields(season)).keys());
+}
+
+/** Each playoff game of a season by `gameKey`, with its field (`fieldOf`: the listed home team's playoff share, none at a
+ * State Championship or a true neutral site), as services/ratings/run.py playoff_sites gives the fit. */
+export async function playoffFields(season: number): Promise<Map<string, Field>> {
+  return new Map((await playoffRows([season])).map(({ r }) => [gameKey(r.game_date, r.home, r.away), fieldOf(r.neutral, r.round)]));
 }
 
 export type { SeasonResult };

@@ -13,17 +13,18 @@ reporters, LLC, attorney, sponsors or owner talk; `txsixmanfootball.com` may be 
 | Schema migrates | Done: PGlite in tests, and live on Supabase since Nov 10, 2026 |
 | Ratings prototype on captured games | Done: `/rankings` rates 1,227 games of the 2026 season (ADR 0008) across 275 teams |
 
-**G3 (Apr 18, 2027) passes today** (Nov 12, after the ratings round, `docs/research/ratings-before-after-2026-11-11.md`):
-`run.py --backtest` (`services/ratings/backtest.py`, ~4 min) rates each week from earlier games only, 2021 to 2026, and
-writes `data/ratings/backtest.json`. From 2022 on (2,906 games) the model beats both baselines every season: winner picked
-86.8% vs Elo 77.0% and last season's rating 74.1%; margin error 12.5 vs 21.2 and 22.0 points; log loss 0.308 vs 0.468 and
-0.515. The site's table uses the same model: last season's rating is each team's starting point, kept at 0.6 of its gap
-from its league (rho 0.6, the owner Nov 12: less carryover than the best-scoring 1.0; tau 30 tuned at it), each league (UIL
-Division I and II, TAPPS, TAIAO, TCAF, Independent) has its own mean, robot-read playoff games get the listed home team's
-full home edge, forfeits (1-0, 2-0) and 0-0 games are not rated, duplicate games are dropped, and outside schools that
-played two or more of ours stay in the fit as hidden teams (`outside.csv`). Win probability is logistic(margin / 15.57),
-calibrated on walk-forward predictions (">99%" shown only above 99.5%). Rate the seasons in order, 2021 to 2026, because
-each reads the one before it. Open: the 45-point rule means very large margins are underpredicted, so those chances stay capped.
+**G3 (Apr 18, 2027) passes today** (Nov 14, after the ratings audit, `docs/audits/ratings-2026-11.md`):
+`run.py --backtest` (`services/ratings/backtest.py`, ~5 min) rates each week from earlier games only, 2018 to 2026, and
+writes `data/ratings/backtest.json`. From 2022 on (2,999 games) the model beats both baselines every season: winner picked
+86.4% vs Elo 76.7% and last season's rating 74.2%; margin error 12.6 vs 21.2 and 22.0 points; log loss 0.308 vs 0.469 and
+0.517. The site's table uses the same model: last season's rating is each team's starting point, kept at 0.6 of its gap
+from its league (rho 0.6, the owner Nov 12: less carryover than the best-scoring 1.0; tau 25 tuned at it, from the 2018-on backtest), each league (UIL
+Division I and II, TAPPS, TAIAO, TCAF, Independent) has its own mean, robot-read playoff games give the listed home team the
+full home edge (`PLAYOFF_EDGE` 1.0) except a State Championship, a true neutral site everywhere (ADR 0057), forfeits (1-0, 2-0) and 0-0 games are not rated, duplicate games are dropped, and outside schools that
+played two or more of ours stay in the fit as hidden teams (`outside.csv`). Win probability is logistic(margin / 14.56),
+calibrated on walk-forward predictions (">99%" shown above 99%; a list of title chances rounds by largest remainder, so it sums to 100%). Each season
+reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order wherever a season's inputs or prior changed (the CI
+`ratings-table` job runs it). A team needs four rated games (not four played) for a projection. Open: the 45-point rule means very large margins are underpredicted, so those chances stay capped.
 
 ## The site (`apps/web`, Vercel, open to search engines at `txsixmanfootball.com` (`app/sitemap.xml`, `app/robots.ts`, `lib/site.ts`); `www` redirects there, and `txsixmanfootballcom.vercel.app` and previews send `noindex`)
 - **Organizations never mix (ADR 0012, the owner Nov 11):** UIL, TAPPS, TAIAO, TCAF and Independent each get their own tab, list and

@@ -144,7 +144,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
       ))}
 
       <p className="mt-6 text-[13px] text-muted">
-        Away team first. Projections and title chances use the current ratings, on a neutral field unless the game is at a home site. A team&rsquo;s next game shows who went on.
+        Away team first. Projections and title chances use the current ratings, with the home edge for the listed home team, except in the State Championship, a neutral site. A team&rsquo;s next game shows who went on.
       </p>
       </div>
     </section>

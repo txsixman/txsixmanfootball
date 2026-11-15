@@ -24,7 +24,7 @@ export default async function MatchupPage() {
   const teams = ranked.teams
     // A school two leagues list is ranked in each (ADR 0012); the picker offers it once, under the first.
     .filter((t, i, all) => all.findIndex((x) => x.school.slug === t.school.slug) === i)
-    .map((t) => ({ slug: t.school.slug, name: t.school.school, group: heading(t.school), rating: t.rating, record: record(t), identity: identities.get(t.school.slug) ?? EMPTY, org: orgIndex(t.school.league) }))
+    .map((t) => ({ slug: t.school.slug, name: t.school.school, group: heading(t.school), rating: t.rating, ...(t.mercy_only && { mercy_only: true as const }), record: record(t), identity: identities.get(t.school.slug) ?? EMPTY, org: orgIndex(t.school.league) }))
     // The reader may compare teams of two organizations, but the pickers list each organization's teams on their own
     // (ADR 0012): one option group per organization division, in the site's organization order (UIL first).
     .sort((x, y) => x.org - y.org || x.group.localeCompare(y.group) || x.name.localeCompare(y.name));

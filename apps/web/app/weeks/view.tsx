@@ -169,7 +169,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
       <Section
         id="projection"
         title="Furthest from the projection"
-        note="Games whose final margin was furthest from the projected margin, from both teams' ratings at the end of the week before (once each had played four games). The number is points from the projection, counting any margin past 45 as 45 (the 45-point rule). Forfeits are left out."
+        note="Games whose final margin was furthest from the projected margin, from both teams' ratings at the end of the week before (once each had four rated games; forfeits never count). The number is points from the projection, counting any margin past 45 as 45 (the 45-point rule). Forfeits are left out."
       >
         {review.furthest.length ? (
           <ol>
