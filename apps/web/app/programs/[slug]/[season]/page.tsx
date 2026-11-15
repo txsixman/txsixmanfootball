@@ -15,8 +15,10 @@ import { FEW_GAMES, ratingSeasons, record, signed } from "@/lib/ratings";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
 import { CURRENT_SEASON } from "@/lib/season";
+import { resultSeasons } from "@/lib/weeks";
 import { Breadcrumbs } from "../../../breadcrumbs";
 import { seasonHref } from "../../../rankings/view";
+import { seasonHref as resultsHref } from "../../../results/paths";
 import { CrestSlot, EdgeToEdge, SectionBar } from "../../../ui";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../../crest";
 import { programSeasonTitle } from "@/lib/titles";
@@ -74,6 +76,8 @@ export default async function ProgramSeasonPage({ params }: Props) {
   const identity = identities.get(slug) ?? EMPTY;
   const { theme } = identity;
   const pagesOf = await programSeasonPages();
+  // The week-by-week results of the season, in the program's organization (its address is bare for the organization's latest season).
+  const orgSeasons = org ? await resultSeasons(org) : [];
 
   // Every game read, oldest first. For the season under way, a bracket game not yet played joins them, with its projection.
   const unplayed = season === CURRENT_SEASON ? seasonRows(school.school, await bracketGames(), await loadSeasonResults(season)).rows.filter((r) => !r.score) : [];
@@ -213,6 +217,14 @@ export default async function ProgramSeasonPage({ params }: Props) {
                 <ChevronRight aria-hidden="true" className="size-4" strokeWidth={2.5} />
               </Link>
             </li>
+            {org && orgSeasons.includes(season) && (
+              <li>
+                <Link href={resultsHref(season, orgSeasons[0], org)} prefetch={false} className="inline-flex min-h-11 items-center gap-1 text-[15px] font-semibold text-navy underline underline-offset-2">
+                  {season} {label} results by week
+                  <ChevronRight aria-hidden="true" className="size-4" strokeWidth={2.5} />
+                </Link>
+              </li>
+            )}
             {ranksPage && (
               <li>
                 <Link href={seasonHref(season, seasons[0], org)} prefetch={false} className="inline-flex min-h-11 items-center gap-1 text-[15px] font-semibold text-navy underline underline-offset-2">
