@@ -98,6 +98,12 @@ export const recordsTitle = (label: string) => fit(`${label} six-man football re
 export const championshipsTitle = ({ first, latest }: { first?: number; latest?: number }) =>
   first === undefined ? "UIL six-man state champions" : `UIL six-man state champions, ${first} to ${latest}`;
 
+/** One year's State Championship game(s): Division I and II since 2006, one game before. */
+export const championshipYearTitle = ({ year, divisions }: { year: number; divisions: boolean }) =>
+  divisions
+    ? fit(`${year} UIL six-man State Championship: Division I and II`, `${year} UIL six-man State Championship`)
+    : fit(`${year} UIL six-man State Championship game`, `${year} six-man State Championship`);
+
 export const programsTitle = () => "Texas six-man football teams: every program";
 
 export const matchupTitle = () => "Six-man matchup: any two teams, projected margin";

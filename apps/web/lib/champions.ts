@@ -82,3 +82,10 @@ export function noFinalSpans(rows: { season: number; playedTo: string }[]): { pl
   }
   return spans;
 }
+
+/** The State Championship years either side of `year` (undefined at the ends), for a year page's previous and next links. */
+export function adjacentYears(years: number[], year: number): { prev?: number; next?: number } {
+  const sorted = [...new Set(years)].sort((a, b) => a - b);
+  const at = sorted.indexOf(year);
+  return { prev: at > 0 ? sorted[at - 1] : undefined, next: at >= 0 ? sorted[at + 1] : undefined };
+}
