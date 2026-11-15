@@ -11,8 +11,10 @@ import { CURRENT_SEASON } from "./season";
 
 // Title chances from the same win probabilities as the projections, for only the parts of a bracket the data settles.
 //
-// State title: the final alone, or two semifinals whose winners meet (the last four). A played but unconfirmed
-// semifinal is not taken as settled (ADR 0004), so that bracket waits for the final.
+// State title: the final alone, or two semifinals whose winners meet (the last four). A semifinal that is a confirmed
+// final (ADR 0040) has its winner through; once both are, the two winners meet in the State Championship even before
+// that game is listed. A played semifinal with no winner (disputed, or a tie) is not taken as settled (ADR 0004), so
+// that bracket waits for the final.
 //
 // Region title (UIL): the data proves each region is closed. In past seasons every area and regional game, linked
 // team to team, falls inside one group of eight (four districts, two teams each), so the two area games of a region
@@ -43,19 +45,16 @@ export function chancesFor(t: RatingsTable, games: BracketGame[]): BracketChance
     if (p == null) return undefined;
     return { bracket: games[0].bracket, round: "final", chances: [{ team: home, chance: p }, { team: away, chance: 1 - p }].sort((x, y) => y.chance - x.chance) };
   }
-  if (finals.length === 0 && semis.length === 2 && semis.every((g) => !g.played)) {
-    const sides = semis.map((g) => [g.home, g.away]);
-    const chances: Chance[] = [];
-    for (const [i, side] of sides.entries()) {
-      const other = sides[1 - i];
-      for (const [j, team] of side.entries()) {
-        const semi = beats(t, team, side[1 - j]);
-        const vs = other.map((o, k) => [beats(t, o, other[1 - k]), beats(t, team, o)] as const);
-        if (semi == null || vs.some(([a, b]) => a == null || b == null)) return undefined;
-        chances.push({ team, chance: semi * vs.reduce((sum, [reach, win]) => sum + reach! * win!, 0) });
-      }
-    }
-    return { bracket: games[0].bracket, round: "semifinal", chances: chances.sort((x, y) => y.chance - x.chance) };
+  if (finals.length === 0 && semis.length === 2 && semis.every((g) => !g.played || g.winner)) {
+    // Each semifinal's winner: its winner when played, else either team by its chance, on a neutral field.
+    const sides: (Dist | undefined)[] = semis.map((g) => {
+      if (g.winner) return new Map([[g.winner, 1]]);
+      const p = beats(t, g.home, g.away);
+      return p == null ? undefined : new Map([[g.home, p], [g.away, 1 - p]]);
+    });
+    const final = sides[0] && sides[1] && meet(t, sides[0], sides[1]);
+    if (!final) return undefined;
+    return { bracket: games[0].bracket, round: semis.every((g) => g.winner) ? "final" : "semifinal", chances: byChance(final) };
   }
   return undefined;
 }
@@ -179,7 +178,11 @@ export const loadBracketTemplate = memo<void, BracketTemplate>(readTemplate);
 
 /** Title chances for one bracket of a season's playoff games; regions and semifinal pairings apply to UIL only (ADR 0012). */
 export function bracketTitleChances(t: RatingsTable, alignments: Alignment[], template: BracketTemplate, name: string, games: PlayoffGame[]) {
-  const asGames: BracketGame[] = games.map((g) => ({ bracket: name, round: g.round, home: g.home, away: g.away, played: g.homeScore != null, neutral: g.neutral }));
+  const asGames: BracketGame[] = games.map((g) => {
+    const won = g.confirmed && g.homeScore != null && g.awayScore != null && g.homeScore !== g.awayScore;
+    const winner = won ? (g.homeScore! > g.awayScore! ? g.home : g.away) : undefined;
+    return { bracket: name, round: g.round, home: g.home, away: g.away, played: g.homeScore != null, neutral: g.neutral, ...(winner ? { winner } : {}) };
+  });
   if (games[0]?.league !== "UIL") return titleChances(t, asGames);
   const region = new Map(alignments.filter((a) => a.league === "UIL" && heading(a) === name).map((a) => [a.school, a.region]));
   const semifinals = template.get(name);

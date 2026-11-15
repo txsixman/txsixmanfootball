@@ -19,6 +19,12 @@ const BETTING_OR_SOURCE = /\b(spreads?|odds|lines?|bets?|bettors?|favou?rites?|u
 // "Chance to win" is the projection's own phrase; everything else is checked.
 const plain = (text: string) => text.replace(/win probability|chance to win/gi, "");
 
+/** 5:00 PM Central on a date (YYYY-MM-DD), in ms: 22:00 UTC in daylight time, 23:00 UTC in standard time. */
+function eveningStart(date: string) {
+  const hour = (ms: number) => Number(new Date(ms).toLocaleString("en-US", { timeZone: "America/Chicago", hour: "numeric", hourCycle: "h23" }));
+  return [22, 23].map((h) => Date.parse(`${date}T${h}:00:00Z`)).find((ms) => hour(ms) === 17)!;
+}
+
 /** The loaders read ../../data from the working directory; the tests run from the repo root. */
 async function inWeb<T>(run: () => Promise<T>): Promise<T> {
   const was = process.cwd();
@@ -259,28 +265,39 @@ test.describe("Tonight", () => {
     await expect(page.locator("[data-live-score]")).toHaveCount(1);
   });
 
-  test("the groups move with the clock and the live read starts at the first kickoff", async ({ page }) => {
-    const { tonight } = await fixtures();
-    const later = tonight.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games)).filter((g) => g.state === "later" && g.kickoff);
+  test("the groups move with the clock and the live read starts at the first kickoff, or at 5 PM for a game with no time", async ({ page }) => {
+    const { tonight, night } = await fixtures();
+    const waiting = tonight.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games)).filter((g) => g.state === "later");
+    const later = waiting.filter((g) => g.kickoff);
     test.skip(!later.length, "no game of the night has a kickoff on file");
     const first = Math.min(...later.map((g) => Date.parse(g.kickoff!)));
     const startsAtFirst = later.filter((g) => Date.parse(g.kickoff!) === first);
+    // A game of tonight with no kickoff time may be under way all evening, so the read starts at 5:00 PM Central for it
+    // (lib/kickoff.ts anyInProgress); the read then starts at whichever comes first.
+    const untimed = waiting.some((g) => !g.kickoff && g.date === night);
+    const readFrom = untimed ? Math.min(first, eveningStart(night)) : first;
     let hits = 0;
     await page.route(LIVE_SCORES_URL, (route) => {
       if (route.request().method() !== "OPTIONS") hits++;
       return route.fulfill({ status: route.request().method() === "OPTIONS" ? 204 : 200, contentType: "application/json", headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" }, body: "[]" });
     });
-    await page.clock.install({ time: new Date(first - 5 * 60_000) });
+    await page.clock.install({ time: new Date(readFrom - 5 * 60_000) });
     await page.goto("/scores/tonight");
     const heading = (name: string) => page.getByRole("heading", { level: 3, name, exact: true });
     await expect(heading("Up next").first()).toBeVisible();
     await expect(heading("In progress")).toHaveCount(0);
     await page.clock.runFor(2 * 60_000);
-    expect(hits).toBe(0); // before kickoff: nothing asked
-    await page.clock.runFor(4 * 60_000); // a minute past the first kickoff
+    expect(hits).toBe(0); // before the read starts: nothing asked
+    await page.clock.runFor(4 * 60_000); // a minute past the read's start
+    await expect.poll(() => hits).toBeGreaterThan(0);
+    if (readFrom < first) {
+      // Read from 5 PM, but no game is in progress before its own kickoff (the read answers with nothing).
+      await expect(heading("In progress")).toHaveCount(0);
+      await page.clock.fastForward(first - readFrom - 60_000);
+      await page.clock.runFor(60_000); // a minute past the first kickoff
+    }
     await expect(heading("In progress").first()).toBeVisible();
     for (const g of startsAtFirst) await expect(page.locator(`[data-group="in-progress"] li[data-game="${g.id}"]`)).toHaveCount(1);
-    await expect.poll(() => hits).toBeGreaterThan(0);
     // The group that holds it comes first in its organization's section.
     const firstHeading = page.locator(`li[data-game="${startsAtFirst[0].id}"]`).locator("xpath=ancestor::section[1]").getByRole("heading", { level: 3 }).first();
     await expect(firstHeading).toHaveText("In progress");
