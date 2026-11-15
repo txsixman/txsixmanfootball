@@ -19,7 +19,7 @@ async function open(page: Page, url: string) {
   await page.evaluate(() => document.fonts.ready);
 }
 
-const whole = ["/scores/sample", "/rankings/sample", "/search", "/~offline"];
+const whole = ["/scores/sample", "/rankings/sample", "/standings/sample", "/search", "/~offline"];
 for (const url of whole) {
   test(`looks the same: ${url}`, async ({ page }) => {
     await open(page, url);
