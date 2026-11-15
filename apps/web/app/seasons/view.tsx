@@ -8,6 +8,7 @@ import { loadLineage, successorOf } from "@/lib/lineage";
 import { orgHref, type Org } from "@/lib/orgs";
 import { signed } from "@/lib/ratings";
 import { LEADER_MIN_GAMES } from "@/lib/season-leaders";
+import { coverageLine } from "@/lib/season-coverage";
 import { type HubLeader, type OrgHub, type SeasonHub } from "@/lib/season-hub";
 import { indexHref, weekHref as reviewHref } from "@/lib/week-review-hrefs";
 import { weekLabel } from "@/lib/weeks";
@@ -189,6 +190,7 @@ export async function SeasonHubView({ hub }: Props) {
           title={`${season} season`}
           note={`${hub.games.toLocaleString("en-US")} games read from ${hub.programs} programs across ${orgs.join(", ")}${latest ? ", so far" : ""}. Scores are not confirmed here and may change.`}
         />
+        {!latest && <p id="season-coverage" className="mt-1 max-w-prose text-[14px] leading-5 text-muted">{coverageLine(hub.coverage)}</p>}
         <nav aria-label="Jump to" className="mt-4 flex flex-wrap gap-2">
           {jump.map((j) => (
             <a key={j.id} href={`#${j.id}`} className={PILL}>

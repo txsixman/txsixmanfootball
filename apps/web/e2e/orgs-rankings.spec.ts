@@ -84,10 +84,20 @@ test("TAPPS rankings list only TAPPS teams, ranked from 1; no TAPPS team is on t
   for (const t of await tableTeams(page)) expect(taiao, t).toContain(t);
 });
 
+/** A past season's rankings say how many of the organization's schools have a game that season. */
+async function expectCoverage(page: Page) {
+  const text = await page.locator("#season-coverage").innerText();
+  const m = /^Games from (\d+) of (\d+) schools for this season\.$/.exec(text);
+  expect(m, text).not.toBeNull();
+  expect(Number(m![1])).toBeGreaterThan(0);
+  expect(Number(m![1])).toBeLessThanOrEqual(Number(m![2]));
+}
+
 test("a past season is split by organization, keeping the organization when the season changes", async ({ page }, info) => {
   await checkPage(page, "/rankings/season/2025/tapps", `rankings-2025-tapps-${info.project.name}`);
   await expect(page.getByText(/^Final: \d+ teams in TAPPS from .* current alignments\./)).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Rankings by division" })).toHaveCount(0);
+  await expectCoverage(page);
   const rows = page.getByRole("table").getByRole("row");
   await expect(rows.nth(1)).toContainText(/^1/);
   for (const t of await tableTeams(page)) expect(tapps, t).toContain(t);
@@ -97,7 +107,11 @@ test("a past season is split by organization, keeping the organization when the 
   await page.getByRole("navigation", { name: "Rankings by organization" }).getByRole("link", { name: "UIL" }).click();
   await expect(page).toHaveURL(/\/rankings\/season\/2025$/, { timeout: 20_000 });
   expect(await tableTeams(page)).not.toContain(tapps[0]);
+  await expectCoverage(page);
   expect((await page.goto("/rankings/season/2025/uil"))?.status()).toBe(404);
+  // The season under way has no coverage line.
+  await page.goto("/rankings");
+  await expect(page.locator("#season-coverage")).toHaveCount(0);
 });
 
 test("a week's rankings are split by organization, keeping the organization when the week changes", async ({ page }, info) => {

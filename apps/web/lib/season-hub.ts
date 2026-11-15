@@ -6,6 +6,7 @@ import { memo } from "./memo";
 import { schoolAlignments, teamInOrg } from "./org-games";
 import { ORGS, type Org } from "./orgs";
 import { rankedOrder } from "./rank-range";
+import { seasonCoverage, type Coverage } from "./season-coverage";
 import { placeTeams } from "./rankings";
 import { CURRENT_SEASON } from "./season";
 import { loadRatings, ratingSeasons, record } from "./ratings";
@@ -44,6 +45,8 @@ export type SeasonHub = {
   games: number;
   /** Programs on this site with a game that season. */
   programs: number;
+  /** Today's schools (all organizations) with a game that season. */
+  coverage: Coverage;
   finals: Final[];
   /** Organizations with a game that season, in site order. */
   orgs: OrgHub[];
@@ -98,6 +101,7 @@ export const loadSeasonHub = memo(async (season: number): Promise<SeasonHub> => 
     current: ratingYears[0],
     games: results.length,
     programs: programs.size,
+    coverage: seasonCoverage(alignments, results),
     finals: finals.filter((f) => f.season === season).sort((a, b) => a.division.localeCompare(b.division)),
     orgs,
     weeks: weeks.map((w) => ({ number: w.number, monday: w.monday })),
