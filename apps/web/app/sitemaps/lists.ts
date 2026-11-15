@@ -8,6 +8,7 @@ import { CURRENT_SEASON } from "@/lib/season";
 import { SITE_URL } from "@/lib/site";
 import { lastmodFor, type SitemapDates, type SitemapEntry } from "@/lib/sitemap-xml";
 import { loadWeeks, resultSeasons } from "@/lib/weeks";
+import { generateStaticParams as championshipYears } from "../championships/[year]/page";
 import { generateStaticParams as playoffLeagues } from "../playoffs/[league]/page";
 import { generateStaticParams as brackets } from "../playoffs/bracket/[slug]/page";
 import { generateStaticParams as playoffSeasonLeagues } from "../playoffs/season/[season]/[league]/page";
@@ -52,6 +53,7 @@ const PATHS: Record<Kind, () => Promise<string[]>> = {
     ...(await playoffSeasonLeagues()).map((p) => `playoffs/season/${p.season}/${p.league}`),
     ...(await brackets()).map((p) => `playoffs/bracket/${p.slug}`),
     ...(await recordOrgs()).map((p) => `records/${p.org}`),
+    ...(await championshipYears()).map((p) => `championships/${p.year}`),
     ...(await seasonHubs()).map((p) => `seasons/${p.year}`),
   ],
   programs: async () => [

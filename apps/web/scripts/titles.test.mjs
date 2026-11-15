@@ -92,3 +92,9 @@ test("section pages: scores, rankings, standings, results, records, champions", 
   for (const s of [t.homeTitle(), t.programsTitle(), t.matchupTitle(), t.seriesTitle({ first: "Jayton", second: "Kress" })]) clean(s);
   assert.match(t.homeTitle(), /^TX Six-Man Football: /, "the home page's title starts with the site's name");
 });
+
+test("a State Championship year names the year and 'State Championship', and fits", () => {
+  assert.equal(clean(t.championshipYearTitle({ year: 2019, divisions: true })), "2019 UIL six-man State Championship: Division I and II");
+  assert.equal(clean(t.championshipYearTitle({ year: 1987, divisions: false })), "1987 UIL six-man State Championship game");
+  for (const s of [t.championshipYearTitle({ year: 2006, divisions: true }), t.championshipYearTitle({ year: 1972, divisions: false })]) assert.doesNotMatch(s, /\bfinals?\b/i);
+});

@@ -58,6 +58,17 @@ export const championshipsDescription = ({ first, latest, games }: { first?: num
     ["Division I and Division II since 2006, and the programs with the most state titles.", "The programs with the most state titles."],
   );
 
+/** One year's State Championship: each game's two schools in alphabetical order (no winner in a description), `games` one per division. */
+export const championshipYearDescription = ({ year, games }: { year: number; games: { division: string; teams: [string, string] }[] }) => {
+  const pairs = games.map((g) => ({ division: g.division, text: [...g.teams].sort((a, b) => a.localeCompare(b)).join(" and ") }));
+  const named = pairs.map((p) => (p.division ? `Division ${p.division}, ${p.text}` : p.text)).join("; ");
+  const many = games.length > 1;
+  return fit(
+    [`The ${year} UIL six-man State Championship ${many ? "games" : "game"}: ${named}.`, `The ${year} UIL six-man State Championship ${many ? "games in Division I and Division II" : "game"}.`],
+    [`The champion, runner-up and score${many ? " of each" : ""}, with each school's page.`, `The champion, runner-up and score${many ? " of each" : ""}.`],
+  );
+};
+
 export const aboutRatingsDescription = () =>
   fit("What a six-man rating means: points better than an average team, the ± and rank range, games rated, the 45-point rule and forfeits.", [
     "What a six-man rating means and which games it rests on.",
