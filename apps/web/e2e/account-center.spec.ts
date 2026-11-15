@@ -280,7 +280,11 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
       const out = [...document.querySelectorAll("body *")].filter((e) => e.getBoundingClientRect().right > width + 1 && !clipped(e));
       const innermost = out.filter((e) => !out.some((o) => o !== e && e.contains(o)));
       const describe = (e: Element) => `${e.tagName.toLowerCase()}.${String(e.getAttribute("class") ?? "").slice(0, 80)} right=${Math.round(e.getBoundingClientRect().right)} "${(e.textContent ?? "").trim().slice(0, 40)}"`;
-      return { overflow: document.documentElement.scrollWidth - width, wide: innermost.slice(0, 5).map(describe) };
+      // Text wider than its own box (a long word) spills out without the box itself sticking out.
+      const spill = [...document.querySelectorAll("body *")].filter((e) => e.scrollWidth > e.clientWidth + 1 && e.clientWidth > 0 && getComputedStyle(e).overflowX === "visible" && !clipped(e));
+      const spillInner = spill.filter((e) => !spill.some((o) => o !== e && e.contains(o)));
+      const spills = spillInner.slice(0, 5).map((e) => `spill ${describe(e)} scrollWidth=${e.scrollWidth} clientWidth=${e.clientWidth}`);
+      return { overflow: document.documentElement.scrollWidth - width, wide: [...innermost.slice(0, 5).map(describe), ...spills] };
     });
     expect(overflow, wide.join("\n")).toBe(0);
   });
