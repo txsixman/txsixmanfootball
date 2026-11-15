@@ -70,16 +70,16 @@ bye). Counts by season, league and division are in the pull request; by season:
 | 2019 | 3 → 6 | 10 → 61 | 2 → 2 | 3 → 0 | 6 → 11 |
 | 2020 | 2 → 6 | 7 → 52 | 1 → 12 | 3 → 3 | 5 → 26 |
 | 2021 | 6 → 6 | 36 → 65 | 7 → 2 | 11 → 5 | 12 → 22 |
-| 2022 | 7 → 7 | 44 → 66 | 7 → 1 | 10 → 1 | 4 → 14 |
+| 2022 | 7 → 7 | 44 → 64 | 7 → 1 | 10 → 1 | 4 → 14 |
 | 2023 | 7 → 7 | 48 → 69 | 6 → 2 | 6 → 1 | 9 → 13 |
 | 2024 | 7 → 7 | 63 → 79 | 6 → 1 | 8 → 2 | 7 → 15 |
 | 2025 | 7 → 7 | 71 → 83 | 2 → 0 | 12 → 5 | 6 → 9 |
-| **All** | 42 → 52 | **290 → 533** | **34 → 23** | **56 → 18** | **52 → 121** |
+| **All** | 42 → 52 | **290 → 531** | **34 → 23** | **56 → 18** | **52 → 121** |
 
 In the 42 brackets that had rows before, proven open slots fell from 34 to 9 and late first games with a game that week
 from 56 to 16. The ten new brackets add 14 proven open slots, mostly 2020's TAPPS brackets, whose last listed week holds
 two semifinals and no State Championship game. Likely byes rise because a bracket with more of its games listed shows
-more of its byes. 243 games were added; 27 stored rounds were named again:
+more of its byes. 241 games were added; 27 stored rounds were named again:
 
 | Season | League and division | Rounds named again |
 |---|---|---|
@@ -95,7 +95,7 @@ more of its byes. 243 games were added; 27 stored rounds were named again:
 | 2023 | TAPPS I | State Championship → semifinal (1) |
 
 Partial brackets, stored rounds kept: 2018 TCAF; 2019 TAPPS II, TCAF; 2020 TAPPS I, II and III, TCAF; 2021 TAIAO 1,
-TCAF; 2022 TAPPS II. TCAF's are its two-division seasons (two State Championship games in one week).
+TCAF. TCAF's are its two-division seasons (two State Championship games in one week).
 
 ## Consequences
 - The 2018 to 2025 private brackets gain the games their listed schools' pages show, with each game's source page kept
