@@ -94,7 +94,7 @@ function Ranked({ id, title, league, rows, identities, level }: { id: string; ti
   const Heading = level === 2 ? "h2" : "h3";
   return (
     <section aria-labelledby={id} className="mt-6">
-      <Heading id={id} className={`scroll-mt-12 bg-navy px-3 py-1 font-num text-[18px] font-bold uppercase tracking-wider text-white ${level === 2 ? "sticky top-0 z-10" : ""}`}>
+      <Heading id={id} className={`scroll-mt-12 bg-band px-3 py-1 font-num text-[18px] font-bold uppercase tracking-wider text-white ${level === 2 ? "sticky top-0 z-10" : ""}`}>
         {title}
       </Heading>
       <table className="w-full border-collapse text-[15px]">
@@ -151,7 +151,7 @@ function JumpLinks({ level, regions }: { level: Level; regions: { id: string; la
 /** One region's heading over its areas and districts: sticky, so the region stays named while its tables scroll by. */
 function RegionHeading({ id, label }: { id: string; label: string }) {
   return (
-    <h2 id={id} className="sticky top-0 z-10 mt-6 scroll-mt-4 bg-navy px-3 py-1 font-num text-[18px] font-bold uppercase tracking-wider text-white">
+    <h2 id={id} className="sticky top-0 z-10 mt-6 scroll-mt-4 bg-band px-3 py-1 font-num text-[18px] font-bold uppercase tracking-wider text-white">
       {label}
     </h2>
   );

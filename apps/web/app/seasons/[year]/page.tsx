@@ -32,7 +32,7 @@ export default async function SeasonPage({ params }: Props) {
   const hub = await loadSeasonHub(Number(year));
   return (
     <EdgeToEdge>
-      <article aria-labelledby="season" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
+      <article aria-labelledby="season" className="mx-auto max-w-3xl border-line bg-page pb-6 sm:border-x">
         <Breadcrumbs trail={[{ name: "Home", href: "/" }, { name: "Seasons", href: "/seasons" }, { name: `${year} season`, href: `/seasons/${year}` }]} />
         <SeasonHubView hub={hub} />
       </article>

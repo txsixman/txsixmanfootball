@@ -21,7 +21,7 @@ export default async function SeasonsPage() {
   const hubs = await Promise.all((await hubSeasons()).map(loadSeasonHub));
   return (
     <EdgeToEdge>
-      <article aria-labelledby="seasons" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
+      <article aria-labelledby="seasons" className="mx-auto max-w-3xl border-line bg-page pb-6 sm:border-x">
         <Breadcrumbs trail={[{ name: "Home", href: "/" }, { name: "Seasons", href: "/seasons" }]} />
         <div className="px-3 pt-5">
           <PageHeader id="seasons" eyebrow="Texas six-man football" title="Seasons" note="One page for each season: the UIL state finals, the final rankings and team leaders of each organization, and every week of results." />
