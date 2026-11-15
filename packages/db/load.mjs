@@ -151,6 +151,19 @@ function withSource(text, file, publicResults) {
   return [`${header},source_url,notes`, ...rows.map((r) => `${r},${PUBLIC_SOURCE},`)].join("\n");
 }
 
+/**
+ * A past season's robot playoffs.csv keeps a private-league bracket game against a school outside our alignments, named
+ * as the source names it (ADR 0069). That school is no program, so the game stays out of the database (as its result
+ * already informs the ratings from the private outside games) and is counted, never an error. A name that IS a program
+ * but has no team-season that season still stops the import (seedGames), as any unknown team does.
+ */
+export async function withoutUnlisted(db, rows, season) {
+  if (season >= Math.min(...ALIGNMENTS.flatMap((a) => a.seasons))) return { rows, unlisted: 0 };
+  const programs = new Set((await db.query("select slug from program")).rows.map((r) => r.slug));
+  const kept = rows.filter((r) => programs.has(slugify(r.home)) && programs.has(slugify(r.away)));
+  return { rows: kept, unlisted: rows.length - kept.length };
+}
+
 /** robot playoffs.csv carries a leading league column the importer does not take. */
 const withoutLeague = (text) =>
   text.trim().split("\n").map((line) => line.slice(line.indexOf(",") + 1)).join("\n");
@@ -169,10 +182,11 @@ export async function loadAll(db, { retrievedOn, reason, publicResults = false }
   report.pastSeasons = await pastTeamSeasons(db);
   for (const g of gameFiles()) {
     const text = withSource(readFileSync(new URL(g.file, g.base), "utf8"), g.file, publicResults);
-    const rows = parseGames(g.dropLeague ? withoutLeague(text) : text);
+    const parsed = parseGames(g.dropLeague ? withoutLeague(text) : text);
+    const { rows, unlisted } = g.dropLeague ? await withoutUnlisted(db, parsed, g.season) : { rows: parsed, unlisted: 0 };
     if (!rows.length) continue;
     const { inserted, updated, unchanged, flags } = await seedGames(db, rows, { season: g.season, retrievedOn, reason });
-    report.games.push({ file: g.file, inserted, updated, unchanged, flags: flags.length });
+    report.games.push({ file: g.file, inserted, updated, unchanged, flags: flags.length, ...(unlisted && { unlisted }) });
   }
   for (const f of FINALS.filter((f) => existsSync(new URL(f.file, SEED)))) {
     const rows = parseFinals(readFileSync(new URL(f.file, SEED), "utf8"));
@@ -194,10 +208,11 @@ export async function loadSeasonGames(db, season, { retrievedOn, reason, publicR
   const report = [];
   for (const g of gameFiles().filter((f) => f.season === season)) {
     const text = withSource(readFileSync(new URL(g.file, g.base), "utf8"), g.file, publicResults);
-    const rows = parseGames(g.dropLeague ? withoutLeague(text) : text);
+    const parsed = parseGames(g.dropLeague ? withoutLeague(text) : text);
+    const { rows, unlisted } = g.dropLeague ? await withoutUnlisted(db, parsed, season) : { rows: parsed, unlisted: 0 };
     if (!rows.length) continue;
     const { inserted, updated, unchanged, flags } = await seedGames(db, rows, { season, retrievedOn, reason });
-    report.push({ file: g.file, inserted, updated, unchanged, flags: flags.length });
+    report.push({ file: g.file, inserted, updated, unchanged, flags: flags.length, ...(unlisted && { unlisted }) });
   }
   return report;
 }

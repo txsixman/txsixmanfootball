@@ -84,7 +84,20 @@ export async function seedGames(db, rows, { season, retrievedOn, reason }) {
       }
       const regular = r.round === "season";
       const key = keyOf(regular ? null : r.round, r.game_date, homeTs, awayTs);
-      const existing = stored.get(key);
+      let existing = stored.get(key);
+      // A past bracket's round named again from the whole bracket (ADR 0069): the same two teams' playoff game on the
+      // same date is that game under its new round, so it is renamed in place, never stored twice.
+      const renamed = !existing && !regular && [...stored.values()].find(
+        (g) => g.playoff_round && g.game_date === r.game_date && [g.home_ts, g.away_ts].sort().join("|") === [homeTs, awayTs].sort().join("|"),
+      );
+      if (renamed) {
+        await tx.query("update game set playoff_round = $1 where id = $2", [r.round, renamed.id]);
+        stored.delete(keyOf(renamed.playoff_round, renamed.game_date, renamed.home_ts, renamed.away_ts));
+        renamed.playoff_round = r.round;
+        stored.set(key, renamed);
+        existing = renamed;
+        result.renamed = (result.renamed ?? 0) + 1;
+      }
       if (
         existing &&
         existing.url === r.source_url &&

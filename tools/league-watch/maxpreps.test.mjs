@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, playoffsCsv, relabelRounds, UNLISTED_BRACKET_LEAGUES, unlistedBracketGames, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -103,6 +103,12 @@ test("a school whose page an alias names matches that page only, never a namesak
 test("maps MaxPreps playoff brackets to our leagues, and skips the rest", () => {
   assert.deepEqual(bracketOf("2026 UIL Texas Football State Championships ", "2026 Football 6-Man 1A D2 "), { league: "UIL", division: "II" });
   assert.deepEqual(bracketOf("TAPPS 2026 High School Football Playoff", "TAPPS 6 Man III Large School"), { league: "TAPPS", division: "III Large School" });
+  // 2018 to 2020 name the bracket "6 Man Division I" (ADR 0069).
+  assert.deepEqual(bracketOf("TAPPS 2018 High School Football Playoff", "6 Man Division II"), { league: "TAPPS", division: "II" });
+  assert.equal(bracketOf("TAPPS 2018 High School Football Playoff", "Division IV"), null);
+  // 2020 writes "6-Man II" for TAPPS and "Division 2" for TAIAO.
+  assert.deepEqual(bracketOf("TAPPS 2020 High School Football Playoff", "6-Man III"), { league: "TAPPS", division: "III" });
+  assert.deepEqual(bracketOf("TAIAO 2020 Football Championships", "Division 2"), { league: "TAIAO", division: "2" });
   assert.deepEqual(bracketOf("TAIAO 2026 Football Championships", "Division II"), { league: "TAIAO", division: "2" });
   assert.deepEqual(bracketOf("2026 TCAF Football State Championships", "TCAF"), { league: "TCAF", division: "Six-Man" });
   assert.equal(bracketOf("2026 UIL Texas Football State Championships", "2026 Football 2A D1"), null);
@@ -452,4 +458,62 @@ test("a game-day read also looks for the last 3 game nights' unscored bracket ga
   assert.match(merged.playoffs, /2026-11-12,Thu A,Thu B,,28,30,unknown/);
   assert.deepEqual(homes(dueGames(merged.playoffs, "2026-11-13")), ["Fri A", "Tonight A"]);
   assert.equal(merged.games.trim().split("\n").length, 2);
+});
+
+test("a past bracket game against a school outside our alignments is kept once, named as the source names it (ADR 0069)", () => {
+  const bySlug = new Map([["jayton", { school: "Jayton" }], ["veritas", { school: "Veritas" }]]);
+  const side = (name, url, score, slug = null, city = "Austin") => ({ name, url, city, state: "TX", score, slug });
+  const ours = (score) => side("Jayton", "https://www.maxpreps.com/tx/jayton/jayton/football/", score, "jayton", "Jayton");
+  const g = (id, home, away, date = "2021-11-26") => ({ id, date, home, away, played: true, bracket: { league: "TAPPS", division: "I" }, gameUrl: `https://www.maxpreps.com/tx/football/game/${id}/` });
+  const gone = (score, name = "Gone Academy", url = "https://www.maxpreps.com/tx/austin/gone-academy/football/") => side(name, url, score);
+  const { games, conflicts } = unlistedBracketGames(
+    [
+      g("a", ours(74), gone(46)),
+      g("b", gone(46), ours(74)), // the same game under a second id: one game
+      // A name one of our schools has gets its city, so it never reads as ours.
+      g("c", ours(30), gone(20, "Veritas", "https://www.maxpreps.com/tx/austin/veritas-academy/football/"), "2021-11-12"),
+      // Two copies that disagree on the score: left out and counted.
+      g("d", ours(10), gone(7), "2021-11-19"),
+      g("e", ours(10), gone(9), "2021-11-19"),
+    ],
+    bySlug,
+  );
+  assert.equal(conflicts, 1);
+  assert.deepEqual(games.map((x) => [x.date, x.home.label ?? x.home.slug, x.away.label ?? x.away.slug]).sort(), [
+    ["2021-11-12", "jayton", "Veritas (Austin)"],
+    ["2021-11-26", "jayton", "Gone Academy"],
+  ]);
+  const csv = playoffsCsv(games, bySlug);
+  assert.match(csv, /^TAPPS,I,final,2021-11-26,Jayton,Gone Academy,,74,46,unknown,,https:\/\/www\.maxpreps\.com\/tx\/football\/game\/a\/,$/m);
+  assert.match(csv, /,Jayton,Veritas \(Austin\),,30,20,/);
+  assert.ok(UNLISTED_BRACKET_LEAGUES.has("TCAF") && !UNLISTED_BRACKET_LEAGUES.has("UIL"));
+});
+
+test("a past reread names a whole private bracket's rounds again; a partial one, UIL's and every other cell stand (ADR 0069)", () => {
+  const head = `league,${COLUMNS}`;
+  const row = (league, division, round, date, home, away) => [league, division, round, date, home, away, "", "30", "20", "unknown", "", "https://www.maxpreps.com/tx/football/game/x/", ""].join(",");
+  const text = [
+    head,
+    // Stored from part of the bracket: a "final" one week before the real one.
+    row("TAIAO", "1", "semifinal", "2021-11-05", "A", "B"),
+    row("TAIAO", "1", "semifinal", "2021-11-05", "C", "D"),
+    row("TAIAO", "1", "final", "2021-11-12", "A", "C"),
+    row("TAIAO", "1", "final", "2021-11-12", "H", "J"),
+    row("TAIAO", "1", "final", "2021-11-20", "A", "H"),
+    // Partial: three games in its semifinal week, more than the round holds, so its stored names stand.
+    row("TAIAO", "2", "semifinal", "2021-11-05", "K", "L"),
+    row("TAIAO", "2", "semifinal", "2021-11-05", "N", "P"),
+    row("TAIAO", "2", "semifinal", "2021-11-05", "Q", "R"),
+    row("TAIAO", "2", "final", "2021-11-12", "K", "N"),
+    row("UIL", "I", "area", "2021-11-12", "F", "G"),
+  ].join("\n") + "\n";
+  const { text: out, relabeled, changes, partial } = relabelRounds(text);
+  assert.equal(relabeled, 4);
+  assert.deepEqual(out.trim().split("\n").slice(1).map((l) => l.split(",")[2]), ["quarterfinal", "quarterfinal", "semifinal", "semifinal", "final", "semifinal", "semifinal", "semifinal", "final", "area"]);
+  assert.deepEqual(changes, ["TAIAO 1: semifinal → quarterfinal (2)", "TAIAO 1: final → semifinal (2)"]);
+  assert.deepEqual(partial, ["TAIAO 2"]);
+  // Only the round changed, and a second pass changes nothing.
+  const strip = (t) => t.replace(/,(quarterfinal|semifinal|final|area),/g, ",R,");
+  assert.equal(strip(out), strip(text));
+  assert.equal(relabelRounds(out).relabeled, 0);
 });

@@ -67,6 +67,7 @@
 | [0065](../adr/0065-sites-for-every-game-a-source-places.md) | Every game a source places gets its site, played or not: a 2026 backfill from the second source's venues and TAIAO's bracket, regular-season games away from the home field, played-game pages read the facts file, and the morning read fills played games too; past seasons cannot be filled (the source serves none) | Proposed Nov 15, 2026 |
 | [0066](../adr/0066-site-street-addresses.md) | A site keeps its street line, state and ZIP (never coordinates), superseding ADR 0041's no-address clause at the owner's choice; the game page shows the address and a Directions map search, and the structured data a PostalAddress | Proposed Nov 15, 2026 |
 | [0067](../adr/0067-kickoffs-for-bracket-built-pairings.md) | The morning read also looks up kickoffs and sites for next-round pairings the bracket sets by winners before any listing has them, dated by the second source's game between the two teams; playoff pages show them | Proposed Nov 15, 2026 |
+| [0069](../adr/0069-past-private-brackets-completed.md) | A past season's TAPPS, TAIAO and TCAF brackets keep a listed school's bracket game against a school outside today's alignments, read from the listed school's own page and named as the source names it (city added on a clash); plain text on bracket pages, never in `games.csv` or the database; byes, games no listed page tags, UIL and the season under way stay as they are | Proposed Nov 15, 2026 |
 
 Not in an ADR:
 - Interviews are cut from the plan (the owner, Nov 10, 2026; see `docs/plan/v1.2-notes.md`).

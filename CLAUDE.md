@@ -45,7 +45,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   are `lib/supabase-public.ts`, shared with push). Never committed, never a rebuild; "Unconfirmed", no winner
 - `data/seed/maxpreps-<season>/`: `games.csv` (played games) and `playoffs.csv` (bracket games with league, division and
   round, for `/scores`), the facts only (ADR 0017): no `source_url` or `notes`. Published by
-  `tools/league-watch/publish.mjs` from the reader's own folder, never by hand
+  `tools/league-watch/publish.mjs` from the reader's own folder, never by hand. A past season's TAPPS, TAIAO and TCAF
+  brackets also hold games against a school outside today's alignments, named as the source names it (ADR 0069): shown
+  as plain text, never in `games.csv` or the database
 - The reader's own folders (ADR 0008, ADR 0017) live in the private repo `txsixman/data-private` as `maxpreps-<season>/`:
   `games.csv` and `playoffs.csv` with each game's source page, `outside.csv` (games against schools outside our
   alignments, only for the ratings' hidden teams; never shown), `teams.csv` (next run's starting pages), `coverage.txt`.

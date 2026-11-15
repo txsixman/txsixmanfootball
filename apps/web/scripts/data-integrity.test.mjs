@@ -41,6 +41,15 @@ test("a played playoff game must be in games.csv with the same score, either way
   assert.equal(run([], [playoff("UIL", "II", "area", "2026-11-20", "Jayton", "Kress")]).hard.length, 0);
 });
 
+test("a past bracket game against a school outside the alignments is not looked for in games.csv (ADR 0069)", () => {
+  const past = (playoffs) => checkSeason({ season: 2021, current: false, games: [], playoffs, listed: PROGRAMS, today: "2026-11-15" }).soft.join("\n");
+  assert.equal(past([playoff("TAPPS", "I", "semifinal", "2021-11-26", "Gone Academy", "Jayton", "46", "74")]), "");
+  // Two listed schools: still history's warning when games.csv lacks it.
+  assert.match(past([playoff("TAPPS", "I", "semifinal", "2021-11-26", "Guthrie", "Jayton", "46", "74")]), /playoff game not in games\.csv/);
+  // The season under way is never excused: its alignments are its own.
+  assert.match(hard(run([], [playoff("TAPPS", "I", "semifinal", "2026-11-26", "Gone Academy", "Jayton", "46", "74")], { listed: PROGRAMS })), /playoff game not in games\.csv/);
+});
+
 test("a later round's teams came out of the round before, by the score, confirmed or not", () => {
   const r1 = [playoff("UIL", "II", "bi-district", "2026-11-13", "Jayton", "Guthrie", "52", "6"), playoff("UIL", "II", "bi-district", "2026-11-13", "Kress", "Spur", "20", "30")];
   const games = r1.map((r) => ({ ...r, round: "season" }));

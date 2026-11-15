@@ -45,10 +45,11 @@ const line = (r) => `${r.game_date} ${r.away} at ${r.home}${played(r) ? ` ${r.aw
 /**
  * @param {{ season: number, current: boolean, games: object[], playoffs: object[], programs?: Set<string>, today: string }} input
  *   games: games.csv rows; playoffs: playoffs.csv rows and hand captures (each with `league`); programs: the slugs of
- *   every program in the alignments (current season only); today: YYYY-MM-DD.
+ *   every program in the alignments (current season only); listed: the same slugs for every season, so a past bracket
+ *   game against a school outside them is known as one (ADR 0069); today: YYYY-MM-DD.
  * @returns {{ hard: {key: string, text: string}[], soft: string[] }}
  */
-export function checkSeason({ season, current, games, playoffs, programs, today }) {
+export function checkSeason({ season, current, games, playoffs, programs, listed, today }) {
   const hard = [];
   const soft = [];
   const fail = (key, text) => (current ? hard.push({ key, text }) : soft.push(`${season} (history): ${text}`));
@@ -87,9 +88,12 @@ export function checkSeason({ season, current, games, playoffs, programs, today 
   }
   for (const [k, rows] of byTeamDate) if (rows.length > 1) failEvery(`two-games ${k}`, `${k.split(" ")[1]} has ${rows.length} games on ${rows[0].game_date}: ${rows.map(line).join("; ")}`);
 
-  // Every played playoff game is in games.csv with the same score.
+  // Every played playoff game is in games.csv with the same score. A past season's bracket game against a school outside
+  // our alignments (ADR 0069) never is: games.csv holds games between listed schools, and that result is an outside game.
   const inGames = new Map(games.map((r) => [gameKey(r), r]));
+  const againstUnlisted = (r) => !current && listed && ![r.home, r.away].every((t) => listed.has(slugify(t)));
   for (const r of playoffs.filter(played)) {
+    if (againstUnlisted(r)) continue;
     const g = inGames.get(gameKey(r));
     if (!g) {
       fail(`playoff-missing ${gameKey(r)}`, `playoff game not in games.csv: ${line(r)}`);

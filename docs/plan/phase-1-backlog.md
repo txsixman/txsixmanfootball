@@ -22,7 +22,8 @@ About 72 hours. At 10 hours a week the phase has about 100.
 - **Missing private-league bracket games**: some TAPPS, TAIAO and TCAF playoff games of past seasons are not in the
   playoff files (for example San Marcos Academy's 2021 TAPPS Division I games), because a past season reads only the
   schools in today's alignments. Find them from the schedule pages of the schools that are listed, with the bracket's
-  later rounds as the check.
+  later rounds as the check. **Done Nov 15, 2026 (ADR 0069)**: 2018 to 2025 reread; a listed school's bracket game
+  against an unlisted school is kept, named as the source names it. Left: TCAF's two-division seasons read as one bracket.
 - **Same pair and score, more than 2 days apart**: five likely copies the duplicate rule (2 days) does not catch
   (2018 Veribest at Bronte, 2019 McLean and White Deer, 2021 Rule at Throckmorton, 2024 Abbott and Aquilla, 2025 Ira at
   Robert Lee). Each needs a reviewed void with evidence, not a wider rule.

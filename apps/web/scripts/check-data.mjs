@@ -215,7 +215,7 @@ export function checkIntegrity(today = new Date().toISOString().slice(0, 10)) {
     warnings.push(...voidedButScored(robotRows, fixes, `maxpreps-${season}/playoffs.csv`));
     const robot = fixed(robotRows).filter((r) => !seen.has(gameKey(r)));
     const current = season === CURRENT_SEASON;
-    const out = checkSeason({ season, current, games, playoffs: [...captured, ...robot], programs: current ? programs : undefined, today });
+    const out = checkSeason({ season, current, games, playoffs: [...captured, ...robot], programs: current ? programs : undefined, listed: programs, today });
     hard.push(...out.hard);
     warnings.push(...out.soft);
     if (current) hard.push(...checkBrackets(season, [...captured, ...robot], alignments, read));

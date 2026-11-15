@@ -118,3 +118,14 @@ test("a 0-0 final is no score: a file row loads unplayed, and one stored by an e
   assert.deepEqual(await at("2026-10-31"), [{ status: "final", home_score: 7, away_score: 7, end_reason: "unknown" }]);
   assert.deepEqual(await at("2026-11-01"), [{ status: "final", home_score: 0, away_score: 0, end_reason: "forfeit" }]);
 });
+
+test("a playoff game whose round is named again keeps its row: renamed in place, never stored twice (ADR 0069)", async () => {
+  await seedGames(db, parseGames(csv(`I,semifinal,2026-11-27,Alpha,Beta,,40,30,unknown,,${SRC},`)), opts);
+  const count = (await game()).length;
+  const result = await seedGames(db, parseGames(csv(`I,quarterfinal,2026-11-27,Beta,Alpha,,30,40,unknown,,${SRC},`)), opts);
+  assert.equal(result.renamed, 1);
+  assert.equal(result.inserted, 0);
+  const rows = await game();
+  assert.equal(rows.length, count);
+  assert.deepEqual(rows.filter((g) => g.game_date.toISOString?.().startsWith("2026-11-27") ?? String(g.game_date).startsWith("2026-11-27")).map((g) => g.playoff_round), ["quarterfinal"]);
+});

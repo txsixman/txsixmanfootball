@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
-import { loadAll, loadSeasonGames } from "../load.mjs";
+import { loadAll, loadSeasonGames, withoutUnlisted } from "../load.mjs";
 import { seedAlignments } from "../seed.mjs";
 
 // The whole repo load the hosted database gets, run on a throwaway database: every team in every game file must exist.
@@ -98,4 +98,17 @@ test("one season's games (Results watch, ADR 0031): after the full load it chang
   await loadSeasonGames(db, 2026, opts);
   assert.equal(await count(), withExtra);
   assert.ok(withExtra >= before);
+});
+
+test("a past bracket game against a school that is no program is left out and counted; this season's never is (ADR 0069)", async () => {
+  const db = new PGlite();
+  await db.exec("create table program (slug text); insert into program values ('jayton'), ('guthrie');");
+  const rows = [
+    { home: "Jayton", away: "Guthrie" },
+    { home: "Gone Academy", away: "Jayton" },
+  ];
+  const past = await withoutUnlisted(db, rows, 2021);
+  assert.deepEqual(past, { rows: [rows[0]], unlisted: 1 });
+  // The season under way keeps every row, so an unknown team there still stops the import.
+  assert.deepEqual(await withoutUnlisted(db, rows, 2026), { rows, unlisted: 0 });
 });

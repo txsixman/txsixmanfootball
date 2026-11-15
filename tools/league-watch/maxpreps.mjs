@@ -252,8 +252,8 @@ export function bracketOf(tournament = "", bracket = "") {
   const roman = { I: "1", II: "2", III: "3", IV: "4" };
   let m;
   if (/\bUIL\b/.test(t) && (m = b.match(/6-Man 1A D([12])$/))) return { league: "UIL", division: m[1] === "1" ? "I" : "II" };
-  if (/\bTAPPS\b/.test(t) && (m = b.match(/6 Man (I{1,3}|IV)\b(.*)$/))) return { league: "TAPPS", division: `${m[1]}${m[2]}`.trim() };
-  if (/\bTAIAO\b/.test(t) && (m = b.match(/^Division (I{1,3})$/))) return { league: "TAIAO", division: roman[m[1]] };
+  if (/\bTAPPS\b/.test(t) && (m = b.match(/6[ -]Man (?:Division )?(I{1,3}|IV)\b(.*)$/))) return { league: "TAPPS", division: `${m[1]}${m[2]}`.trim() };
+  if (/\bTAIAO\b/.test(t) && (m = b.match(/^Division (I{1,3}|[1-3])$/))) return { league: "TAIAO", division: roman[m[1]] ?? m[1] };
   if (/\bTCAF\b/.test(t)) return { league: "TCAF", division: "Six-Man" };
   return null;
 }
@@ -277,21 +277,110 @@ export function roundName(league, index, rounds) {
   return fromEnd === 2 ? "quarterfinal" : `round-${index + 1}`;
 }
 
-export function playoffsCsv(games, bySlug) {
-  const weeks = new Map();
-  for (const g of games) {
-    const key = `${g.bracket.league}|${g.bracket.division}`;
-    weeks.set(key, [...new Set([...(weeks.get(key) ?? []), weekOf(g.date)])].sort());
+/** The leagues whose past brackets keep a game against a school outside our alignments (ADR 0069). */
+export const UNLISTED_BRACKET_LEAGUES = new Set(["TAPPS", "TAIAO", "TCAF"]);
+
+/**
+ * A past season's private-league bracket games between one of our schools and one outside our alignments (ADR 0069): a
+ * school that has since closed, left six-man or left the league, read from our school's own schedule page. Each is kept
+ * once (the same date, our school and their page), its other side named as the source names it, plus its city when that
+ * name is one of our schools' or another unlisted team's (two pages, one name), so it never reads as a listed school.
+ * Commas and quotes are dropped from a name (the files are plain comma-joined cells). Copies that disagree on the score
+ * are left out and counted. Returns the games in playoffsCsv's shape (`label` names the unlisted side) and the conflicts.
+ */
+export function unlistedBracketGames(found, bySlug) {
+  const clean = (s) => s.replace(/[",]/g, " ").replace(/\s+/g, " ").trim();
+  const pages = new Map(); // unlisted page -> its team
+  for (const g of found) {
+    const theirs = g.home.slug ? g.away : g.home;
+    pages.set(theirs.url, theirs);
   }
+  const byName = Map.groupBy([...pages.values()], (t) => slugify(clean(t.name)));
+  const label = new Map(
+    [...pages.values()].map((t) => {
+      const plain = clean(t.name);
+      const clash = bySlug.has(slugify(plain)) || byName.get(slugify(plain)).length > 1;
+      return [t.url, clash ? `${plain} (${clean(t.city)})` : plain];
+    }),
+  );
+  const groups = Map.groupBy(found, (g) => {
+    const ours = g.home.slug ? g.home : g.away;
+    return [g.date, ours.slug, (ours === g.home ? g.away : g.home).url].join("|");
+  });
+  const games = [];
+  let conflicts = 0;
+  for (const copies of groups.values()) {
+    const played = copies.filter((g) => g.played);
+    if (new Set(played.map((g) => [`${g.home.url}:${g.home.score}`, `${g.away.url}:${g.away.score}`].sort().join("|"))).size > 1) {
+      conflicts++;
+      continue;
+    }
+    const g = played[0] ?? copies[0];
+    const side = (t) => (t.slug ? t : { ...t, slug: slugify(label.get(t.url)), label: label.get(t.url) });
+    games.push({ ...g, home: side(g.home), away: side(g.away) });
+  }
+  return { games, conflicts };
+}
+
+/** Each game's round from its whole bracket (`{ league, division, date }` each), in the order given (roundName). */
+export function roundsFor(list) {
+  const key = (x) => `${x.league}|${x.division}`;
+  const weeks = new Map();
+  for (const x of list) weeks.set(key(x), [...new Set([...(weeks.get(key(x)) ?? []), weekOf(x.date)])].sort());
+  return list.map((x) => {
+    const own = weeks.get(key(x));
+    const firstWeek = list.filter((y) => key(y) === key(x) && weekOf(y.date) === own[0]).length;
+    return roundName(x.league, own.indexOf(weekOf(x.date)), Math.max(own.length, Math.ceil(Math.log2(2 * firstWeek))));
+  });
+}
+
+/**
+ * A past season read in full (`--reread`) names every stored TAPPS, TAIAO and TCAF playoffs.csv row's round again from its whole stored bracket
+ * (ADR 0069). A round is this reader's own inference from the game weeks, never a fact the source gives, and an earlier
+ * read that saw part of a bracket named it a week off (a "final" a week before the real one). Only the round changes:
+ * teams, scores, dates and sources stand. Returns the text and how many rows changed round.
+ */
+export function relabelRounds(text) {
+  const { header, cols, rows } = parseCsv(text, "playoffs.csv");
+  if (!rows.length) return { text, relabeled: 0, changes: [], partial: [] };
+  const rounds = roundsFor(rows.map((r) => ({ league: r.league, division: r.division, date: r.game_date })));
+  const bracketOfRow = (r) => `${r.league} ${r.division}`;
+  // Only a consistent bracket is named again: one final, in its last week, and no round with more games than it can hold
+  // (2^k games k rounds before the final). A round with fewer games is a game no listed school's page shows, which leaves
+  // the structure as it is. Any other bracket keeps its stored names and is reported.
+  const partial = [];
+  for (const [bracket, idx] of Map.groupBy(rows.map((_, i) => i).filter((i) => UNLISTED_BRACKET_LEAGUES.has(rows[i].league)), (i) => bracketOfRow(rows[i]))) {
+    const count = (round) => idx.filter((i) => rounds[i] === round).length;
+    // With a final in its last week, a bracket has one round a week, so a round's place from the end is its week's.
+    const weeks = [...new Set(idx.map((i) => weekOf(rows[i].game_date)))].sort();
+    const fits = count("final") === 1 &&
+      weeks.every((w, j) => idx.filter((i) => weekOf(rows[i].game_date) === w).length <= 2 ** (weeks.length - 1 - j));
+    if (!fits) partial.push(bracket);
+  }
+  const changes = new Map(); // "league division from → to" -> games
+  let relabeled = 0;
+  const out = rows.map((r, i) => {
+    // UIL's past brackets are out of scope, and a partial bracket keeps its stored names: their rounds stand.
+    const round = UNLISTED_BRACKET_LEAGUES.has(r.league) && !partial.includes(bracketOfRow(r)) ? rounds[i] : r.round;
+    if (r.round !== round) {
+      relabeled++;
+      const k = `${bracketOfRow(r)}: ${r.round} → ${round}`;
+      changes.set(k, (changes.get(k) ?? 0) + 1);
+    }
+    return cols.map((c) => (c === "round" ? round : r[c])).join(",");
+  });
+  return { text: [header, ...out].join("\n") + "\n", relabeled, changes: [...changes].map(([k, n]) => `${k} (${n})`), partial };
+}
+
+export function playoffsCsv(games, bySlug) {
+  // An unlisted side (ADR 0069) carries its own name; every other team is named as our alignments name it.
+  const nameOf = (t) => t.label ?? bySlug.get(t.slug).school;
+  const rounds = roundsFor(games.map((g) => ({ league: g.bracket.league, division: g.bracket.division, date: g.date })));
   const rows = games
-    .map((g) => {
-      const key = `${g.bracket.league}|${g.bracket.division}`;
-      const list = weeks.get(key);
-      const firstWeek = games.filter((x) => `${x.bracket.league}|${x.bracket.division}` === key && weekOf(x.date) === list[0]).length;
-      const rounds = Math.max(list.length, Math.ceil(Math.log2(2 * firstWeek)));
-      const round = roundName(g.bracket.league, list.indexOf(weekOf(g.date)), rounds);
+    .map((g, i) => {
+      const round = rounds[i];
       return [
-        g.bracket.league, g.bracket.division, round, g.date, bySlug.get(g.home.slug).school, bySlug.get(g.away.slug).school,
+        g.bracket.league, g.bracket.division, round, g.date, nameOf(g.home), nameOf(g.away),
         "", g.played ? g.home.score : "", g.played ? g.away.score : "", g.played ? "unknown" : "", "", g.gameUrl ?? g.source, "",
       ];
     })
@@ -478,6 +567,7 @@ async function main() {
   const readPages = new Set();
   const outside = new Map(); // opponents not in our alignments, with how many games
   const outsideGames = new Map(); // played games of one of our schools against one that is not, for the ratings
+  const unlistedFound = []; // past private-league bracket games against a school outside our alignments (ADR 0069)
   let pages = 0;
   // A past season (read with --season) skips a played game whose other team MaxPreps no longer lists, and counts it.
   let unnamed = 0;
@@ -510,6 +600,10 @@ async function main() {
         }
         const both = g.home.slug && g.away.slug;
         if (!both && (g.home.slug || g.away.slug) && g.played && !outsideGames.has(g.id)) outsideGames.set(g.id, { ...g, source: page.url });
+        // A past season's private-league bracket game against a school no longer in our alignments (ADR 0069).
+        if (!both && (g.home.slug || g.away.slug) && g.bracket && UNLISTED_BRACKET_LEAGUES.has(g.bracket.league) && SEASON < DEFAULT_SEASON) {
+          unlistedFound.push({ ...g, source: page.url });
+        }
         if (both && !games.has(g.id)) games.set(g.id, { ...g, source: page.url });
         // A playoff game is kept once it has a bracket, even if the first page that listed it had none.
         if (both && g.bracket) games.set(g.id, { ...games.get(g.id), bracket: g.bracket });
@@ -549,12 +643,26 @@ async function main() {
   // A targeted read names playoff rounds from the whole stored bracket, its own games laid over it.
   const bracket = new Map(full ? [] : parseCsv(stored("playoffs.csv"), "playoffs.csv").rows.filter((r) => bySlug.has(slugify(r.home)) && bySlug.has(slugify(r.away))).map((r) => [rowKey(r), storedBracketGame(r)]));
   for (const g of kept.filter((g) => g.bracket)) bracket.set([g.date, ...[g.home.slug, g.away.slug].sort()].join("|"), g);
+  const unlisted = unlistedBracketGames(unlistedFound.filter((g) => !isElevenMan(g, football)), bySlug);
+  for (const g of unlisted.games) {
+    g.date = movedDate(moves, g.date, g.home.slug, g.away.slug);
+    const key = [g.date, ...[g.home.slug, g.away.slug].sort()].join("|");
+    if (!bracket.has(key)) bracket.set(key, g);
+  }
   let pending = readPending(stored(PENDING_FILE));
   const changes = [];
   const storeLines = [];
   const counted = {};
   for (const [name, fresh] of [["games.csv", toCsv(kept, bySlug)], ["playoffs.csv", playoffsCsv([...bracket.values()], bySlug)]]) {
     const m = mergeStored({ file: name, stored: stored(name), fresh, pending, readTeam, now });
+    // A past season read in full names its stored bracket rounds again from the whole bracket (ADR 0069).
+    if (name === "playoffs.csv" && full && SEASON < DEFAULT_SEASON) {
+      // Counts by league, division and round only: never a school (the summary is public).
+      const r = relabelRounds(m.text);
+      m.text = r.text;
+      storeLines.push(`playoffs.csv: ${r.relabeled} rounds named again from the whole bracket (ADR 0069)${r.changes.length ? `: ${r.changes.join("; ")}` : ""}.`);
+      if (r.partial.length) storeLines.push(`playoffs.csv: partial brackets, stored rounds kept (ADR 0069): ${r.partial.join("; ")}.`);
+    }
     writeFileSync(path.join(OUT, name), m.text);
     pending = m.pending;
     changes.push(...m.changes);
@@ -593,6 +701,7 @@ async function main() {
       `${kept.filter((g) => g.played).length} played games between schools in our alignments on this read; ${parseCsv(counted["games.csv"]).rows.length} in the store.`,
       ...storeLines,
       `${outsideRows.count} played games against opponents outside them, in outside.csv (the ratings' hidden teams; ${outsideRows.conflicts} listed twice with different scores, left out).`,
+      ...(SEASON < DEFAULT_SEASON ? [`${unlisted.games.length} private-league bracket games against a school outside our alignments, in playoffs.csv (ADR 0069; ${unlisted.conflicts} listed twice with different scores, left out).`] : []),
       ...(elevenGames ? [`${elevenGames} played 11-man games between schools in our alignments left out (and their games against others). Schools with no six-man game this season, their page's division: ${elevenPages.map(([url, f]) => `${namesOf(url)[0] ?? url} (${f.name})`).sort().join("; ")}.`] : []),
       ...(unnamed ? [`${unnamed} played game sides skipped: the other team is no longer listed on MaxPreps (no name or page).`] : []),
       `${reached.size} of ${bySlug.size} schools reached. Not reached (${missing.length}):`,
