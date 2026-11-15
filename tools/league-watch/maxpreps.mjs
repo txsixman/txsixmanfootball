@@ -329,8 +329,14 @@ export function roundsFor(list) {
   for (const x of list) weeks.set(key(x), [...new Set([...(weeks.get(key(x)) ?? []), weekOf(x.date)])].sort());
   return list.map((x) => {
     const own = weeks.get(key(x));
-    const firstWeek = list.filter((y) => key(y) === key(x) && weekOf(y.date) === own[0]).length;
-    return roundName(x.league, own.indexOf(weekOf(x.date)), Math.max(own.length, Math.ceil(Math.log2(2 * firstWeek))));
+    const inWeek = (w) => list.filter((y) => key(y) === key(x) && weekOf(y.date) === w).length;
+    // A round holds at most 2^k games k rounds before the final. The first week's count sets how many rounds came before
+    // it, for every league. In TAPPS and TAIAO a last week with more than one game is semifinals, not a final (a past
+    // bracket whose State Championship no listed page shows, ADR 0069). TCAF's two-division seasons play two State
+    // Championship games in one week under one bracket, so TCAF's last week is not checked.
+    const need = (j) => j + Math.ceil(Math.log2(2 * inWeek(own[j])));
+    const last = ["TAPPS", "TAIAO"].includes(x.league) ? [need(own.length - 1)] : [];
+    return roundName(x.league, own.indexOf(weekOf(x.date)), Math.max(own.length, need(0), ...last));
   });
 }
 

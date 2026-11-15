@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, playoffsCsv, relabelRounds, UNLISTED_BRACKET_LEAGUES, unlistedBracketGames, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
+import { ALIASES, ALLOWED, bracketOf, canaryProblems, centralDate, COLUMNS, dueGames, footballOf, gameNight, inProgressShape, isElevenMan, liveRows, loadAlignments, match, mergeTonight, OUTSIDE_COLUMNS, outsideCsv, parseSchedule, PERIOD_INDEX, periodText, playoffsCsv, relabelRounds, roundsFor, UNLISTED_BRACKET_LEAGUES, unlistedBracketGames, requirePrivateData, roundName, scheduleUrl, seasonSegment, slugify, teamPage, toCsv, tonightsGames } from "./maxpreps.mjs";
 
 // The positional shape MaxPreps used on Nov 10, 2026, with invented schools (ADR 0008).
 function team({ name, homeAway, score = null, result = null, contestId = "c1" }) {
@@ -516,4 +516,18 @@ test("a past reread names a whole private bracket's rounds again; a partial one,
   const strip = (t) => t.replace(/,(quarterfinal|semifinal|final|area),/g, ",R,");
   assert.equal(strip(out), strip(text));
   assert.equal(relabelRounds(out).relabeled, 0);
+});
+
+test("a private bracket week with more games than its round holds is an earlier round (ADR 0069)", () => {
+  // 2020 TAPPS I: two games in the last listed week are semifinals, not two State Championship games.
+  const tapps = ["2020-11-20", "2020-11-21", "2020-11-27", "2020-12-04", "2020-12-05"].map((date) => ({ league: "TAPPS", division: "I", date }));
+  assert.deepEqual(roundsFor(tapps), ["round-1", "round-1", "quarterfinal", "semifinal", "semifinal"]);
+  // TCAF's two-division seasons: two State Championship games in one week stay finals.
+  const tcaf = ["2019-11-08", "2019-11-15", "2019-11-15", "2019-11-23", "2019-11-23"].map((date) => ({ league: "TCAF", division: "Six-Man", date }));
+  assert.deepEqual(roundsFor(tcaf), ["quarterfinal", "semifinal", "semifinal", "final", "final"]);
+  // A bracket that fits is named as before, and UIL checks only its first week.
+  const fits = ["2021-11-19", "2021-11-19", "2021-11-26", "2021-12-03"].map((date) => ({ league: "TAIAO", division: "1", date }));
+  assert.deepEqual(roundsFor(fits), ["quarterfinal", "quarterfinal", "semifinal", "final"]);
+  const uil = ["2021-11-12", "2021-11-19", "2021-11-19", "2021-11-19"].map((date) => ({ league: "UIL", division: "1A-1", date }));
+  assert.deepEqual(roundsFor(uil), ["semifinal", "state", "state", "state"]);
 });

@@ -20,7 +20,7 @@ again.
 1. **The lead is our school's own page.** A past season's read keeps a TAPPS, TAIAO or TCAF bracket game (one MaxPreps
    lists as a playoff in that league's six-man bracket) between one of our schools and a school outside our alignments.
    It is read from our school's schedule page, the only page the reader reads for it. No new source and no new kind of
-   page.
+   page. The bracket name is matched in each season's spelling ("6 Man Division II", "6-Man II"; TAIAO "Division 2").
 2. **The other team is named as the source names it.** If that name is one of our schools' names, or two unlisted pages
    share it, the city is added ("Veritas (Austin)"), so it never reads as a listed school. Commas and quotes are dropped.
    Two copies of one game that disagree on the score are left out and counted in `coverage.txt`.
@@ -30,9 +30,15 @@ again.
 4. **Rounds are named again from the whole bracket.** On a past season's full `--reread` only, and for TAPPS, TAIAO and
    TCAF only, every stored row's round is named again from its whole stored bracket (`relabelRounds`). A round is the
    reader's own inference from the game weeks, never a fact the source gives. Earlier reads saw only part of a bracket and
-   named some rounds a week off: in 2021, TAIAO 1, TAIAO 2 and TAPPS II each had a stored "final" a week before the real
-   final. The database load renames that game in place, matched by date and both teams, so it is never stored twice.
-   UIL's rounds and the season under way's rounds are not touched.
+   named some rounds a week off: in 2021, TAIAO 2 and TAPPS II each had a game stored in the last round a week before the
+   State Championship. A bracket is named again only when it is complete and consistent: exactly one State Championship
+   game, and no week with more games than its round can hold (one in the last week, two the week before, four before
+   that). A partial bracket keeps its stored rounds and is listed in the run summary. A new row's round comes from the
+   same weeks: in TAPPS and TAIAO a last listed week with two games is semifinals whose State Championship no listed page
+   shows (2020 TAPPS I), never two State Championship games. TCAF's two-division seasons do play two in one week. The database load renames that game
+   in place, matched by date and both teams, so it is never stored twice. A past game's page is by date
+   (`<date>-<away>-at-<home>`), never by round, so no page moves (tests: `past-game-pages.test.mjs`,
+   `e2e/past-playoff-links.spec.ts`). UIL's rounds and the season under way's rounds are not touched.
 5. **Where they show, and where they do not.** Bracket pages already show a team missing from today's alignments as plain
    text, with no link and no crest. The game is not added to `games.csv`: that file holds games between listed schools,
    and the result already informs the ratings from `outside.csv`. The database load leaves out a past playoff row naming a
@@ -56,7 +62,7 @@ bracket's first week. Counts are by season, league and division, before and afte
 
 ## Consequences
 - The 2018 to 2025 private brackets gain the games their listed schools' pages show, with each game's source page kept
-  privately. A past season is reread once with `--reread`. The pages are read politely, 2.5 seconds apart, about 12 minutes
+  privately. A past season is reread once with `--reread`. The pages are read politely, 2.5 seconds apart, about 25 minutes
   a season.
 - Champions and finalists that have since left our alignments appear by name in their brackets, unlinked.
 - The added games do not move the ratings: their results were already hidden-team games. A renamed round can. A game
