@@ -68,12 +68,12 @@ test("an opt-in is refused for a team not followed, a bad slug, a bad kind, a si
   await assert.rejects(d.query("select * from email_my_settings()"), /not signed in/);
   await as(d, "anon");
   await assert.rejects(d.query("select email_set_optins('game_alerts', '{*}')"), /permission denied/);
-  // 15 and 18 years back are not certain adults; 19 is.
+  // 18 or older by birth year (ADR 0056): 15 and 17 years back are refused; 18 is eligible.
   const kid = await fan(d, "Kid", { age: 15, follows: ["alpha"] });
-  const eighteen = await fan(d, "Eighteen", { age: 18, follows: ["alpha"] });
-  const adult = await fan(d, "Nineteen", { age: 19, follows: ["alpha"] });
+  const seventeen = await fan(d, "Seventeen", { age: 17, follows: ["alpha"] });
+  const adult = await fan(d, "Eighteen", { age: 18, follows: ["alpha"] });
   await assert.rejects(optIn(d, kid, ["*"]), /not available/);
-  await assert.rejects(optIn(d, eighteen, ["*"]), /not available/);
+  await assert.rejects(optIn(d, seventeen, ["*"]), /not available/);
   await optIn(d, adult, ["*"]);
   assert.equal((await settings(d, kid))[0].eligible, false);
   await sudo(d, "update profile set banned = true where user_id = $1", [adult]);

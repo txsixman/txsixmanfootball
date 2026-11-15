@@ -39,21 +39,15 @@ is how it works and what the owner sets up. A weekly digest builds on the same p
 5. The run summary lists counts. It never prints an address, name, id or Resend's error text.
 
 ## Owner setup, in order
-0. **Your word on the age rule.** Email alerts are for accounts whose birth year is at least 19 years back (certainly 18 or older),
-   because ADR 0018 keeps minors' data from third parties and an address sent to Resend is that. Say yes, or say 18 (one number in
-   `email_adult()`), before anything is switched on. It is waiting on you.
-Nothing sends until all of this is done, and the age rule (step 0) is waiting on your word. Until then the job succeeds and its summary says what is missing.
-1. **Resend:** make an account at resend.com, add the sending domain `txsixmanfootball.com` (Domains, Add domain, region US East).
-2. **DNS** (the domain's DNS is on the owner's Cloudflare account, ADR 0014; Resend shows the exact values to paste, these are the records it asks for):
-   - SPF: a TXT on `send` (Resend's return-path subdomain) as shown, plus an MX on `send` for bounces;
-   - DKIM: the TXT `resend._domainkey` Resend shows;
-   - DMARC: a TXT `_dmarc` such as `v=DMARC1; p=none; rua=mailto:contact@txsixmanfootball.com` (start with `p=none`, tighten later).
-   If the domain already has an SPF or DMARC record for another sender, merge into it rather than adding a second one (two SPF records
-   break both). The repo does not record what the domain's DNS holds today (not checked here). Wait for Resend to show Verified.
-3. **API key:** Resend, API Keys, create one with "Sending access" for that domain only. Do not paste it anywhere but the next step.
+Nothing sends until all of this is done. Until then the job succeeds and its summary says what is missing.
+1. **Resend:** done (Nov 14): `txsixmanfootball.com` is added to Resend.
+2. **DNS:** done (Nov 14) on the owner's Cloudflare account (ADR 0014): DKIM `resend._domainkey`, the `send` and `rsend` records Resend
+   asked for, and DMARC `p=none`. Wait for Resend to show the domain Verified before step 7.
+3. **API key:** Resend, API Keys, create a NEW one for this job, with "Sending access" for that domain only. Not the "80x40 Supabase"
+   key: that one is Supabase's SMTP key only. Do not paste it anywhere but the next step.
 4. **Repo secrets and variables** (GitHub, Settings, Secrets and variables, Actions; or `gh`):
    - `gh secret set RESEND_API_KEY -R txsixman/txsixmanfootball` (type the key at the hidden prompt);
-   - `EMAIL_FROM` variable: `gh variable set EMAIL_FROM -R txsixman/txsixmanfootball --body "TX Six-Man Football <alerts@txsixmanfootball.com>"`.
+   - `EMAIL_FROM` variable: `gh variable set EMAIL_FROM -R txsixman/txsixmanfootball --body "TX Six-Man Football <no-reply@txsixmanfootball.com>"` (the same sender as the sign-in emails).
 5. **The sender's database role.** Migration 0022 (applied by the Supabase workflow after the merge) creates `email_sender` with no
    login. In the Supabase SQL editor run `alter role email_sender with login password '<a long random password>';` then
    `gh secret set EMAIL_DB_PASSWORD -R txsixman/txsixmanfootball` with the same password. If the pooler refuses the role, tell the
@@ -65,6 +59,5 @@ Nothing sends until all of this is done, and the age rule (step 0) is waiting on
 8. Send yourself one: opt in on `/account` with an adult account that follows a team playing tonight; the next kickoff or final emails you.
 
 ## Checks that belong to the owner
-- The age rule (adults only, ADR 0053 point 2; waiting on Brady's word) and the `/privacy` sentence about the email service.
-- A postal address in the footer is required of commercial email in the US; these are alerts a fan asked for, not marketing, but the
-  owner decides whether to add one before the weekly digest.
+- The `/privacy` sentence about the email service (the age rule is set: 18 or older by birth year, ADR 0056).
+- The weekly digest carries a postal address in its footer (the owner's decision of 2026-11-15); see the digest's setup.

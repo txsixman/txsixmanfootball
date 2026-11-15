@@ -75,11 +75,12 @@ create table email_game_event (
 alter table email_game_event enable row level security;
 comment on table email_game_event is 'Game events the email sender has seen, once each (kickoff, final, next-round game). Public facts only.';
 
--- An adult, for sure: a birth year gives an age within a year, and no minor's data goes to a third party (ADR 0018), so
--- only a birth year at least 19 years back counts (Central time, as create_profile does). Not callable by the API roles.
+-- 18 or older by birth year (ADR 0056, the owner's decision of 2026-11-15): a birth year at least 18 years back (Central time,
+-- as create_profile does). A birth year gives an age within a year, so some 17-year-olds pass; ADR 0056 accepts that for
+-- email, relaxing ADR 0018's no-minor-data-to-a-third-party line there only. Not callable by the API roles.
 create function email_adult(p_birth_year int) returns boolean
 language sql stable as $$
-  select p_birth_year is not null and extract(year from now() at time zone 'America/Chicago')::int - p_birth_year >= 19
+  select p_birth_year is not null and extract(year from now() at time zone 'America/Chicago')::int - p_birth_year >= 18
 $$;
 revoke all on function email_adult(int) from public;
 

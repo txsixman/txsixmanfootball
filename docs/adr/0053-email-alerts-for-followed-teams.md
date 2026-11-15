@@ -1,7 +1,7 @@
 # ADR 0053: Email alerts for followed teams
 
-**Status:** Proposed Nov 14, 2026; accepted when its pull request is merged. The age rule (point 2, 19 years back) is waiting on
-Brady's word, and nothing should be switched on until he has given it.
+**Status:** Proposed Nov 14, 2026; accepted when its pull request is merged. Point 2's age rule is set by ADR 0056 (18 or older by
+birth year, the owner's decision of 2026-11-15).
 
 ## Context
 - Signed-in fans follow teams on their account (migration 0012). Push alerts (ADR 0021's sender, `tools/push`) reach one browser
@@ -17,10 +17,9 @@ Brady's word, and nothing should be switched on until he has given it.
    - `email_optin (user_id, kind, program_slug)`; `kind` is the enum `email_kind` (`game_alerts`, `weekly_digest`); `program_slug`
      `'*'` means every followed team. The digest reuses the table, the functions and the unsubscribe as they are.
    - The site reaches it only through `email_my_settings()` and `email_set_optins(kind, slugs)`, acting on `auth.uid()`'s own rows.
-2. **Adults only (waiting on Brady's word).** ADR 0018 keeps any minor's data from third parties, and an email address
-   sent to an email service is that. A birth year gives an age within a year, so an account is eligible only when its birth year
-   is at least 19 years back (Central time): certainly 18 or older. Younger and unsure accounts see "not available for this
-   account", and the database refuses their opt-in and never selects them. Relaxing it to 18 is one number in `email_adult()`.
+2. **Adults only, by birth year (ADR 0056).** An account is eligible when its birth year is at least 18 years back (Central
+   time). Other accounts see "not available for this account", and the database refuses their opt-in and never selects them.
+   ADR 0056 records why, and that some 17-year-olds pass.
 3. **Which emails:** a kickoff (from the listed kickoff time, for three hours, while the game has no final), a final (a confirmed
    score, ADR 0040: not disputed, never a forfeit or 0-0), and the next-round game once the bracket gives it both teams
    (`lib/bracket-fill.ts`, ADR 0047, listed by a site yet or not). Plain alerts: the facts and a link to the team's page. No
