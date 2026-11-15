@@ -70,6 +70,19 @@ test("a known home field (ADR 0064) is the place by name, and home and away are 
   assert.equal(e.homeTeam.name, "Jayton");
 });
 
+test("a site with a street address (ADR 0066) is a Place with a PostalAddress; never coordinates", () => {
+  const address = { street: "1200 FM 1188 - Gate #2", city: "Jayton", state: "TX", zip: "79528" };
+  const e = valid(ld.gameJsonLd(game({ venue: "Jaybird Stadium, Jayton (home)", address }), { url }));
+  assert.deepEqual(e.location, {
+    "@type": "Place", name: "Jaybird Stadium, Jayton",
+    address: { "@type": "PostalAddress", streetAddress: "1200 FM 1188, Gate #2", addressLocality: "Jayton", addressRegion: "TX", postalCode: "79528", addressCountry: "US" },
+  });
+  assert.doesNotMatch(JSON.stringify(e), /latitude|longitude|geo/);
+  const bare = valid(ld.gameJsonLd(game({ venue: "Findlay Field, Menard", address: { street: "1 Main St", city: "", state: "", zip: "" } }), { url }));
+  assert.deepEqual(bare.location.address, { "@type": "PostalAddress", streetAddress: "1 Main St", addressCountry: "US" });
+  assert.equal("address" in valid(ld.gameJsonLd(game({ venue: "Site not listed yet", address }), { url })), false, "no place, no address");
+});
+
 test("a site not listed is left out, never guessed", () => {
   for (const venue of ["Site not listed", "Site not listed yet", "Neutral site or not listed", "Neutral site"]) {
     const e = valid(ld.gameJsonLd(game({ venue }), { url }));

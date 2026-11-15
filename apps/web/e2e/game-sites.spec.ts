@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import path from "node:path";
 import { noLiveScores } from "./live-route";
@@ -7,8 +8,8 @@ import { noLiveScores } from "./live-route";
 // the page never says where the site came from. Fixtures come from the same lib the site is built from.
 noLiveScores(test);
 
-type Fixture = { id: string; site: string; home: string };
-let cached: Promise<{ sited?: Fixture; unsited?: Fixture }> | undefined;
+type Fixture = { id: string; site: string; home: string; address?: string; directions?: string };
+let cached: Promise<{ sited?: Fixture; unsited?: Fixture; addressed?: Fixture }> | undefined;
 const fixtures = () =>
   (cached ??= (async () => {
     const was = process.cwd();
@@ -17,12 +18,17 @@ const fixtures = () =>
       const { loadAlignments } = await import("../lib/alignments");
       const { loadGames } = await import("../lib/games");
       const { NO_SITE } = await import("../lib/kickoffs");
+      const { addressLine, directionsUrl } = await import("../lib/address");
       const games = (await loadGames(await loadAlignments())).filter((g) => g.date);
-      const pick = (want: (site: string) => boolean) => {
-        const g = games.find((x) => want(x.venue));
-        return g && { id: g.id, site: g.venue, home: g.home.name };
+      const pick = (want: (g: (typeof games)[number]) => boolean) => {
+        const g = games.find(want);
+        return g && { id: g.id, site: g.venue, home: g.home.name, ...(g.address && { address: addressLine(g.address), directions: directionsUrl(g.venue, g.address) }) };
       };
-      return { sited: pick((v) => v !== NO_SITE && v.includes(", ")), unsited: pick((v) => v === NO_SITE) };
+      return {
+        sited: pick((g) => g.venue !== NO_SITE && g.venue.includes(", ")),
+        unsited: pick((g) => g.venue === NO_SITE),
+        addressed: pick((g) => g.venue !== NO_SITE && Boolean(g.address)),
+      };
     } finally {
       process.chdir(was);
     }
@@ -34,7 +40,7 @@ test("a bracket game with a known site shows it as '<name>, <city>', naming no s
   const { sited } = await fixtures();
   test.skip(!sited, "no bracket game has a site yet");
   await page.goto(`/scores/${sited!.id}`);
-  await expect(siteFact(page)).toHaveText(sited!.site);
+  await expect(siteFact(page)).toContainText(sited!.site);
   await expect(siteFact(page)).not.toContainText(/\(home\)/);
   expect((await page.locator("main").innerText()).toLowerCase()).not.toMatch(/maxpreps|dave campbell|sixmanfootball/);
 });
@@ -44,4 +50,19 @@ test("a bracket game whose site is not known says 'Site not listed yet', never t
   test.skip(!unsited, "every bracket game has a site");
   await page.goto(`/scores/${unsited!.id}`);
   await expect(siteFact(page)).toHaveText("Site not listed yet");
+});
+
+// ADR 0066: the site's street address under it, and Directions, a maps search with no key and no embedded map.
+test("a game with a site address shows the address and a Directions link under the site, accessible", async ({ page }) => {
+  const { addressed } = await fixtures();
+  test.skip(!addressed, "no bracket game has a site address yet");
+  await page.goto(`/scores/${addressed!.id}`);
+  await expect(siteFact(page).locator("[data-address]")).toContainText(addressed!.address!);
+  const link = siteFact(page).getByRole("link", { name: /^Directions to / });
+  await expect(link).toHaveAttribute("href", addressed!.directions!);
+  await expect(link).not.toHaveAttribute("href", /key=|embed/);
+  await expect(page.locator("main iframe")).toHaveCount(0);
+  expect((await page.locator("main").innerText()).toLowerCase()).not.toMatch(/maxpreps|dave campbell|sixmanfootball/);
+  const axe = await new AxeBuilder({ page }).include("dl").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  expect(axe.violations.map((v) => v.id)).toEqual([]);
 });

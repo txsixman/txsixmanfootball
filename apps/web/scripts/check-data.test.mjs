@@ -121,7 +121,8 @@ test("a disputed final must be a game on file: a misspelled or wrong-date row fa
 
 test("a game's site is plain words, and a city needs a name (ADR 0041)", () => {
   const details = (...lines) => [s.DETAIL_COLUMNS.join(","), ...lines].join("\n");
-  const ok = (line) => s.parseCsv("game-details.csv", details(line), s.DETAIL_COLUMNS, s.DetailRow);
+  // The three address columns (ADR 0066) left blank: the rules of ADR 0041 alone.
+  const ok = (line) => s.parseCsv("game-details.csv", details(`${line},,,`), s.DETAIL_COLUMNS, s.DetailRow);
   const bad = (line, pattern) => assert.throws(() => ok(line), pattern);
   assert.equal(ok("2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,St. Mary's Field (North) & Track,San Angelo")[0].row.site_city, "San Angelo");
   ok("2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,");
@@ -129,6 +130,19 @@ test("a game's site is plain words, and a city needs a name (ADR 0041)", () => {
   bad("2026-11-13,Lark,Wren,,<b>Field</b>,Lark", /site_name/);
   bad("2026-11-13,Lark,Wren,,Bird Field,https://x", /site_city/);
   bad("2026-11-13,Lark,Wren,,,Lark", /a site city with no site name/);
+});
+
+test("a site's address is a numbered street, a two-letter state and a ZIP, and needs its site (ADR 0066)", () => {
+  const details = (line) => [s.DETAIL_COLUMNS.join(","), line].join("\n");
+  const ok = (line) => s.parseCsv("game-details.csv", details(line), s.DETAIL_COLUMNS, s.DetailRow);
+  const bad = (line, pattern) => assert.throws(() => ok(line), pattern);
+  assert.equal(ok("2026-11-13,Lark,Wren,,Bird Field,Lark,1200 FM 1188 - Gate #2,TX,79528")[0].row.site_zip, "79528");
+  ok("2026-11-13,Lark,Wren,,Bird Field,Lark,1 Main St,,");
+  bad("2026-11-13,Lark,Wren,,Bird Field,Lark,Main Street,TX,79528", /a street line has a number/);
+  bad("2026-11-13,Lark,Wren,,Bird Field,Lark,1 Main St,Texas,79528", /site_state/);
+  bad("2026-11-13,Lark,Wren,,Bird Field,Lark,1 Main St,TX,7952", /site_zip/);
+  bad("2026-11-13,Lark,Wren,,,,1 Main St,TX,79528", /an address needs a site name/);
+  bad("2026-11-13,Lark,Wren,,Bird Field,Lark,,TX,79528", /a state or ZIP needs a street/);
 });
 
 test("a voided playoff listing that later reads a score is named for review, never dropped silently", async () => {

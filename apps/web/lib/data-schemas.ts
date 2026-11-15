@@ -51,8 +51,17 @@ export const PlayedGameRow = gameChecks(z.object(resultFields)).refine((r) => r.
 export const DISPUTED_COLUMNS = ["game_date", "home", "away"];
 export const DisputedRow = z.object({ game_date: isoDate, home: z.string().min(1).max(80), away: z.string().min(1).max(80) });
 
-export const DETAIL_COLUMNS = ["date", "home", "away", "kickoff_utc", "site_name", "site_city"];
+export const DETAIL_COLUMNS = ["date", "home", "away", "kickoff_utc", "site_name", "site_city", "site_street", "site_state", "site_zip"];
 const SITE_WORDS = /^[\p{L}\p{N} .'&()/-]+$/u;
+/** A site's street address (ADR 0066): the street line in plain words plus "#" (a comma written " - "), with a number; a
+ * two-letter state; a ZIP. Each blank when not known; an address needs a site name and a street. Never coordinates. */
+const addressFields = {
+  site_street: z.union([z.literal(""), z.string().max(100).regex(/^[\p{L}\p{N} .'&()/#-]+$/u, "a street line: plain words, digits and #").regex(/\p{N}/u, "a street line has a number")]),
+  site_state: z.union([z.literal(""), z.string().regex(/^[A-Z]{2}$/, "a two-letter state, TX")]),
+  site_zip: z.union([z.literal(""), z.string().regex(/^\d{5}(-\d{4})?$/, "a ZIP, 79528")]),
+};
+const addressNeeds = (r: { site_name: string; site_street: string; site_state: string; site_zip: string }) =>
+  (r.site_name || !r.site_street) && (r.site_street || (!r.site_state && !r.site_zip));
 export const DetailRow = z.object({
   date: isoDate,
   home: z.string().min(1).max(80),
@@ -61,17 +70,21 @@ export const DetailRow = z.object({
   // A site's name and city in plain words, as davecampbells.mjs siteText writes them (ADR 0041); a city needs a name.
   site_name: z.union([z.literal(""), z.string().max(80).regex(SITE_WORDS, "plain words: letters, digits, spaces and . ' & ( ) / -")]),
   site_city: z.union([z.literal(""), z.string().max(60).regex(SITE_WORDS, "plain words: letters, digits, spaces and . ' & ( ) / -")]),
-}).refine((r) => r.site_name || !r.site_city, "a site city with no site name");
+  ...addressFields,
+})
+  .refine((r) => r.site_name || !r.site_city, "a site city with no site name")
+  .refine(addressNeeds, "an address needs a site name, and a state or ZIP needs a street");
 
 /** data/seed/schools/home-fields.csv (ADR 0064): each program's own field, by its slug, from where it played its regular-season home
  * games (tools/league-watch/home-fields.mjs), name and city in plain words; the season it was seen. No source column. */
-export const HOME_FIELD_COLUMNS = ["program", "site_name", "site_city", "season"];
+export const HOME_FIELD_COLUMNS = ["program", "site_name", "site_city", "season", "site_street", "site_state", "site_zip"];
 export const HomeFieldRow = z.object({
   program: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "a program slug"),
   site_name: z.string().min(1).max(80).regex(SITE_WORDS, "plain words: letters, digits, spaces and . ' & ( ) / -"),
   site_city: z.string().min(1).max(60).regex(SITE_WORDS, "plain words: letters, digits, spaces and . ' & ( ) / -"),
   season: z.string().regex(/^\d{4}$/, "a season, 2026"),
-});
+  ...addressFields,
+}).refine(addressNeeds, "a state or ZIP needs a street");
 
 /** data/seed/brackets/<season>.csv: which games feed which (ADR 0047), written by a robot from a league's own bracket. A side
  * is a team as the bracket names it, "bye", or "winner:<slot>" (a slot of the same bracket). No source column (ADR 0010). */

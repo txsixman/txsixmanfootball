@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { HOME_FIELD_COLUMNS, HomeFieldRow, parseCsv } from "./data-schemas.ts";
+import { addressFrom, type Address } from "./address.ts";
 import { memo } from "./memo.ts";
 import { slugify } from "./slug.ts";
 
@@ -8,11 +9,11 @@ import { slugify } from "./slug.ts";
 // home games. Read at build time; a missing file means none is known. No page names where a field came from (ADR 0010).
 
 /** Each program's field ("Jaybird Stadium, Jayton") and the season it was seen, by program slug. */
-export type HomeFields = Map<string, { site: string; season: number }>;
+export type HomeFields = Map<string, { site: string; season: number; address?: Address }>;
 
 export function parseHomeFields(text: string): HomeFields {
   if (!text.trim()) return new Map();
-  return new Map(parseCsv("data/seed/schools/home-fields.csv", text, HOME_FIELD_COLUMNS, HomeFieldRow).map(({ row }) => [row.program, { site: `${row.site_name}, ${row.site_city}`, season: Number(row.season) }]));
+  return new Map(parseCsv("data/seed/schools/home-fields.csv", text, HOME_FIELD_COLUMNS, HomeFieldRow).map(({ row }) => [row.program, { site: `${row.site_name}, ${row.site_city}`, season: Number(row.season), address: addressFrom(row) }]));
 }
 
 /**
@@ -24,6 +25,12 @@ export function regularSeasonSite(fields: HomeFields, home: string, neutral: boo
   if (neutral) return "Neutral site";
   const field = fields.get(slugify(home));
   return field && field.season === season ? `${field.site} (home)` : `${home} (home)`;
+}
+
+/** The street address of the field regularSeasonSite names (ADR 0066), when it names one and the file has its address. */
+export function homeFieldAddress(fields: HomeFields, home: string, neutral: boolean, season: number): Address | undefined {
+  const field = neutral ? undefined : fields.get(slugify(home));
+  return field && field.season === season ? field.address : undefined;
 }
 
 const read = () =>

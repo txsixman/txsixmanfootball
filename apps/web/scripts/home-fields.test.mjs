@@ -3,9 +3,10 @@
 //   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseHomeFields, regularSeasonSite } from "../lib/home-fields.ts";
+import { homeFieldAddress, parseHomeFields, regularSeasonSite } from "../lib/home-fields.ts";
 
-const FILE = "program,site_name,site_city,season\nsalt-fork,Mesa Field,Red Bluff,2031\nowl-creek,Prairie Bowl,Owl Creek,2030\n";
+const HEAD = "program,site_name,site_city,season,site_street,site_state,site_zip";
+const FILE = `${HEAD}\nsalt-fork,Mesa Field,Red Bluff,2031,1 Mesa Rd,TX,79528\nowl-creek,Prairie Bowl,Owl Creek,2030,,,\n`;
 
 test("a known field for the game's season names the field, by name and city, as the home site", () => {
   assert.equal(regularSeasonSite(parseHomeFields(FILE), "Salt Fork", false, 2031), "Mesa Field, Red Bluff (home)");
@@ -20,6 +21,15 @@ test("no field, another season's field, or a neutral game falls back as before",
 });
 
 test("a bad row fails the read, never shows", () => {
-  assert.throws(() => parseHomeFields("program,site_name,site_city,season\nSalt Fork,Mesa Field,Red Bluff,2031\n"), /program slug/);
-  assert.throws(() => parseHomeFields("program,site_name,site_city,season\nsalt-fork,Mesa Field,,2031\n"));
+  assert.throws(() => parseHomeFields(`${HEAD}\nSalt Fork,Mesa Field,Red Bluff,2031,,,\n`), /program slug/);
+  assert.throws(() => parseHomeFields(`${HEAD}\nsalt-fork,Mesa Field,,2031,,,\n`));
+});
+
+test("the named field's street address comes with it, never with another season's or a neutral game (ADR 0066)", () => {
+  const fields = parseHomeFields(FILE);
+  assert.deepEqual(homeFieldAddress(fields, "Salt Fork", false, 2031), { street: "1 Mesa Rd", city: "Red Bluff", state: "TX", zip: "79528" });
+  assert.equal(homeFieldAddress(fields, "Salt Fork", true, 2031), undefined);
+  assert.equal(homeFieldAddress(fields, "Salt Fork", false, 2032), undefined);
+  assert.equal(homeFieldAddress(fields, "Owl Creek", false, 2030), undefined, "no street, no address");
+  assert.throws(() => parseHomeFields(`${HEAD}\nsalt-fork,Mesa Field,Red Bluff,2031,,TX,79528\n`), "a state or ZIP needs a street");
 });

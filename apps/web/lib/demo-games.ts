@@ -1,5 +1,6 @@
 // Invented schools and scores for design work. Never use real schools here: a made-up score next to a real team
 // reads as a real result.
+import type { Address } from "./address";
 
 export type Team = {
   name: string;
@@ -36,6 +37,8 @@ export type Game = {
   projectedMargin?: number;
   stream?: string;
   venue: string;
+  /** The site's street address when known (ADR 0066): shown under the site with a Directions link. */
+  address?: Address;
   quarters?: { home: number[]; away: number[] };
 };
 

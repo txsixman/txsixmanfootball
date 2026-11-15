@@ -12,7 +12,9 @@ import { loadRanked, rankLabel } from "./rankings";
 import { loadRatings, record } from "./ratings";
 import { CURRENT_SEASON } from "./season";
 import { isDisputed, loadDisputed } from "./disputed";
-import { type HomeFields, loadHomeFields, regularSeasonSite } from "./home-fields";
+import { homeFieldAddress, type HomeFields, loadHomeFields, regularSeasonSite } from "./home-fields";
+import { knownAddress, knownSite, loadAddresses, loadSites } from "./kickoffs";
+import type { Address } from "./address";
 import { resultSeasons } from "./weeks";
 
 // A page for every robot-read game of every season (/scores/<id>, app/scores/[id]). The lookups below are worked out once
@@ -161,7 +163,8 @@ export const mediumDate = (iso: string) =>
  * A robot-read game as the scoreboard's Game, so it shares the playoff game page's look. A final, so it is confirmed and
  * names its winner unless disputed (ADR 0040); a forfeit carries the word and no score, so its 1-0 or 2-0 never reaches the page.
  */
-function resultAsGame({ season, result: r }: Entry, d: GameDetail, disputed: Set<string>, fields: HomeFields): Game {
+function resultAsGame({ season, result: r }: Entry, d: GameDetail, disputed: Set<string>, fields: HomeFields, sites: Map<string, string>, addresses: Map<string, Address>): Game {
+  const site = knownSite(sites, r.date, r.home, r.away);
   const team = (name: string, g: Going): Team => ({ name, mascot: "", initials: initials(name), color: "#0a2a5e", record: g.record ? `${g.record} going in` : "" });
   const kind = d.playoff ? `${season} playoffs · ${d.playoff}` : d.districtGame ? `${season} season · District game` : `${season} season`;
   const dispute = !r.forfeit && isDisputed(disputed, r.date, r.home, r.away); // the sources give different winners: none marked
@@ -177,7 +180,10 @@ function resultAsGame({ season, result: r }: Entry, d: GameDetail, disputed: Set
     status: r.forfeit ? "Forfeit" : dispute ? "Score reported" : "Final",
     endReason: r.forfeit ? "Forfeit" : undefined,
     verification: dispute ? "disputed" : "confirmed",
-    venue: d.playoff ? "Neutral site or not listed" : regularSeasonSite(fields, r.home, r.neutral === true, season),
+    // The facts file's site first (ADR 0065): a playoff game's, or a regular-season game away from the home team's field.
+    venue: site ?? (d.playoff ? "Neutral site or not listed" : regularSeasonSite(fields, r.home, r.neutral === true, season)),
+    // The address of the site named (ADR 0066): the facts file's with its site, or the home field's with it.
+    address: site ? knownAddress(addresses, r.date, r.home, r.away) : d.playoff ? undefined : homeFieldAddress(fields, r.home, r.neutral === true, season),
   };
 }
 
@@ -214,7 +220,7 @@ export async function resolveGame(id: string) {
       : undefined;
   // A played game's projection is the one from the week before it (ADR 0044), shown beside its outcome.
   const before = own && (await pregameShown(own.season)).byId.get(own.result.id);
-  const g: Game = own ? { ...resultAsGame(own, detail!, await loadDisputed(own.season), await loadHomeFields()), ...(before && { projected: projectionText(before) }) } : bracket!;
+  const g: Game = own ? { ...resultAsGame(own, detail!, await loadDisputed(own.season), await loadHomeFields(), await loadSites(own.season), await loadAddresses(own.season)), ...(before && { projected: projectionText(before) }) } : bracket!;
   return { g, found, own, sample, detail, neutral: own !== undefined && detail?.playoff !== undefined };
 }
 

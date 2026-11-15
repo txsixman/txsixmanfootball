@@ -479,18 +479,18 @@ test("kickoffs: a bracket game still to play gets the feed's kickoff in UTC, the
   const due = [{ game_date: "2026-11-13", home: "Lark", away: "Wren", home_score: "", away_score: "" }];
   // The feed has Wren at home: the row keeps the bracket's home and away.
   const rows = kickoffRows([finalItem("wren-wrens", "lark-owls", null, null, { status: "Upcoming", scheduledKickoff: "2026-11-14T01:00:00.000Z" })], { due, ours: oursMap });
-  assert.deepEqual(rows, [{ date: "2026-11-13", home: "Lark", away: "Wren", kickoff_utc: "2026-11-14T01:00:00Z", site_name: "", site_city: "" }]);
+  assert.deepEqual(rows, [{ date: "2026-11-13", home: "Lark", away: "Wren", kickoff_utc: "2026-11-14T01:00:00Z", site_name: "", site_city: "", site_street: "", site_state: "", site_zip: "" }]);
   // A kickoff on another Central date is another game.
   assert.deepEqual(kickoffRows([finalItem("wren-wrens", "lark-owls", null, null, { scheduledKickoff: "2026-11-15T01:00:00Z" })], { due, ours: oursMap }), []);
   const text = mergeKickoffs("", rows);
-  assert.equal(text, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,,\n`);
+  assert.equal(text, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,,,,,\n`);
   assert.doesNotMatch(text, /davecampbells|https?:/i);
   // A filled value is never overwritten (ADR 0041): a fresh value only fills a blank; other kept rows stay.
-  const kept = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`;
+  const kept = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:00:00Z,Bird Field,Lark,,,\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,,,,\n`;
   assert.equal(mergeKickoffs(kept, rows), kept);
-  const blank = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,,,\n`;
+  const blank = `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,,,,,,\n`;
   const sited = [{ ...rows[0], site_name: "Bird Field", site_city: "Lark" }];
-  assert.equal(mergeKickoffs(blank, sited), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n`);
+  assert.equal(mergeKickoffs(blank, sited), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark,,,\n`);
 });
 
 test("kickoffs: the site is the feed's venue name and city, plain words only, or blank", () => {
@@ -503,8 +503,15 @@ test("kickoffs: the site is the feed's venue name and city, plain words only, or
   assert.deepEqual(site({ siteLabel: "Wren Stadium", city: "Lark" }), ["Wren Stadium", "Lark"]);
   assert.deepEqual(site({ locationName: "<b>x</b>", siteLabel: "Wren Stadium", city: "Lark" }), ["Wren Stadium", "Lark"]);
   const full = at({ locationName: "Bird Field", siteLabel: "Wren Stadium", addressLine1: "1 Main St", city: "Lark", postalCode: "79999", latitude: 33.1, longitude: -100.2 });
-  assert.deepEqual(Object.keys(full), ["date", "home", "away", "kickoff_utc", "site_name", "site_city"]);
-  assert.doesNotMatch(Object.values(full).join(","), /Main St|79999|33\.1|-100/);
+  assert.deepEqual(Object.keys(full), DETAIL_COLUMNS.split(","));
+  // The street address is kept (ADR 0066), as the feed gives it; never the coordinates.
+  assert.deepEqual([full.site_street, full.site_state, full.site_zip], ["1 Main St", "", "79999"]);
+  assert.doesNotMatch(Object.values(full).join(","), /33\.1|-100/);
+  assert.deepEqual(at({ city: "Lark", addressLine1: "1 Main St", state: "TX", postalCode: "79999" }).site_street, "", "an address needs a site name");
+  const addr = at({ locationName: "Bird Field", city: "Lark", addressLine1: "1200 FM 1188, Gate #2", addressLine2: "", state: "TX", postalCode: "79999-1234" });
+  assert.deepEqual([addr.site_street, addr.site_state, addr.site_zip], ["1200 FM 1188 - Gate #2", "TX", "79999-1234"]);
+  const odd = at({ locationName: "Bird Field", city: "Lark", addressLine1: "<b>1 Main</b>", state: "Texas", postalCode: "799" });
+  assert.deepEqual([odd.site_street, odd.site_state, odd.site_zip], ["", "", ""], "an address that does not read cleanly is blank");
   assert.deepEqual(site({ locationName: "  Shotwell   Stadium ", city: "Abilene" }), ["Shotwell Stadium", "Abilene"]);
   assert.deepEqual(site({ locationName: "Field 2, North Campus", city: "Lark" }), ["Field 2 - North Campus", "Lark"], "the file has no quoting");
   assert.deepEqual(site({ locationName: "St. Mary's (Annex) / Field & Track", city: "San Angelo" }), ["St. Mary's (Annex) / Field & Track", "San Angelo"]);
@@ -523,7 +530,7 @@ test("kickoffs: what is still missing is counted by league, never naming a schoo
     { league: "TAPPS", game_date: "2026-11-13", home: "Finch", away: "Heron", home_score: "" },
     { league: "TCAF", game_date: "2026-11-14", home: "Owl", away: "Crane", home_score: "" },
   ];
-  const text = `${DETAIL_COLUMNS}\n2026-11-13,Wren,Lark,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Owl,Crane,2026-11-14T19:00:00Z,,\n`;
+  const text = `${DETAIL_COLUMNS}\n2026-11-13,Wren,Lark,2026-11-14T01:00:00Z,Bird Field,Lark,,,\n2026-11-14,Owl,Crane,2026-11-14T19:00:00Z,,,,,\n`;
   const line = missingDetails(due, text);
   assert.equal(line, "Still missing: a kickoff 1 (TAPPS 1); a site 2 (TAPPS 1, TCAF 1).");
   assert.doesNotMatch(line, /Lark|Wren|Finch|Heron|Owl|Crane/);
@@ -536,12 +543,12 @@ test("--merge-details lays an earlier read over the file without overwriting a f
   const dir = mkdtempSync(path.join(tmpdir(), "merge-details-"));
   const fresh = path.join(dir, "fresh.csv");
   const out = path.join(dir, "2026.csv");
-  writeFileSync(fresh, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
-  writeFileSync(out, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:30:00Z,,\n`);
+  writeFileSync(fresh, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark,,,\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,,,,\n`);
+  writeFileSync(out, `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:30:00Z,,,,,\n`);
   // No network: the feed's host is unreachable here, so a read would fail the run.
   const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "davecampbells.mjs"), "--merge-details", fresh, "--out", out], { encoding: "utf8", env: { ...process.env, HTTPS_PROXY: "http://127.0.0.1:9" } });
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(readFileSync(out, "utf8"), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:30:00Z,Bird Field,Lark\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,\n`);
+  assert.equal(readFileSync(out, "utf8"), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T00:30:00Z,Bird Field,Lark,,,\n2026-11-14,Finch,Heron,2026-11-14T19:00:00Z,,,,,\n`);
 });
 
 test("--fields lists the clock and period fields of games under way by format, never a team or a score", () => {
@@ -685,7 +692,7 @@ test("games on a Central date: each side's name, score and forfeit flag, never t
 });
 
 // Venues (ADR 0064): invented teams and places only.
-test("venue rows: one a game with our program at home, its phase, and the venue's name and city, never its address", async () => {
+test("venue rows: one a game with our program at home, its phase, the venue's name and city and its street address, never coordinates", async () => {
   const { venueRows, venueCounts, VENUE_COLUMNS, phaseOf } = await import("./davecampbells.mjs");
   const ours = new Map([["wren-wrens", "wren"], ["lark-owls", "lark"]]);
   const side = (participantType, team) => ({ participantType, websiteUrl: `https://www.davecampbells.com/team/${team}` });
@@ -698,13 +705,69 @@ test("venue rows: one a game with our program at home, its phase, and the venue'
   ];
   const rows = venueRows(items, { ours, slugs: new Set(), renamed: new Map(), season: 2026 });
   assert.deepEqual(rows, [
-    { game_date: "2026-09-04", home: "wren", away: "robin-robins", phase: "regular", venue_id: "v1", site_name: "Wren Field - North", site_city: "Wrenville" },
-    { game_date: "2026-11-13", home: "lark", away: "wren", phase: "playoff", venue_id: "v2", site_name: "Neutral Bowl", site_city: "Finch" },
+    { game_date: "2026-09-04", home: "wren", away: "robin-robins", phase: "regular", venue_id: "v1", site_name: "Wren Field - North", site_city: "Wrenville", kickoff_utc: "2026-09-05T00:00:00Z", site_street: "100 Main St", site_state: "", site_zip: "79000" },
+    { game_date: "2026-11-13", home: "lark", away: "wren", phase: "playoff", venue_id: "v2", site_name: "Neutral Bowl", site_city: "Finch", kickoff_utc: "2026-11-14T01:00:00Z", site_street: "", site_state: "", site_zip: "" },
   ]);
   assert.deepEqual(VENUE_COLUMNS, Object.keys(rows[0]));
-  assert.ok(!JSON.stringify(rows).includes("Main St") && !JSON.stringify(rows).includes("79000"), "no address or postal code");
+  assert.ok(!/latitude|longitude/.test(JSON.stringify(rows)), "no coordinates");
   assert.equal(phaseOf({ seasonPhase: "Regular" }), "regular");
   const line = venueCounts(rows);
   assert.equal(line, "Venues: 2 games with one of our programs at home; regular 1 (a venue name 1, a city 1, a venue id 1); playoff 1 (a venue name 1, a city 1, a venue id 1).");
   for (const word of ["wren", "lark", "Wrenville", "Finch"]) assert.ok(!line.includes(word));
+});
+
+// Sites of every game the feed places (ADR 0065): invented teams and places only.
+test("venue details: every bracket game, and a regular-season game only away from the home team's own field", async () => {
+  const { venueDetailRows } = await import("./davecampbells.mjs");
+  const games = [
+    { game_date: "2026-11-13", home: "Lark", away: "Wren", bracket: true },
+    { game_date: "2026-09-04", home: "Lark", away: "Robin", bracket: false },
+    { game_date: "2026-09-11", home: "Lark", away: "Finch", bracket: false },
+    { game_date: "2026-09-18", home: "Robin", away: "Lark", bracket: false },
+    { game_date: "2026-09-25", home: "Jay", away: "Lark", bracket: false },
+  ];
+  const fields = [{ program: "lark", site_name: "Owl Field", site_city: "Larkton", season: "2026" }, { program: "robin", site_name: "Nest Bowl", site_city: "Robinvale", season: "2025" }];
+  const v = (game_date, home, away, site_name, site_city, kickoff_utc = "", phase = "regular") => ({ game_date, home, away, phase, venue_id: "", site_name, site_city, kickoff_utc });
+  const venues = [
+    v("2026-11-13", "wren", "lark", "Neutral Bowl", "Finch", "2026-11-14T01:00:00Z", "playoff"), // bracket, the feed's home the other way round
+    v("2026-09-04", "lark", "robin", "Owl Field", "Larkton", "2026-09-05T00:00:00Z"), // the home team's own field: nothing to add
+    { ...v("2026-09-11", "lark", "finch-falcons", "Wren Stadium", "Wrenville", "2026-09-12T00:00:00Z"), site_street: "1 Wren Rd", site_state: "TX", site_zip: "79001" }, // moved
+    v("2026-09-18", "robin", "lark", "Nest Bowl", "Robinvale"), // a 2025 field is not this season's: kept
+    v("2026-09-24", "jay", "lark", "Jay Field", "Jayton", "2026-09-25T00:00:00Z"), // dated a day early: the files' date, no kickoff
+    v("2026-10-02", "lark", "kite", "Kite Field", "Kiteville"), // on no game
+    v("2026-10-09", "lark", "robin", "", ""), // nothing to add
+  ];
+  const { rows, skipped } = venueDetailRows(venues, { games, fields, season: 2026 });
+  const none = { site_street: "", site_state: "", site_zip: "" };
+  assert.deepEqual(rows, [
+    { date: "2026-11-13", home: "Lark", away: "Wren", kickoff_utc: "2026-11-14T01:00:00Z", site_name: "Neutral Bowl", site_city: "Finch", ...none },
+    { date: "2026-09-11", home: "Lark", away: "Finch", kickoff_utc: "2026-09-12T00:00:00Z", site_name: "Wren Stadium", site_city: "Wrenville", site_street: "1 Wren Rd", site_state: "TX", site_zip: "79001" },
+    { date: "2026-09-18", home: "Robin", away: "Lark", kickoff_utc: "", site_name: "Nest Bowl", site_city: "Robinvale", ...none },
+    { date: "2026-09-25", home: "Jay", away: "Lark", kickoff_utc: "", site_name: "Jay Field", site_city: "Jayton", ...none },
+  ]);
+  assert.deepEqual(skipped, { unplaced: 2, homeField: 1, nothing: 0 });
+});
+
+test("venue details: a day-apart game needs the same opponent and one candidate", async () => {
+  const { venueDetailRows } = await import("./davecampbells.mjs");
+  const games = [{ game_date: "2026-09-25", home: "Jay", away: "Lark", bracket: false }];
+  const v = { game_date: "2026-09-24", home: "jay", away: "robin", phase: "regular", venue_id: "", site_name: "Jay Field", site_city: "Jayton", kickoff_utc: "" };
+  assert.equal(venueDetailRows([v], { games, fields: [], season: 2026 }).rows.length, 0, "another opponent is another game");
+});
+
+test("kickoff targets: games still to play, and played ones of the last two weeks missing a kickoff or a site", async () => {
+  const { kickoffTargets } = await import("./davecampbells.mjs");
+  const r = (game_date, home, home_score = "") => ({ game_date, home, away: "Wren", home_score });
+  const rows = [r("2026-11-20", "Lark"), r("2026-11-13", "Finch", "40"), r("2026-11-13", "Jay", "30"), r("2026-11-13", "Kite", "20"), r("2026-10-23", "Robin", "50")];
+  const details = `${DETAIL_COLUMNS}\n2026-11-13,Jay,Wren,2026-11-14T01:00:00Z,Jay Field,Jayton,,,\n2026-11-13,Kite,Wren,2026-11-14T01:00:00Z,,,,,\n`;
+  assert.deepEqual(kickoffTargets(rows, details, "2026-11-15").map((x) => x.home), ["Lark", "Finch", "Kite"]);
+});
+
+test("merging into a file from before addresses writes every kept row back with the address columns (ADR 0066)", () => {
+  const old = "date,home,away,kickoff_utc,site_name,site_city\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark\n";
+  const fresh = [{ date: "2026-11-13", home: "Lark", away: "Wren", kickoff_utc: "", site_name: "Bird Field", site_city: "Lark", site_street: "1 Bird Rd", site_state: "TX", site_zip: "79001" }];
+  assert.equal(mergeKickoffs(old, []), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark,,,\n`);
+  assert.equal(mergeKickoffs(old, fresh), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark,1 Bird Rd,TX,79001\n`);
+  const other = [{ ...fresh[0], site_name: "Owl Bowl" }];
+  assert.equal(mergeKickoffs(old, other), `${DETAIL_COLUMNS}\n2026-11-13,Lark,Wren,2026-11-14T01:00:00Z,Bird Field,Lark,,,\n`, "another site's address never lands on the kept site");
 });

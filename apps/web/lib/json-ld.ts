@@ -1,4 +1,5 @@
 import type { Game, Team } from "./demo-games";
+import type { Address } from "./address";
 import { isForfeit } from "./score-display";
 import { SITE_NAME, SITE_URL } from "./site";
 
@@ -62,6 +63,16 @@ function placeName(venue: string): string | undefined {
   return field.includes(", ") ? field : `${field} home field`;
 }
 
+/** A site's street address as schema.org's PostalAddress (ADR 0066); blank parts left out. */
+const postalAddress = (a: Address) => ({
+  "@type": "PostalAddress",
+  streetAddress: a.street.replace(/ - /g, ", "),
+  ...(a.city && { addressLocality: a.city }),
+  ...(a.state && { addressRegion: a.state }),
+  ...(a.zip && { postalCode: a.zip }),
+  addressCountry: "US",
+});
+
 /**
  * A game as a SportsEvent. Home and away are named only for a game at a team's own field; any other game lists its two
  * teams as competitors. The result is a description, and only for a confirmed final that was played: an unconfirmed
@@ -83,7 +94,7 @@ export function gameJsonLd(g: Game, { url, home, away }: { url: string; home?: {
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     ...(g.state === "scheduled" && { eventStatus: "https://schema.org/EventScheduled" }),
     ...(g.state === "postponed" && { eventStatus: "https://schema.org/EventPostponed" }),
-    ...(place && { location: { "@type": "Place", name: place } }),
+    ...(place && { location: { "@type": "Place", name: place, ...(g.address && { address: postalAddress(g.address) }) } }),
     ...(homeField ? { homeTeam: team(g.home, home), awayTeam: team(g.away, away) } : { competitor: [team(g.away, away), team(g.home, home)] }),
     ...(played && { description: `Final: ${g.away.name} ${g.awayScore}, ${g.home.name} ${g.homeScore}.` }),
   };

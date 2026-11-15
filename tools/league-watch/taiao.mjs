@@ -13,7 +13,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { mergeKickoffs, missingDetails, siteText } from "./davecampbells.mjs";
+import { mergeKickoffs, missingDetails, siteText, streetText } from "./davecampbells.mjs";
 import { centralDate, slugify } from "./maxpreps.mjs";
 import { robotsAllows, USER_AGENT } from "./tapps.mjs";
 
@@ -289,7 +289,7 @@ function cityAfterStreet(part) {
  * read cleanly is "" (not known), never a guess. A city with no name is not a site.
  */
 export function venueOf(line) {
-  if (typeof line !== "string" || !line.trim()) return { site_name: "", site_city: "" };
+  if (typeof line !== "string" || !line.trim()) return { site_name: "", site_city: "", site_street: "", site_state: "", site_zip: "" };
   let t = line.replace(/\s+United States\s*$/i, "").replace(/[;()]/g, ",").replace(/\s+-\s+/g, ", ").replace(/\s+/g, " ").trim();
   // "Academy-4427 Main" and "Stadium. 600 W 7th" start a street after the name (a capital before a dash is a highway, "FM-775").
   t = t.replace(/([a-z])-(\d)/, "$1, $2").replace(/([A-Za-z])\.\s+(\d)/, "$1, $2").replace(/[,\s]+$/, "");
@@ -297,7 +297,7 @@ export function venueOf(line) {
   // The name: the parts before the first that starts with a street number, cut where a street number starts inside it.
   const first = parts[0] ?? "";
   const name = siteText(/^\d/.test(first) ? "" : first.split(/\s(?=\d+[A-Za-z]?\s)/)[0].replace(/[\s.-]+$/, ""), 80);
-  if (!name || !/[a-z]/i.test(name)) return { site_name: "", site_city: "" };
+  if (!name || !/[a-z]/i.test(name)) return { site_name: "", site_city: "", site_street: "", site_state: "", site_zip: "" };
   let city = "";
   const stated = STATE.exec(t);
   if (stated) {
@@ -310,7 +310,22 @@ export function venueOf(line) {
     city = cityAfterStreet(parts.at(-1) ?? "");
   }
   if (city === name || /^(?:TX|Texas)$/i.test(city)) city = "";
-  return { site_name: name, site_city: siteText(city, 60) };
+  return { site_name: name, site_city: siteText(city, 60), ...streetOf(t, name, city, stated) };
+}
+
+/** The street address a site line gives after its name (ADR 0066): from the first street number to the city or state, with
+ * "TX" and the ZIP when the line has them; all blank when the line has no clean street (a name alone, a city alone). */
+function streetOf(t, name, city, stated) {
+  const none = { site_street: "", site_state: "", site_zip: "" };
+  let rest = (stated ? t.slice(0, stated.index) : t).slice(t.indexOf(name) + name.length).replace(/^[\s,.-]+/, "");
+  // A part between the name and the street ("Lark High School, 12 W 3rd Street") is not the street.
+  const at = rest.search(/(?:^|,\s*)\d/);
+  if (at > 0) rest = rest.slice(at).replace(/^[,\s]+/, "");
+  if (city && rest.endsWith(city)) rest = rest.slice(0, -city.length);
+  const site_street = streetText(rest.replace(/[\s,.-]+$/, "").replace(/\s*,\s*/g, " "));
+  if (!/^\d/.test(site_street)) return none;
+  const zip = stated ? /\d{5}(?:-\d{4})?/.exec(stated[0])?.[0] ?? "" : "";
+  return { site_street, site_state: stated ? "TX" : "", site_zip: zip };
 }
 
 /** A Central date and "HH:MM" as the UTC kickoff the facts file keeps ("2026-11-21T01:30:00Z"), daylight time known. */
@@ -326,15 +341,16 @@ export function kickoffUtc(date, time) {
 }
 
 /**
- * The facts rows the bracket gives for its own games still to play on or after `today` (Central): both teams named, no
- * score, a date. Home is the team marked "(H)". Each has its kickoff when a time is shown and its site when venueOf reads
+ * The facts rows the bracket gives for its own games, played or still to play (ADR 0065): both teams named and a date.
+ * Home is the team marked "(H)". Each has its kickoff when a time is shown and its site when venueOf reads
  * one; a game with neither is left out. The bracket's own pairings are used, not the listed ones: a listing that
  * contradicts the bracket is voided (ADR 0040), and the right one keys to the same date and two teams once it is listed.
  */
-export function detailRows(games, today) {
+export function detailRows(games) {
   const out = [];
   for (const g of games) {
-    if (g.teams.length !== 2 || !g.date || g.date < today || g.teams.some((t) => t.score !== null)) continue;
+    // Played games too (ADR 0065): a played game keeps its site line on the bracket.
+    if (g.teams.length !== 2 || !g.date) continue;
     const [home, away] = g.teams[1].home ? [g.teams[1], g.teams[0]] : g.teams;
     const kickoff_utc = g.time ? kickoffUtc(g.date, g.time) : "";
     const site = venueOf(g.site);
@@ -355,7 +371,7 @@ async function details() {
   if (!out) throw new Error("usage: taiao.mjs --details --out <game details file>");
   const today = centralDate();
   const games = await readBrackets();
-  const fresh = detailRows(games, today);
+  const fresh = detailRows(games);
   const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh);
   writeFileSync(out, merged);
   const due = dueGames(games, today);

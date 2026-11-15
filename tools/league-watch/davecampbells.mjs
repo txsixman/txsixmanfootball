@@ -835,8 +835,8 @@ async function history() {
 //   node tools/league-watch/davecampbells.mjs --venues <year> --private <private data repo>
 // reads each mapped team's games of the season (one team-id request and one schedule request a team, 2.5 s apart) and
 // writes <private>/davecampbells-<year>/venues.csv: one row a game with one of our programs at home, its phase (regular or
-// playoff), and the venue's id, name and city as ADR 0041 keeps them (never an address). The log is counts only.
-export const VENUE_COLUMNS = ["game_date", "home", "away", "phase", "venue_id", "site_name", "site_city"];
+// playoff), the venue's id, name and city as ADR 0041 keeps them, its kickoff and street address (ADR 0066). Counts only.
+export const VENUE_COLUMNS = ["game_date", "home", "away", "phase", "venue_id", "site_name", "site_city", "kickoff_utc", "site_street", "site_state", "site_zip"];
 
 /** A game's phase: "playoff" when the feed gives it a playoff round or a playoff season phase, else "regular". */
 export const phaseOf = (item) => (item?.playoffRound || /playoff|post/i.test(String(item?.seasonPhase ?? "")) ? "playoff" : "regular");
@@ -868,6 +868,8 @@ export function venueRows(items, { ours, slugs, renamed, season }) {
       venue_id: /^[\w-]{1,64}$/.test(String(item.venue?.venueId ?? "")) ? String(item.venue.venueId) : "",
       site_name: name,
       site_city: name ? siteText(item.venue?.city, 60) : "",
+      kickoff_utc: kickoff.toISOString().replace(/\.\d{3}Z$/, "Z"),
+      ...(name ? addressOf(item.venue) : { site_street: "", site_state: "", site_zip: "" }),
     });
   }
   return [...rows.values()].sort((x, y) => x.game_date.localeCompare(y.game_date) || x.home.localeCompare(y.home));
@@ -910,6 +912,117 @@ async function venues() {
   console.log(venueCounts(rows));
 }
 
+// ---- Sites of every game the feed places (ADR 0065) ----
+//   node tools/league-watch/davecampbells.mjs --venue-details <year> --out <data/seed/game-details/YYYY.csv>
+//        [--venues <private>/davecampbells-<year>/venues.csv] [--since YYYY-MM-DD]
+// With --venues: from a venues read already made (no network). Without: reads the feed for the season's regular-season
+// games from --since (default: 3 days ago) to today that have no site yet, one mapped team a game. Never overwrites a kept
+// value (mergeKickoffs). The log is counts only.
+
+/**
+ * Facts rows from a season's venue rows: every bracket game they cover, played or not, and every regular-season game whose
+ * venue is not the home team's own field for that season (home-fields.csv: that line already names it). A venue row is
+ * placed on a game of the season's files by its date and one of its programs (a team plays once a day), and takes that
+ * game's spelling of both teams, so the page finds it. `games`: { game_date, home, away, bracket } rows; `fields`:
+ * home-fields.csv rows. Returns the rows and counts of the rest.
+ */
+export function venueDetailRows(venues, { games, fields, season }) {
+  const byTeamDay = new Map();
+  for (const g of games) {
+    for (const s of [slugify(g.home), slugify(g.away)]) {
+      const k = `${g.game_date}|${s}`;
+      if (!byTeamDay.has(k) || g.bracket) byTeamDay.set(k, g);
+    }
+  }
+  const field = new Map(fields.filter((f) => Number(f.season) === season).map((f) => [f.program, `${f.site_name}|${f.site_city}`]));
+  const rows = [];
+  const skipped = { unplaced: 0, homeField: 0, nothing: 0 };
+  for (const v of venues) {
+    const exact = byTeamDay.get(`${v.game_date}|${v.home}`) ?? byTeamDay.get(`${v.game_date}|${v.away}`);
+    const g = exact ?? nextDayGame(byTeamDay, v);
+    if (!g) {
+      skipped.unplaced++;
+      continue;
+    }
+    const bracket = g.bracket || v.phase === "playoff";
+    // The page names the home team's field for a regular-season game at it: nothing to add. Only when the files' home
+    // team is the feed's, so a game the two list the other way round still gets its site.
+    if (!bracket && v.site_name && slugify(g.home) === v.home && field.get(v.home) === `${v.site_name}|${v.site_city}`) {
+      skipped.homeField++;
+      continue;
+    }
+    // A game the files date a day apart keeps the files' date and no kickoff: the two disagree on the day.
+    const kickoff_utc = exact && UTC_TIME.test(v.kickoff_utc ?? "") ? v.kickoff_utc : "";
+    if (!v.site_name && !(bracket && kickoff_utc)) {
+      skipped.nothing++;
+      continue;
+    }
+    const address = v.site_name ? { site_street: v.site_street ?? "", site_state: v.site_state ?? "", site_zip: v.site_zip ?? "" } : {};
+    rows.push({ date: g.game_date, home: g.home, away: g.away, kickoff_utc, site_name: v.site_name, site_city: v.site_name ? v.site_city : "", ...address });
+  }
+  return { rows, skipped };
+}
+/** The game a day before or after a venue row's date with the same two teams, when exactly one is (the sources sometimes
+ * date a Thursday game Friday). The other side is ours or the feed's own slug ("memphis-cyclones" for Memphis). */
+function nextDayGame(byTeamDay, v) {
+  const shift = (n) => new Date(Date.parse(`${v.game_date}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+  const other = (g) => (slugify(g.home) === v.home ? slugify(g.away) : slugify(g.home));
+  const found = [-1, 1]
+    .map((n) => byTeamDay.get(`${shift(n)}|${v.home}`))
+    .filter((g) => g && (v.away === other(g) || v.away.startsWith(`${other(g)}-`)));
+  return found.length === 1 ? found[0] : undefined;
+}
+const UTC_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+
+/** A season's games as venueDetailRows places them: the played games file and the bracket file (a bracket game is marked). */
+export function seasonGames(seedDir, season) {
+  const read = (f) => (existsSync(f) ? parseCsv(readFileSync(f, "utf8"), path.basename(f)).rows : []);
+  const dir = path.join(seedDir, `maxpreps-${season}`);
+  return [
+    ...read(path.join(dir, "playoffs.csv")).map((r) => ({ ...r, bracket: true })),
+    ...read(path.join(dir, "games.csv")).map((r) => ({ ...r, bracket: Boolean(r.round) && r.round !== "season" })),
+  ];
+}
+
+async function venueDetails() {
+  const arg = (f) => (process.argv.includes(f) ? process.argv[process.argv.indexOf(f) + 1] : null);
+  const year = Number(arg("--venue-details"));
+  const out = arg("--out");
+  if (!Number.isInteger(year) || !out) throw new Error("usage: davecampbells.mjs --venue-details <year> --out <file> [--venues <venues.csv>] [--since YYYY-MM-DD]");
+  const seedDir = path.join(path.dirname(TEAMS_FILE), "..", "..", "data", "seed");
+  const games = seasonGames(seedDir, year);
+  const fieldsFile = path.join(seedDir, "schools", "home-fields.csv");
+  const fields = existsSync(fieldsFile) ? parseCsv(readFileSync(fieldsFile, "utf8"), "home-fields.csv").rows : [];
+  const kept = existsSync(out) ? readFileSync(out, "utf8") : "";
+  let venues;
+  if (arg("--venues")) venues = parseCsv(readFileSync(arg("--venues"), "utf8"), "venues.csv").rows;
+  else {
+    const today = centralDate();
+    const since = arg("--since") ?? new Date(Date.parse(`${today}T12:00:00Z`) - 3 * 864e5).toISOString().slice(0, 10);
+    const known = new Set((kept.trim() ? parseCsv(kept, "game details").rows : []).filter((r) => r.site_name).map((r) => kickoffKey(r.date, r.home, r.away)));
+    const due = games.filter((g) => !g.bracket && g.game_date >= since && g.game_date <= today && !known.has(kickoffKey(g.game_date, g.home, g.away)));
+    if (!due.length) return console.log(`Regular-season sites: no game since ${since} without a site.`);
+    const client = createClient();
+    const seasonId = SEASON_IDS[year] ?? footballSeasons(await client.getData("/api/public/seasons")).get(year);
+    if (!seasonId) return console.log(`${year}: the feed lists no high school football season`);
+    const { theirs, ours } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
+    const { slugs, renamed } = knownPrograms(seedDir);
+    const teams = [...new Set(due.map((g) => theirs.get(slugify(g.home)) ?? theirs.get(slugify(g.away))).filter(Boolean))];
+    const items = [];
+    for (const t of teams) {
+      const id = await teamId(client, t, seasonId);
+      if (id) items.push(...(await liveAndUpcoming(client, seasonId, id)));
+    }
+    const wanted = new Set(due.flatMap((g) => [`${g.game_date}|${slugify(g.home)}`, `${g.game_date}|${slugify(g.away)}`]));
+    venues = venueRows(items, { ours, slugs, renamed, season: year }).filter((v) => wanted.has(`${v.game_date}|${v.home}`) || wanted.has(`${v.game_date}|${v.away}`));
+    console.log(`Regular-season sites: ${due.length} games since ${since} without a site, ${teams.length} teams read.`);
+  }
+  const { rows, skipped } = venueDetailRows(venues, { games, fields, season: year });
+  writeFileSync(out, mergeKickoffs(kept, rows));
+  const bracket = rows.filter((r) => games.some((g) => g.bracket && kickoffKey(g.game_date, g.home, g.away) === kickoffKey(r.date, r.home, r.away))).length;
+  console.log(`Venue details: ${venues.length} venue rows; ${rows.length} facts rows (${bracket} bracket, ${rows.length - bracket} regular season), ${rows.filter((r) => r.site_name).length} with a site; skipped ${skipped.homeField} at the home team's own field, ${skipped.nothing} with nothing to add, ${skipped.unplaced} on no game of the season's files.`);
+}
+
 /** `--team <year> <their slug>`: one team's game list in a season, with no status filter: how many games and which
  * statuses, so a season that reads nothing is one look away. Counts and status names only. */
 async function team() {
@@ -936,8 +1049,26 @@ async function team() {
 // Game details (ADR 0036, ADR 0041): the feed's scheduled kickoff, in UTC, and its site (the venue's name and city) for every
 // bracket game with no score yet, kept in the public facts file data/seed/game-details/<year>.csv. The file names no source:
 // date, the two teams as the bracket spells them, the kickoff and the site.
-export const DETAIL_COLUMNS = "date,home,away,kickoff_utc,site_name,site_city";
+export const DETAIL_COLUMNS = "date,home,away,kickoff_utc,site_name,site_city,site_street,site_state,site_zip";
+const ADDRESS = ["site_street", "site_state", "site_zip"];
 const kickoffKey = (date, home, away) => gameKey(date, slugify(home), slugify(away));
+
+/** A street line as the facts file keeps it (ADR 0066): plain words plus "#" and ",", a comma read as " - " (the file has
+ * no quoting), at most 100 characters; anything else is "" (not known), never a guess. */
+export function streetText(value) {
+  if (typeof value !== "string") return "";
+  const t = value.replace(/\s*,\s*/g, " - ").replace(/\s+/g, " ").trim();
+  return t.length <= 100 && /^[\p{L}\p{N} .'&()/#-]+$/u.test(t) && /\p{N}/u.test(t) ? t : "";
+}
+
+/** A venue's street address as the feed gives it (ADR 0066): its street lines, two-letter state and ZIP, each blank when
+ * the feed has none or it does not read cleanly. Never its coordinates. */
+export function addressOf(venue) {
+  const street = streetText([venue?.addressLine1, venue?.addressLine2].filter((x) => typeof x === "string" && x.trim()).join(" "));
+  const state = typeof venue?.state === "string" && /^[A-Z]{2}$/.test(venue.state.trim()) ? venue.state.trim() : "";
+  const zip = typeof venue?.postalCode === "string" && /^\d{5}(-\d{4})?$/.test(venue.postalCode.trim()) ? venue.postalCode.trim() : "";
+  return { site_street: street, site_state: street ? state : "", site_zip: street ? zip : "" };
+}
 
 /** A venue's name or city as the facts file keeps it: plain words (letters, digits, spaces and . ' & ( ) / -), a comma
  * read as " - " (the file has no quoting), at most `max` characters; anything else is "" (not known), never a guess. */
@@ -949,7 +1080,7 @@ export function siteText(value, max) {
 
 /** The kickoff and site of each `due` bracket row the feed lists, as a facts row; a row the feed does not list is left out.
  * The site is the feed's venue: its location name (else its site label) and city, each blank when the feed has none
- * (ADR 0041). Nothing else of the venue is kept: no address, coordinates or postal code. */
+ * (ADR 0041), and its street address (ADR 0066). Never its coordinates. */
 export function kickoffRows(items, { due, ours }) {
   return matchGames(items, { rows: due, ours }).map(({ item, row }) => {
     const name = siteText(item.venue?.locationName, 80) || siteText(item.venue?.siteLabel, 80);
@@ -961,6 +1092,7 @@ export function kickoffRows(items, { due, ours }) {
       site_name: name,
       // A city with no name is not a site.
       site_city: name ? siteText(item.venue?.city, 60) : "",
+      ...(name ? addressOf(item.venue) : { site_street: "", site_state: "", site_zip: "" }),
     };
   });
 }
@@ -969,16 +1101,38 @@ export function kickoffRows(items, { due, ours }) {
  * so a fresh value only fills a blank; other kept rows stay. */
 export function mergeKickoffs(text, fresh) {
   const kept = text.trim() ? parseCsv(text, "game details").rows : [];
-  const out = new Map(kept.map((r) => [kickoffKey(r.date, r.home, r.away), r]));
+  // Every kept row gets every column, so a file from before addresses (ADR 0066) is written back whole.
+  const out = new Map(kept.map((r) => [kickoffKey(r.date, r.home, r.away), Object.fromEntries(DETAIL_COLUMNS.split(",").map((c) => [c, r[c] ?? ""]))]));
   for (const r of fresh) {
     const k = kickoffKey(r.date, r.home, r.away);
     const old = out.get(k) ?? {};
-    out.set(k, Object.fromEntries(DETAIL_COLUMNS.split(",").map((c) => [c, old[c] || r[c] || ""])));
+    // An address belongs to its site (ADR 0066): a fresh one fills a blank only when the kept site is the same or blank.
+    const sameSite = !old.site_name || old.site_name === r.site_name;
+    out.set(k, Object.fromEntries(DETAIL_COLUMNS.split(",").map((c) => [c, old[c] || (ADDRESS.includes(c) && !sameSite ? "" : r[c]) || ""])));
   }
   const rows = [...out.values()].sort((a, b) => a.kickoff_utc.localeCompare(b.kickoff_utc) || a.home.localeCompare(b.home));
   const cols = DETAIL_COLUMNS.split(",");
   for (const r of rows) if (cols.some((c) => r[c].includes(","))) throw new Error(`a comma in a game detail: ${r.date} ${r.home} / ${r.away}`);
   return [DETAIL_COLUMNS, ...rows.map((r) => cols.map((c) => r[c]).join(","))].join("\n") + "\n";
+}
+
+/** How far back a played bracket game is still read for a missing kickoff or site (ADR 0065): the feed keeps a played game
+ * on the team's schedule, and two weeks bounds the reads of a game the feed never gives a site. */
+export const PLAYED_DAYS = 14;
+
+/**
+ * The bracket rows the morning read asks the feed about (ADR 0065): every game still to play (no score, today or later),
+ * and every played or past game of the last PLAYED_DAYS days whose facts row (`detailsText`) lacks a kickoff or a site.
+ */
+export function kickoffTargets(rows, detailsText, today) {
+  const kept = detailsText.trim() ? parseCsv(detailsText, "game details").rows : [];
+  const known = new Map(kept.map((r) => [kickoffKey(r.date, r.home, r.away), r]));
+  const since = new Date(Date.parse(`${today}T12:00:00Z`) - PLAYED_DAYS * 864e5).toISOString().slice(0, 10);
+  return rows.filter((r) => {
+    if (r.home_score === "" && r.game_date >= today) return true;
+    const d = known.get(kickoffKey(r.game_date, r.home, r.away));
+    return r.game_date >= since && r.game_date <= today && !(d?.kickoff_utc && d?.site_name);
+  });
 }
 
 async function kickoffs() {
@@ -989,8 +1143,8 @@ async function kickoffs() {
   const today = centralDate();
   const seasonId = SEASON_IDS[Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1)];
   if (!seasonId) return console.log("Kickoffs: no feed season id for this season, nothing read.");
-  const due = parseCsv(readFileSync(playoffsFile, "utf8"), "playoffs.csv").rows.filter((r) => r.home_score === "" && r.game_date >= today);
-  if (!due.length) return console.log("Kickoffs: no bracket game still to play.");
+  const due = kickoffTargets(parseCsv(readFileSync(playoffsFile, "utf8"), "playoffs.csv").rows, existsSync(out) ? readFileSync(out, "utf8") : "", today);
+  if (!due.length) return console.log("Kickoffs: no bracket game still to play or missing a detail.");
   const { theirs, ours } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
   // One mapped team a game is enough: its schedule lists the game.
   const teams = [...new Set(due.map((r) => theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away))).filter(Boolean))];
@@ -1004,11 +1158,13 @@ async function kickoffs() {
   const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh);
   writeFileSync(out, merged);
   const sites = fresh.filter((r) => r.site_name).length;
-  console.log(`Kickoffs: ${due.length} bracket games still to play, ${teams.length} teams read, ${fresh.length} kickoff times found, ${sites} with a site.`);
+  const toPlay = due.filter((r) => r.home_score === "");
+  console.log(`Kickoffs: ${toPlay.length} bracket games still to play and ${due.length - toPlay.length} played ones missing a detail, ${teams.length} teams read, ${fresh.length} kickoff times found, ${sites} with a site.`);
   console.log(missingDetails(due, merged));
-  // The feed's bracket positions against UIL's bracket (ADR 0047): a misfit means the bracket file or a listing is wrong.
+  // The feed's bracket positions against UIL's bracket (ADR 0047), for games still to play: a misfit means the bracket file
+  // or a listing is wrong.
   const season = Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1);
-  const { checked, misfits } = positionProblems(matchGames(items, { rows: due, ours }), uilStructure(season));
+  const { checked, misfits } = positionProblems(matchGames(items, { rows: toPlay, ours }), uilStructure(season));
   if (!misfits.length) console.log(`Bracket positions: ${checked} UIL game(s) the feed places, all fit UIL's bracket.`);
   else {
     const line = `Bracket positions: ${misfits.length} of ${checked} UIL game(s) the feed places do not fit UIL's bracket (${misfits.join(", ")}).`;
@@ -1209,5 +1365,6 @@ async function gamesOn() {
   console.log(lines.length ? lines.join("\n") : `${theirSlug}: no game on ${date}`);
 }
 
-const MODES = { "--finals": finals, "--bracket-fields": bracketFieldsMode, "--seasons": seasons, "--history": history, "--venues": venues, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents, "--games-on": gamesOn };
+// Order matters: the first flag found picks the mode, so --venue-details (which may carry --venues) comes before --venues.
+const MODES = { "--venue-details": venueDetails, "--finals": finals, "--bracket-fields": bracketFieldsMode, "--seasons": seasons, "--history": history, "--venues": venues, "--team": team, "--kickoffs": kickoffs, "--merge-details": mergeDetails, "--opponents": opponents, "--games-on": gamesOn };
 if (process.argv[1] === fileURLToPath(import.meta.url)) await guarded(Object.entries(MODES).find(([f]) => process.argv.includes(f))?.[1] ?? live);

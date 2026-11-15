@@ -9,6 +9,7 @@ import { demoGames, type Game, type Team } from "@/lib/demo-games";
 import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, playoffLabels, resolveGame } from "@/lib/game-pages";
 import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
+import { addressLine, directionsUrl } from "@/lib/address";
 import { orgOfLabel } from "@/lib/orgs";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { loadWeeks } from "@/lib/weeks";
@@ -242,7 +243,23 @@ export default async function GamePage({ params }: Props) {
           {/* What was projected before the game beside what happened (ADR 0044). A judged result shows it in its own section
               below, with how far the result was from it. No upset label. */}
           {g.projected && !(found && detail?.projection) && <Fact label="Projection"><span data-projected>{projectedLine(g.projected, outcomeOf(g))}</span>. A projection, not a result.</Fact>}
-          <Fact label="Site">{g.venue}</Fact>
+          <Fact label="Site">
+            {g.venue}
+            {/* The site's street address and a maps search for it (ADR 0066): no key, no embedded map, no source named. */}
+            {g.address && (
+              <span className="block" data-address>
+                <span className="block">{addressLine(g.address)}</span>
+                <a
+                  href={directionsUrl(g.venue, g.address)}
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-red"
+                  data-directions
+                >
+                  Directions<span className="sr-only"> to {g.venue.replace(/ \(home\)$/, "")}, a map search</span>
+                </a>
+              </span>
+            )}
+          </Fact>
           {places.length > 0 && (
             <Fact label="Plays in">
               {places.map(([team, place]) => (

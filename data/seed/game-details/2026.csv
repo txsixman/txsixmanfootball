@@ -1,26 +1,125 @@
-date,home,away,kickoff_utc,site_name,site_city
-2026-11-13,Three Way School,Ladonia Fannindel,2026-11-13T23:30:00Z,,
-2026-11-13,Blackwell,Cherokee,2026-11-14T00:30:00Z,Findlay Field,Menard
-2026-11-13,Borden County,Lenorah Grady,2026-11-14T00:30:00Z,,
-2026-11-13,Happy,Hermleigh,2026-11-14T00:30:00Z,Buffalo Stadium,Petersburg
-2026-11-13,Oglesby,Knippa,2026-11-14T00:30:00Z,,
-2026-11-13,Turkey Valley,McLean,2026-11-14T00:30:00Z,Cyclone Stadium,Memphis
-2026-11-13,Wellman-Union,Anton,2026-11-14T00:30:00Z,Hornet Stadium,Sudan
-2026-11-13,Boys Ranch,Nazareth,2026-11-14T01:00:00Z,Tiger Field,Groom
-2026-11-13,Campbell,Bluff Dale,2026-11-14T01:00:00Z,Yellow Jacket Field,Coolidge
-2026-11-13,Chester,Aquilla,2026-11-14T01:00:00Z,Sandies Stadium,Grapeland
-2026-11-13,Gilmer Union Hill,Abbott,2026-11-14T01:00:00Z,Bulldog Stadium,Eustace
-2026-11-13,Iredell,Mount Calm,2026-11-14T01:00:00Z,Tiger Field,Oglesby
-2026-11-13,Jayton,Kress,2026-11-14T01:00:00Z,Jaybird Stadium,Jayton
-2026-11-13,Meadow,Hart,2026-11-14T01:00:00Z,Wolverine Stadium,Springlake
-2026-11-13,Claude,Whiteface,2026-11-14T01:30:00Z,Mustang Stadium,Claude
-2026-11-13,Matador Motley County,Lefors,2026-11-14T01:30:00Z,Payne Field,Silverton
-2026-11-13,May,Newcastle,2026-11-14T01:30:00Z,The Bears Den,Baird
-2026-11-13,Valera Panther Creek,Richland Springs,2026-11-14T01:30:00Z,Bryant Field,Valera
-2026-11-14,Jubilee San Antonio,New Braunfels Thunder,2026-11-14T17:00:00Z,,
-2026-11-14,Apple Springs,Benavides,2026-11-14T20:00:00Z,Ingram Stadium,San Marcos
-2026-11-14,Harvest Christian Academy-Keller,Lone Star High School North-Gainesville,2026-11-15T01:00:00Z,Gainsville State School,Gainesville
-2026-11-20,Water Valley,Borden County,2026-11-21T00:00:00Z,Eagle Stadium,Sterling City
-2026-11-20,Oglesby,Gilmer Union Hill,2026-11-21T00:30:00Z,Panther Field,Oakwood
-2026-11-20,Grace Academy Griffins,Brazos Valley Lions Athletics,2026-11-21T01:00:00Z,Tippet Middle School,Georgetown
-2026-11-20,Texas Wind,Austin Royals,2026-11-21T01:30:00Z,Texas Wind Stadium,Waco
+date,home,away,kickoff_utc,site_name,site_city,site_street,site_state,site_zip
+2026-11-07,Baytown Christian Academy,San Marcos Academy,,Ingram Stadium,San Marcos,2801 Ranch Road 12,TX,78666
+2026-09-25,Calvert,Abbott,,Panther Field,Abbott,219 S. Third,TX,76621
+2026-09-11,Cherokee,Iredell,,Dragon Field,Iredell,220 Eastland Street,TX,76649
+2026-09-11,Earth Springlake,Matador Motley County,,Burleson Field,Matador,,,
+2026-11-07,Lone Star High School North-Gainesville,Weatherford Christian School,,Gainsville State School,Gainesville,1379 Fm 678,TX,76240
+2026-08-27,Borden County,Newcastle,2026-08-27T23:00:00Z,Coyote Field,Gail,240 W Kincaid St,TX,79738
+2026-08-27,Knippa,Lohn,2026-08-27T23:00:00Z,Eagle Field,Lohn,Farm to Market Road 504,TX,76852
+2026-08-27,Sanderson,Loop,2026-08-28T00:00:00Z,Longhorn Field,Loop,Hwy 303,TX,79342
+2026-08-28,Bruni,Hermleigh,2026-08-28T23:00:00Z,Badger Stadium,Bruni,619 8th Street,TX,78344
+2026-08-28,Bryson,Whiteface,2026-08-28T23:00:00Z,Cowboy Stadium,Bryson,309 McCloud St,TX,76427
+2026-08-28,Texas Wind,Bluff Dale,2026-08-28T23:00:00Z,Bluff Dale High School,Bluff Dale,710 Church Street,TX,76433
+2026-08-28,Fort Davis,Fort Hancock,2026-08-29T00:30:00Z,Bart Coan Field,Fort Davis,,,
+2026-08-28,Veribest,Santa Anna,2026-08-29T00:30:00Z,Mountaineer Field,Santa Anna,701 Bowie St,TX,76878
+2026-08-28,Lamesa Klondike,Strawn,2026-08-29T01:00:00Z,Greyhound Stadium,Strawn,411 South Front Street,TX,76475
+2026-08-29,Knox City,Lefors,2026-08-29T20:00:00Z,Greyhound Field,Knox City,,,
+2026-08-29,Ackerly Sands,Turkey Valley,2026-08-29T22:30:00Z,Mustang Field,Ackerly,101 1st St,TX,79713
+2026-08-29,Whitharral,Westbrook,2026-08-30T01:00:00Z,McCormack-Doshier Field,Whitharral,2322 Kansas Rd,TX,79380
+2026-09-04,Amherst,Matador Motley County,2026-09-04T23:00:00Z,Longhorn Stadium,Imperial,,,
+2026-09-04,Hermleigh,Kingdom Preparatory Academy-Lubbock,2026-09-05T00:30:00Z,Cardinal Stadium,Hermleigh,8010 Business 84 H,TX,79526
+2026-09-04,Sidney,Cherokee,2026-09-05T00:30:00Z,Indian Stadium,Cherokee,,,
+2026-09-04,Whiteface,Turkey Valley,2026-09-05T00:30:00Z,Antelope Stadium,Whiteface,401 Antelope Boulevard,TX,79379
+2026-09-11,Williamson County Homeschool (WILCO),Menard,2026-09-11T23:00:00Z,Findlay Field,Menard,401 Travis Street,TX,76859
+2026-09-11,Hermleigh,Claude,2026-09-12T00:00:00Z,Mustang Stadium,Claude,500 5th Street,TX,79019
+2026-09-11,Our Lady of the Hills-Kerrville,Barksdale Nueces Canyon,2026-09-12T00:00:00Z,Northcutt Stadium,Camp Wood,,,
+2026-09-11,Westlake Academy,Texas Wind,2026-09-12T00:00:00Z,Westlake Academy,Westlake,2600 J.T. Ottinger Rd,TX,76262
+2026-09-18,Cranfills Gap,Cherokee,2026-09-19T00:00:00Z,Indian Stadium,Cherokee,,,
+2026-09-18,Spur,Throckmorton,2026-09-19T00:30:00Z,Greyhound Stadium,Throckmorton,210 College St,TX,76483
+2026-09-18,Whiteface,Westbrook,2026-09-19T00:30:00Z,Antelope Stadium,Whiteface,401 Antelope Boulevard,TX,79379
+2026-09-24,Knox City,Veribest,2026-09-25T00:00:00Z,Greyhound Field,Knox City,,,
+2026-09-26,The Emery/Weiner School-Houston,Richland Springs,2026-09-26T19:00:00Z,Coyote Field,Richland Springs,700 West Coyote Trail,TX,76871
+2026-10-02,Oglesby,Buckholts,2026-10-03T00:00:00Z,Jim Hauk Field,Buckholts,300 South 10th St,TX,76518
+2026-10-02,Richland Springs,Whitharral,2026-10-03T00:00:00Z,Coyote Field,Richland Springs,700 West Coyote Trail,TX,76871
+2026-10-02,Garden City,Gilmer Union Hill,2026-10-03T00:30:00Z,Bearkat Stadium,Garden City,240 Bearkat Avenue,TX,79739
+2026-10-08,West Texas Tornadoes,Grandfalls-Royalty,2026-10-09T00:00:00Z,John S. White Stadium,Grandfalls,200 B Ave,TX,79742
+2026-10-08,Whiteface,Newcastle,2026-10-09T00:00:00Z,Bobcat Field,Newcastle,,,
+2026-10-08,Paint Rock,Robert Lee,2026-10-09T00:30:00Z,Griffith Stadium,Robert Lee,1323 W Hamilton Street,TX,76945
+2026-10-08,Wildorado,Boys Ranch,2026-10-09T00:30:00Z,Roughrider Stadium,Boys Ranch,916 Greenwood Ave,TX,79010
+2026-10-09,Methodist Children's,Calvert,2026-10-10T00:30:00Z,Wilkerson Field,Calvert,310 Hickory,TX,77837
+2026-10-09,San Antonio Patriots,Rocksprings,2026-10-10T00:30:00Z,Angora Field,Rocksprings,201 US 377,TX,78880
+2026-10-09,Turkey Valley,Chillicothe,2026-10-10T00:30:00Z,Moffett-Dodson Stadium,Chillicothe,8th at Boone Rd.,TX,79225
+2026-10-10,Silverton,Saint Jo,2026-10-10T21:00:00Z,Payne Field,Silverton,700 Loretta St,TX,79257
+2026-10-15,Sanderson,Dell City,2026-10-15T23:00:00Z,Eagle Stadium,Sanderson,315 W Mansfield St,TX,79848
+2026-10-16,Garland Christian Academy,Lone Star High School North-Gainesville,2026-10-17T00:00:00Z,Garland Christian Academy,Garland,1522 Lavon Drive,TX,75040
+2026-10-16,Chester,Runge,2026-10-17T00:30:00Z,Aubrey Bradley Stadium,Chester,Yellowjacket Dr. at FM 1745,TX,75936
+2026-10-16,Hermleigh,Roby,2026-10-17T00:30:00Z,Cardinal Stadium,Hermleigh,8010 Business 84 H,TX,79526
+2026-10-23,Marfa,El Paso Leadership Academy,2026-10-24T00:00:00Z,Bart Coan Field,Fort Davis,,,
+2026-10-30,Whiteface,Whitharral,2026-10-31T00:00:00Z,Antelope Stadium,Whiteface,401 Antelope Boulevard,TX,79379
+2026-10-31,Wylie Preparatory Academy HS,Ovilla Christian High School-Red Oak,2026-10-31T19:00:00Z,Wylie Prep,Wylie,4110 Skyview Ct,TX,75098
+2026-11-05,Grace Academy Griffins,Plainview Classical Academy,2026-11-06T00:00:00Z,Baird Bears Den,Baird,,,
+2026-11-05,Johnson County Sports Association (JCSA),Big Springs Charter School,2026-11-06T00:00:00Z,Priddy Athletic Complex,Priddy,,,
+2026-11-05,NYOS,Valor South Austin,2026-11-06T00:00:00Z,Nguyen Football Field,Hutto,,,
+2026-11-05,Kings Academy Tyler,Newman Academy,2026-11-06T01:00:00Z,Clyde-Perkins Stadium,Tyler,,,
+2026-11-05,Lucas Christian Academy,Abilene Christian School,2026-11-06T01:00:00Z,,,,,
+2026-11-06,Bracken Christian School-Bulverde,Covenant Christian School-Conroe,2026-11-06T06:00:00Z,Warrior Field,Bulverde,670 Old Boerne Road,TX,78163
+2026-11-06,Harvest Lantana,Dallas Academy,2026-11-06T06:00:00Z,,,,,
+2026-11-06,Nazarene Christian Academy-Crowley,The Highlands School-Irving,2026-11-06T06:00:00Z,,,,,
+2026-11-06,Wylie Preparatory Academy HS,Harvest Christian Academy-Keller,2026-11-06T06:00:00Z,,,,,
+2026-11-06,New Braunfels Spartans,Coastal Christian Homeschool,2026-11-06T13:00:00Z,Hidden Valley Sports Park,Canyon Lake,,,
+2026-11-06,Jubilee San Antonio,Texas Empowerment Academy,2026-11-06T22:00:00Z,Jubilee San Antonio,San Antonio,,,
+2026-11-06,Sherman Grayson Christian School,Hill Country Knights,2026-11-07T00:00:00Z,Methodist Children's School,Waco,,,
+2026-11-06,Arlington Heights Christian School,St. Mary's,2026-11-07T01:00:00Z,Runge HS,Runge,,,
+2026-11-06,Brazos Valley Lions Athletics,Founders Classical Academy of Conroe,2026-11-07T01:00:00Z,Stephen F Austin Middle School,Bryan,,,
+2026-11-06,Fort Bend Chargers,Valor North Austin,2026-11-07T01:00:00Z,,,,,
+2026-11-06,Founders Classical Academy of Leander,BVCHEA,2026-11-07T01:00:00Z,Founders Leander,,,,
+2026-11-06,Grace Classical Academy,Valor Leander,2026-11-07T01:00:00Z,Granbury Middle School,Granbury,,,
+2026-11-06,Kingdom Preparatory Academy-Lubbock,Azle Christian School,2026-11-07T01:00:00Z,,,,,
+2026-11-06,Town East,Victoria Inc. (Cobras),2026-11-07T01:00:00Z,Wiseman Field,La Vernia,,,
+2026-11-06,Hermleigh,Aspermont,2026-11-07T01:30:00Z,Cardinal Stadium,Hermleigh,8010 Business 84 H,TX,79526
+2026-11-06,Lubbock Titans,East Texas Homeschool Sports,2026-11-07T01:30:00Z,Keene ISD,Keene,,,
+2026-11-07,New Braunfels Thunder,Jubilee Lake View,2026-11-07T17:00:00Z,Oak Run Middle School,New Braunfels,,,
+2026-11-07,Austin Royals,Jubilee Brownsville,2026-11-07T20:00:00Z,Runge High School,Runge,,,
+2026-11-07,Greenville Homeschool Athletics,Panhandle Christian Home Educ (PCHEA),2026-11-07T20:00:00Z,NTYFL WF,Wichita Falls,,,
+2026-11-07,Texas Home Educator's Sports Association (THESA),Midland Texas Leadership Charter Academy,2026-11-07T21:00:00Z,The Bears Den Stadium,Baird,,,
+2026-11-07,Tyler Heat (Home Education Athletics of Tyler),El Paso Leadership Academy,2026-11-07T23:00:00Z,Baird Bears Den,Baird,,,
+2026-11-07,West Texas Tornadoes,Community School of Mesquite,2026-11-07T23:00:00Z,Paint Creek Pirates Field,,,,
+2026-11-07,San Antonio Patriots,Williamson County Homeschool (WILCO),2026-11-08T00:30:00Z,,,,,
+2026-11-12,Rankin,Lamesa Klondike,2026-11-13T00:00:00Z,Wildcat Stadium,Lenorah,3500 FM 829,TX,79749
+2026-11-12,Rocksprings,Marfa,2026-11-13T00:00:00Z,Bear Stadium,Balmorhea,2481 El Paso Street,TX,79718
+2026-11-12,Robert Lee,Water Valley,2026-11-13T00:30:00Z,Eagle Stadium,Sterling City,805 7th Street,TX,76951
+2026-11-12,Menard,Roscoe Highland,2026-11-13T01:00:00Z,Hornet Stadium,Blackwell,100 Hornet Drive,TX,79506
+2026-11-12,Milford,Saint Jo,2026-11-13T01:00:00Z,Eagle Stadium,Willow Park,4954 E. Interstate 20 Service Rd. S.,TX,76087
+2026-11-12,Runge,Calvert,2026-11-13T01:00:00Z,Eagle Field,Luling,112 East Travis Street,TX,78648
+2026-11-12,Strawn,Gustine,2026-11-13T01:00:00Z,Wildcat Stadium,Rising Star,905 N Main St,TX,76471
+2026-11-12,Vernon Northside,Gordon,2026-11-13T01:00:00Z,Greyhound Stadium,Throckmorton,210 College St,TX,76483
+2026-11-12,Woodson,Knox City,2026-11-13T01:00:00Z,Bobcat Field,Newcastle,,,
+2026-11-12,Grandfalls-Royalty,Dell City,2026-11-13T01:30:00Z,Bear Stadium,Balmorhea,2481 El Paso Street,TX,79718
+2026-11-12,Harrold,Benjamin,2026-11-13T01:30:00Z,Dick Todd Field,Crowell,400 E. Logan St.,TX,79227
+2026-11-12,Zephyr,Sidney,2026-11-13T01:30:00Z,Switzer Field,Blanket,,,
+2026-11-13,Three Way School,Ladonia Fannindel,2026-11-13T23:30:00Z,Yellow Jacket Field,Coolidge,1002 Kirven St.,TX,76635
+2026-11-13,Blackwell,Cherokee,2026-11-14T00:30:00Z,Findlay Field,Menard,401 Travis Street,TX,76859
+2026-11-13,Borden County,Lenorah Grady,2026-11-14T00:30:00Z,Wildcat Stadium,Westbrook,100 Morrison St,TX,79565
+2026-11-13,Happy,Hermleigh,2026-11-14T00:30:00Z,Buffalo Stadium,Petersburg,1411 W 4th St,TX,79250
+2026-11-13,Oglesby,Knippa,2026-11-14T00:30:00Z,Puncher Dome,Mason,US 87 & Ranch Road 1723,TX,76856
+2026-11-13,Turkey Valley,McLean,2026-11-14T00:30:00Z,Cyclone Stadium,Memphis,1501 High St,TX,79245
+2026-11-13,Wellman-Union,Anton,2026-11-14T00:30:00Z,Hornet Stadium,Sudan,,,
+2026-11-13,Boys Ranch,Nazareth,2026-11-14T01:00:00Z,Tiger Field,Groom,304 W 3rd St,TX,79039
+2026-11-13,Brazos Valley Lions Athletics,NYOS,2026-11-14T01:00:00Z,Stephen F Austin Middle School,Bryan,,,
+2026-11-13,Campbell,Bluff Dale,2026-11-14T01:00:00Z,Yellow Jacket Field,Coolidge,1002 Kirven St.,TX,76635
+2026-11-13,Chester,Aquilla,2026-11-14T01:00:00Z,Sandies Stadium,Grapeland,N. Olive St at FM 1272,TX,75844
+2026-11-13,Fort Bend Chargers,Williamson County Homeschool (WILCO),2026-11-14T01:00:00Z,Barean Christian Academy,,,,
+2026-11-13,Gilmer Union Hill,Abbott,2026-11-14T01:00:00Z,Bulldog Stadium,Eustace,,,
+2026-11-13,Grace Academy Griffins,Greenville Homeschool Athletics,2026-11-14T01:00:00Z,Pacer Field,Waco,,,
+2026-11-13,Iredell,Mount Calm,2026-11-14T01:00:00Z,Tiger Field,Oglesby,125 College Ave,TX,76561
+2026-11-13,Jayton,Kress,2026-11-14T01:00:00Z,Jaybird Stadium,Jayton,700 Madison Avenue,TX,79528
+2026-11-13,Meadow,Hart,2026-11-14T01:00:00Z,Wolverine Stadium,Springlake,472 Farm to Market Road 302,TX,79031
+2026-11-13,Stephenville Faith Knights,Sherman Grayson Christian School,2026-11-14T01:00:00Z,Morgan Mill ISD,Bluff Dale,,,
+2026-11-13,Town East,Arlington Heights Christian School,2026-11-14T01:00:00Z,Wiseman Field,La Vernia,,,
+2026-11-13,Vitoria Gators,New Braunfels Spartans,2026-11-14T01:00:00Z,Gator Stadium,Victoria,,,
+2026-11-13,Claude,Whiteface,2026-11-14T01:30:00Z,Mustang Stadium,Claude,500 5th Street,TX,79019
+2026-11-13,Matador Motley County,Lefors,2026-11-14T01:30:00Z,Payne Field,Silverton,700 Loretta St,TX,79257
+2026-11-13,May,Newcastle,2026-11-14T01:30:00Z,The Bears Den,Baird,600 West 7th Street,TX,79504
+2026-11-13,Valera Panther Creek,Richland Springs,2026-11-14T01:30:00Z,Bryant Field,Valera,129 Pvt Road 3421,TX,76884
+2026-11-14,Jubilee San Antonio,New Braunfels Thunder,2026-11-14T17:00:00Z,Jubilee San Antonio,San Antonio,,,
+2026-11-14,Austin Royals,Founders Classical Academy of Leander,2026-11-14T18:00:00Z,George Wagner Middle School,Georgetown,,,
+2026-11-14,Grace Classical Academy,West Texas Tornadoes,2026-11-14T18:00:00Z,Baird High School Bears' Den Stadium,Baird,,,
+2026-11-14,Apple Springs,Benavides,2026-11-14T20:00:00Z,Ingram Stadium,San Marcos,2801 Ranch Road 12,TX,78666
+2026-11-14,Johnson County Sports Association (JCSA),Kings Academy Tyler,2026-11-14T23:00:00Z,John Warren Sports Complex,Cleburne,,,
+2026-11-14,Texas Wind,Lubbock Titans,2026-11-15T00:00:00Z,Baird Bears Den,Baird,,,
+2026-11-14,Harvest Christian Academy-Keller,Lone Star High School North-Gainesville,2026-11-15T01:00:00Z,Gainsville State School,Gainesville,1379 Fm 678,TX,76240
+2026-11-14,Texas Home Educator's Sports Association (THESA),Tyler Heat (Home Education Athletics of Tyler),2026-11-15T01:00:00Z,Vista Ridge Middle School,Fort Worth,,,
+2026-11-20,Water Valley,Borden County,2026-11-21T00:00:00Z,Eagle Stadium,Sterling City,805 7th Street,TX,76951
+2026-11-20,Oglesby,Gilmer Union Hill,2026-11-21T00:30:00Z,Panther Field,Oakwood,388 County Road 331,TX,75855
+2026-11-20,Grace Academy Griffins,Brazos Valley Lions Athletics,2026-11-21T01:00:00Z,Tippet Middle School,Georgetown,,,
+2026-11-20,Texas Wind,Austin Royals,2026-11-21T01:30:00Z,Texas Wind Stadium,Waco,,,

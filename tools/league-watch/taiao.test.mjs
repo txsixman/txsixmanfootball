@@ -160,32 +160,34 @@ test("a bracket tab gives each game's teams, home side, scores, date and forfeit
 });
 
 // Site lines in the shapes the bracket writes them (ADR 0063); invented places.
-test("a site line keeps the venue's name and city, never the street, number or postal code", () => {
+test("a site line keeps the venue's name and city, and its street, TX and ZIP when it gives them (ADR 0066)", () => {
   const cases = [
-    ["Lark Field, 100 Main St., Wrenville, TX 79000", "Lark Field", "Wrenville"],
-    ["The Owls Den, Lark High School, 12 W 3rd Street, Wrenville, TX 79000", "The Owls Den", "Wrenville"],
-    ["Lark ISD 404 Heron Dr Wrenville TX 79000", "Lark ISD", "Wrenville"],
-    ["Owl Stadium. 1100 E Lake Shore Dr, Finch Falls, Tx 79001", "Owl Stadium", "Finch Falls"],
-    ["Robin Prep-4427 Crane Rd. Jay City, Tx 79002", "Robin Prep", "Jay City"],
-    ["Heron Middle School (1601 Lark Rd, Wrenville, TX 79000)", "Heron Middle School", "Wrenville"],
-    ["Owl Field; 3006 N Finch St Wrenville, TX 79000", "Owl Field", "Wrenville"],
-    ["Lark Middle School - 2000 Wren Rd. - Wrenville, TX 79000", "Lark Middle School", "Wrenville"],
-    ["Wren ISD 295 FM-1188 Bluff Lark, TX 79003 United States", "Wren ISD", "Bluff Lark"],
-    ["Finch Field, 1035 FM 775, La Wren, TX 79004", "Finch Field", "La Wren"],
-    ["Pacer Field (Owls) 1100 East Lake Dr, Wrenville", "Pacer Field", "Wrenville"],
-    ["Jay Academy, 450 Oak Run Point, New Wren", "Jay Academy", "New Wren"],
-    ["Sports Park 125 Mabel Jones Drive, Canyon Lark Texas 79005", "Sports Park", "Canyon Lark"],
-    ["Robin Football Field, 400 Park Avenue Jayton, TX 79006", "Robin Football Field", "Jayton"],
+    ["Lark Field, 100 Main St., Wrenville, TX 79000", "Lark Field", "Wrenville", "100 Main St", "TX", "79000"],
+    ["The Owls Den, Lark High School, 12 W 3rd Street, Wrenville, TX 79000", "The Owls Den", "Wrenville", "12 W 3rd Street", "TX", "79000"],
+    ["Lark ISD 404 Heron Dr Wrenville TX 79000", "Lark ISD", "Wrenville", "404 Heron Dr", "TX", "79000"],
+    ["Owl Stadium. 1100 E Lake Shore Dr, Finch Falls, Tx 79001", "Owl Stadium", "Finch Falls", "1100 E Lake Shore Dr", "TX", "79001"],
+    ["Robin Prep-4427 Crane Rd. Jay City, Tx 79002", "Robin Prep", "Jay City", "4427 Crane Rd", "TX", "79002"],
+    ["Heron Middle School (1601 Lark Rd, Wrenville, TX 79000)", "Heron Middle School", "Wrenville", "1601 Lark Rd", "TX", "79000"],
+    ["Owl Field; 3006 N Finch St Wrenville, TX 79000", "Owl Field", "Wrenville", "3006 N Finch St", "TX", "79000"],
+    ["Lark Middle School - 2000 Wren Rd. - Wrenville, TX 79000", "Lark Middle School", "Wrenville", "2000 Wren Rd", "TX", "79000"],
+    ["Wren ISD 295 FM-1188 Bluff Lark, TX 79003 United States", "Wren ISD", "Bluff Lark", "295 FM-1188", "TX", "79003"],
+    ["Finch Field, 1035 FM 775, La Wren, TX 79004", "Finch Field", "La Wren", "1035 FM 775", "TX", "79004"],
+    ["Pacer Field (Owls) 1100 East Lake Dr, Wrenville", "Pacer Field", "Wrenville", "1100 East Lake Dr", "", ""],
+    ["Jay Academy, 450 Oak Run Point, New Wren", "Jay Academy", "New Wren", "450 Oak Run Point", "", ""],
+    ["Sports Park 125 Mabel Jones Drive, Canyon Lark Texas 79005", "Sports Park", "Canyon Lark", "125 Mabel Jones Drive", "TX", "79005"],
+    ["Robin Football Field, 400 Park Avenue Jayton, TX 79006", "Robin Football Field", "Jayton", "400 Park Avenue", "TX", "79006"],
     ["Robin Pirates Field", "Robin Pirates Field", ""],
     ["Lark Academy,", "Lark Academy", ""],
-    ["Lark Prep 1303 Lark Dr", "Lark Prep", ""],
+    ["Lark Prep 1303 Lark Dr", "Lark Prep", "", "1303 Lark Dr", "", ""],
   ];
-  for (const [line, site_name, site_city] of cases) assert.deepEqual(venueOf(line), { site_name, site_city }, line);
+  for (const [line, site_name, site_city, site_street = "", site_state = "", site_zip = ""] of cases) {
+    assert.deepEqual(venueOf(line), { site_name, site_city, site_street, site_state, site_zip }, line);
+  }
 });
 
 test("a site line with no venue name is no site at all: a street address alone, or nothing", () => {
   for (const line of ["2225 Lark Rd, Wrenville, TX 79000", "1620 Wren Rd wren City TX 79000", "", null, "   "]) {
-    assert.deepEqual(venueOf(line), { site_name: "", site_city: "" }, String(line));
+    assert.deepEqual(venueOf(line), { site_name: "", site_city: "", site_street: "", site_state: "", site_zip: "" }, String(line));
   }
 });
 
@@ -195,7 +197,7 @@ test("a Central kickoff becomes UTC, daylight time known", () => {
   assert.equal(kickoffUtc("2026-11-14", "12:00"), "2026-11-14T18:00:00Z");
 });
 
-test("details rows: the bracket's own games still to play, home as marked, kickoff and site; nothing for a played or TBD game", () => {
+test("details rows: the bracket's own games, played or not, home as marked, kickoff and site; nothing for a TBD game", () => {
   const team = (name, home = false, score = null) => ({ name, home, score });
   const games = [
     { code: "SF1", teams: [team("Lark Owls", true), team("Wren Academy")], date: "2026-11-20", time: "19:30", site: "Owl Stadium. 1100 E Lake Shore Dr, Finch Falls, Tx 79001" },
@@ -205,9 +207,11 @@ test("details rows: the bracket's own games still to play, home as marked, kicko
     { code: "FINAL", teams: [team("Finch Falcons", true)], date: null, time: null, site: null },
     { code: "SF3", teams: [team("Kite Prep", true), team("Swift Academy")], date: "2026-11-20", time: null, site: null },
   ];
-  assert.deepEqual(detailRows(games, "2026-11-15"), [
-    { date: "2026-11-20", home: "Lark Owls", away: "Wren Academy", kickoff_utc: "2026-11-21T01:30:00Z", site_name: "Owl Stadium", site_city: "Finch Falls" },
-    { date: "2026-11-21", home: "Jay Home School", away: "Robin Prep", kickoff_utc: "2026-11-21T18:00:00Z", site_name: "", site_city: "" },
+  assert.deepEqual(detailRows(games), [
+    { date: "2026-11-20", home: "Lark Owls", away: "Wren Academy", kickoff_utc: "2026-11-21T01:30:00Z", site_name: "Owl Stadium", site_city: "Finch Falls", site_street: "1100 E Lake Shore Dr", site_state: "TX", site_zip: "79001" },
+    { date: "2026-11-21", home: "Jay Home School", away: "Robin Prep", kickoff_utc: "2026-11-21T18:00:00Z", site_name: "", site_city: "", site_street: "", site_state: "", site_zip: "" },
+    { date: "2026-11-20", home: "Heron Homeschool", away: "Crane Christian", kickoff_utc: "2026-11-21T01:00:00Z", site_name: "Lark Field", site_city: "", site_street: "", site_state: "", site_zip: "" },
+    { date: "2026-11-13", home: "Finch Falcons", away: "Owl Prep", kickoff_utc: "2026-11-14T01:00:00Z", site_name: "Lark Field", site_city: "", site_street: "", site_state: "", site_zip: "" },
   ]);
   assert.deepEqual(dueGames(games, "2026-11-15").map((g) => g.home), ["Lark Owls", "Robin Prep", "Kite Prep"]);
 });

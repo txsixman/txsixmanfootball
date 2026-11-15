@@ -13,7 +13,7 @@ import { forfeitScore } from "./forfeit";
 import { applyToGame } from "./corrections";
 import { buildSeasonResults, type SeasonResult } from "./season-results";
 import { loadCorrections } from "./correction-files";
-import { kickoffOf, loadKickoffs, loadSites, siteOf } from "./kickoffs";
+import { kickoffOf, knownAddress, loadAddresses, loadKickoffs, loadSites, siteOf } from "./kickoffs";
 import { isDisputed, loadDisputed } from "./disputed";
 
 // Hand-captured games (data/seed/*/playoffs-*.csv), read at build time. Same columns as packages/db/games.mjs, checked
@@ -99,7 +99,7 @@ export async function playoffLeagueSet(season: number): Promise<Set<string>> {
 }
 
 export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
-  const [rows, ratings, kickoffs, sites] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON), loadSites(CURRENT_SEASON)]);
+  const [rows, ratings, kickoffs, sites, addresses] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON), loadSites(CURRENT_SEASON), loadAddresses(CURRENT_SEASON)]);
   const seasons = [...new Set(rows.map((x) => x.season))];
   const disputedBy = new Map(await Promise.all(seasons.map(async (s) => [s, await loadDisputed(s)] as const)));
   // A played game's projection is the one from the week before it (ADR 0044), never today's ratings, which count it.
@@ -146,6 +146,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
       // Where it is played: the site from the game details when known, else "Site not listed yet". A bracket's home team is
       // only its designation (ADR 0037), so it is never shown as the site (ADR 0041).
       venue: season === CURRENT_SEASON ? siteOf(sites, r.game_date, r.home, r.away) : "Site not listed",
+      ...(season === CURRENT_SEASON && { address: knownAddress(addresses, r.game_date, r.home, r.away) }),
     } satisfies Game;
   });
 }

@@ -45,8 +45,17 @@ writeFileSync(
     "UIL,I,area,2031-11-21,Big Draw,Kite Hill,,,,,",
   ].join("\n") + "\n",
 );
+// A file with site addresses (ADR 0066).
+writeFileSync(
+  path.join(root, "data/seed/game-details/2032.csv"),
+  [
+    "date,home,away,kickoff_utc,site_name,site_city,site_street,site_state,site_zip",
+    "2032-11-12,Salt Fork,Cedar Gap,,Mesa Field,Red Bluff,1 Mesa Rd - Gate #2,TX,79528",
+    "2032-11-12,Dry Wash,Owl Creek,,Prairie Bowl,,,,",
+  ].join("\n") + "\n",
+);
 process.chdir(path.join(root, "apps/web"));
-const { NO_SITE, kickoffOf, loadKickoffs, loadSites, siteOf } = await import("../lib/kickoffs.ts");
+const { NO_SITE, kickoffOf, knownAddress, knownSite, loadAddresses, loadKickoffs, loadSites, siteOf } = await import("../lib/kickoffs.ts");
 
 test("a game's site reads '<name>, <city>', whichever team is home", async () => {
   const sites = await loadSites(2031);
@@ -81,4 +90,19 @@ test("a kickoff and site from the league's own bracket fill a listed game the de
   assert.equal(siteOf(sites, "2031-11-21", "Big Draw", "Kite Hill"), "Prairie Bowl");
   // A kept detail is never overwritten.
   assert.equal(siteOf(sites, "2031-11-14", "Salt Fork", "Cedar Gap"), "Mesa Field, Red Bluff");
+});
+
+test("a played game's page takes a known site and gets nothing to guess from when there is none (ADR 0065)", async () => {
+  const sites = await loadSites(2031);
+  assert.equal(knownSite(sites, "2031-11-14", "Cedar Gap", "Salt Fork"), "Mesa Field, Red Bluff");
+  assert.equal(knownSite(sites, "2031-11-14", "Lone Elm", "Big Draw"), undefined);
+  assert.equal(knownSite(await loadSites(2029), "2029-09-04", "Salt Fork", "Cedar Gap"), undefined, "a season with no file");
+});
+
+test("a file with addresses gives each site its street address; a file from before them reads too (ADR 0066)", async () => {
+  const addresses = await loadAddresses(2032);
+  assert.deepEqual(knownAddress(addresses, "2032-11-12", "Cedar Gap", "Salt Fork"), { street: "1 Mesa Rd - Gate #2", city: "Red Bluff", state: "TX", zip: "79528" });
+  assert.equal(knownAddress(addresses, "2032-11-12", "Dry Wash", "Owl Creek"), undefined);
+  assert.equal(siteOf(await loadSites(2032), "2032-11-12", "Salt Fork", "Cedar Gap"), "Mesa Field, Red Bluff");
+  assert.equal((await loadAddresses(2031)).size, 0);
 });

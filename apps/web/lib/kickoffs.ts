@@ -3,14 +3,18 @@ import path from "node:path";
 import { bracketSlots, fill, ROUND_ORDER, type FillGame } from "./bracket-fill.ts";
 import { loadSlotRows } from "./bracket-slots.ts";
 import { slugify } from "./slug.ts";
+import { addressFrom, type Address } from "./address.ts";
 
-// Kickoff times (ADR 0036) and sites (ADR 0041) from data/seed/game-details/<season>.csv
-// (date,home,away,kickoff_utc,site_name,site_city), the teams as the bracket rows spell them. Read at build time; a missing
+// Kickoff times (ADR 0036), sites (ADR 0041) and site addresses (ADR 0066) from data/seed/game-details/<season>.csv
+// (date,home,away,kickoff_utc,site_name,site_city,site_street,site_state,site_zip; a file from before addresses has the
+// first six), the teams as the bracket rows spell them. Read at build time; a missing
 // file means nothing is known yet. A row that does not parse is dropped and counted on the build log, never shown.
 
 const key = (date: string, a: string, b: string) => [date, ...[slugify(a), slugify(b)].sort()].join("|");
 const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
-type Details = { kickoffs: Map<string, string>; sites: Map<string, string> };
+type Details = { kickoffs: Map<string, string>; sites: Map<string, string>; addresses: Map<string, Address> };
+const HEADER = "date,home,away,kickoff_utc,site_name,site_city";
+const ADDRESS_HEADER = `${HEADER},site_street,site_state,site_zip`;
 const cache = new Map<number, Promise<Details>>();
 
 async function read(season: number): Promise<Details> {
@@ -22,18 +26,23 @@ async function read(season: number): Promise<Details> {
   const [header, ...lines] = text.trim().split("\n");
   const out = new Map<string, string>();
   const sites = new Map<string, string>();
-  if (!header) return { kickoffs: out, sites };
-  if (header !== "date,home,away,kickoff_utc,site_name,site_city") throw new Error(`${file}: unexpected header ${header}`);
+  const addresses = new Map<string, Address>();
+  if (!header) return { kickoffs: out, sites, addresses };
+  if (header !== HEADER && header !== ADDRESS_HEADER) throw new Error(`${file}: unexpected header ${header}`);
+  const width = header.split(",").length;
   let dropped = 0;
   for (const line of lines) {
-    const [date, home, away, utc, name, city, ...rest] = line.split(",");
-    if (rest.length || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") || !home || !away || (utc && !UTC.test(utc))) {
+    const fields = line.split(",");
+    const [date, home, away, utc, name, city, street, state, zip] = fields;
+    if (fields.length !== width || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") || !home || !away || (utc && !UTC.test(utc))) {
       dropped++;
       continue;
     }
     if (utc) out.set(key(date, home, away), utc);
     // A site is its name, with its city when known: "Shotwell Stadium, Abilene".
     if (name) sites.set(key(date, home, away), city ? `${name}, ${city}` : name);
+    const address = name ? addressFrom({ site_street: street, site_city: city, site_state: state, site_zip: zip }) : undefined;
+    if (address) addresses.set(key(date, home, away), address);
   }
   if (dropped) console.warn(`${file}: ${dropped} row(s) dropped, not date,home,away,kickoff_utc`);
   // What a league's own bracket lists for a game now on the schedule (ADR 0047), only where this file has nothing: a kept
@@ -42,7 +51,7 @@ async function read(season: number): Promise<Details> {
     if (d.utc && !out.has(d.key)) out.set(d.key, d.utc);
     if (d.site && !sites.has(d.key)) sites.set(d.key, d.site);
   }
-  return { kickoffs: out, sites };
+  return { kickoffs: out, sites, addresses };
 }
 
 const centralDate = (utc: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date(utc));
@@ -94,4 +103,13 @@ export const kickoffOf = (kickoffs: Map<string, string>, date: string, home: str
 /** What a bracket game's page says of where it is played: the site when known, never a guess (ADR 0041). A bracket's home
  * team is only its designation, so it is not taken as the site. */
 export const NO_SITE = "Site not listed yet";
-export const siteOf = (sites: Map<string, string>, date: string, home: string, away: string) => sites.get(key(date, home, away)) ?? NO_SITE;
+export const siteOf = (sites: Map<string, string>, date: string, home: string, away: string) => knownSite(sites, date, home, away) ?? NO_SITE;
+
+/** The street addresses of a season's sites, by game (ADR 0066). */
+export const loadAddresses = async (season: number): Promise<Map<string, Address>> => (await details(season)).addresses;
+
+/** A game's site address when the facts file has one; undefined otherwise. Only with the file's own site, never a bracket's. */
+export const knownAddress = (addresses: Map<string, Address>, date: string, home: string, away: string): Address | undefined => addresses.get(key(date, home, away));
+
+/** A game's site when the facts file has one, played or not (ADR 0065); undefined otherwise. */
+export const knownSite = (sites: Map<string, string>, date: string, home: string, away: string): string | undefined => sites.get(key(date, home, away));
