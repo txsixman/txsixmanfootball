@@ -3,11 +3,14 @@ import Link from "next/link";
 import { loadAlignments } from "@/lib/alignments";
 import { bracketHref, bracketLabel, type Bracket, latestRound, roundLabel } from "@/lib/brackets";
 import { loadIdentities } from "@/lib/identity";
+import { bracketIntro } from "@/lib/intros";
+import { breadcrumbList } from "@/lib/json-ld";
 import { previewOf } from "@/lib/playoff-path";
 import { centralClock, currentRound } from "@/lib/playoff-status";
 import { chanceText, projectionParts } from "@/lib/projection";
 import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
+import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { PageHeader } from "../ui";
 import { ChanceList } from "./chance-list";
@@ -40,7 +43,9 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
           All {b.league} playoffs
         </Link>
       </nav>
-      <PageHeader id="bracket" size="md" eyebrow={`${CURRENT_SEASON} season · ${b.league} · latest: ${latestRound(b)!.label}`} title={b.name} />
+      {/* The back link is the trail on screen; search engines get the same trail as markup. */}
+      <JsonLd data={breadcrumbList([{ name: "Home", href: "/" }, { name: `${b.league} playoffs`, href: leagueHref(b.league) }, { name: b.name, href: bracketHref(b.name) }])} />
+      <PageHeader id="bracket" size="md" eyebrow={`${CURRENT_SEASON} season · ${b.league} · latest: ${latestRound(b)!.label}`} title={b.name} note={bracketIntro({ name: b.name, season: CURRENT_SEASON })} />
       {siblings.length > 1 && (
         <TabNav label={`${b.league} brackets`} tabs={siblings.map((s) => ({ href: bracketHref(s.name), label: bracketLabel(s) }))} current={bracketHref(b.name)} wrap />
       )}
