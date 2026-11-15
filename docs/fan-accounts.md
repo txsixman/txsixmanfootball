@@ -53,7 +53,7 @@ Forums, game comments and score reports are behind `FAN_POSTS`, which must be ex
 Do these in order, in one sitting. Each step names how to check it worked.
 
 **Before (any day that week)**
-1. `main` has migration 0027 (ADRs 0059 to 0061) and the `Supabase` workflow run after it passed. Check in the Supabase SQL editor
+1. `main` has migration 0027 (ADRs 0060 to 0062) and the `Supabase` workflow run after it passed. Check in the Supabase SQL editor
    (project `vhgnaihnyjdnaaergtcl`): `select to_regprocedure('admin_mute(uuid,integer,text)') is not null as ready;` answers `true`.
 2. Production already has `FAN_SIGNIN=on` and `/api/me` answers `"enabled":true,"posts":false`.
 3. The owner's own account can open `/admin/moderation` and `/admin/corrections` (he needs both the first night).
@@ -78,7 +78,7 @@ Do these in order, in one sitting. Each step names how to check it worked.
   `comments: read failed`, `forums: read failed` or `score report: read failed`. Each line carries only a database error code.
   More than a few a minute means the database is struggling: close posts (below) and look in the morning.
 - Volume, in the SQL editor: `select count(*) from post where created_at > now() - interval '1 hour';` and the same for
-  `post_flag` and `fan_score_report`. Every account is limited per minute, per 10 minutes and per day (ADR 0059), so a flood means
+  `post_flag` and `fan_score_report`. Every account is limited per minute, per 10 minutes and per day (ADR 0060), so a flood means
   many accounts: close posts and look.
 
 **Turn posts off fast**
@@ -141,7 +141,7 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
 - A display name is checked by `lib/moderation/names.ts` (a small word list) before `create_profile`. The posts round replaces
   that file and keeps `displayNameProblem(name)`.
 - Nothing logs an email, a birth year, a token or a Supabase error.
-- **Posts launch (migration 0027, ADRs 0059 to 0061).** Every write is also limited per minute (`fan_rate_check`; new accounts:
+- **Posts launch (migration 0027, ADRs 0060 to 0062).** Every write is also limited per minute (`fan_rate_check`; new accounts:
   posts 2, threads 1, reports of posts 3, score reports 2; established: 4, 2, 5, 3). Gambling talk is refused in posts and titles
   (`moderation_betting`, the `betting` list in `lib/moderation/wordlist.json`, the shared vectors). Report shows on every other
   fan's post for every viewer: signed out it links to sign-in and back. The owner's `/admin/moderation` lists every reported post

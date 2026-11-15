@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createServer, type Server } from "node:http";
 import path from "node:path";
 
-// Fan posts for a signed-in fan (ADRs 0018, 0052, 0059): every posts page with its forms, on phone and desktop, passes axe;
+// Fan posts for a signed-in fan (ADRs 0018, 0052, 0060): every posts page with its forms, on phone and desktop, passes axe;
 // Report is on every other fan's post (and, signed out, is a sign-in link); the site refuses gambling talk before the database
 // is asked; a paused account sees why and no form. The database's own rules are tested in packages/db/test.
 //
@@ -149,7 +149,7 @@ test.describe("posts for a signed-in fan (a stand-in for Supabase)", () => {
     await expect(comments.getByText("Reported. Thank you.")).toBeVisible();
     expect(called("flag_post").map((c) => c.args)).toEqual([{ p_post: THEIRS }]);
 
-    // Gambling talk is refused by the site before the database is asked (ADR 0059).
+    // Gambling talk is refused by the site before the database is asked (ADR 0060).
     await page.getByLabel("Add a comment").fill("What are the odds on Friday?");
     await comments.getByRole("button", { name: "Post comment" }).click();
     await expect(comments.getByText("That cannot be posted. Gambling talk is not allowed.")).toBeVisible();

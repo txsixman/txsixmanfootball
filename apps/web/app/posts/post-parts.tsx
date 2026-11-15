@@ -67,7 +67,7 @@ export function Composer({ id, label, button, max = 2000, onSubmit }: { id: stri
 
 /**
  * One comment or forum post: who, when, whether it was edited, the text, Edit (own) and Report (others). Report is there for every
- * viewer (ADR 0059): signed in with a profile it flags the post; otherwise it is a link to sign in, or to finish the account, and back.
+ * viewer (ADR 0060): signed in with a profile it flags the post; otherwise it is a link to sign in, or to finish the account, and back.
  */
 export function PostItem({ post, me, next, onEdited }: { post: Post; me: Me | undefined; next: string; onEdited: (id: string, body: string) => void }) {
   const [editing, setEditing] = useState(false);

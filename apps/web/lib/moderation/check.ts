@@ -4,7 +4,7 @@ import list from "./wordlist.json" with { type: "json" };
 // Twin of moderation_normalize() and the checks in packages/db/migrations/0013_moderation.sql: change both together. The shared
 // test vectors (vectors.json, run by scripts/moderation.test.mjs and packages/db/test/moderation.test.mjs) fail if they drift.
 //
-// What a post may not say or contain, checked before it is saved (ADR 0018; betting talk, ADR 0059). The database checks the same rules again
+// What a post may not say or contain, checked before it is saved (ADR 0018; betting talk, ADR 0060). The database checks the same rules again
 // (post_text_check in migration 0013, same terms in moderation_term): this copy gives the fan a clear answer without a
 // round trip, and the database copy is the one that cannot be skipped.
 
@@ -55,7 +55,7 @@ export function isBlocked(text: string): boolean {
   );
 }
 
-/** True when the text talks about betting: a term from the open list's betting kind, as a whole word or phrase (ADR 0059). Twin of moderation_betting(). */
+/** True when the text talks about betting: a term from the open list's betting kind, as a whole word or phrase (ADR 0060). Twin of moderation_betting(). */
 export function isBetting(text: string): boolean {
   const padded = ` ${normalize(text)} `;
   return list.betting.some((w) => padded.includes(` ${w} `));

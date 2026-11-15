@@ -1,4 +1,4 @@
-# ADR 0061: Fan score reports go to the owner's corrections page, never into a game
+# ADR 0062: Fan score reports go to the owner's corrections page, never into a game
 
 **Status:** Proposed Nov 15, 2026; accepted when its pull request is merged. It extends ADR 0018's fan score reports and
 changes none of their rules for what a page shows.

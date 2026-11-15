@@ -1,4 +1,4 @@
-# ADR 0060: The owner can hide and mute by hand, and sees every reported post
+# ADR 0061: The owner can hide and mute by hand, and sees every reported post
 
 **Status:** Proposed Nov 15, 2026; accepted when its pull request is merged. It extends ADR 0018's "the owner may unhide,
 unmute or ban" and keeps "nothing waits on him".

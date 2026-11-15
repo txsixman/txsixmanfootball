@@ -18,7 +18,7 @@ function Where({ p, postsOn }: { p: { game_key: string | null; thread_id: string
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
 
 /**
- * The owner's overrides (ADRs 0018, 0060): reported posts to hide, hidden posts to show again, and accounts to mute, ban or
+ * The owner's overrides (ADRs 0018, 0061): reported posts to hide, hidden posts to show again, and accounts to mute, ban or
  * let back. Behind the admin gate, so not a
  * public page: it stays open while posts are off (FAN_POSTS, ADR 0052), because cleaning up and banning must work whichever way
  * the switch is set. It then says so, and shows a post's place as plain text, since the forum and game pages answer 404.

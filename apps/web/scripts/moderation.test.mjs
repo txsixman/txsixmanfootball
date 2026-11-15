@@ -15,7 +15,7 @@ test("every shared vector is blocked or let through as the database does", () =>
   for (const v of vectors.betting) assert.equal(isBetting(v.text), v.betting, JSON.stringify(v.text));
 });
 
-test("betting talk is refused after slurs and threats, in a post and a title (ADR 0059)", () => {
+test("betting talk is refused after slurs and threats, in a post and a title (ADR 0060)", () => {
   assert.equal(checkText("What are the odds?", { established: true }), "betting_text");
   assert.equal(checkText("Over/under", { established: false, max: 120 }), "betting_text");
   assert.equal(checkText("I bet we win, great offensive line", { established: true }), null);

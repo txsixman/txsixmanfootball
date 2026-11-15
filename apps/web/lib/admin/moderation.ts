@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ModerateInput } from "./inputs.ts";
 
-// The owner's moderation overrides (ADRs 0018, 0060): hide a post or show it again, mute an account or lift a mute, ban or
+// The owner's moderation overrides (ADRs 0018, 0061): hide a post or show it again, mute an account or lift a mute, ban or
 // unban. Each is one call to a migration-0013 or 0027 function with the admin's OWN session; the function checks is_admin() itself and writes the
 // audit_log row (ids and states, never the text). No service key, no table access from here.
 
@@ -63,7 +63,7 @@ type FanReportedGame = {
 };
 
 /**
- * Games fans reported a score for in the last 60 days, newest report first (admin_fan_score_reports, migration 0027, ADR 0061),
+ * Games fans reported a score for in the last 60 days, newest report first (admin_fan_score_reports, migration 0027, ADR 0062),
  * never who reported. Read-only: a report never changes a game; a correction is still made with the correction form. Null when refused.
  */
 export async function fanScoreReports(supabase: SupabaseClient): Promise<FanReportedGame[] | null> {

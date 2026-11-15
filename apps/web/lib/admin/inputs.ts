@@ -45,7 +45,7 @@ export type MergeInput = z.output<typeof MergeInput>;
 
 /** A moderation override (migration 0013's admin_* functions): what to do, to which post or account, and why. */
 const muteDays = z.string().regex(/^\d{1,2}$/, "Pick how many days").transform(Number).pipe(z.number().int().min(1).max(90));
-/** One override (ADRs 0018, 0060). A mute also needs its length, 1 to 90 days; the other ops take none. */
+/** One override (ADRs 0018, 0061). A mute also needs its length, 1 to 90 days; the other ops take none. */
 export const ModerateInput = z.union([
   z.object({ op: z.enum(["hide", "unhide", "unmute", "ban", "unban"]), id: z.uuid(), reason }),
   z.object({ op: z.literal("mute"), id: z.uuid(), reason, days: muteDays }),

@@ -57,7 +57,7 @@ export default async function CorrectionsPage() {
 }
 
 /**
- * Fan score reports (ADR 0061): what fans said, next to the game's own score. A report never changes a game; when one shows
+ * Fan score reports (ADR 0062): what fans said, next to the game's own score. A report never changes a game; when one shows
  * the game's score is wrong, the fix is the game's correction form, as for any other correction.
  */
 function FanReports({ games }: { games: Awaited<ReturnType<typeof fanScoreReports>> }) {

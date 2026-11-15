@@ -1,12 +1,12 @@
--- Posts launch hardening (ADRs 0059 to 0061), before the posts switch opens. Nothing here opens posts: site_switch
+-- Posts launch hardening (ADRs 0060 to 0062), before the posts switch opens. Nothing here opens posts: site_switch
 -- (migration 0024) stays as it is.
---   1. A per-minute limit on top of the 10-minute and 24-hour ones (ADR 0059), so a burst is stopped in the first minute.
---   2. Betting talk refused in posts and titles, like slurs (ADR 0059): the site never uses betting words, and fans' posts
+--   1. A per-minute limit on top of the 10-minute and 24-hour ones (ADR 0060), so a burst is stopped in the first minute.
+--   2. Betting talk refused in posts and titles, like slurs (ADR 0060): the site never uses betting words, and fans' posts
 --      show on its pages. The terms are moderation_term rows of a new kind, 'betting'; the site's twin is
 --      apps/web/lib/moderation/check.ts (wordlist.json, the shared vectors.json).
 --   3. The owner can hide a post and mute an account by hand, and sees every flagged post that is not hidden yet, each
---      change written to audit_log (ADR 0060). Nothing waits on him: flags still hide posts on their own.
---   4. Fan score reports listed for the owner beside the corrections (ADR 0061). A report still never changes a game: the
+--      change written to audit_log (ADR 0061). Nothing waits on him: flags still hide posts on their own.
+--   4. Fan score reports listed for the owner beside the corrections (ADR 0062). A report still never changes a game: the
 --      table is append-only and no function writes game from it; the list is read-only.
 
 -- -------------------------------------------------------------------------------------------------- 1. per minute

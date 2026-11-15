@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ADMIN, as, asFan, cool, db, fan, fans, KEYS, sudo } from "./posts-helpers.mjs";
 
-// The posts launch round (migration 0027, ADRs 0059 to 0061): the per-minute limit, betting talk refused, the owner's hide,
+// The posts launch round (migration 0027, ADRs 0060 to 0062): the per-minute limit, betting talk refused, the owner's hide,
 // mute and flagged list, the fan score report list, and what an account deletion leaves behind.
 const comment = (d, text, key = KEYS.playoff) => d.query("select add_comment($1, $2) as id", [key, text]).then((r) => r.rows[0].id);
 const visible = async (d, key = KEYS.playoff) => (await d.query("select * from list_comments($1)", [key])).rows;

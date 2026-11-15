@@ -1,5 +1,5 @@
 {
- "note": "Edit this file and add a migration that inserts or deletes the same rows in moderation_term (kind word, squash, threat, betting). packages/db/test/moderation.test.mjs fails if they differ. Matching works on lib/moderation/normalize.ts output: lowercase, look-alike characters folded, apostrophes dropped, everything else a single space, runs of 3 or more of one character cut to 2. betting: whole words or phrases about gambling, refused in posts (ADR 0059); not used for display names.",
+ "note": "Edit this file and add a migration that inserts or deletes the same rows in moderation_term (kind word, squash, threat, betting). packages/db/test/moderation.test.mjs fails if they differ. Matching works on lib/moderation/normalize.ts output: lowercase, look-alike characters folded, apostrophes dropped, everything else a single space, runs of 3 or more of one character cut to 2. betting: whole words or phrases about gambling, refused in posts (ADR 0060); not used for display names.",
  "source": "Slur entries are selected, with their plurals, from the English list of 'List of Dirty, Naughty, Obscene, and Otherwise Bad Words' (naughty-words 1.2.0, Shutterstock, CC-BY-4.0, https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words). Threat patterns are written for this project.",
  "word": [
   "beaner",

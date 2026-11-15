@@ -1,4 +1,4 @@
-# ADR 0059: Posts launch: a per-minute limit, no gambling talk, Report for every viewer, first posts not held
+# ADR 0060: Posts launch: a per-minute limit, no gambling talk, Report for every viewer, first posts not held
 
 **Status:** Proposed Nov 15, 2026; accepted when its pull request is merged. It extends ADR 0018 (fan posts, moderated by
 code) and changes none of it. Posts stay closed until the owner opens both switches (ADR 0052).
@@ -27,10 +27,10 @@ betting words in what fans write. Three gaps were found:
   "Flag" is renamed "Report" on the page; the database names stay.
 - **A new account's first posts are not held for review.** ADR 0018 says nothing waits on the owner, and holding posts would
   make him a reviewer. New accounts stay limited harder instead: no links, the tighter limits above, and their reports of posts
-  do not count toward hiding (each one still reaches the owner's list, ADR 0060).
+  do not count toward hiding (each one still reaches the owner's list, ADR 0061).
 
 ## Consequences
 - A word list misses spellings it was not told about (spaced-out letters, made-up slang). The owner can hide what gets past it
-  (ADR 0060); a second check is still for later (ADR 0018).
+  (ADR 0061); a second check is still for later (ADR 0018).
 - A fan may be refused for a fair use of a listed word ("against all odds"). The answer says why, and the fan can reword.
 - The tests that posted in bursts move their earlier rows back a minute (`cool()` in `packages/db/test/posts-helpers.mjs`).
