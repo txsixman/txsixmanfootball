@@ -130,3 +130,28 @@ test("a private league never gets regions, only its own last-four chances", () =
   expect(out.regions).toEqual([]);
   expect(out.state).toBeUndefined();
 });
+
+test("semifinals played: their winners' chances in the State Championship before it is listed; a semifinal with no winner waits", () => {
+  const semi = (home: string, away: string, winner?: string) => ({ ...game("semifinal", home, away, winner !== undefined), ...(winner ? { winner } : {}) });
+  const both = titleChances(table({ "R1-1": 10 }), [semi("R1-1", "R2-1", "R1-1"), semi("R3-1", "R4-1", "R4-1")]).state!;
+  expect(both.round).toBe("final");
+  expect(both.chances.map((c) => c.team).sort()).toEqual(["R1-1", "R4-1"]);
+  expect(both.chances[0].team).toBe("R1-1");
+  expect(sum(both.chances)).toBeCloseTo(1, 6);
+  // One semifinal decided: its winner and both teams still to play, three in all, as the last four would give.
+  const one = titleChances(table(), [semi("R1-1", "R2-1", "R1-1"), semi("R3-1", "R4-1")]).state!;
+  expect(one.round).toBe("semifinal");
+  expect(one.chances.map((c) => c.team).sort()).toEqual(["R1-1", "R3-1", "R4-1"]);
+  expect(one.chances.find((c) => c.team === "R1-1")!.chance).toBeCloseTo(0.5, 6);
+  expect(sum(one.chances)).toBeCloseTo(1, 6);
+  // Played with no winner (disputed, or a tie): nothing is shown.
+  expect(titleChances(table(), [semi("R1-1", "R2-1", "R1-1"), semi("R3-1", "R4-1", "")]).state).toBeUndefined();
+});
+
+test("a private league's two confirmed semifinals give its two finalists, from the scores; a disputed one gives nothing", () => {
+  const g = (home: string, away: string, homeScore: number, awayScore: number, confirmed = true) => ({ league: "TAPPS", bracket: "TAPPS Division I", division: "I", round: "semifinal", date: "2026-11-14", home, away, homeScore, awayScore, forfeit: false, neutral: true, confirmed });
+  const out = bracketTitleChances(table(), [], new Map(), "TAPPS Division I", [g("R1-1", "R1-2", 24, 23), g("R1-3", "R1-4", 45, 58)]);
+  expect(out.state?.round).toBe("final");
+  expect(out.state!.chances.map((c) => c.team).sort()).toEqual(["R1-1", "R1-4"]);
+  expect(bracketTitleChances(table(), [], new Map(), "TAPPS Division I", [g("R1-1", "R1-2", 24, 23), g("R1-3", "R1-4", 45, 58, false)]).state).toBeUndefined();
+});

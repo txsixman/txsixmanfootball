@@ -187,7 +187,11 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
 }
 
 /** Playoff games with their bracket ("TAPPS Division II Large School") and round, team names as our alignments spell them. */
-export type BracketGame = { bracket: string; round: string; home: string; away: string; played: boolean; neutral: boolean };
+export type BracketGame = {
+  bracket: string; round: string; home: string; away: string; played: boolean; neutral: boolean;
+  /** The winner of a played game that is a confirmed final and not a tie (ADR 0040); absent otherwise. */
+  winner?: string;
+};
 
 // Playoff rounds in bracket order, earliest first. UIL plays bi-district, area, regional, semifinal, state; the private
 // leagues play round-1 (or none), quarterfinal, semifinal, final.

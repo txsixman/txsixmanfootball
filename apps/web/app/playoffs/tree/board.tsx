@@ -171,10 +171,10 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
       <div data-print-hide className="flex flex-wrap items-center gap-2">
         {data.whole && (
           <div role="group" aria-label="Bracket view" className="inline-flex border-2 border-navy">
-            <button type="button" aria-pressed={shown === "tree"} onClick={() => pick("tree")} className={`${btn(view === "tree")} ${view === "auto" ? "md:bg-navy md:text-white" : ""}`}>
+            <button type="button" aria-pressed={shown === "tree"} onClick={() => pick("tree")} className={`${btn(view === "tree")} ${view === "auto" ? "md:bg-band md:text-white" : ""}`}>
               Whole bracket
             </button>
-            <button type="button" aria-pressed={shown === "rounds"} onClick={() => pick("rounds")} className={`${btn(view === "rounds")} ${view === "auto" ? "max-md:bg-navy max-md:text-white" : ""}`}>
+            <button type="button" aria-pressed={shown === "rounds"} onClick={() => pick("rounds")} className={`${btn(view === "rounds")} ${view === "auto" ? "max-md:bg-band max-md:text-white" : ""}`}>
               By round
             </button>
           </div>
