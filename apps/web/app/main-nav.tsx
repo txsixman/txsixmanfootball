@@ -10,10 +10,12 @@ export type NavSection = { href: string; label: string };
  * readers with aria-current and drawn with an underline, so the mark is not color alone. */
 export function MainNav({ sections }: { sections: NavSection[] }) {
   const pathname = usePathname();
+  // `relative` makes the nav the containing block of the account link's absolutely positioned screen-reader label, so the
+  // scroll strip clips it; without it, a signed-in phone page scrolled sideways by the strip's full width.
   return (
     <nav
       aria-label="Main"
-      className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-1 overflow-x-auto whitespace-nowrap pl-2 pr-8 text-[15px] font-semibold [mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)] [scrollbar-width:none] sm:mx-0 sm:w-auto sm:overflow-visible sm:p-0 sm:text-sm sm:[mask-image:none]"
+      className="relative -mx-4 flex w-[calc(100%+2rem)] items-center gap-1 overflow-x-auto whitespace-nowrap pl-2 pr-8 text-[15px] font-semibold [mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)] [scrollbar-width:none] sm:mx-0 sm:w-auto sm:overflow-visible sm:p-0 sm:text-sm sm:[mask-image:none]"
     >
       {sections.map((s) => {
         const here = pathname === s.href || pathname.startsWith(`${s.href}/`);

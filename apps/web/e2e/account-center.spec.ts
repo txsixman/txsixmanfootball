@@ -269,24 +269,10 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
     expect(main).not.toMatch(BIRTH_YEAR);
     expect(main.split(EMAIL)).toHaveLength(2); // the email appears once
     expect(await page.content()).not.toContain(ENDPOINT);
-    // No sideways scroll on a phone. On a failure the message names the innermost elements that stick out past the screen.
-    const { overflow, wide } = await page.evaluate(() => {
-      const width = document.documentElement.clientWidth;
-      // An element inside its own scroll strip (the header's links) is clipped there, so it cannot widen the page.
-      const clipped = (e: Element) => {
-        for (let p = e.parentElement; p && p !== document.body; p = p.parentElement) if (getComputedStyle(p).overflowX !== "visible") return true;
-        return false;
-      };
-      const out = [...document.querySelectorAll("body *")].filter((e) => e.getBoundingClientRect().right > width + 1 && !clipped(e));
-      const innermost = out.filter((e) => !out.some((o) => o !== e && e.contains(o)));
-      const describe = (e: Element) => `${e.tagName.toLowerCase()}.${String(e.getAttribute("class") ?? "").slice(0, 80)} right=${Math.round(e.getBoundingClientRect().right)} "${(e.textContent ?? "").trim().slice(0, 40)}"`;
-      // Text wider than its own box (a long word) spills out without the box itself sticking out.
-      const spill = [...document.querySelectorAll("body *")].filter((e) => e.scrollWidth > e.clientWidth + 1 && e.clientWidth > 0 && getComputedStyle(e).overflowX === "visible" && !clipped(e));
-      const spillInner = spill.filter((e) => !spill.some((o) => o !== e && e.contains(o)));
-      const spills = spillInner.slice(0, 5).map((e) => `spill ${describe(e)} scrollWidth=${e.scrollWidth} clientWidth=${e.clientWidth}`);
-      return { overflow: document.documentElement.scrollWidth - width, wide: [...innermost.slice(0, 5).map(describe), ...spills] };
-    });
-    expect(overflow, wide.join("\n")).toBe(0);
+    // No sideways scroll on a phone, signed in. This is the only place the header's account link is checked with a name in it:
+    // its screen-reader label is absolutely positioned and escaped the nav's scroll strip until the nav was made `relative`.
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBe(0);
   });
 
   test("the nav anchors scroll to their sections; sticky from the md breakpoint, a plain jump list on a phone", async ({ page }) => {
