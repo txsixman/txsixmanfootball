@@ -9,6 +9,7 @@ import { loadPlayoffGames, playoffLeagueSet, ROUNDS, type PlayoffGame } from "./
 import { project, projectAt, type Projection } from "./projection";
 import { loadRatings, ratingSeasons } from "./ratings";
 import { bracketTitleChances, loadBracketTemplate, type Chance, type RegionChances } from "./title-chances";
+import { loadPairDetails, pairDetailAfter } from "./kickoffs";
 import { CURRENT_SEASON } from "./season";
 
 // A season's playoffs bracket by bracket, round by round. Scores are unconfirmed (ADR 0004, ADR 0008), so no game names a
@@ -20,7 +21,9 @@ import { CURRENT_SEASON } from "./season";
 export type BracketRow = PlayoffGame & { projection?: Projection };
 /** A next-round game no site lists yet (ADR 0047): its two sides, the team first when only one is known ("Team vs winner of
  * X–Y"), and the projection on a neutral field once both teams are known. No date or site: none is listed yet. */
-export type BuiltRow = { round: string; sides: [Side, Side]; projection?: Projection };
+export type BuiltRow = { round: string; sides: [Side, Side]; projection?: Projection;
+  /** The day, kickoff and site the facts file has for this pairing before any listing has it (ADR 0067). */
+  date?: string; kickoff?: string; site?: string };
 /** A box of the tree view (ADR 0049): the slot, its round's label, and the projection of a game not yet played once both
  * teams are known (a listed game at its own site, a game no site lists yet on a neutral field). */
 type TreeRow = TreeGame<PlayoffGame> & { label: string; projection?: Projection };
@@ -84,7 +87,7 @@ const regionLookup = (alignments: Alignment[], league: string, name: string) => 
 /** Read once per season per build worker: every program page asks for its bracket path. Never mutate what it returns. */
 export const loadBrackets = (season = CURRENT_SEASON): Promise<Bracket[]> => bracketsOf(season);
 const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
-  const [alignments, ratings, template, slotRows] = await Promise.all([loadAlignments(), loadRatings(season), loadBracketTemplate(), loadSlotRows(season)]);
+  const [alignments, ratings, template, slotRows, pairs] = await Promise.all([loadAlignments(), loadRatings(season), loadBracketTemplate(), loadSlotRows(season), loadPairDetails(season)]);
   const games = await loadPlayoffGames(alignments, season);
   const brackets = [...Map.groupBy(games, (g) => g.bracket)].map(([name, list]): Bracket => {
     const league = list[0].league;
@@ -107,7 +110,10 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
     const built = (season === CURRENT_SEASON ? builtGames(fill(slots, list, ROUNDS)) : []).map(({ round, sides }): BuiltRow => {
       const [a, b] = sides;
       const projection = "team" in a && "team" in b ? project(ratings, a.team, b.team, true, true) : undefined;
-      return { round, sides, ...(projection ? { projection } : {}) };
+      // Both teams known: the file's first game between them after their last listed games, if the read found it.
+      const last = "team" in a && "team" in b ? list.filter((g) => [g.home, g.away].some((t) => t === a.team || t === b.team)).map((g) => g.date).sort().at(-1) ?? "" : undefined;
+      const found = last !== undefined && "team" in a && "team" in b ? pairDetailAfter(pairs, a.team, b.team, last) : undefined;
+      return { round, sides, ...(projection ? { projection } : {}), ...(found ?? {}) };
     });
     const rounds = [...new Set([...list.map((g) => g.round), ...built.map((g) => g.round)])]
       .sort((a, b) => ROUNDS.indexOf(a) - ROUNDS.indexOf(b))

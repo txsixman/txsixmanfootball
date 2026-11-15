@@ -4,6 +4,7 @@ import { KickoffStatus } from "../kickoff-status";
 import { loadAlignments, programFor } from "@/lib/alignments";
 import { sideText } from "@/lib/bracket-fill";
 import { bracketHref, loadBrackets, roundLabel } from "@/lib/brackets";
+import { gameDay } from "@/lib/game-day";
 import { EMPTY, loadIdentities, type Identity } from "@/lib/identity";
 import { aheadFor, gamesOf } from "@/lib/playoff-path";
 import { centralClock, gameStatus } from "@/lib/playoff-status";
@@ -106,7 +107,15 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
                     <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{next.label}</span>
                     <span className="min-w-0 text-[15px] leading-5 text-ink">
                       <span className="flex items-center">vs&nbsp;{"team" in other ? opponent(other.team, b.league) : sideText(other)}</span>
-                      <span className="text-[13px] leading-5 text-muted">Next game · date and site not listed yet</span>
+                      {/* The day, kickoff and site the read found for this pairing before any listing has it (ADR 0067). */}
+                      {next.date ? (
+                        <span className="block text-[13px] leading-5 text-muted">
+                          Next game · {gameDay(next.date)} · <KickoffStatus date={next.date} kickoff={next.kickoff} className="font-semibold" />
+                          <span className="block">{next.site ? `Site: ${next.site}` : "Site not listed yet"}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[13px] leading-5 text-muted">Next game · date and site not listed yet</span>
+                      )}
                     </span>
                   </div>
                   {proj && (

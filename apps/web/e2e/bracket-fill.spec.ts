@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { programFor, loadAlignments } from "../lib/alignments";
 import { sideText } from "../lib/bracket-fill";
 import { bracketHref, loadBrackets } from "../lib/brackets";
+import { gameDay } from "../lib/game-day";
 import { projectionText } from "../lib/projection";
 import { noLiveScores } from "./live-route";
 
@@ -32,13 +33,15 @@ async function builtRows() {
     b.rounds.flatMap((r) =>
       r.built.map((g) => ({
         bracket: b, round: r, text: g.sides.map(sideText).join(" vs "), sides: g.sides.map(sideText), projected: g.projection && projectionText(g.projection),
+        // The day, and the site or "Site not listed yet", once the morning read found the pairing (ADR 0067).
+        when: g.date ? `Next game · ${gameDay(g.date)}` : "Next game · date and site not listed yet", site: g.date ? (g.site ? `Site: ${g.site}` : "Site not listed yet") : undefined,
         teams: g.sides.flatMap((s) => ("team" in s ? [programFor(alignments, s.team, b.league)?.slug].filter(Boolean) : [])) as string[],
       })),
     ),
   );
 }
 
-test("each bracket page shows the games its bracket sets, with no date or site, and a projection once both teams are known", async ({ page }) => {
+test("each bracket page shows the games its bracket sets, with their day and site once read, and a projection once both teams are known", async ({ page }) => {
   const rows = await built();
   test.skip(!rows.length, "no next-round game is waiting on a listing today");
   for (const [href, list] of Map.groupBy(rows, (r) => bracketHref(r.bracket.name))) {
@@ -49,7 +52,8 @@ test("each bracket page shows the games its bracket sets, with no date or site, 
       // Each side on its own line, as a listed game's two teams are.
       const row = shown.filter({ hasText: r.sides[0] }).filter({ hasText: r.sides[1] });
       await expect(row).toHaveCount(1);
-      await expect(row).toContainText("Next game · date and site not listed yet");
+      await expect(row).toContainText(r.when);
+      if (r.site) await expect(row).toContainText(r.site);
       if (r.projected) await expect(row.getByText(PROJECTED)).toHaveText(`Projected: ${r.projected}`);
       else await expect(row).not.toContainText("Projected:");
       const text = (await row.textContent()) ?? "";
@@ -70,7 +74,8 @@ test("a team with a next game the bracket sets sees it on its page, in place of 
   const row = path.locator("li[data-built]");
   await expect(row).toHaveCount(1);
   await expect(row).toContainText(r.round.label);
-  await expect(row).toContainText("Next game · date and site not listed yet");
+  await expect(row).toContainText(r.when);
+  if (r.site) await expect(row).toContainText(r.site);
   expect((await row.textContent()) ?? "").not.toMatch(CLAIMS_A_RESULT);
   if (r.projected) await expect(row).toContainText(`Projected: ${r.projected}`);
   await expect(path).not.toContainText("If it advances");

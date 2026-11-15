@@ -182,9 +182,9 @@ jobs:
           SEASON: ${{ steps.season.outputs.year }}
         run: node tools/league-watch/margins.mjs "$SEASON" --private private | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Kickoffs and sites
-        # ADRs 0036, 0041 and 0065: on the morning read and a dispatch, each bracket game still to play, and each played one
-        # of the last two weeks still missing a kickoff or site, gets the second feed's kickoff and site, into a file outside
-        # the repo; the commit step merges it into the newest main's
+        # ADRs 0036, 0041, 0065 and 0067: on the morning read and a dispatch, each bracket game still to play, each played one
+        # of the last two weeks still missing a kickoff or site, and each next-round pairing the bracket sets by winners
+        # before any listing has it, gets the second feed's kickoff and site, into a file outside the repo; the commit step merges it into the newest main's
         # data/seed/game-details/<season>.csv, never overwriting a filled value. The log and summary give counts only, by
         # league, never a school. Off until the repo variable SECOND_LIVE is "true" (the same feed's upcoming games). A
         # failure (a 403 or 429 stops it at once) leaves the file as it was.

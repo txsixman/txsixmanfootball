@@ -32,6 +32,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, write
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { centralDate, gameNight, slugify, tonightsGames } from "./maxpreps.mjs";
+import { builtDue, seasonSlotRows } from "./bracket-due.mjs";
 import { parseCsv } from "./store.mjs";
 
 export const ORIGIN = "https://www.davecampbells.com";
@@ -1135,6 +1136,39 @@ export function kickoffTargets(rows, detailsText, today) {
   });
 }
 
+/** How far ahead a bracket-built pairing's game is looked for on the feed (ADR 0067): the next round is within a week or two. */
+export const BUILT_DAYS = 21;
+
+/**
+ * Bracket-built due rows (bracket-due.mjs: no date) dated by the feed: the first game from `today` to BUILT_DAYS ahead
+ * between the pairing's two teams, each ours by the map, or, for one the map lacks, by the feed's school name against the
+ * pairing's other team. The row takes the feed's Central date; a pairing the feed has no game for yet is left out.
+ */
+export function datedBuilt(items, { built, ours, today }) {
+  const until = new Date(Date.parse(`${today}T12:00:00Z`) + BUILT_DAYS * 864e5).toISOString().slice(0, 10);
+  const pairs = built.map((r) => ({ r, a: slugify(r.home), b: slugify(r.away) }));
+  const dated = new Map();
+  for (const item of [...items].sort((x, y) => String(x?.scheduledKickoff).localeCompare(String(y?.scheduledKickoff)))) {
+    const kickoff = new Date(item?.scheduledKickoff ?? NaN);
+    if (Number.isNaN(kickoff.getTime())) continue;
+    const date = centralDate(kickoff);
+    if (date < today || date > until) continue;
+    const parts = Array.isArray(item.participants) ? item.participants : [];
+    const [h, a] = ["HOME", "AWAY"].map((t) => parts.find((p) => p?.participantType === t));
+    if (!h || !a) continue;
+    const [mh, ma] = [ours.get(teamSlugOf(h.websiteUrl)), ours.get(teamSlugOf(a.websiteUrl))];
+    for (const p of pairs) {
+      if (dated.has(p.r)) continue;
+      const fits = (mine, other, otherSide) => (mine === p.a || mine === p.b) && (() => {
+        const want = mine === p.a ? p.b : p.a;
+        return other ? other === want : sameSchool(otherSide.schoolName, want);
+      })();
+      if (fits(mh, ma, a) || fits(ma, mh, h)) dated.set(p.r, { ...p.r, game_date: date });
+    }
+  }
+  return [...dated.values()];
+}
+
 async function kickoffs() {
   const arg = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : null);
   const playoffsFile = arg("--kickoffs");
@@ -1143,27 +1177,34 @@ async function kickoffs() {
   const today = centralDate();
   const seasonId = SEASON_IDS[Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1)];
   if (!seasonId) return console.log("Kickoffs: no feed season id for this season, nothing read.");
-  const due = kickoffTargets(parseCsv(readFileSync(playoffsFile, "utf8"), "playoffs.csv").rows, existsSync(out) ? readFileSync(out, "utf8") : "", today);
-  if (!due.length) return console.log("Kickoffs: no bracket game still to play or missing a detail.");
+  const playoffs = parseCsv(readFileSync(playoffsFile, "utf8"), "playoffs.csv").rows;
+  const listed = kickoffTargets(playoffs, existsSync(out) ? readFileSync(out, "utf8") : "", today);
+  // The next round's pairings the bracket sets by winners before any listing has them (ADR 0067).
+  const season = Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1);
+  const built = builtDue(seasonSlotRows(path.join(path.dirname(TEAMS_FILE), "..", "..", "data", "seed"), season), playoffs);
+  if (!listed.length && !built.length) return console.log("Kickoffs: no bracket game still to play or missing a detail.");
   const { theirs, ours } = teamMaps(JSON.parse(readFileSync(TEAMS_FILE, "utf8")));
   // One mapped team a game is enough: its schedule lists the game.
-  const teams = [...new Set(due.map((r) => theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away))).filter(Boolean))];
+  const teams = [...new Set([...listed, ...built].map((r) => theirs.get(slugify(r.home)) ?? theirs.get(slugify(r.away))).filter(Boolean))];
   const client = createClient();
   const items = [];
   for (const t of teams) {
     const id = await teamId(client, t, seasonId);
     if (id) items.push(...(await liveAndUpcoming(client, seasonId, id)));
   }
+  const dated = datedBuilt(items, { built, ours, today });
+  const due = [...listed, ...dated];
   const fresh = kickoffRows(items, { due, ours });
   const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh);
   writeFileSync(out, merged);
   const sites = fresh.filter((r) => r.site_name).length;
   const toPlay = due.filter((r) => r.home_score === "");
-  console.log(`Kickoffs: ${toPlay.length} bracket games still to play and ${due.length - toPlay.length} played ones missing a detail, ${teams.length} teams read, ${fresh.length} kickoff times found, ${sites} with a site.`);
+  const listedToPlay = listed.filter((r) => r.home_score === "").length;
+  const fromBuilt = fresh.filter((r) => dated.some((d) => kickoffKey(d.game_date, d.home, d.away) === kickoffKey(r.date, r.home, r.away))).length;
+  console.log(`Kickoffs: ${listedToPlay} listed bracket games still to play, ${listed.length - listedToPlay} played ones missing a detail, ${built.length} built from the bracket (${dated.length} the feed has a game for, ${built.length - dated.length} not yet); ${teams.length} teams read, ${fresh.length} kickoff times found (${fromBuilt} for built pairings), ${sites} with a site.`);
   console.log(missingDetails(due, merged));
   // The feed's bracket positions against UIL's bracket (ADR 0047), for games still to play: a misfit means the bracket file
   // or a listing is wrong.
-  const season = Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1);
   const { checked, misfits } = positionProblems(matchGames(items, { rows: toPlay, ours }), uilStructure(season));
   if (!misfits.length) console.log(`Bracket positions: ${checked} UIL game(s) the feed places, all fit UIL's bracket.`);
   else {

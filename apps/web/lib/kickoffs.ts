@@ -12,7 +12,10 @@ import { addressFrom, type Address } from "./address.ts";
 
 const key = (date: string, a: string, b: string) => [date, ...[slugify(a), slugify(b)].sort()].join("|");
 const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
-type Details = { kickoffs: Map<string, string>; sites: Map<string, string>; addresses: Map<string, Address> };
+/** A game of the file by its two teams alone (ADR 0067): a next-round pairing no listing dates yet finds its game here. */
+type PairDetail = { date: string; kickoff?: string; site?: string };
+type Details = { kickoffs: Map<string, string>; sites: Map<string, string>; addresses: Map<string, Address>; pairs: Map<string, PairDetail[]> };
+const pairKey = (a: string, b: string) => [slugify(a), slugify(b)].sort().join("|");
 const HEADER = "date,home,away,kickoff_utc,site_name,site_city";
 const ADDRESS_HEADER = `${HEADER},site_street,site_state,site_zip`;
 const cache = new Map<number, Promise<Details>>();
@@ -27,7 +30,8 @@ async function read(season: number): Promise<Details> {
   const out = new Map<string, string>();
   const sites = new Map<string, string>();
   const addresses = new Map<string, Address>();
-  if (!header) return { kickoffs: out, sites, addresses };
+  const pairs = new Map<string, PairDetail[]>();
+  if (!header) return { kickoffs: out, sites, addresses, pairs };
   if (header !== HEADER && header !== ADDRESS_HEADER) throw new Error(`${file}: unexpected header ${header}`);
   const width = header.split(",").length;
   let dropped = 0;
@@ -43,6 +47,11 @@ async function read(season: number): Promise<Details> {
     if (name) sites.set(key(date, home, away), city ? `${name}, ${city}` : name);
     const address = name ? addressFrom({ site_street: street, site_city: city, site_state: state, site_zip: zip }) : undefined;
     if (address) addresses.set(key(date, home, away), address);
+    if (utc || name) {
+      const list = pairs.get(pairKey(home, away)) ?? [];
+      list.push({ date, ...(utc && { kickoff: utc }), ...(name && { site: city ? `${name}, ${city}` : name }) });
+      pairs.set(pairKey(home, away), list);
+    }
   }
   if (dropped) console.warn(`${file}: ${dropped} row(s) dropped, not date,home,away,kickoff_utc`);
   // What a league's own bracket lists for a game now on the schedule (ADR 0047), only where this file has nothing: a kept
@@ -51,7 +60,7 @@ async function read(season: number): Promise<Details> {
     if (d.utc && !out.has(d.key)) out.set(d.key, d.utc);
     if (d.site && !sites.has(d.key)) sites.set(d.key, d.site);
   }
-  return { kickoffs: out, sites, addresses };
+  return { kickoffs: out, sites, addresses, pairs };
 }
 
 const centralDate = (utc: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date(utc));
@@ -104,6 +113,13 @@ export const kickoffOf = (kickoffs: Map<string, string>, date: string, home: str
  * team is only its designation, so it is not taken as the site. */
 export const NO_SITE = "Site not listed yet";
 export const siteOf = (sites: Map<string, string>, date: string, home: string, away: string) => knownSite(sites, date, home, away) ?? NO_SITE;
+
+/** The facts file's games by their two teams, for next-round pairings no listing dates yet (ADR 0067). */
+export const loadPairDetails = async (season: number): Promise<Map<string, PairDetail[]>> => (await details(season)).pairs;
+
+/** The first game of the file between two teams after `after` (the later of their last listed games), or undefined. */
+export const pairDetailAfter = (pairs: Map<string, PairDetail[]>, a: string, b: string, after: string): PairDetail | undefined =>
+  (pairs.get(pairKey(a, b)) ?? []).filter((d) => d.date > after).sort((x, y) => x.date.localeCompare(y.date))[0];
 
 /** The street addresses of a season's sites, by game (ADR 0066). */
 export const loadAddresses = async (season: number): Promise<Map<string, Address>> => (await details(season)).addresses;

@@ -29,7 +29,7 @@ export default async function ScoresPage() {
           const slug = "team" in s ? programFor(alignments, s.team, b.league)?.slug : undefined;
           return { name: sideText(s), ...(slug ? { href: `/programs/${slug}` } : {}) };
         };
-        return { key: `${b.name}|${r.round}|${g.sides.map(sideText).join("|")}`, org: b.league, heading: `${b.name} · ${r.label}`, sides: [side(g.sides[0]), side(g.sides[1])], ...(g.projection ? { projected: projectionText(g.projection) } : {}) };
+        return { key: `${b.name}|${r.round}|${g.sides.map(sideText).join("|")}`, org: b.league, heading: `${b.name} · ${r.label}`, sides: [side(g.sides[0]), side(g.sides[1])], ...(g.projection ? { projected: projectionText(g.projection) } : {}), ...(g.date ? { date: g.date, kickoff: g.kickoff, site: g.site } : {}) };
       }),
     ),
   );

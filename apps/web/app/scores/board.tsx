@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files
 import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
+import { gameDay } from "@/lib/game-day";
 import { kickoffState } from "@/lib/kickoff";
 import { ORGS } from "@/lib/orgs";
 import { projectedLine } from "@/lib/outcome";
@@ -191,7 +192,7 @@ function Section({ id, title, live, games, crests, checked }: { id: string; titl
 const orgOf = (g: Game) => ORGS.find((o) => g.league === o.league || g.league.startsWith(`${o.league} `));
 
 /** A next-round game the bracket sets before any site lists it (ADR 0047): "Team vs winner of X–Y", or both teams and the projection. */
-export type NextGame = { key: string; org: string; heading: string; sides: [{ name: string; href?: string }, { name: string; href?: string }]; projected?: string };
+export type NextGame = { key: string; org: string; heading: string; sides: [{ name: string; href?: string }, { name: string; href?: string }]; projected?: string; date?: string; kickoff?: string; site?: string };
 
 function NextSection({ games }: { games: NextGame[] }) {
   if (!games.length) return null;
@@ -212,7 +213,15 @@ function NextSection({ games }: { games: NextGame[] }) {
                     </span>
                   ))}
                 </p>
-                <p className="text-[14px] leading-6 text-muted">Set by the bracket · date and site not listed yet</p>
+                {g.date ? (
+                  <p className="text-[14px] leading-6 text-muted">
+                    {/* The day, kickoff and site the read found before any listing has the game (ADR 0067). */}
+                    Set by the bracket · {gameDay(g.date)} · <KickoffStatus date={g.date} kickoff={g.kickoff} className="font-semibold" />
+                    <span className="block">{g.site ? `Site: ${g.site}` : "Site not listed yet"}</span>
+                  </p>
+                ) : (
+                  <p className="text-[14px] leading-6 text-muted">Set by the bracket · date and site not listed yet</p>
+                )}
                 {g.projected && <p className="text-[14px] font-semibold leading-6 text-navy">Projected: {g.projected}</p>}
               </li>
             ))}
