@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-// Round B, the playoff run: a bracket page per division with each game's status, and "Path to the final" on a team's page.
+// Round B, the playoff run: a bracket page per division with each game's status, and "Path to the State Championship" on a team's page.
 // Scores are the robot's; a final is confirmed (ADR 0040), and no row writes a winner word. The data changes every week, so
 // these check structure (every score marked, every game with a status), not a particular game.
 
@@ -108,7 +108,7 @@ test("a playoff team's page has its path to the final: games played with unconfi
   const team = await first.getByRole("link").first().getAttribute("href");
   expect(team).toMatch(/^\/programs\//);
   await checkPage(page, team!);
-  const path = page.getByRole("region", { name: "Path to the final" });
+  const path = page.getByRole("region", { name: "Path to the State Championship" });
   await expect(path).toBeVisible();
   await expect(path.getByRole("link", { name: "TAPPS Division I bracket" })).toHaveAttribute("href", "/playoffs/bracket/tapps-division-i");
   expect(await path.getByRole("listitem").count()).toBeGreaterThan(0);
@@ -119,7 +119,7 @@ test("a playoff team's page has its path to the final: games played with unconfi
     copy.querySelectorAll("[data-built]").forEach((b) => b.remove());
     return copy.textContent ?? "";
   });
-  expect(text).toMatch(/^Path to the final/);
+  expect(text).toMatch(/^Path to the State Championship/);
   expect(text).toMatch(/Starts \d|In progress|Time not listed|Score not reported yet|Reported tonight|Score reported|Final|Forfeit/i); // each game carries a status
   expect(text).not.toContain("Unconfirmed"); // a final is confirmed (ADR 0040)
   expect(text).not.toMatch(NAMES_A_WINNER);
@@ -134,7 +134,7 @@ test("a playoff team's page has its path to the final: games played with unconfi
 test("a team in no bracket has no path section", async ({ page }) => {
   await page.goto("/programs/booker");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Booker");
-  await expect(page.getByRole("region", { name: "Path to the final" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Path to the State Championship" })).toHaveCount(0);
 });
 
 test("a forfeit shows the word and no score on a bracket row", async ({ page }) => {
