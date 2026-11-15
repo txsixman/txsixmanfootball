@@ -7,7 +7,7 @@ import { missing, runGameAlerts } from "./send-game-alerts.mjs";
 const SCRIPT = fileURLToPath(new URL("./send-game-alerts.mjs", import.meta.url));
 const due = (n, over = {}) => ({
   user_id: `bbbbbbbb-0000-4000-8000-${String(n).padStart(12, "0")}`, email: `fan${n}@example.test`, alert: "final", event_key: "2026-11-13|alpha|beta",
-  home_slug: "alpha", away_slug: "beta", home_name: "Alpha", away_name: "Beta", round: null, home_score: 1, away_score: 0, kickoff_at: null, followed_slug: "alpha", ...over,
+  home_slug: "alpha", away_slug: "beta", home_name: "Alpha", away_name: "Beta", round: null, home_score: 1, away_score: 0, kickoff_at: null, followed_slug: "alpha", unsubscribe_token: "cccccccc-0000-4000-8000-000000000001", ...over,
 });
 /** A database that answers the three calls and remembers what was marked. */
 const fakeDb = (rows) => {
@@ -22,7 +22,7 @@ const fakeDb = (rows) => {
     },
   };
 };
-const run = (db, send, extra = {}) => runGameAlerts({ db, events: [{}], secret: "s".repeat(40), from: "A <a@example.test>", apiKey: "k", send, sleep: async () => {}, paceMs: 0, ...extra });
+const run = (db, send, extra = {}) => runGameAlerts({ db, events: [{}], from: "A <a@example.test>", apiKey: "k", send, sleep: async () => {}, paceMs: 0, ...extra });
 
 test("each due fan is sent one email and recorded; a refusal is recorded too; a retry is not", async () => {
   const db = fakeDb([due(1), due(2), due(3)]);
@@ -50,13 +50,13 @@ test("a failure to record a sent email is counted, and the run goes on", async (
 });
 
 test("nothing is sent while a switch, the Resend key or another setting is missing, and the summary says which", () => {
-  assert.deepEqual(missing({}), ["RESEND_API_KEY", "EMAIL_FROM (repo variable)", "EMAIL_UNSUBSCRIBE_SECRET (32 characters or more)", "EMAIL_DB_PASSWORD"]);
-  assert.deepEqual(missing({ RESEND_API_KEY: "k", EMAIL_FROM: "f", EMAIL_UNSUBSCRIBE_SECRET: "x".repeat(32), PGPASSWORD: "p" }), []);
+  assert.deepEqual(missing({}), ["RESEND_API_KEY", "EMAIL_FROM (repo variable)", "EMAIL_DB_PASSWORD"]);
+  assert.deepEqual(missing({ RESEND_API_KEY: "k", EMAIL_FROM: "f", PGPASSWORD: "p" }), []);
   const go = (env) => spawnSync("node", [SCRIPT], { env: { PATH: process.env.PATH, ...env }, encoding: "utf8" });
   const off = go({});
   assert.equal(off.status, 0);
   assert.match(off.stdout, /Email alerts are off/);
-  const noKey = go({ EMAIL_ALERTS: "true", EMAIL_FROM: "f", EMAIL_UNSUBSCRIBE_SECRET: "x".repeat(32), PGPASSWORD: "p" });
+  const noKey = go({ EMAIL_ALERTS: "true", EMAIL_FROM: "f", PGPASSWORD: "p" });
   assert.equal(noKey.status, 0);
   assert.match(noKey.stdout, /::warning::RESEND_API_KEY not set; no email alerts were sent\./);
   assert.match(noKey.stdout, /Nothing was sent: not set yet: RESEND_API_KEY\./);

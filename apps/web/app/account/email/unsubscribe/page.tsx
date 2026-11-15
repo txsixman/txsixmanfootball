@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
-import { unsubscribeSecret } from "@/lib/email/config";
-import { verifyUnsubscribe } from "@/lib/email/unsubscribe";
+import { unsubscribeToken, unsubscribeUrl } from "@/lib/email/unsubscribe";
 
-// The page an email's "Unsubscribe" link opens (ADR 0053). It works with no sign-in: the link's signature is the proof. It
+// The page an email's "Unsubscribe" link opens (ADR 0053). It works with no sign-in: the link's token is the proof. It
 // changes nothing by itself (a mail scanner opening the link must not unsubscribe anyone): its button POSTs to the one-click
-// route. It never shows an address, a name or a team. Not cached, not indexed, and the address (which holds the signature) is
+// route. It never shows an address, a name or a team. Not cached, not indexed, and the address (which holds the token) is
 // not passed on as a referrer.
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Unsubscribe from email", robots: { index: false, follow: false }, referrer: "no-referrer" };
@@ -14,9 +13,9 @@ const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : u
 
 export default async function UnsubscribePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const q = await searchParams;
-  const secret = unsubscribeSecret();
-  const link = secret ? verifyUnsubscribe(secret, one(q.u), one(q.k), one(q.s)) : null;
-  const action = link ? `/api/email/unsubscribe?${new URLSearchParams({ u: one(q.u)!, k: one(q.k)!, s: one(q.s)! })}` : null;
+  // Only the token's shape is checked here: whether it matches anyone is never shown, so this page cannot be used to test tokens.
+  const token = unsubscribeToken(one(q.t));
+  const action = token ? unsubscribeUrl("", token) : null;
   return (
     <section aria-labelledby="unsub" className="max-w-prose">
       <h1 id="unsub" className="font-num text-[44px] font-bold uppercase leading-none tracking-wide text-navy">Unsubscribe</h1>

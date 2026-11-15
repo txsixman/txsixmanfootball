@@ -5,7 +5,7 @@ import { checkLive, migrate } from "../load.mjs";
 import { runGameAlerts } from "../../../tools/email/send-game-alerts.mjs";
 
 // Email alerts (migration 0022, ADR 0053): opt-ins are the fan's own, adults only; who is due which alert; never twice;
-// unsubscribe with no session; the sender role can run three functions and read nothing; gone with the account.
+// unsubscribe with a token and no session; the sender role can run three functions and read nothing; gone with the account.
 const YEAR = Number(new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: "America/Chicago" }).format(new Date()));
 let n = 0;
 const id = () => `bbbbbbbb-0000-4000-8000-${String(++n).padStart(12, "0")}`;
@@ -141,32 +141,90 @@ test("the whole send: due fans get one email each, a failure is counted and neve
   const outcomes = { "fan.b@example.test": "rejected", "fan.c@example.test": "retry" };
   const send = async (m) => (sent.push(m), { outcome: outcomes[m.to] ?? "sent", status: 200 });
   const client = { query: async (sql, p) => (await as(d, "email_sender"), d.query(sql, p)) };
-  const run = (events) => runGameAlerts({ db: client, events, secret: "s".repeat(40), from: "A <a@example.test>", apiKey: "k", send, sleep: async () => {}, paceMs: 0 });
+  const run = (events) => runGameAlerts({ db: client, events, from: "A <a@example.test>", apiKey: "k", send, sleep: async () => {}, paceMs: 0 });
   assert.equal((await run([ev("final", "2026-11-06|alpha|zed", "alpha", "zed", { home_score: 1, away_score: 3 })])).due, 0); // baseline
   const r = await run([ev("final", "2026-11-13|alpha|beta", "alpha", "beta", { home_score: 40, away_score: 14 })]);
   assert.deepEqual([r.recorded, r.due, r.sent, r.rejected, r.retry], [1, 3, 1, 1, 1]);
   assert.equal(sent.length, 3);
   assert.ok(sent.every((m) => m.headers["List-Unsubscribe-Post"] === "List-Unsubscribe=One-Click" && /^[0-9a-f]{64}$/.test(m.key)));
+  // Each email's links carry that fan's own token: three fans, three different tokens, none of them the user id.
+  const tokens = sent.map((m) => /\?t=([0-9a-f-]{36})/.exec(m.headers["List-Unsubscribe"])[1]);
+  assert.equal(new Set(tokens).size, 3);
+  assert.ok(tokens.every((t) => ![a, b, c].includes(t)));
   // The next run: the sent one and the refused one are done; only the one to retry is tried again.
   sent.length = 0;
   const again = await run([]);
   assert.deepEqual([again.due, sent.map((m) => m.to)], [1, ["fan.c@example.test"]]);
 });
 
-test("one-click unsubscribe needs no session, is idempotent, touches one kind of one fan, and answers the same for anyone", async () => {
+const tokenOf = async (d, uid, kind = "game_alerts") => (await sudo(d, "select token from email_unsubscribe_token where user_id = $1 and kind = $2", [uid, kind])).rows[0]?.token;
+const optins = async (d) => (await sudo(d, "select user_id, kind::text, program_slug from email_optin order by 1, 2, 3")).rows;
+
+test("each fan and kind gets one random unsubscribe token at their first opt-in, kept after, and no API role can read it", async () => {
+  const d = await db();
+  const a = await fan(d, "Fan A", { follows: ["alpha"] });
+  const b = await fan(d, "Fan B", { follows: ["alpha"] });
+  assert.equal(await tokenOf(d, a), undefined); // nothing opted in, no token
+  await optIn(d, a, ["alpha"]);
+  await optIn(d, b, ["*"]);
+  const ta = await tokenOf(d, a);
+  assert.match(ta, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.notEqual(ta, await tokenOf(d, b));
+  await optIn(d, a, []);
+  await optIn(d, a, ["*"]);
+  assert.equal(await tokenOf(d, a), ta); // off and on again: the same token, so an old email's link still works
+  await optIn(d, a, ["*"], "weekly_digest");
+  assert.notEqual(await tokenOf(d, a, "weekly_digest"), ta);
+  for (const role of ["anon", "authenticated"]) {
+    await as(d, role, a);
+    await assert.rejects(d.query("select * from email_unsubscribe_token"), /permission denied/, role);
+  }
+});
+
+test("one-click unsubscribe needs no session and a token: it is idempotent, turns off one kind of one fan, and a made-up or other fan's id changes nothing", async () => {
   const d = await db();
   const a = await fan(d, "Fan A", { follows: ["alpha"] });
   const b = await fan(d, "Fan B", { follows: ["alpha"] });
   await optIn(d, a, ["*"]);
   await optIn(d, a, ["*"], "weekly_digest");
   await optIn(d, b, ["*"]);
+  const before = await optins(d);
+  assert.equal(before.length, 3);
   await as(d, "anon");
-  await d.query("select email_unsubscribe($1, 'game_alerts')", [a]);
-  await d.query("select email_unsubscribe($1, 'game_alerts')", [a]);
-  await d.query("select email_unsubscribe('00000000-0000-4000-8000-000000000000', 'game_alerts')");
-  await d.query("select email_unsubscribe($1, 'nonsense')", [a]);
-  const left = (await sudo(d, "select user_id, kind::text from email_optin order by 1, 2")).rows.map((r) => [r.user_id === a ? "a" : "b", r.kind]);
-  assert.deepEqual(left, [["a", "weekly_digest"], ["b", "game_alerts"]]);
+  // Nothing but a real token does anything: a random one, a user id, the other kind's token for the wrong fan, a null.
+  for (const t of ["00000000-0000-4000-8000-000000000000", "dddddddd-dddd-4ddd-8ddd-dddddddddddd", a, b]) await d.query("select email_unsubscribe($1)", [t]);
+  await d.query("select email_unsubscribe(null)");
+  assert.deepEqual(await optins(d), before);
+  // The old two-argument form (a user id and a kind, no proof) no longer exists.
+  await assert.rejects(d.query("select email_unsubscribe($1, 'game_alerts')", [a]), /does not exist/);
+  // A's game-alert token turns off A's game alerts only, and again changes nothing more.
+  const ta = await tokenOf(d, a);
+  await as(d, "anon");
+  await d.query("select email_unsubscribe($1)", [ta]);
+  await d.query("select email_unsubscribe($1)", [ta]);
+  assert.deepEqual((await optins(d)).map((r) => [r.user_id === a ? "a" : "b", r.kind]), [["a", "weekly_digest"], ["b", "game_alerts"]].sort());
+  const digest = await tokenOf(d, a, "weekly_digest");
+  await as(d, "anon");
+  await d.query("select email_unsubscribe($1)", [digest]);
+  assert.deepEqual((await optins(d)).map((r) => r.kind), ["game_alerts"]);
+  // The token stays, so an old email's link keeps answering the same.
+  assert.equal(await tokenOf(d, a), ta);
+});
+
+test("the sender's query returns each due fan's own token, and no other function returns one", async () => {
+  const d = await db();
+  const a = await fan(d, "Fan A", { follows: ["alpha"] });
+  await optIn(d, a, ["*"]);
+  await record(d, [ev("final", "2026-11-06|alpha|zed", "alpha", "zed", { home_score: 1, away_score: 0 })]); // the baseline
+  await record(d, [ev("final", "2026-11-13|alpha|beta", "alpha", "beta", { home_score: 1, away_score: 0 })]);
+  const [row] = await pending(d);
+  assert.equal(row.unsubscribe_token, await tokenOf(d, a));
+  const returning = await sudo(
+    d,
+    `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and (pg_get_function_result(p.oid) ilike '%token%') order by 1`,
+  );
+  assert.deepEqual(returning.rows.map((r) => r.proname), ["email_pending_game_alerts"]);
 });
 
 test("nobody but the sender role reaches the sender's functions, the sender reaches no table, and the live check stays clean", async () => {
@@ -206,8 +264,9 @@ test("deleting the account removes the opt-ins and the record of what was sent",
   const a = await fan(d, "Fan A", { follows: ["alpha"] });
   await optIn(d, a, ["*"]);
   await sudo(d, "insert into email_sent (user_id, kind, item) values ($1, 'game_alerts', 'final:x')", [a]);
+  assert.ok(await tokenOf(d, a));
   await as(d, "authenticated", a);
   await d.query("select delete_my_account()");
   await d.exec("reset role");
-  for (const t of ["email_optin", "email_sent", "profile"]) assert.equal((await d.query(`select count(*)::int as n from ${t}`)).rows[0].n, 0, t);
+  for (const t of ["email_optin", "email_sent", "email_unsubscribe_token", "profile"]) assert.equal((await d.query(`select count(*)::int as n from ${t}`)).rows[0].n, 0, t);
 });

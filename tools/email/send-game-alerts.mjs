@@ -5,8 +5,8 @@
 // 2. Asks the database who is due which alert (email_pending_game_alerts: opted in, following, an adult, never already sent).
 // 3. Sends each through Resend (resend.mjs), then records it (email_mark_sent). Resend's idempotency key makes a retry safe.
 // It connects as the database role `email_sender` (migration 0022), which can run those three functions and nothing else.
-// Sends NOTHING, and says so in the run summary, unless the repo variable EMAIL_ALERTS is true and RESEND_API_KEY, EMAIL_FROM,
-// EMAIL_UNSUBSCRIBE_SECRET and the database password are all set. Nothing here logs an email address, a name, an id or the
+// Sends NOTHING, and says so in the run summary, unless the repo variable EMAIL_ALERTS is true and RESEND_API_KEY, EMAIL_FROM
+// and the database password are all set. Nothing here logs an email address, a name, an id or the
 // text of any error: only counts.
 import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -26,14 +26,14 @@ const KIND = "game_alerts";
  * Records the events, finds who is due, sends. `db` has `query(sql, params)`; `send` is resend.mjs's sendEmail (injected so
  * tests run offline); `sleep` paces Resend's rate limit. Returns counts only.
  */
-export async function runGameAlerts({ db, events, baseline = false, secret, from, apiKey, origin = ORIGIN, send = sendEmail, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), limit = 300, paceMs = 600 }) {
+export async function runGameAlerts({ db, events, baseline = false, from, apiKey, origin = ORIGIN, send = sendEmail, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), limit = 300, paceMs = 600 }) {
   const result = { events: events.length, recorded: 0, due: 0, sent: 0, rejected: 0, retry: 0, deferred: 0, stopped: false, recordFailed: 0 };
   result.recorded = (await db.query("select email_record_game_events($1::jsonb, $2::boolean) as n", [JSON.stringify(events), baseline])).rows[0].n;
   const { rows } = await db.query("select * from email_pending_game_alerts($1)", [limit]);
   result.due = rows.length;
   for (const [i, row] of rows.entries()) {
     const item = `${row.alert}:${row.event_key}`;
-    const mail = buildGameAlert(row, { origin, secret });
+    const mail = buildGameAlert(row, { origin });
     const r = await send({ apiKey, from, to: row.email, ...mail, key: idempotencyKey(row.user_id, KIND, item) });
     if (r.outcome === "slow" || r.outcome === "stop") {
       result.stopped = r.outcome;
@@ -66,7 +66,6 @@ export function missing(env) {
   return [
     ["RESEND_API_KEY", env.RESEND_API_KEY],
     ["EMAIL_FROM (repo variable)", env.EMAIL_FROM],
-    ["EMAIL_UNSUBSCRIBE_SECRET (32 characters or more)", (env.EMAIL_UNSUBSCRIBE_SECRET ?? "").trim().length >= 32 ? "ok" : ""],
     ["EMAIL_DB_PASSWORD", env.PGPASSWORD],
   ].filter(([, v]) => !v).map(([name]) => name);
 }
@@ -93,7 +92,7 @@ async function main() {
   await db.connect();
   try {
     const r = await runGameAlerts({
-      db, events, baseline: process.argv.includes("--baseline"), secret: process.env.EMAIL_UNSUBSCRIBE_SECRET.trim(),
+      db, events, baseline: process.argv.includes("--baseline"),
       from: process.env.EMAIL_FROM, apiKey: process.env.RESEND_API_KEY,
     });
     summarize([

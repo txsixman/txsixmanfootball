@@ -7,10 +7,3 @@
  * EMAIL_ALERTS in .github/workflows/email-alerts.yml.)
  */
 export const emailAlertsOn = (env: Record<string, string | undefined> = process.env) => env.EMAIL_ALERTS === "on";
-
-/** The secret that signs unsubscribe links (EMAIL_UNSUBSCRIBE_SECRET, the same value on Vercel and as the repo secret), or null
- * when it is missing or shorter than 32 characters, which closes unsubscribe links rather than trusting a weak key. */
-export const unsubscribeSecret = (env: Record<string, string | undefined> = process.env) => {
-  const secret = env.EMAIL_UNSUBSCRIBE_SECRET?.trim();
-  return secret && secret.length >= 32 ? secret : null;
-};

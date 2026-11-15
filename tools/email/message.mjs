@@ -1,6 +1,6 @@
 // One game-alert email (ADR 0053): subject, plain text, HTML and the unsubscribe headers. Plain alerts only: the facts of the
 // game and a link to the team's page. Never a source's name, never a betting word; the words are "chance to win" if one ever
-// appears. Pure: the only secret is the unsubscribe secret, passed in.
+// appears. Pure.
 import { unsubscribeUrl } from "../../apps/web/lib/email/unsubscribe.ts";
 
 const ROUND = { "round-1": "First round", "bi-district": "Bi-district", area: "Area", quarterfinal: "Quarterfinal", regional: "Regional", semifinal: "Semifinal", final: "Final", state: "State final" };
@@ -13,7 +13,7 @@ const clock = (iso) =>
   `${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" }).format(new Date(iso))} Central`;
 
 /** The email for one due row of email_pending_game_alerts: { subject, text, html, headers }. */
-export function buildGameAlert(row, { origin, secret }) {
+export function buildGameAlert(row, { origin }) {
   const away = oneLine(row.away_name);
   const home = oneLine(row.home_name);
   const mine = oneLine(row.followed_slug === row.home_slug ? row.home_name : row.away_name);
@@ -34,9 +34,8 @@ export function buildGameAlert(row, { origin, secret }) {
   }
   const page = `${origin}/programs/${row.followed_slug}`;
   const account = `${origin}/account`;
-  const kind = "game_alerts";
-  const linkPage = unsubscribeUrl(origin, secret, row.user_id, kind, "/account/email/unsubscribe");
-  const oneClick = unsubscribeUrl(origin, secret, row.user_id, kind);
+  const linkPage = unsubscribeUrl(origin, row.unsubscribe_token, "/account/email/unsubscribe");
+  const oneClick = unsubscribeUrl(origin, row.unsubscribe_token);
   const why = `You are getting this because you turned on email alerts for ${mine} on your account.`;
   const text = [line, "", `${mine} on TX Six-Man Football: ${page}`, "", why, `Change it: ${account}`, `Unsubscribe: ${linkPage}`, ""].join("\n");
   const html = [

@@ -1,7 +1,7 @@
 # ADR 0053: Email alerts for followed teams
 
-**Status:** Proposed Nov 14, 2026; accepted when its pull request is merged. One point needs the owner's word before the
-feature is switched on (the age rule, below).
+**Status:** Proposed Nov 14, 2026; accepted when its pull request is merged. The age rule (point 2, 19 years back) is waiting on
+Brady's word, and nothing should be switched on until he has given it.
 
 ## Context
 - Signed-in fans follow teams on their account (migration 0012). Push alerts (ADR 0021's sender, `tools/push`) reach one browser
@@ -17,7 +17,7 @@ feature is switched on (the age rule, below).
    - `email_optin (user_id, kind, program_slug)`; `kind` is the enum `email_kind` (`game_alerts`, `weekly_digest`); `program_slug`
      `'*'` means every followed team. The digest reuses the table, the functions and the unsubscribe as they are.
    - The site reaches it only through `email_my_settings()` and `email_set_optins(kind, slugs)`, acting on `auth.uid()`'s own rows.
-2. **Adults only (needs the owner's confirmation).** ADR 0018 keeps any minor's data from third parties, and an email address
+2. **Adults only (waiting on Brady's word).** ADR 0018 keeps any minor's data from third parties, and an email address
    sent to an email service is that. A birth year gives an age within a year, so an account is eligible only when its birth year
    is at least 19 years back (Central time): certainly 18 or older. Younger and unsure accounts see "not available for this
    account", and the database refuses their opt-in and never selects them. Relaxing it to 18 is one number in `email_adult()`.
@@ -41,15 +41,20 @@ feature is switched on (the age rule, below).
    good (a 4xx that is not "slow down") is recorded as `rejected` so it is not retried every ten minutes; a 5xx or timeout is retried
    on the next run inside the 24 hours; 429, 401 or 403 stops the run (and 401/403 fails it, so it is seen).
 6. **Unsubscribe.** Every email has `List-Unsubscribe: <https URL>` with `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
-   (RFC 8058) and a signed link in the body. The link holds the user id, the kind and an HMAC-SHA256 of both under
-   `EMAIL_UNSUBSCRIBE_SECRET` (the sender and the site hold it); no address. `/api/email/unsubscribe` needs no session: a GET
-   changes nothing and sends a person to a confirm page (mail scanners open links); a POST with a good signature calls
-   `email_unsubscribe(user, kind)` as the anonymous role with the public key, no service key. It is idempotent and answers the
-   same for any id, so it reveals nothing about whose link it was. The function takes only an id, a random 122-bit value no public
-   function returns: knowing it is the proof, as an endpoint is for `push_unfollow` (0008); the signature is what stops anyone
-   with no link from trying. Unsubscribing works whatever the flag says.
-7. **Switches.** Sending: repo variable `EMAIL_ALERTS=true`, plus `EMAIL_FROM`, secrets `RESEND_API_KEY`, `EMAIL_UNSUBSCRIBE_SECRET`
-   and `EMAIL_DB_PASSWORD`. Missing any, the job sends nothing and its run summary names what is missing. The site's opt-in block:
+   (RFC 8058) and a link in the body. Both carry one thing: a random token (`?t=<uuid>`), made by the database for that fan and
+   kind at their first opt-in (`email_unsubscribe_token`, closed to the API roles) and returned to the sender, with the address, by
+   `email_pending_game_alerts` alone. No address, user id or kind is in a link.
+   - `email_unsubscribe(token)` is callable by `anon`, and the token is the whole proof: it turns off that fan's opt-ins of that
+     token's kind, does nothing for a token that matches nothing, and returns nothing either way, so it cannot be used to learn who
+     has an account. Idempotent. A user id, a made-up token, or another kind's token changes nothing (tested).
+   - An earlier draft signed `(user id, kind)` with an HMAC and a shared secret, but the database function behind it took the bare id
+     and anyone could call it directly through the REST API, so the signature protected nothing. A token the caller must already hold
+     fixes that, and leaves no secret to keep in two places.
+   - `/api/email/unsubscribe` needs no session: a GET changes nothing and sends a person to a confirm page (mail scanners open
+     links); a POST calls the function as `anon` with the public key, no service key. A malformed token answers 400, any well-formed
+     one answers the same. Unsubscribing works whatever the flag says. Tokens are kept until the account is deleted so an old
+     email's link still answers.
+7. **Switches.** Sending: repo variable `EMAIL_ALERTS=true`, plus `EMAIL_FROM`, secrets `RESEND_API_KEY` and `EMAIL_DB_PASSWORD`. Missing any, the job sends nothing and its run summary names what is missing. The site's opt-in block:
    server env `EMAIL_ALERTS=on` (with `FAN_SIGNIN=on`).
 8. **Logs.** Counts only. Resend's answer is reduced to a class of outcome and never printed (its error text can quote the address);
    a database or network error prints its code only.
@@ -67,4 +72,4 @@ Opt-ins live until turned off or the account is deleted. `email_sent` keeps one 
 - Bounces and spam complaints are not read back (no webhook); one-click unsubscribe is the complaint path. A bounce webhook is a
   later round.
 - Tests: `packages/db/test/email-alerts.test.mjs` (who gets which alert, rights, cascade), `tools/email/*.test.mjs`,
-  `apps/web/scripts/email-unsubscribe.test.mjs`, `apps/web/e2e/email-alerts.spec.ts`.
+  `apps/web/scripts/email-unsubscribe.test.mjs` (the link's shape), `apps/web/e2e/email-alerts.spec.ts`.

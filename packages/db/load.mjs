@@ -227,8 +227,8 @@ const ANON_FUNCTIONS = [
   "public.list_comments(text, integer, integer)", "public.fan_score_status(text)", "public.forum_boards()",
   "public.forum_threads(text, integer, integer)", "public.forum_thread_info(uuid)", "public.forum_posts(uuid, integer, integer)",
   "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)", "public.live_scores()", "public.results_read_at()",
-  // One-click email unsubscribe (migration 0022): no session; the site's route checks the link's signature, the id is the proof.
-  "public.email_unsubscribe(uuid, text)",
+  // One-click email unsubscribe (migration 0022): no session; the random token in the emailed link is the proof.
+  "public.email_unsubscribe(uuid)",
 ];
 
 /** Schemas the project owns and the API could reach. */

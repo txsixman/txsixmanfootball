@@ -5,7 +5,7 @@
 --
 -- Nothing here gives Supabase's API roles a table right (migration 0005). Like every table: row-level security on, no policy,
 -- no grant. The site reaches the opt-ins through three functions, each acting on auth.uid()'s own rows (email_my_settings,
--- email_set_optins) or on one id nobody can guess (email_unsubscribe, below). The email addresses stay in Supabase Auth: the
+-- email_set_optins) or on a random unsubscribe token (email_unsubscribe, below). The email addresses stay in Supabase Auth: the
 -- sender reads them through the functions at the end of this file, which only the role `email_sender` may run.
 --
 -- Deleting the account (migration 0011's delete_my_account) deletes the profile, and the foreign keys below take the opt-ins
@@ -39,6 +39,18 @@ create table email_sent (
 );
 alter table email_sent enable row level security;
 comment on table email_sent is 'Emails already sent, by user, kind and item (game alerts: alert:event_key). Appended by email_mark_sent only.';
+
+-- The capability behind every unsubscribe link: one random token per fan and kind, made when they first opt in and kept (so an old
+-- email's link still answers) until the account is deleted. Closed to the API roles like every table; the only function that
+-- returns a token is email_pending_game_alerts, which only the sender role can run. Knowing the token is the whole proof.
+create table email_unsubscribe_token (
+  user_id uuid not null references profile (user_id) on delete cascade,
+  kind email_kind not null,
+  token uuid not null unique default gen_random_uuid(),
+  primary key (user_id, kind)
+);
+alter table email_unsubscribe_token enable row level security;
+comment on table email_unsubscribe_token is 'One random unsubscribe token per fan and email kind. Never returned to the API roles; read by email_unsubscribe and email_pending_game_alerts.';
 
 -- The game events the sender has seen (kickoff, final, next-round game), each once, with when it was first seen. A fan is
 -- emailed only about an event first seen after they opted in and followed the team, and within the last 24 hours (Resend's
@@ -119,24 +131,29 @@ begin
     raise exception 'email_set_optins: follow the team first' using errcode = '22023';
   end if;
   delete from email_optin where user_id = uid and kind = k and not (program_slug = any(slugs));
+  if cardinality(slugs) > 0 then
+    insert into email_unsubscribe_token (user_id, kind) values (uid, k) on conflict do nothing;
+  end if;
   insert into email_optin (user_id, kind, program_slug) select uid, k, s from unnest(slugs) s on conflict do nothing;
 end
 $$;
 
--- One-click unsubscribe (RFC 8058): no session. The site's route checks the link's signature (HMAC, a secret only the site and
--- the sender hold) and then calls this with the user id and kind from the link. Knowing the id, a 122-bit random value no
--- public function returns, is the proof, as an endpoint is for push_unfollow (0008). Idempotent, and answers the same whether or
--- not anything was there, so it cannot be used to learn who has an account or opt-in.
-create function email_unsubscribe(p_user uuid, p_kind text) returns void
+-- One-click unsubscribe (RFC 8058): no session. The link in an email carries only the fan's random token (email_unsubscribe_token);
+-- the site's route POSTs it here as the anonymous role with the public key, no service key. It turns off that fan's opt-ins of
+-- that token's kind, and answers the same, with nothing returned, for a token that matches nothing, so it cannot be used to learn
+-- who has an account or an opt-in. Idempotent. Nothing a caller can send names a fan or a kind: only a token someone was emailed
+-- (122 random bits) does anything.
+create function email_unsubscribe(p_token uuid) returns void
 language plpgsql security definer set search_path = public, pg_temp as $$
 begin
-  delete from email_optin where user_id = p_user and kind::text = p_kind;
+  delete from email_optin o using email_unsubscribe_token t
+   where t.token = p_token and o.user_id = t.user_id and o.kind = t.kind;
 end
 $$;
 
 revoke all on function email_my_settings() from public;
 revoke all on function email_set_optins(text, text[]) from public;
-revoke all on function email_unsubscribe(uuid, text) from public;
+revoke all on function email_unsubscribe(uuid) from public;
 
 do $$
 begin
@@ -144,7 +161,7 @@ begin
      and to_regprocedure('auth.uid()') is not null then
     grant execute on function email_my_settings() to authenticated;
     grant execute on function email_set_optins(text, text[]) to authenticated;
-    grant execute on function email_unsubscribe(uuid, text) to anon, authenticated;
+    grant execute on function email_unsubscribe(uuid) to anon, authenticated;
   end if;
 end
 $$;
@@ -188,20 +205,21 @@ $$;
 
 -- Who is due which game alert: one row per fan and event, for events first seen in the last 24 hours, after the fan opted in
 -- and followed the team, never one already sent, for adults who are not banned and whose address is confirmed. `followed_slug`
--- is the team of theirs the event is about. Returns the address (the one place it leaves Supabase Auth, to the sender).
+-- is the team of theirs the event is about. Returns the address (the one place it leaves Supabase Auth, to the sender) and the fan's unsubscribe token (the one function that returns it).
 create function email_pending_game_alerts(p_limit integer default 500)
 returns table (user_id uuid, email text, alert text, event_key text, home_slug text, away_slug text, home_name text, away_name text,
-               round text, home_score integer, away_score integer, kickoff_at timestamptz, followed_slug text)
+               round text, home_score integer, away_score integer, kickoff_at timestamptz, followed_slug text, unsubscribe_token uuid)
 language plpgsql stable security definer set search_path = public, pg_temp as $$
 begin
   -- plpgsql, not sql: the body names auth.users, which the tests' plain Postgres does not have until a test makes it.
   return query
     select distinct on (f.user_id, e.alert, e.event_key)
            f.user_id, u.email::text, e.alert, e.event_key, e.home_slug, e.away_slug, e.home_name, e.away_name,
-           e.round, e.home_score, e.away_score, e.kickoff_at, f.program_slug
+           e.round, e.home_score, e.away_score, e.kickoff_at, f.program_slug, t.token
       from email_game_event e
       join follow f on f.program_slug in (e.home_slug, e.away_slug)
       join email_optin o on o.user_id = f.user_id and o.kind = 'game_alerts' and o.program_slug in ('*', f.program_slug)
+      join email_unsubscribe_token t on t.user_id = f.user_id and t.kind = 'game_alerts'
       join profile p on p.user_id = f.user_id and not p.banned and email_adult(p.birth_year)
       join auth.users u on u.id = f.user_id and u.email is not null and u.email_confirmed_at is not null
      where e.first_seen_at > now() - interval '24 hours'
