@@ -1,6 +1,6 @@
 {
  "season": 2026,
- "games": 1259,
+ "games": 1260,
  "games_outside": 71,
  "home_field": 4.6,
  "sigma": 20.3,
@@ -21,7 +21,7 @@
   "Outside": -42.4,
   "TAIAO": -19.4,
   "TAPPS": 8.1,
-  "TCAF": -25.9,
+  "TCAF": -25.8,
   "UIL I": 22.5,
   "UIL II": -19.2
  },
@@ -108,7 +108,7 @@
   {
    "team": "Menard",
    "rating": 116.6,
-   "sd": 13.9,
+   "sd": 13.8,
    "rated": 10,
    "rated_outside": 0,
    "won": 11,
@@ -352,7 +352,7 @@
   },
   {
    "team": "Nazarene Christian Academy-Crowley",
-   "rating": 97.2,
+   "rating": 97.3,
    "sd": 8.8,
    "rated": 11,
    "rated_outside": 0,
@@ -370,7 +370,7 @@
     96.5,
     98.8,
     100.7,
-    97.2
+    97.3
    ],
    "rated_trend": [
     3,
@@ -537,7 +537,7 @@
    "was": 79.8,
    "trend": [
     91.3,
-    72.5,
+    72.6,
     73.0,
     77.3,
     73.6,
@@ -668,7 +668,7 @@
   {
    "team": "Gordon",
    "rating": 80.6,
-   "sd": 8.9,
+   "sd": 8.8,
    "rated": 9,
    "rated_outside": 0,
    "won": 9,
@@ -1557,7 +1557,7 @@
     45.7,
     46.8,
     45.1,
-    55.4,
+    55.3,
     56.4,
     54.9,
     58.8
@@ -1578,7 +1578,7 @@
   {
    "team": "Faustina Academy",
    "rating": 57.8,
-   "sd": 9.6,
+   "sd": 9.5,
    "rated": 11,
    "rated_outside": 0,
    "won": 11,
@@ -1823,7 +1823,7 @@
   {
    "team": "Robert Lee",
    "rating": 49.0,
-   "sd": 8.3,
+   "sd": 8.2,
    "rated": 11,
    "rated_outside": 0,
    "won": 8,
@@ -1972,7 +1972,7 @@
    "was": 39.9,
    "trend": [
     8.4,
-    39.1,
+    39.2,
     34.2,
     38.0,
     36.8,
@@ -2907,7 +2907,7 @@
   },
   {
    "team": "Harvest Lantana",
-   "rating": 27.3,
+   "rating": 27.4,
    "sd": 8.2,
    "rated": 11,
    "rated_outside": 0,
@@ -2925,7 +2925,7 @@
     21.6,
     28.6,
     30.3,
-    27.3
+    27.4
    ],
    "rated_trend": [
     2,
@@ -3046,6 +3046,41 @@
    ]
   },
   {
+   "team": "Harvest Christian Academy-Keller",
+   "rating": 25.9,
+   "sd": 7.7,
+   "rated": 11,
+   "rated_outside": 0,
+   "won": 5,
+   "lost": 6,
+   "tied": 0,
+   "was": 24.7,
+   "trend": [
+    31.8,
+    28.8,
+    32.3,
+    28.1,
+    28.2,
+    27.8,
+    25.5,
+    21.1,
+    24.7,
+    25.9
+   ],
+   "rated_trend": [
+    3,
+    4,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  {
    "team": "Bluff Dale",
    "rating": 25.8,
    "sd": 7.5,
@@ -3081,48 +3116,13 @@
    ]
   },
   {
-   "team": "Harvest Christian Academy-Keller",
-   "rating": 25.7,
-   "sd": 8.0,
-   "rated": 10,
-   "rated_outside": 0,
-   "won": 4,
-   "lost": 6,
-   "tied": 0,
-   "was": 24.7,
-   "trend": [
-    31.8,
-    28.8,
-    32.3,
-    28.1,
-    28.2,
-    27.8,
-    25.5,
-    21.1,
-    24.7,
-    25.7
-   ],
-   "rated_trend": [
-    3,
-    4,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    10
-   ]
-  },
-  {
    "team": "Lone Star High School North-Gainesville",
-   "rating": 25.4,
-   "sd": 8.1,
-   "rated": 10,
+   "rating": 25.2,
+   "sd": 7.8,
+   "rated": 11,
    "rated_outside": 0,
    "won": 9,
-   "lost": 1,
+   "lost": 2,
    "tied": 0,
    "was": 24.9,
    "trend": [
@@ -3135,7 +3135,7 @@
     21.5,
     22.7,
     24.9,
-    25.4
+    25.2
    ],
    "rated_trend": [
     2,
@@ -3147,7 +3147,7 @@
     8,
     9,
     10,
-    10
+    11
    ]
   },
   {
@@ -3222,7 +3222,7 @@
   },
   {
    "team": "The Highlands School-Irving",
-   "rating": 24.6,
+   "rating": 24.5,
    "sd": 8.2,
    "rated": 11,
    "rated_outside": 0,
@@ -3240,7 +3240,7 @@
     23.2,
     23.8,
     24.2,
-    24.6
+    24.5
    ],
    "rated_trend": [
     3,
@@ -4551,41 +4551,6 @@
    ]
   },
   {
-   "team": "Prestonwood Christian Academy North-Prosper",
-   "rating": 2.5,
-   "sd": 8.6,
-   "rated": 8,
-   "rated_outside": 0,
-   "won": 2,
-   "lost": 6,
-   "tied": 0,
-   "was": 2.6,
-   "trend": [
-    1.2,
-    10.9,
-    12.6,
-    15.3,
-    4.8,
-    -1.4,
-    -5.8,
-    0.8,
-    2.6,
-    2.5
-   ],
-   "rated_trend": [
-    3,
-    4,
-    4,
-    4,
-    5,
-    6,
-    7,
-    8,
-    8,
-    8
-   ]
-  },
-  {
    "team": "Trinidad",
    "rating": 2.5,
    "sd": 7.9,
@@ -4618,6 +4583,41 @@
     8,
     9,
     9
+   ]
+  },
+  {
+   "team": "Prestonwood Christian Academy North-Prosper",
+   "rating": 2.4,
+   "sd": 8.5,
+   "rated": 8,
+   "rated_outside": 0,
+   "won": 2,
+   "lost": 6,
+   "tied": 0,
+   "was": 2.6,
+   "trend": [
+    1.2,
+    10.9,
+    12.6,
+    15.3,
+    4.8,
+    -1.4,
+    -5.8,
+    0.8,
+    2.6,
+    2.4
+   ],
+   "rated_trend": [
+    3,
+    4,
+    4,
+    4,
+    5,
+    6,
+    7,
+    8,
+    8,
+    8
    ]
   },
   {
@@ -4657,7 +4657,7 @@
   },
   {
    "team": "Earth Springlake",
-   "rating": 0.9,
+   "rating": 1.0,
    "sd": 8.4,
    "rated": 10,
    "rated_outside": 0,
@@ -4675,7 +4675,7 @@
     0.8,
     0.5,
     0.8,
-    0.9
+    1.0
    ],
    "rated_trend": [
     3,
@@ -4938,7 +4938,7 @@
   {
    "team": "Cornerstone Christian Academy-McKinney",
    "rating": -4.9,
-   "sd": 8.6,
+   "sd": 8.5,
    "rated": 10,
    "rated_outside": 0,
    "won": 6,
@@ -5113,7 +5113,7 @@
   {
    "team": "Leakey",
    "rating": -8.9,
-   "sd": 9.3,
+   "sd": 9.2,
    "rated": 7,
    "rated_outside": 1,
    "won": 2,
@@ -5157,7 +5157,7 @@
    "was": -8.3,
    "trend": [
     -44.9,
-    -43.3,
+    -43.2,
     -42.9,
     -47.9,
     -28.9,
@@ -5672,7 +5672,7 @@
   },
   {
    "team": "Town East",
-   "rating": -15.2,
+   "rating": -15.3,
    "sd": 8.2,
    "rated": 8,
    "rated_outside": 2,
@@ -5690,7 +5690,7 @@
     -15.5,
     -18.4,
     -18.8,
-    -15.2
+    -15.3
    ],
    "rated_trend": [
     2,
@@ -5848,7 +5848,7 @@
   {
    "team": "Burkeville",
    "rating": -16.9,
-   "sd": 9.8,
+   "sd": 9.7,
    "rated": 8,
    "rated_outside": 1,
    "won": 2,
@@ -5927,7 +5927,7 @@
    "was": -19.1,
    "trend": [
     -28.2,
-    -10.9,
+    -11.0,
     -9.9,
     -17.8,
     -16.9,
@@ -6058,7 +6058,7 @@
   {
    "team": "Garland Christian Academy",
    "rating": -20.8,
-   "sd": 8.7,
+   "sd": 8.6,
    "rated": 9,
    "rated_outside": 0,
    "won": 0,
@@ -6128,7 +6128,7 @@
   {
    "team": "Santa Anna",
    "rating": -22.4,
-   "sd": 8.1,
+   "sd": 8.0,
    "rated": 10,
    "rated_outside": 0,
    "won": 3,
@@ -6407,7 +6407,7 @@
   },
   {
    "team": "Brazos Valley Lions Athletics",
-   "rating": -27.0,
+   "rating": -26.9,
    "sd": 7.1,
    "rated": 10,
    "rated_outside": 1,
@@ -6425,7 +6425,7 @@
     -23.5,
     -25.2,
     -26.1,
-    -27.0
+    -26.9
    ],
    "rated_trend": [
     4,
@@ -6912,7 +6912,7 @@
     -18.4,
     -17.9,
     -21.4,
-    -30.0,
+    -29.9,
     -31.2,
     -34.5,
     -31.9
@@ -7073,7 +7073,7 @@
   {
    "team": "Trinity School of Texas-Longview",
    "rating": -33.5,
-   "sd": 8.2,
+   "sd": 8.1,
    "rated": 9,
    "rated_outside": 0,
    "won": 3,
@@ -7282,7 +7282,7 @@
   },
   {
    "team": "Loraine",
-   "rating": -36.2,
+   "rating": -36.1,
    "sd": 7.7,
    "rated": 10,
    "rated_outside": 0,
@@ -7300,7 +7300,7 @@
     -31.7,
     -32.3,
     -36.2,
-    -36.2
+    -36.1
    ],
    "rated_trend": [
     3,
@@ -7534,7 +7534,7 @@
    "won": 3,
    "lost": 7,
    "tied": 0,
-   "was": -42.6,
+   "was": -42.5,
    "trend": [
     -57.8,
     -40.2,
@@ -7544,7 +7544,7 @@
     -42.1,
     -40.8,
     -40.1,
-    -42.6,
+    -42.5,
     -42.6
    ],
    "rated_trend": [
@@ -7703,7 +7703,7 @@
   {
    "team": "Valor North Austin",
    "rating": -45.1,
-   "sd": 9.9,
+   "sd": 9.8,
    "rated": 9,
    "rated_outside": 1,
    "won": 3,
@@ -8626,7 +8626,7 @@
     -75.1,
     -68.1,
     -67.2,
-    -64.9,
+    -65.0,
     -66.5,
     -60.8,
     -61.0,
@@ -9451,6 +9451,41 @@
    ]
   },
   {
+   "team": "Plainview Classical Academy",
+   "rating": -101.1,
+   "sd": 10.5,
+   "rated": 10,
+   "rated_outside": 1,
+   "won": 0,
+   "lost": 10,
+   "tied": 0,
+   "was": -101.0,
+   "trend": [
+    -73.5,
+    -79.1,
+    -89.7,
+    -86.5,
+    -88.1,
+    -87.1,
+    -93.9,
+    -94.9,
+    -101.0,
+    -101.1
+   ],
+   "rated_trend": [
+    4,
+    5,
+    5,
+    6,
+    7,
+    8,
+    9,
+    9,
+    10,
+    10
+   ]
+  },
+  {
    "team": "Olfen",
    "rating": -101.2,
    "sd": 9.8,
@@ -9486,44 +9521,9 @@
    ]
   },
   {
-   "team": "Plainview Classical Academy",
-   "rating": -101.2,
-   "sd": 10.5,
-   "rated": 10,
-   "rated_outside": 1,
-   "won": 0,
-   "lost": 10,
-   "tied": 0,
-   "was": -101.0,
-   "trend": [
-    -73.5,
-    -79.1,
-    -89.7,
-    -86.5,
-    -88.1,
-    -87.1,
-    -93.9,
-    -94.9,
-    -101.0,
-    -101.2
-   ],
-   "rated_trend": [
-    4,
-    5,
-    5,
-    6,
-    7,
-    8,
-    9,
-    9,
-    10,
-    10
-   ]
-  },
-  {
    "team": "St. Paul's Prep",
    "rating": -111.5,
-   "sd": 15.9,
+   "sd": 15.8,
    "rated": 5,
    "rated_outside": 1,
    "won": 0,
