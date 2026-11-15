@@ -7,7 +7,7 @@ code (`services/ratings/`, `apps/web/lib/`) is the same on `main`, `train/3` and
 checked on seasons it was not fitted to. In 2026 the favourite won 86.6% of 655 games, against 76.5% for Elo and 55.1% for
 "the home team wins". One number is wrong on the site today: a State Championship's title chance and the same game's chance
 to win disagree (finding 1). Three small fixes are open as draft PRs (#115, #116, #117). The changes that would move
-published numbers are listed as decisions for the owner at the end.
+published numbers were listed as decisions for the owner at the end; all six were taken and are built in #121.
 
 ## Findings, most severe first
 
@@ -241,6 +241,11 @@ Calibration, by the favourite's chance to win:
 - **Tests:** the ratings tests pass (69 in 25 seconds).
 
 ## Decisions for the owner
+
+**Taken Nov 14, 2026** (pilot mode; the owner may override): every recommendation below, as written, in #121 with ADR
+0057 for D1 and D2. The backtest from 2018 (D4) retuned tau from 30 to 25 and the win-probability scale from 15.57 to
+14.56; out of sample nothing changed (2022 to 2026 log loss 0.308, favourite won 86.4% of 2,999 games). Forfeit-only
+teams (D6) are listed under the rankings table as not rated, not written into the ratings file.
 
 | | Decision | Recommendation | What moves |
 |---|---|---|---|
