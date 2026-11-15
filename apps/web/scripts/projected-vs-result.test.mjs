@@ -2,7 +2,7 @@
 // the week before it (lib/pregame.ts projectBefore), which rating the game itself never changes. Invented teams only.
 //   node --test apps/web/scripts/
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -18,7 +18,7 @@ const load = async (name) => {
   return import(pathToFileURL(outfile).href);
 };
 const { projectBefore } = await load("pregame");
-const { project, projectionText } = await load("projection");
+const { chanceText, project, projectionText } = await load("projection");
 test.after(() => rmSync(tmp, { recursive: true, force: true }));
 
 const final = (homeScore, awayScore, extra = {}) => ({ home: "Alpha", away: "Beta", homeScore, awayScore, state: "final", ...extra });
@@ -100,4 +100,25 @@ test("a played game's projection does not change once its own result, and later 
   };
   assert.equal(projectionText(projectBefore(rated, game, false)), before);
   assert.notEqual(projectionText(project(rated, "Alpha", "Beta", false)), before);
+});
+
+test("a chance reads one way: never 100% or 0%, \">99%\" above 99%, \"<1%\" below 1%", () => {
+  assert.equal(chanceText(0.5), "50%");
+  assert.equal(chanceText(0.744), "74%");
+  assert.equal(chanceText(0.99), "99%");
+  assert.equal(chanceText(0.9901), ">99%");
+  assert.equal(chanceText(0.999), ">99%");
+  assert.equal(chanceText(0.01), "1%");
+  assert.equal(chanceText(0.0099), "<1%");
+  assert.equal(chanceText(0), "<1%");
+});
+
+test("no page writes its own \">99%\" or \"<1%\": every chance goes through chanceText", () => {
+  const files = (dir) => readdirSync(dir, { withFileTypes: true, recursive: true })
+    .filter((f) => f.isFile() && /\.tsx?$/.test(f.name)).map((f) => path.join(f.parentPath, f.name));
+  const own = [...files(path.join(WEB, "app")), ...files(path.join(WEB, "lib"))]
+    .filter((f) => !f.endsWith(path.join("lib", "projection.ts")))
+    .filter((f) => /["'`]>99%|["'`]<1%/.test(readFileSync(f, "utf8")))
+    .map((f) => path.relative(WEB, f));
+  assert.deepEqual(own, []);
 });

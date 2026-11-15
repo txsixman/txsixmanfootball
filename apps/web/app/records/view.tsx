@@ -5,6 +5,7 @@ import { loadAlignments, programFor } from "@/lib/alignments";
 import { recordsDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { orgHref, type Org } from "@/lib/orgs";
+import { chanceText } from "@/lib/projection";
 import { loadRecords } from "@/lib/records";
 import { ratingSeasons } from "@/lib/ratings";
 import { resultSeasons } from "@/lib/weeks";
@@ -110,7 +111,7 @@ export async function RecordsView({ org }: { org: Org }) {
           <BoardRow
             key={`${u.date}-${u.winner}`}
             place={i + 1}
-            figure={u.chance < 0.01 ? "<1%" : `${Math.round(u.chance * 100)}%`}
+            figure={chanceText(u.chance)}
             unit="chance to win before the game"
           >
             <Side team={team(u.winner)} score={u.won} />

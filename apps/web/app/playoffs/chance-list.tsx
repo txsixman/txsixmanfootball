@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EMPTY, type loadIdentities } from "@/lib/identity";
+import { chanceText } from "@/lib/projection";
 import { slugify } from "@/lib/slug";
 import { CrestSlot } from "../ui";
 
@@ -24,7 +25,7 @@ export function ChanceList({ id, title, chances, identities }: {
                 <span className="block h-2 bg-alert" style={{ width: `${Math.max(2, pct)}%` }} />
               </span>
               <span className="w-12 text-right font-num text-[18px] font-bold tabular-nums text-navy">
-                {c.chance < 0.01 ? "<1%" : c.chance > 0.99 ? ">99%" : `${pct}%`}
+                {chanceText(c.chance)}
               </span>
             </li>
           );
