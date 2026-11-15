@@ -34,7 +34,6 @@ import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../crest";
-import { LeanCrest } from "../lean-crest";
 import { PathToFinal } from "../path-to-final";
 import { Follow } from "../follow";
 import { Breadcrumbs } from "../../breadcrumbs";
@@ -45,7 +44,7 @@ import { SITE_NAME } from "@/lib/site";
 import { RatingChart, ratingPoints } from "../rating-chart";
 import { SeasonRatings } from "../season-ratings";
 import { RankTrend, rankTrend } from "../trend";
-import { EdgeToEdge } from "../../ui";
+import { CrestSlot, EdgeToEdge } from "../../ui";
 import { programTitle } from "@/lib/titles";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -144,7 +143,7 @@ export default async function ProgramPage({ params }: Props) {
    * (no invented badge), so names line up down a list. */
   const opponentCrest = (name: string) => {
     const opponent = programFor(all, name, school.league);
-    return opponent ? <LeanCrest school={opponent.school} identity={identities.get(opponent.slug) ?? EMPTY} /> : <span className="cs" />;
+    return opponent ? <CrestSlot school={opponent.school} identity={identities.get(opponent.slug) ?? EMPTY} /> : <span aria-hidden="true" className="mr-2 w-10 shrink-0" />;
   };
   const { theme } = identity;
   // The school's own colors carry the page without hurting contrast: the heading stripe is whichever of its colors shows
@@ -250,7 +249,7 @@ export default async function ProgramPage({ params }: Props) {
   };
 
   /** A game of a past season, in the least markup (about 100 a page, each sent twice: as HTML and in the page data): the same
-   * date, opponent with its crest, projection or round and score as `GameRow`, laid out by `.pg` in globals.css. The score is
+   * date, opponent with its crest (the shared CrestSlot), projection or round and score as `GameRow`, laid out by `.pg` in globals.css. The score is
    * the link to the game's page, stretched over the row; the opponent's name stays its own link above it. */
   const PastGame = ({ r }: { r: Row }) => {
     const opponent = programFor(all, r.opponent, school.league);

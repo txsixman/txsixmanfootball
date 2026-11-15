@@ -66,21 +66,6 @@ body {
   @apply inline-flex min-h-11 items-center justify-center border-2 border-red bg-red px-4 font-bold text-white hover:brightness-110;
 }
 
-/* A small crest beside a team name (app/programs/lean-crest.tsx): the slot, the box and its logo or letters. Set once here so
-   a program page's ~100 of them carry only the school's own colors inline. */
-.cs {
-  @apply mr-2 flex w-10 shrink-0 justify-center;
-}
-.cs > span {
-  @apply inline-flex h-[24px] w-[24px] shrink-0 items-center justify-center bg-white font-num text-[10.08px] font-bold leading-none;
-}
-.cs > span:has(> img) {
-  @apply p-[2px];
-}
-.cs > span > img {
-  @apply size-full object-contain;
-}
-
 /* The past seasons' game lists on a program page (page.tsx): the row's look set once, on the list, so each of the ~100 rows is
    only its date, its opponent and its score. The score link is stretched over the row; the opponent's name stays above it. */
 .pg {
@@ -97,9 +82,6 @@ body {
 }
 .pg > li > div > p {
   @apply flex items-center gap-1;
-}
-.pg .cs {
-  @apply mr-1;
 }
 .pg > li > div > p > a {
   @apply name-link relative z-10;
