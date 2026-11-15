@@ -40,6 +40,8 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
 const bandLabel = (from: number, to: number) => (from >= 0.99 ? "Over 99%" : `${Math.round(from * 100)} to ${Math.round(to * 100)}%`);
 
 type Split = Backtest["scorecard"]["season"][number];
+/** The fewest games a scorecard group needs to get its own row. */
+const MIN_GROUP_GAMES = 30;
 const GROUPS = [
   { key: "season", title: "By season" },
   { key: "phase", title: "Regular season and playoffs" },
@@ -54,6 +56,10 @@ function Scorecard({ scorecard }: { scorecard: Backtest["scorecard"] }) {
   const said = scorecard.phase.reduce((n, r) => n + r.said * r.games, 0) / total;
   const happened = scorecard.phase.reduce((n, r) => n + r.happened * r.games, 0) / total;
   const series = scorecard.phase.map((r) => ({ label: r.label, points: r.bands.map((b) => ({ said: b.said, happened: b.happened, games: b.games })) }));
+  // A group with too few games says more about luck than about the ratings (Independent had 18 by 2026), so it is left out
+  // of the tables and named under them. The totals above still count its games.
+  const rowsOf = (key: (typeof GROUPS)[number]["key"]) => scorecard[key].filter((r) => r.games >= MIN_GROUP_GAMES);
+  const few = GROUPS.flatMap(({ key }) => scorecard[key].filter((r) => r.games < MIN_GROUP_GAMES).map((r) => r.label));
   return (
     <section aria-labelledby="scorecard" className="mt-8">
       <h2 id="scorecard" className="font-num text-[24px] font-bold uppercase tracking-wide text-navy">Said versus happened</h2>
@@ -79,7 +85,7 @@ function Scorecard({ scorecard }: { scorecard: Backtest["scorecard"] }) {
               <tr>
                 <th scope="rowgroup" colSpan={4} className="pt-3 text-[13px] font-bold uppercase tracking-wide text-navy">{title}</th>
               </tr>
-              {scorecard[key].map((r) => (
+              {rowsOf(key).map((r) => (
                 <tr key={r.label} className="border-b border-line">
                   <th scope="row" className="py-2 pr-2 font-semibold">{r.label}</th>
                   <td className="py-2 pr-2 text-right font-num tabular-nums">{r.games.toLocaleString("en-US")}</td>
@@ -100,7 +106,7 @@ function Scorecard({ scorecard }: { scorecard: Backtest["scorecard"] }) {
               <thead>
                 <tr className="border-b-2 border-navy text-[13px] uppercase tracking-wide text-muted">
                   <th scope="col" className="py-2 pr-2 font-bold">Chance said</th>
-                  {scorecard[key].map((r: Split) => (
+                  {rowsOf(key).map((r: Split) => (
                     <th key={r.label} scope="col" className="py-2 pr-2 text-right font-bold">{r.label}</th>
                   ))}
                 </tr>
@@ -109,7 +115,7 @@ function Scorecard({ scorecard }: { scorecard: Backtest["scorecard"] }) {
                 {edges.slice(0, -1).map((from, i) => (
                   <tr key={from} className="border-b border-line">
                     <th scope="row" className="whitespace-nowrap py-2 pr-2 font-semibold">{bandLabel(from, edges[i + 1])}</th>
-                    {scorecard[key].map((r: Split) => {
+                    {rowsOf(key).map((r: Split) => {
                       const b = r.bands.find((x) => x.from === from);
                       return (
                         <td key={r.label} className="py-2 pr-2 text-right font-num tabular-nums">
@@ -131,6 +137,11 @@ function Scorecard({ scorecard }: { scorecard: Backtest["scorecard"] }) {
           </div>
         </details>
       ))}
+      {few.length > 0 && (
+        <p className="mt-2 text-[13px] text-muted">
+          Left out of the tables, with fewer than {MIN_GROUP_GAMES} games so far: {few.join(", ")}. Their games still count in the totals.
+        </p>
+      )}
       <p className="mt-2 text-[13px] text-muted">
         The chance for each game comes from ratings that never saw the season being predicted, and from a scale fit on the other seasons. Only games where
         both teams already had {FEW_GAMES} rated games count; ties and forfeits are left out. A game counts under both teams&rsquo; organizations, so

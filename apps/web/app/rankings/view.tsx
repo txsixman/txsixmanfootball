@@ -104,16 +104,16 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
         <>
           <RatingsTable rows={rows} hrefs={hrefs} />
           {forfeitOnly.length > 0 && (
-            <p id="forfeit-only" className="mt-3 text-[14px] leading-5 text-muted">
-              Not rated, every game so far a forfeit:{" "}
-              {forfeitOnly.map((a, i) => (
-                <span key={a.slug}>
-                  {i > 0 && ", "}
-                  <Link href={`/programs/${a.slug}`} className="font-semibold text-navy underline">{a.school}</Link>
-                </span>
-              ))}
-              .
-            </p>
+            <div className="mt-3">
+              <p id="forfeit-only" className="text-[14px] leading-5 text-muted">Not rated, every game so far a forfeit:</p>
+              <ul aria-labelledby="forfeit-only" className="flex flex-wrap gap-x-4">
+                {forfeitOnly.map((a) => (
+                  <li key={a.slug}>
+                    <Link href={`/programs/${a.slug}`} className="inline-flex min-h-11 items-center font-semibold text-navy underline">{a.school}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <p className="mt-3 text-[13px] text-muted">Scores may be corrected if a mistake is found.</p>
           <HowToRead schedule basis />

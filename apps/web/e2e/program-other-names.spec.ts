@@ -77,7 +77,7 @@ test("/rankings/how shows how well the ratings predict, by season, without scrol
   await expect(section).toContainText("only from the games before it");
   for (const caption of [/Share of games where the team with the higher projected margin won/, /Average number of points between the projected margin/]) {
     const table = section.getByRole("table", { name: caption });
-    await expect(table.getByRole("row")).toHaveCount(8); // header, 2021 to 2026, 2022 to 2026
+    await expect(table.getByRole("row")).toHaveCount(11); // header, 2018 to 2026, 2022 to 2026
     await expect(table.getByRole("row").last()).toContainText("2022 to 2026");
   }
   await expect(section).toContainText("a simple win-loss rating (Elo)");
