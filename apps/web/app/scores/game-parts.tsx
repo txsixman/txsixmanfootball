@@ -57,7 +57,7 @@ export function BigLine({ g, side, program, neutral }: { g: Game; side: Side; pr
           <span className="sr-only">no score</span>
         </p>
       ) : leads ? (
-        <p className="min-w-[92px] bg-navy px-2 py-1 text-center font-num text-[72px] font-bold leading-[0.95] text-white">
+        <p className="min-w-[92px] bg-band px-2 py-1 text-center font-num text-[72px] font-bold leading-[0.95] text-white">
           {score}
           <span className="sr-only">{winner ? " winner" : " leading"}</span>
         </p>

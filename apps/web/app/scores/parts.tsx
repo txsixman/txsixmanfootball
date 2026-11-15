@@ -26,7 +26,7 @@ export function ForfeitMark({ side, winner, large }: { side: Side; winner: Side;
 export function VerifyBar({ g }: { g: Game }) {
   if (g.verification === "disputed") {
     return (
-      <p className="flex items-center gap-2 bg-red px-3 py-1.5 text-[13px] leading-4 text-white">
+      <p className="flex items-center gap-2 bg-alert px-3 py-1.5 text-[13px] leading-4 text-white">
         <TriangleAlert aria-hidden="true" className="size-4 shrink-0" strokeWidth={2.5} />
         <span>
           <b className="mr-1.5 font-num text-[16px] uppercase tracking-wide">Disputed</b>

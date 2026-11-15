@@ -49,7 +49,7 @@ export async function WeekRankings({ wanted, org }: { wanted: string; org: Org }
             aria-current={w.number === week.number ? "page" : undefined}
             aria-label={`After week ${w.number}, ending ${day(w.sunday)}`}
             className={`inline-flex size-11 items-center justify-center border-2 border-navy font-num text-[17px] font-bold ${
-              w.number === week.number ? "bg-navy text-white" : "text-navy hover:bg-panel"
+              w.number === week.number ? "bg-band text-white" : "text-navy hover:bg-panel"
             }`}
           >
             {w.number}
