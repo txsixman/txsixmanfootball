@@ -1,0 +1,67 @@
+# Email game alerts (ADR 0053): a kickoff, a final, and the next-round game once the bracket sets it, emailed through Resend to
+# fans who opted in on /account for the teams they follow. tools/email/send-game-alerts.mjs works the events out from the repo's
+# data, records them, asks the database who is due, sends, and records what it sent (never the same alert twice).
+#
+# When it runs: after every Results watch run (workflow_run), which on a playoff game day is every 10 minutes, so a kickoff
+# goes out within about ten minutes of its listed time and a final as soon as it is committed. By hand (workflow_dispatch;
+# `baseline` records what exists now and sends nothing, to skip past a backlog). Or called by another workflow (workflow_call).
+# GitHub's own `schedule` has never fired in this repo (ADR 0024), so there is none.
+#
+# It sends NOTHING, and says so in the run summary, until all of these are set; each is Brady's to make (docs/email-alerts.md):
+#   repo variable EMAIL_ALERTS=true (the switch) and EMAIL_FROM (the verified sender, "Name <address>")
+#   repo secrets RESEND_API_KEY, EMAIL_UNSUBSCRIBE_SECRET (the same value as on Vercel), EMAIL_DB_PASSWORD
+# It connects to the hosted database as the role `email_sender` (migration 0022): it can run three functions and read no table,
+# unlike the owner's password the other jobs use. No email address, name or error text is ever printed: counts only.
+name: Email alerts
+
+on:
+  workflow_run:
+    workflows: ["Results watch"]
+    types: [completed]
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      baseline:
+        description: "Record the events that exist now as already seen and send nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    # A cancelled Results watch (a newer run replaced it) changed nothing worth a run.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # One send at a time, so two runs never race on who has been emailed; a newer one waits rather than cancelling one half done.
+    concurrency:
+      group: email-alerts
+      cancel-in-progress: false
+    env:
+      # Project vhgnaihnyjdnaaergtcl, through the IPv4 session pooler, as the least-privilege role. Not secrets.
+      PGHOST: aws-0-us-east-1.pooler.supabase.com
+      PGUSER: email_sender.vhgnaihnyjdnaaergtcl
+      PGPASSWORD: ${{ secrets.EMAIL_DB_PASSWORD }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      EMAIL_UNSUBSCRIBE_SECRET: ${{ secrets.EMAIL_UNSUBSCRIBE_SECRET }}
+      EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+      EMAIL_ALERTS: ${{ vars.EMAIL_ALERTS }}
+      BASELINE: ${{ inputs.baseline }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main # the newest main, including the results the Results watch run just committed
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # The sender uses packages/db's pinned pg. Skipped while the switch is off: the script then only writes its summary.
+      - name: Install the database client
+        if: ${{ vars.EMAIL_ALERTS == 'true' }}
+        run: npm ci --prefix packages/db
+      - name: Send the alerts
+        run: |
+          args=()
+          if [ "$BASELINE" = true ]; then args+=(--baseline); fi
+          node tools/email/send-game-alerts.mjs "${args[@]}"
