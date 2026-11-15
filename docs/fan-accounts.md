@@ -54,10 +54,10 @@ Forums, game comments and score reports are behind `FAN_POSTS`, which must be ex
 |---|---|
 | `/sign-in` | "Continue with Google" (whenever `FAN_SIGNIN` is on). The email link: for new fans only when `FAN_EMAIL_SIGNIN=on`; otherwise it sits behind "I already have an account" and only existing accounts get a link |
 | `/account/welcome` | Last step of sign-up: display name (3 to 24 characters) and birth year. Exactly 13 years back asks "Have you had your 13th birthday?" (used once, never stored). Under 13 deletes the account at once and shows `/account/too-young`. Anyone signed in without a profile is sent here first (`/auth/callback` after sign-in, and the header from any other page) |
-| `/account` | Display name, date joined, Sign out, Delete my account (a confirm step, then `delete_my_account()`), and an offer to copy this browser's follows into the account |
+| `/account` | Display name, date joined, Sign out (it also stops the account's alerts on that browser, ADR 0054), Delete my account (a confirm step, then `delete_my_account()`, which also removes the account's push subscriptions), and an offer to copy this browser's follows into the account |
 | `/privacy`, `/terms` | Plain language, linked from `/sign-in`, `/account/welcome` and `/account` (and the site footer, on every page, whichever way `FAN_SIGNIN` is set) |
 | Header | "Sign in", or the display name. Filled in by the page's own script from `/api/me`, so static pages stay static |
-| Program page | The Follow button: signed out, push alerts on this browser as before; signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) |
+| Program page | The Follow button: signed out, push alerts on this browser as before; signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) and links this browser's push alerts to the account, so a follow on any device alerts every linked browser (ADR 0054) |
 | Home, My teams | The account's follows when signed in, else this browser's |
 | `/forums`, a board, a thread | Only while `FAN_POSTS` is on (otherwise 404). Anyone reads; a signed-in fan with a profile posts, replies, edits their own and flags others |
 | A game page | Only while `FAN_POSTS` is on: the comments block, and for a game with no score yet the fan score-report block. With it off the page is as it was |
@@ -78,6 +78,23 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
   sent to fan sign-up). No email, id or birth year. `/api/follows` (POST: follow, unfollow, import up to 100) needs a same-site
   `Origin`, a JSON body and a session. Both are in `proxy.ts`'s matcher (session refresh, `no-store`, `noindex`); the service
   worker never keeps `/api/`.
+- **Push alerts tied to the account (ADR 0054, migration 0023).** `push_subscription.user_id` (nullable, references `profile` on delete
+  cascade) links a browser's subscription to an account; signed-out browsers behave as before.
+  - **Link.** `POST /api/push/link` (same-site `Origin`, JSON, session; answers the program slugs left on the browser) calls
+    `link_push_subscription(endpoint, p256dh, auth)` on the fan's own session; the database sets `user_id = auth.uid()`, no id comes
+    from the browser. The Follow button links on a tap (asking permission if needed) and once per visit for a browser that already
+    shows alerts. It needs a finished profile. **At most 5 linked browsers per account** (a sixth replaces the least recently active).
+  - **Merge.** The browser's own follows are merged into the account at link time (a program the account already follows is skipped;
+    one that does not fit under the 100 cap stays on the browser's own list). `unfollow_program` also strips the program from the
+    account's linked browsers. The sender (`tools/push/send-finals.mjs`) sends one alert per browser: its own list joined with the
+    account's follows, each team once.
+  - **Unlink.** Sign-out reads the browser's own endpoint and sends it in the sign-out form; `signOut()` calls
+    `unlink_push_subscription(endpoint)` before ending the session. It matches the endpoint to `auth.uid()` (another account's or a made-up
+    endpoint changes nothing) and **deletes the row**, except that leftover own-list programs keep it, unlinked, for those alone. Unlink
+    never fails sign-out; a session already expired cannot unlink, and the row then goes when the push service reports it gone, with the
+    account, or when another account links that browser. Deleting the account removes its push subscriptions (`on delete cascade` and
+    explicitly in `delete_my_account()`, replaced by 0023).
+  - Both functions are in `SIGNED_IN_FUNCTIONS`. No endpoint, key or user id is logged anywhere.
 - A display name is checked by `lib/moderation/names.ts` (a small word list) before `create_profile`. The posts round replaces
   that file and keeps `displayNameProblem(name)`.
 - Nothing logs an email, a birth year, a token or a Supabase error.
@@ -87,7 +104,7 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
 | Variable | Public? | What it is |
 |---|---|---|
 | `FAN_SIGNIN` | server only | `on` turns fan accounts on (everything in this document). Missing or anything else: off, see "The switch" above. Redeploy after changing |
-| `FAN_EMAIL_SIGNIN` | server only | `on` (and `FAN_SIGNIN` on) lets the emailed link make NEW fan accounts. Missing or anything else: the link works for existing accounts only (it is how the owner signs in to `/admin`) and new fans see only "Continue with Google". Google is never behind it, only behind `FAN_SIGNIN`. **Turn it on after custom SMTP works** (below). Redeploy after changing |
+| `FAN_EMAIL_SIGNIN` | server only | `on` (and `FAN_SIGNIN` on) lets the emailed link make NEW fan accounts. Missing or anything else: the link works for existing accounts only (it is how the owner signs in to `/admin`) and new fans see only "Continue with Google". Google is never behind it, only behind `FAN_SIGNIN`. Custom SMTP through Resend is live (below), so this is unblocked: set it when you are ready for new fans to sign up by email. Redeploy after changing |
 
 | `FAN_POSTS` | server only | `on` (and `FAN_SIGNIN` on) turns on forums, game comments and score reports. Missing or anything else, or `FAN_SIGNIN` off: they do not exist and sign-in and follows work as before. **Open the database switch first** (`site_switch`, see "The second switch" above). Redeploy after changing |
 
@@ -125,9 +142,11 @@ The Supabase variables are in `docs/admin-console.md`. Google needs no variable 
 Google signs in by the account's verified email: if you use the same email as your admin user, Supabase links the Google
 sign-in to that same user, so `ADMIN_USER_ID` still matches.
 
-## Owner's setup: email sign-up for new fans (after Resend works)
+## Owner's setup: email sign-up for new fans (Resend)
 
 Supabase's own email sender allows about 2 emails an hour, so new-fan email sign-up stays off until the project has its own sender.
+**Done:** custom SMTP through Resend is live and the sender is `TX Six-Man Football <no-reply@txsixmanfootball.com>` (`EMAIL_FROM`, the same sender
+the email alerts use, `docs/email-alerts.md`), so `FAN_EMAIL_SIGNIN` is unblocked. The steps are kept for rebuilding it.
 
 1. Resend: verify the sending domain, make an API key.
 2. Supabase, Authentication, Emails, SMTP Settings: Enable custom SMTP. Host `smtp.resend.com`, port `465`, username `resend`,
@@ -135,7 +154,7 @@ Supabase's own email sender allows about 2 emails an hour, so new-fan email sign
 3. Authentication, Emails, Templates: **Confirm signup** and **Magic Link** must both still contain `{{ .ConfirmationURL }}`
    (the defaults do). New fans get the first, existing ones the second.
 4. Send yourself a sign-in link and check it arrives and works.
-5. Only then set `FAN_EMAIL_SIGNIN` to `on` in Vercel (Production) and redeploy.
+5. Then set `FAN_EMAIL_SIGNIN` to `on` in Vercel (Production) and redeploy (unblocked now; it is the owner's call when).
 
 ## Before the pages are public
 
@@ -156,8 +175,8 @@ not offered, the erase above is what clears them.
 
 - The Follow-button screenshots: the header now ends with a "Sign in" link, so the
   CI screenshot baselines that include the header need the usual `screenshots/<anything>` branch to approve the new look.
-- Push alerts stay per browser: they are not tied to the account and are not removed by deleting it (the person stops them
-  with Stop alerts, or by blocking notifications).
+- Push alerts were per browser here: ADR 0054 (above) later tied a signed-in browser's alerts to the account. A signed-out browser
+  is still per browser (stopped with Stop alerts, or by blocking notifications).
 
 ## Unfinished sign-ups are erased
 
