@@ -35,7 +35,7 @@ test.describe("fan accounts off (FAN_SIGNIN unset: the default)", () => {
     await expect(page.getByRole("button", { name: /Google/ })).toHaveCount(0);
     const text = await page.locator("main").innerText();
     expect(text).not.toMatch(/13|birth year|display name|terms|privacy|new here|account/i);
-    await expect(page.getByRole("link", { name: /^(Privacy|Terms)$/ })).toHaveCount(0);
+    await expect(page.locator("main").getByRole("link", { name: /^(Privacy|Terms)$/ })).toHaveCount(0);
     expect((await axe(page)).violations.map((v) => v.id)).toEqual([]);
   });
 
@@ -48,8 +48,8 @@ test.describe("fan accounts off (FAN_SIGNIN unset: the default)", () => {
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Admin" })).toHaveCount(0);
   });
 
-  test("the privacy, terms and under-13 pages do not exist while fan accounts are off", async ({ request }) => {
-    for (const path of ["/privacy", "/terms", "/account/too-young"]) expect((await request.get(path)).status(), path).toBe(404);
+  test("the under-13 page does not exist while fan accounts are off", async ({ request }) => {
+    for (const path of ["/account/too-young"]) expect((await request.get(path)).status(), path).toBe(404);
   });
 
   test("the account routes answer null and 404 without asking anyone", async ({ request, baseURL }) => {

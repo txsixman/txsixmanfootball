@@ -12,11 +12,11 @@ uses it too (`docs/admin-console.md`). Every Supabase call is made on the server
 
 Fan accounts are **off by default**. With `FAN_SIGNIN` missing (or anything but exactly `on`) the site is as it was:
 no "Sign in" link in the header, `/sign-in` is only the email form for accounts that already exist (the owner's way into
-`/admin`; no Google button, no sign-up wording), `/account` and `/account/welcome` send everyone home, `/privacy`, `/terms` and `/account/too-young` answer 404, `/api/follows`
+`/admin`; no Google button, no sign-up wording), `/account` and `/account/welcome` send everyone home, `/account/too-young` answers 404 (`/privacy` and `/terms` are always public, linked from the site footer), `/api/follows`
 answers 404, the Follow button is the browser-only button, and `/api/me` answers `{ enabled: false, posts: false, me: null }` without
 asking Supabase (except for a request that comes from an `/admin` page). The flag is read per request on the server and
-handed to the pages' scripts through `/api/me`, never a `NEXT_PUBLIC` constant: set it in Vercel and redeploy, no rebuild
-of the pages is needed. Everything below describes the "on" state.
+handed to the pages' scripts through `/api/me`, never a `NEXT_PUBLIC` constant: set it in Vercel and redeploy. The header,
+Follow button and `/api/*` follow it with no rebuild of the pages; the one exception is the static game page (see `FAN_POSTS` below). Everything below describes the "on" state.
 
 ### The second switch: FAN_POSTS (ADR 0052)
 
@@ -29,8 +29,11 @@ Forums, game comments and score reports are behind `FAN_POSTS`, which must be ex
 | `on` | not `on` | Sign-in, the profile, `/account`, `/privacy`, `/terms`, follows and `/api/me`. Every posts surface answers as it does with fan accounts off: `/forums/**` and every `/api/fan/**` and `/api/games/[id]/comments`, `/score-report` route is a bare 404, and the game page has no comment or score-report block |
 | `on` | `on` | Everything in this document, posts included |
 
-- A game page is static, so it reads `FAN_POSTS` when it is built (flip it and redeploy, as for `FAN_SIGNIN`). A page built with
-  posts on and served after the flag goes off hides both blocks itself, because their routes then answer 404.
+- **A game page (`/scores/<id>`) is static** (`generateStaticParams`, `dynamicParams = false`), so it reads `FAN_POSTS` (and
+  `FAN_SIGNIN`) **at build time**, not per request. Flipping either in Vercel needs a redeploy, which rebuilds the pages: the
+  comment and score-report blocks appear or vanish only with that deploy. CI's launch job builds with the switches set, as Vercel does.
+  A page built with posts on and served after the flag goes off hides both blocks itself, because their routes then answer 404.
+  The forums, every `/api/*` route and `/api/me` read the flag per request.
 - `/api/me` answers `{ enabled, posts, me }`: `posts` is `FAN_POSTS` for the page scripts, never true while `enabled` is false.
 - **`/admin/moderation` stays open to the owner** whichever way the switch is set, so he can ban an account or show a post again
   after turning posts off. With posts off it says so in one sentence and shows a post's place as text, not a link.
@@ -52,7 +55,7 @@ Forums, game comments and score reports are behind `FAN_POSTS`, which must be ex
 | `/sign-in` | "Continue with Google" (whenever `FAN_SIGNIN` is on). The email link: for new fans only when `FAN_EMAIL_SIGNIN=on`; otherwise it sits behind "I already have an account" and only existing accounts get a link |
 | `/account/welcome` | Last step of sign-up: display name (3 to 24 characters) and birth year. Exactly 13 years back asks "Have you had your 13th birthday?" (used once, never stored). Under 13 deletes the account at once and shows `/account/too-young`. Anyone signed in without a profile is sent here first (`/auth/callback` after sign-in, and the header from any other page) |
 | `/account` | Display name, date joined, Sign out, Delete my account (a confirm step, then `delete_my_account()`), and an offer to copy this browser's follows into the account |
-| `/privacy`, `/terms` | Plain language, linked from `/sign-in`, `/account/welcome` and `/account` (the site footer is `app/layout.tsx`, owned by another change: add the two links there when it is free) |
+| `/privacy`, `/terms` | Plain language, linked from `/sign-in`, `/account/welcome` and `/account` (and the site footer, on every page, whichever way `FAN_SIGNIN` is set) |
 | Header | "Sign in", or the display name. Filled in by the page's own script from `/api/me`, so static pages stay static |
 | Program page | The Follow button: signed out, push alerts on this browser as before; signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) |
 | Home, My teams | The account's follows when signed in, else this browser's |
@@ -151,7 +154,7 @@ not offered, the erase above is what clears them.
 
 ## What the accounts round did not do
 
-- The footer links (`app/layout.tsx`) and the Follow-button screenshots: the header now ends with a "Sign in" link, so the
+- The Follow-button screenshots: the header now ends with a "Sign in" link, so the
   CI screenshot baselines that include the header need the usual `screenshots/<anything>` branch to approve the new look.
 - Push alerts stay per browser: they are not tied to the account and are not removed by deleting it (the person stops them
   with Stop alerts, or by blocking notifications).

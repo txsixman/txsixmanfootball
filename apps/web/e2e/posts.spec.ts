@@ -139,13 +139,15 @@ test.describe("posts on (FAN_SIGNIN=on and FAN_POSTS=on)", () => {
     expect(await report.json()).toEqual({ reports: 0, confirmed: false });
   });
 
-  test("the posting API refuses a signed-out visitor, a cross-site write and a non-JSON write", async ({ request }) => {
+  test("the posting API refuses a signed-out visitor, a cross-site write and a non-JSON write", async ({ request, baseURL }) => {
     const post = (url: string, headers: Record<string, string>, data = "{}") => request.post(url, { headers, data });
-    const json = { "Content-Type": "application/json" };
+    // A write must carry this site's own Origin (lib/same-origin.ts): without one it is a 403, not a sign-in answer.
+    const json = { "Content-Type": "application/json", Origin: baseURL! };
     for (const url of ["/api/fan/comments", "/api/fan/reports", "/api/fan/posts/aaaaaaaa-0000-4000-8000-000000000001/flag"]) {
       expect((await post(url, json)).status(), url).toBe(401);
       expect((await post(url, { ...json, Origin: "https://evil.test" })).status(), url).toBe(403);
-      expect((await post(url, { "Content-Type": "text/plain" })).status(), url).toBe(403);
+      expect((await post(url, { "Content-Type": "text/plain", Origin: baseURL! })).status(), url).toBe(403);
+      expect((await post(url, { "Content-Type": "application/json" })).status(), url).toBe(403); // no Origin at all
     }
     const me = await request.get("/api/fan/me");
     expect(await me.json()).toEqual({ signedIn: false });
@@ -176,8 +178,8 @@ test.describe("posts on (FAN_SIGNIN=on and FAN_POSTS=on)", () => {
     expect(errors).toEqual([]);
   });
 
-  test("the forum writes refuse a signed-out visitor", async ({ request }) => {
-    const json = { "Content-Type": "application/json" };
+  test("the forum writes refuse a signed-out visitor", async ({ request, baseURL }) => {
+    const json = { "Content-Type": "application/json", Origin: baseURL! };
     expect((await request.post("/api/fan/threads", { headers: json, data: { board: "general", title: "t", body: "b" } })).status()).toBe(401);
     expect((await request.post("/api/fan/replies", { headers: json, data: { threadId: "aaaaaaaa-0000-4000-8000-000000000001", body: "b" } })).status()).toBe(401);
     expect((await request.post("/api/fan/threads", { headers: json, data: { board: "nope", title: "t", body: "b" } })).status()).toBe(401);
