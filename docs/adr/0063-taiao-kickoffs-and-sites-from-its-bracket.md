@@ -1,4 +1,4 @@
-# ADR 0060: TAIAO bracket games take their kickoff and site from TAIAO's own bracket
+# ADR 0063: TAIAO bracket games take their kickoff and site from TAIAO's own bracket
 
 **Status:** Proposed Nov 15, 2026; accepted when its pull request is merged. It adds a second source of game details to ADR
 0041, under all of ADR 0041's rules, and reads the same page ADR 0046 and ADR 0047 already read under ADR 0005.

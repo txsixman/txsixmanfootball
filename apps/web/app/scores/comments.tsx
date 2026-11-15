@@ -62,7 +62,7 @@ export function Comments({ gameKey }: { gameKey: string }) {
       {posts.length > 0 && (
         <ul>
           {posts.map((p) => (
-            <PostItem key={p.id} post={p} me={me} onEdited={(id, body) => setPosts((all) => all.map((x) => (x.id === id ? { ...x, body, edited: true } : x)))} />
+            <PostItem key={p.id} post={p} me={me} next={pathname} onEdited={(id, body) => setPosts((all) => all.map((x) => (x.id === id ? { ...x, body, edited: true } : x)))} />
           ))}
         </ul>
       )}

@@ -159,7 +159,7 @@ test("a bracket tab gives each game's teams, home side, scores, date and forfeit
   assert.deepEqual(parseBracket("no heading here\nNQ1\n1. Lark Owls"), [], "nothing before the Playoffs heading");
 });
 
-// Site lines in the shapes the bracket writes them (ADR 0060); invented places.
+// Site lines in the shapes the bracket writes them (ADR 0063); invented places.
 test("a site line keeps the venue's name and city, never the street, number or postal code", () => {
   const cases = [
     ["Lark Field, 100 Main St., Wrenville, TX 79000", "Lark Field", "Wrenville"],

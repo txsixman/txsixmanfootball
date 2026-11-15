@@ -65,14 +65,19 @@ export function Composer({ id, label, button, max = 2000, onSubmit }: { id: stri
   );
 }
 
-/** One comment or forum post: who, when, whether it was edited, the text, and for a signed-in person Edit (own) or Flag (others). */
-export function PostItem({ post, me, onEdited }: { post: Post; me: Me | undefined; onEdited: (id: string, body: string) => void }) {
+/**
+ * One comment or forum post: who, when, whether it was edited, the text, Edit (own) and Report (others). Report is there for every
+ * viewer (ADR 0060): signed in with a profile it flags the post; otherwise it is a link to sign in, or to finish the account, and back.
+ */
+export function PostItem({ post, me, next, onEdited }: { post: Post; me: Me | undefined; next: string; onEdited: (id: string, body: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(post.body);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const mine = canPost(me) && me.displayName === post.author;
   const flaggable = canPost(me) && !mine;
+  // Signed out, or signed in without a profile: Report is a link (nothing is sent). While asking, or paused or banned, nothing.
+  const report = !me ? null : !me.signedIn ? { href: `/sign-in?next=${encodeURIComponent(next)}`, first: "sign in first" } : !me.profile ? { href: "/account", first: "finish your account first" } : null;
   const button = "min-h-11 px-2 text-[14px] font-semibold text-navy underline underline-offset-2 disabled:opacity-60";
 
   async function save() {
@@ -89,7 +94,7 @@ export function PostItem({ post, me, onEdited }: { post: Post; me: Me | undefine
     setBusy(true);
     const r = await send("POST", `/api/fan/posts/${post.id}/flag`);
     setBusy(false);
-    setNote(r.ok ? "Flagged. Thank you." : r.message);
+    setNote(r.ok ? "Reported. Thank you." : r.message);
   }
 
   return (
@@ -113,8 +118,11 @@ export function PostItem({ post, me, onEdited }: { post: Post; me: Me | undefine
       )}
       <div className="flex items-center gap-1">
         {mine && !editing && <button type="button" className={button} onClick={() => setEditing(true)}>Edit</button>}
-        {flaggable && !note?.startsWith("Flagged") && (
-          <button type="button" className={button} onClick={flag} disabled={busy} aria-label={`Flag ${post.author}'s post`}>Flag</button>
+        {flaggable && !note?.startsWith("Reported") && (
+          <button type="button" className={button} onClick={flag} disabled={busy} aria-label={`Report ${post.author}'s post`}>Report</button>
+        )}
+        {report && (
+          <Link href={report.href} className={`inline-flex items-center ${button}`} aria-label={`Report ${post.author}'s post (${report.first})`}>Report</Link>
         )}
         <span role="status" aria-live="polite" className="text-[14px] text-muted">{note}</span>
       </div>

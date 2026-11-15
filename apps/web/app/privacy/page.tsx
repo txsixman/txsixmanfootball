@@ -103,19 +103,20 @@ export default function PrivacyPage() {
           <LegalH2>Moderation runs by itself</LegalH2>
           <p className="mt-2">There is no one reading every post. Instead:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Slurs and threats are blocked from a word list before a post is saved.</li>
-            <li>New accounts (under 7 days old) cannot post links and have tighter limits on how much they can post.</li>
-            <li>A post that three different members flag is hidden automatically.</li>
+            <li>Slurs, threats and gambling talk are blocked from a word list before a post is saved.</li>
+            <li>Every account has limits on how much it can post a minute, in 10 minutes and in a day. New accounts (under 7 days old) cannot post links and have tighter limits.</li>
+            <li>Anyone can report a post. A post that three different members report is hidden automatically.</li>
             <li>An account with three hidden posts in 30 days is muted automatically.</li>
             <li>Edits keep their history, so nothing is changed silently.</li>
-            <li>The site&apos;s owner can unhide a post, unmute an account or ban one, but nothing waits for that.</li>
+            <li>The site&apos;s owner sees reported posts and can hide or unhide a post, and mute, unmute or ban an account, but nothing waits for that.</li>
           </ul>
 
           <LegalH2>Deleting your account</LegalH2>
           <p className="mt-2">
             You can delete your account yourself, any time, on <A href="/account">your account page</A>. It asks you to confirm, then
             erases your sign-in (your email), display name, follows, linked browsers and their push addresses, email settings and the
-            record of emails sent to you, and, as posts open, what you posted. It cannot be undone. A browser that is not linked to an
+            record of emails sent to you, and, as posts open, what you posted (with every earlier version) and the posts you reported. Score
+            reports you sent stay, with nothing left that links them to you, so a confirmed score does not change. It cannot be undone. A browser that is not linked to an
             account keeps its own alerts until you stop them with Stop alerts on a program page.
           </p>
         </>

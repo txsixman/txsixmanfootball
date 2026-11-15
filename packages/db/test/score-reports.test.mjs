@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkLive } from "../load.mjs";
-import { as, asFan, db, fan, KEYS, sudo } from "./posts-helpers.mjs";
+import { as, asFan, cool, db, fan, KEYS, sudo } from "./posts-helpers.mjs";
 
 // Fan score reports (migration 0014, ADR 0018). The playoff game is the test game; its day is set by hand so the tests
 // do not depend on today's date.
@@ -164,7 +164,13 @@ test("only a signed-in fan who is not banned or muted can report, and reports ar
   await report(d, 21, 14, key(2));
   await assert.rejects(report(d, 21, 14, key(3)), /rate_limited/);
   await asFan(d, old);
-  for (let i = 1; i <= 5; i++) await report(d, 21, 14, key(i));
+  for (let i = 1; i <= 3; i++) await report(d, 21, 14, key(i));
+  await assert.rejects(report(d, 21, 14, key(4)), /rate_limited/, "an established account: 3 a minute");
+  await cool(d, old);
+  await asFan(d, old);
+  for (let i = 4; i <= 5; i++) await report(d, 21, 14, key(i));
+  await cool(d, old);
+  await asFan(d, old);
   await assert.rejects(report(d, 21, 14, key(6)), /rate_limited/);
 });
 

@@ -9,7 +9,7 @@ import type { FormState } from "@/lib/admin/results";
 // A server action is a public POST endpoint: check the admin here, validate every field, then let the database function
 // check is_admin() again and write the audit row.
 
-const DONE = { unhide: "Shown again.", unmute: "Mute lifted.", ban: "Banned.", unban: "Ban lifted." } as const;
+const DONE = { hide: "Hidden.", unhide: "Shown again.", mute: "Muted.", unmute: "Mute lifted.", ban: "Banned.", unban: "Ban lifted." } as const;
 
 export async function moderatePost(_previous: FormState, data: FormData): Promise<FormState> {
   let supabase;
@@ -18,7 +18,7 @@ export async function moderatePost(_previous: FormState, data: FormData): Promis
   } catch (e) {
     return { error: e instanceof NotAdmin ? "Not allowed." : "Admin is not configured." };
   }
-  const parsed = ModerateInput.safeParse(formFields(data, ["op", "id", "reason"]));
+  const parsed = ModerateInput.safeParse(formFields(data, ["op", "id", "reason", "days"]));
   if (!parsed.success) return { error: "Check the highlighted fields.", fields: fieldErrors(parsed.error) };
   const result = await moderate(supabase, parsed.data);
   revalidatePath("/admin/moderation");
