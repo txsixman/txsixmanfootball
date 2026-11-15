@@ -117,6 +117,17 @@ export function footballOf(html) {
   return /\b[2-6]A\b|\bTAPPS\b|\b11\b/.test(name) ? { kind: "11", name } : { kind: null, name };
 }
 
+/**
+ * One of our schools' team page when opponents' schedules link it to more than one page (the source sometimes links an
+ * opponent to another school of the same name: 2018 to 2021 West Texas schedules link "Wilson" to a Dallas 11-man page).
+ * The page whose own page says six-man that season wins, then any page that does not say 11-man, then the last seen
+ * (as before). `football` is empty in the season under way, so there the last seen stands.
+ */
+export function pickTeamPage(urls, football) {
+  const kind = (u) => football.get(u)?.kind;
+  return urls.find((u) => kind(u) === "6") ?? urls.findLast((u) => kind(u) !== "11") ?? urls.at(-1);
+}
+
 /** An 11-man game: one team's page says 11-man that season and neither says six-man (a six-man school plays six-man). */
 export const isElevenMan = (g, football) => {
   const kinds = [football.get(g.home.url)?.kind, football.get(g.away.url)?.kind];
@@ -254,7 +265,12 @@ export function bracketOf(tournament = "", bracket = "") {
   if (/\bUIL\b/.test(t) && (m = b.match(/6-Man 1A D([12])$/))) return { league: "UIL", division: m[1] === "1" ? "I" : "II" };
   if (/\bTAPPS\b/.test(t) && (m = b.match(/6[ -]Man (?:Division )?(I{1,3}|IV)\b(.*)$/))) return { league: "TAPPS", division: `${m[1]}${m[2]}`.trim() };
   if (/\bTAIAO\b/.test(t) && (m = b.match(/^Division (I{1,3}|[1-3])$/))) return { league: "TAIAO", division: roman[m[1]] ?? m[1] };
-  if (/\bTCAF\b/.test(t)) return { league: "TCAF", division: "Six-Man" };
+  // TCAF's 2018 to 2021 seasons had two six-man divisions ("6 Man I", "6-Man II"); `part` keeps which, for
+  // splitTcafDivisions. The stored division stays "Six-Man" until a whole season can be split.
+  if (/\bTCAF\b/.test(t)) {
+    const part = b.match(/^6[ -]Man (I{1,2})$/)?.[1];
+    return part ? { league: "TCAF", division: "Six-Man", part } : { league: "TCAF", division: "Six-Man" };
+  }
   return null;
 }
 
@@ -376,6 +392,36 @@ export function relabelRounds(text) {
     return cols.map((c) => (c === "round" ? round : r[c])).join(",");
   });
   return { text: [header, ...out].join("\n") + "\n", relabeled, changes: [...changes].map(([k, n]) => `${k} (${n})`), partial };
+}
+
+/**
+ * A past TCAF season with two six-man divisions (ADR 0070), split from its one stored "Six-Man" bracket. `parts` maps a
+ * game (rowKey) to the division its own bracket names ("I" or "II"). The season is split only when it is whole: both
+ * divisions named, every stored TCAF row's game named by this read, and each division alone a consistent bracket (one
+ * State Championship game, no week holding more games than its round can). Otherwise every row stays "Six-Man" and the
+ * reason is returned. Only the division changes; rounds are then named again per division (relabelRounds).
+ */
+export function splitTcafDivisions(text, parts) {
+  const { header, cols, rows } = parseCsv(text, "playoffs.csv");
+  // A row split by an earlier read keeps its division; only "Six-Man" rows take one from this read.
+  const tcaf = rows.filter((r) => r.league === "TCAF" && r.division === "Six-Man");
+  const named = new Set(parts.values());
+  if (!tcaf.length || !(named.has("I") && named.has("II"))) return { text, split: null, kept: null };
+  const unnamed = tcaf.filter((r) => !parts.has(rowKey(r))).length;
+  if (unnamed) return { text, split: null, kept: `${unnamed} of ${tcaf.length} games with no division named` };
+  const divisionOf = (r) => (r.division === "Six-Man" ? parts.get(rowKey(r)) : r.division);
+  const all = rows.filter((r) => r.league === "TCAF");
+  for (const d of ["I", "II"]) {
+    const list = all.filter((r) => divisionOf(r) === d);
+    const rounds = roundsFor(list.map((r) => ({ league: "TCAF", division: d, date: r.game_date })));
+    const weeks = [...new Set(list.map((r) => weekOf(r.game_date)))].sort();
+    const fits = rounds.filter((x) => x === "final").length === 1 &&
+      weeks.every((w, j) => list.filter((r) => weekOf(r.game_date) === w).length <= 2 ** (weeks.length - 1 - j));
+    if (!fits) return { text, split: null, kept: `division ${d} is not a whole bracket (${list.length} games)` };
+  }
+  const out = rows.map((r) => cols.map((c) => (c === "division" && r.league === "TCAF" && r.division === "Six-Man" ? divisionOf(r) : r[c])).join(","));
+  const count = (d) => tcaf.filter((r) => divisionOf(r) === d).length;
+  return { text: [header, ...out].join("\n") + "\n", split: `I (${count("I")}) and II (${count("II")})`, kept: null };
 }
 
 /**
@@ -594,6 +640,7 @@ async function main() {
   const games = new Map();
   const reached = new Set();
   const teamPages = new Map(); // our slug -> MaxPreps team page
+  const pageCandidates = new Map(); // our slug -> every page an opponent's schedule linked it to (pickTeamPage)
   const readPages = new Set();
   const outside = new Map(); // opponents not in our alignments, with how many games
   const outsideGames = new Map(); // played games of one of our schools against one that is not, for the ratings
@@ -623,6 +670,7 @@ async function main() {
           }
           for (const name of [ALIASES[t.url] ?? t.slug].flat()) reached.add(slugify(name));
           teamPages.set(t.slug, t.url);
+          pageCandidates.set(t.slug, [...new Set([...(pageCandidates.get(t.slug) ?? []), t.url])]);
           if (full && !seen.has(t.url)) {
             seen.add(t.url);
             queue.push(t.url);
@@ -693,6 +741,13 @@ async function main() {
     const m = mergeStored({ file: name, stored: stored(name), fresh, pending, readTeam, now });
     // A past season read in full names its stored bracket rounds again from the whole bracket (ADR 0069).
     if (name === "playoffs.csv" && full && SEASON < DEFAULT_SEASON) {
+      // TCAF's two six-man divisions, when the whole season shows them (ADR 0070), before the rounds are named again.
+      const nameOf = (t) => t.label ?? bySlug.get(t.slug).school;
+      const parts = new Map([...bracket.values()].filter((g) => g.bracket?.part).map((g) => [rowKey({ game_date: g.date, home: nameOf(g.home), away: nameOf(g.away) }), g.bracket.part]));
+      const tcaf = splitTcafDivisions(m.text, parts);
+      m.text = tcaf.text;
+      if (tcaf.split) storeLines.push(`playoffs.csv: TCAF split into its two six-man divisions, ${tcaf.split} (ADR 0070).`);
+      if (tcaf.kept) storeLines.push(`playoffs.csv: TCAF kept as one six-man bracket: ${tcaf.kept} (ADR 0070).`);
       // Counts by league, division and round only: never a school (the summary is public).
       const r = relabelRounds(m.text);
       m.text = r.text;
@@ -723,6 +778,7 @@ async function main() {
   storeLines.push(`${SCHEDULE_FILE}: ${scheduleList.length} unplayed games stored.`);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### Results store (season ${SEASON}, ${full ? "full read" : "targeted read"}, ${pages} pages)\n\n${storeLines.map((l) => `- ${l}`).join("\n")}\n`);
   // Team pages: a full read writes what it found; a targeted read adds to the stored list and never shortens it.
+  for (const [slug, urls] of pageCandidates) teamPages.set(slug, pickTeamPage(urls, football));
   const teamList = new Map([...(full ? [] : storedTeams), ...teamPages]);
   writeFileSync(path.join(OUT, "teams.csv"), ["slug,maxpreps_url", ...[...teamList.entries()].sort().map(([slug, url]) => `${slug},${url}`)].join("\n") + "\n");
   if (!full) {
