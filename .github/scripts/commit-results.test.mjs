@@ -257,6 +257,16 @@ test("the finals cross-check's report goes in the private commit, alone or with 
   assert.equal(git(t.root, "--git-dir", path.join(t.root, "public.git"), "ls-tree", "-r", "--name-only", "main").includes("davecampbells"), false);
 });
 
+test("the margin check (ADR 0059) goes in the private commit by name, and never to this repo", () => {
+  const t = setup();
+  write(path.join(t.work, "private", `davecampbells-${YEAR}`, "margin-check.csv"), "game_date,home,away,mp_home,mp_away,dc_home,dc_away,gap\n2026-11-12,lark,wren,48,42,64,14,44\n");
+  const r = run(t);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(t.log, "utf8"), "private\n");
+  assert.match(remoteFile(t, "private", `davecampbells-${YEAR}/margin-check.csv`), /lark,wren,48,42,64,14,44/);
+  assert.equal(git(t.root, "--git-dir", path.join(t.root, "public.git"), "ls-tree", "-r", "--name-only", "main").includes("margin-check"), false);
+});
+
 test("the finals report goes by name: a file someone else keeps in davecampbells-<season>/ is never put back to an older copy", () => {
   const t = setup();
   const kept = `davecampbells-${YEAR}/history-summary.txt`;

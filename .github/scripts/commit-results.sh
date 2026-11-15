@@ -3,8 +3,9 @@
 # published from them and rerated to this repo, each on its newest main, with retries. Run from this repo's root, the
 # private repo checked out at ./private, after the MaxPreps read wrote its captures there. The finals cross-check's report
 # (ADR 0026), when a run wrote one, is two files in the private repo's `davecampbells-<season>/` (finals-check.csv,
-# team-ids.json); they go in the same private commit by name, never the folder, so a file someone else keeps there is
-# never put back to an older copy (ADR 0032). They never reach this repo.
+# team-ids.json), and the margin check (ADR 0059) a third (margin-check.csv); they go in the same private commit by name,
+# never the folder, so a file someone else keeps there is never put back to an older copy (ADR 0032). They never reach
+# this repo.
 #
 #   .github/scripts/commit-results.sh <season>
 #
@@ -24,9 +25,9 @@ set -euo pipefail
 year="${1:?usage: commit-results.sh <season>}"
 dir="maxpreps-$year"
 # What this run wrote to the private repo: the reader's captures (its whole folder), and the finals cross-check's two
-# files by name when there are any.
+# files and the margin check by name when there are any.
 private_paths=("$dir")
-for f in finals-check.csv team-ids.json; do [ ! -f "private/davecampbells-$year/$f" ] || private_paths+=("davecampbells-$year/$f"); done
+for f in finals-check.csv team-ids.json margin-check.csv; do [ ! -f "private/davecampbells-$year/$f" ] || private_paths+=("davecampbells-$year/$f"); done
 summary="${GITHUB_STEP_SUMMARY:-/dev/null}"
 output="${GITHUB_OUTPUT:-/dev/null}"
 read="${RUNNER_TEMP:?RUNNER_TEMP is needed}/read"

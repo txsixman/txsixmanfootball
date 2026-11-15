@@ -58,6 +58,7 @@
 | [0056](../adr/0056-email-for-18-and-older-by-birth-year.md) | Email (alerts and the digest) goes to accounts 18 or older by birth year, so some 17-year-olds pass; it relaxes ADR 0018's no-minor-data-to-a-third-party line for email only, by the owner's decision of 2026-11-15 | Proposed Nov 15, 2026 |
 | [0057](../adr/0057-state-championships-are-neutral-sites.md) | A State Championship is a true neutral site everywhere (row, title chance, ratings fit); other robot-read playoff games keep the full home edge for the listed home team; a seeding term is tested in 2027 | Proposed Nov 14, 2026 |
 | [0058](../adr/0058-account-center.md) | An Account Center page for signed-in fans: change the display name (sign-up's rules, once every 30 days), see and remove linked browsers by short label (never the User-Agent), mute a team on one browser, email finals per team, sign out of every device, download their data (never the birth year, endpoints or tokens), and see their own posts | Proposed Nov 15, 2026 |
+| [0059](../adr/0059-margin-disagreements.md) | Finals where both sources name the same winner but margins 7 or more points apart go on a private list (`davecampbells-<season>/margin-check.csv`, written by Results watch); counts only in public; the ratings are unchanged (the 2026 backtest found no gain from capping or dropping them) | Proposed Nov 15, 2026 |
 
 Not in an ADR:
 - Interviews are cut from the plan (the owner, Nov 10, 2026; see `docs/plan/v1.2-notes.md`).
