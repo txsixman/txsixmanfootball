@@ -7,12 +7,13 @@ import { memo } from "./memo";
 import { pairsOf, type Pair } from "./playoff-path";
 import { slugify } from "./slug";
 import { loadPlayoffGames, playoffLeagueSet, ROUNDS, type PlayoffGame } from "./games";
-import { advancement, slotShares, type Advancement, type Projected, type WinChance } from "./advancement";
+import { advancement, slotShares, type Advancement, type Projected } from "./advancement";
 import { project, projectAt, STATE_CHAMPIONSHIP_ROUNDS, type Projection } from "./projection";
-import { FEW_GAMES, loadRatings, ratingSeasons, type RatingsTable } from "./ratings";
+import { loadRatings, ratingSeasons } from "./ratings";
 import { bracketTitleChances, loadBracketTemplate, type Chance, type RegionChances } from "./title-chances";
 import { loadPairDetails, pairDetailAfter } from "./kickoffs";
 import { CURRENT_SEASON } from "./season";
+import { winChance } from "./win-chance";
 
 // A season's playoffs bracket by bracket, round by round. Scores are unconfirmed (ADR 0004, ADR 0008), so no game names a
 // winner; a team's next game shows who went on. Unplayed games carry a projection from that season's ratings, at the
@@ -37,20 +38,6 @@ type BracketRound = { round: string; label: string; games: BracketRow[]; built: 
 export type Bracket = { name: string; league: string; rounds: BracketRound[]; tree: TreeRow[]; pairs: Pair[]; chances?: Chance[]; regionChances?: RegionChances[];
   /** This season's chance to reach each round still to be set and to win the State Championship (ADR 0071). */
   advancement?: Advancement };
-
-/**
- * The per-game win chance the game pages show (lib/projection.ts): a listed game at its own site, a pairing no site lists
- * yet on a neutral field. undefined for a team with fewer than FEW_GAMES rated games, too few to project (ADR 0071).
- */
-export function winChance(table: RatingsTable): WinChance<PlayoffGame> {
-  const rated = new Map(table.teams.map((t) => [slugify(t.team), t.rated]));
-  const enough = (team: string) => (rated.get(slugify(team)) ?? 0) >= FEW_GAMES;
-  return (a, b, game) => {
-    if (!enough(a) || !enough(b)) return undefined;
-    const p = game ? projectAt(table, game) : project(table, a, b, true, true);
-    return p && (p.favorite === a ? p.winProbability : 1 - p.winProbability);
-  };
-}
 
 /** A bracket's own page (/playoffs/bracket/<slug>), and its name without the league ("Division II Large School"; a league's one bracket keeps the league). */
 export const bracketSlug = (name: string) => slugify(name);

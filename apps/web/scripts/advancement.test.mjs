@@ -21,7 +21,7 @@ const load = async (name) => {
   return import(pathToFileURL(outfile).href);
 };
 const { project, projectAt, STATE_CHAMPIONSHIP_ROUNDS } = await load("projection");
-const { winChance } = await load("brackets");
+const { winChance } = await load("win-chance");
 test.after(() => rmSync(tmp, { recursive: true, force: true }));
 
 /** A ratings table of invented teams: `ratings` by name, each with `rated` games (8 unless given). */
