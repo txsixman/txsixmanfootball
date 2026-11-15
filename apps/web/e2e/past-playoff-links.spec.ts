@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { CURRENT_SEASON } from "../lib/season";
 import { noLiveScores } from "./live-route";
 
 // A past season's bracket rounds may be named again from the whole bracket (ADR 0069), so no past page may link a game by a
@@ -30,7 +31,9 @@ test("a past season's pages link every game by its date page, never a round-base
     expect(response?.status(), path).toBe(200);
     const hrefs = await page.locator('a[href^="/scores/"]').evaluateAll((as) => as.map((a) => a.getAttribute("href")!.split("#")[0]));
     for (const h of hrefs) {
-      expect(h, `${path} links a round-based game page`).not.toMatch(ROUND_PAGE);
+      // The season under way's playoff games are round-based (the all-seasons team page lists them); a past one never is.
+      const season = Number(/^\/scores\/(\d{4})-/.exec(h)?.[1]);
+      if (season < CURRENT_SEASON) expect(h, `${path} links a round-based game page`).not.toMatch(ROUND_PAGE);
       if (DATE_PAGE.test(h) && h.startsWith(`/scores/${SEASON}-`)) links.add(h);
     }
   }

@@ -34,8 +34,9 @@ test("a regular-season game links to its results week and each team's season", a
 });
 
 test("a past playoff game links to that season's league playoffs and its next playoff game", async ({ page }) => {
-  // Valor South Austin at Fort Bend Chargers, TAIAO round 1, 2025.
-  const found = await neighbours(page, "/scores/2025-11-07-valor-south-austin-at-fort-bend-chargers", [/^2025 TAIAO playoffs$/, /^Next playoff game: Semifinal, /, /^TAIAO 2025 week \d+ results$/]);
+  // Westlake Academy at Texas Wind, TAIAO quarterfinal, 2025. (Fort Bend Chargers' round-1 game, used before, now leads to
+  // its quarterfinal against a school outside our alignments, which has no page of its own: ADR 0069.)
+  const found = await neighbours(page, "/scores/2025-11-14-westlake-academy-at-texas-wind", [/^2025 TAIAO playoffs$/, /^Next playoff game: Semifinal, /, /^TAIAO 2025 week \d+ results$/]);
   expect(found["^2025 TAIAO playoffs$"]).toBe("/playoffs/season/2025/taiao");
   expect(found["^Next playoff game: Semifinal, "]).toMatch(/^\/scores\/2025-11-22-fort-bend-chargers-at-texas-wind$/);
   expect(found["^TAIAO 2025 week \\d+ results$"]).toMatch(/^\/results\/2025\/\d+\/taiao$/);
