@@ -8,9 +8,13 @@
 // bracket game still blank the morning after. `node taiao.mjs --text "Division 2 Bracket"` prints a tab's text only.
 // The bracket tabs also give each division's slots and what feeds them (ADR 0047): main() writes them to
 // data/seed/brackets/<season>.csv (parseBracketSlots, bracketRows).
+// `node taiao.mjs --details --out <game details file>` fills each TAIAO bracket game still to play with the
+// bracket's kickoff and site, name and city only (ADR 0060), never overwriting a kept value (ADR 0041).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { mergeKickoffs, missingDetails, siteText } from "./davecampbells.mjs";
+import { centralDate, slugify } from "./maxpreps.mjs";
 import { robotsAllows, USER_AGENT } from "./tapps.mjs";
 
 export const PAGE = "https://taiao.org/football/playoffs";
@@ -181,13 +185,17 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const CODE = /^(?:[NS][RQ]\d|SF\d|FINAL)$/;
 /** A team line, "1. Grace Academy Griffins" (an unseeded team reads "—."); "Winner NQ2" and "BYE" are not teams. */
 const TEAM = /^(?:\d{1,2}|—)\.\s+(.+)$/;
-/** A game's day, "Fri, Nov 13 · 7:00 PM"; "Date / Time TBD" has none. */
-const WHEN = /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), ([A-Z][a-z]{2}) (\d{1,2})\b/;
+/** A game's day and time, "Fri, Nov 13 · 7:00 PM" (Central); "Date / Time TBD" has none, "Jan 2 · TBD" no time. */
+const WHEN = /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), ([A-Z][a-z]{2}) (\d{1,2})\b(?:\s*·\s*(\d{1,2}):(\d{2})\s*([AP]M)\b)?/;
+/** Lines after a game's date that are not its site: a link, the forfeit word, a placeholder, a round heading in capitals. */
+const NOT_SITE = /livestream|watch|tickets|forfeit|\bTBD\b/i;
 
 /**
  * One division's bracket, from the text its tab shows (after the "Division N Playoffs" heading): each game's code, its
- * named teams (home marked "(H)") with any score, its date ("YYYY-MM-DD", the season's year; January the next), and
- * whether its text says forfeit. A game with a "Winner …" or "BYE" side has fewer than two teams. Nothing else is kept.
+ * named teams (home marked "(H)") with any score, its date ("YYYY-MM-DD", the season's year; January the next), its
+ * Central kickoff time ("19:30", null when none is shown), its site line as the page writes it (null when none, or
+ * "Location TBD"; venueOf keeps only a name and a city of it, ADR 0060), and whether its text says forfeit. A game with
+ * a "Winner …" or "BYE" side has fewer than two teams. Nothing else is kept.
  */
 export function parseBracket(text, season = Number(SEASON)) {
   const lines = text.split("\n").map((l) => l.trim());
@@ -197,22 +205,31 @@ export function parseBracket(text, season = Number(SEASON)) {
   for (const line of start < 0 ? [] : lines.slice(start + 1)) {
     if (!line) continue;
     if (CODE.test(line)) {
-      g = { code: line, teams: [], date: null, forfeit: false };
+      g = { code: line, teams: [], date: null, time: null, site: null, forfeit: false };
       games.push(g);
       continue;
     }
     if (!g) continue;
     let m;
     if (/forfeit/i.test(line)) g.forfeit = true;
-    if (g.date) continue; // after the date: the site and its links
+    if (g.date) {
+      // After the date: the site (its first line that is not a link or a placeholder), then links.
+      if (g.site === null && !g.siteDone) {
+        g.siteDone = true;
+        if (/[a-z]/.test(line) && !NOT_SITE.test(line)) g.site = line;
+      }
+      continue;
+    }
     if ((m = TEAM.exec(line)) && g.teams.length < 2) g.teams.push({ name: m[1].trim(), home: false, score: null });
     else if (line === "(H)" && g.teams.length) g.teams.at(-1).home = true;
     else if (/^\d{1,3}$/.test(line) && g.teams.length && g.teams.at(-1).score === null) g.teams.at(-1).score = Number(line);
     else if ((m = WHEN.exec(line)) && MONTHS.includes(m[1])) {
       const month = MONTHS.indexOf(m[1]) + 1;
       g.date = `${month < 7 ? season + 1 : season}-${String(month).padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+      if (m[3]) g.time = `${String((Number(m[3]) % 12) + (m[5] === "PM" ? 12 : 0)).padStart(2, "0")}:${m[4]}`;
     }
   }
+  for (const x of games) delete x.siteDone;
   return games;
 }
 
@@ -243,4 +260,107 @@ const text = () =>
     console.log(await page.locator("main").innerText());
   });
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--text") ? text() : main());
+// ---- Kickoffs and sites from the bracket (ADR 0060, under ADR 0041's rules) ----
+
+/** A street address's road words: a city follows the last of them when no comma sets it off. */
+const ROAD = /^(?:dr|drive|st|street|rd|road|ave|avenue|blvd|boulevard|ln|lane|hwy|highway|pkwy|parkway|way|ct|court|cir|circle|pl|place|trl|trail|loop|spur|point|pt)\.?$/i;
+/** A highway, "FM-1188", "TX-16", "US 83": the token after it may start the city. */
+const HIGHWAY = /^(?:fm|tx|us|sh|rm|cr|ih|i)-?\d+$/i;
+const STATE = /(?:,\s*|\s+)(?:TX|Tx|Texas)\.?(?:,?\s*\d{5}(?:-\d{4})?)?\s*$/;
+/** A city as a page writes one: one to three capitalized words. */
+const CITY = /^[A-Z][a-z'.-]*(?: [A-Z][a-z'.-]*){0,2}$/;
+
+/** The trailing words of an address part that name its city: those after the street number's road word or highway. */
+function cityAfterStreet(part) {
+  const words = part.split(/\s+/);
+  const num = words.findIndex((w) => /^\d+[A-Za-z]?$/.test(w));
+  if (num < 0) return "";
+  let at = -1;
+  for (let i = num + 1; i < words.length; i++) if (ROAD.test(words[i]) || HIGHWAY.test(words[i])) at = i;
+  if (at < 0) return "";
+  const city = words.slice(at + 1).join(" ");
+  return CITY.test(city) ? city : "";
+}
+
+/**
+ * A bracket site line as the facts file keeps it (ADR 0041): the venue's name and its city, never the street, number or
+ * postal code. The name is the text before the first part that starts with a street number; the city is the part just
+ * before the state, or the last part after a street, or the words after a street's road word. Anything that does not
+ * read cleanly is "" (not known), never a guess. A city with no name is not a site.
+ */
+export function venueOf(line) {
+  if (typeof line !== "string" || !line.trim()) return { site_name: "", site_city: "" };
+  let t = line.replace(/\s+United States\s*$/i, "").replace(/[;()]/g, ",").replace(/\s+-\s+/g, ", ").replace(/\s+/g, " ").trim();
+  // "Academy-4427 Main" and "Stadium. 600 W 7th" start a street after the name (a capital before a dash is a highway, "FM-775").
+  t = t.replace(/([a-z])-(\d)/, "$1, $2").replace(/([A-Za-z])\.\s+(\d)/, "$1, $2").replace(/[,\s]+$/, "");
+  const parts = t.split(",").map((p) => p.trim()).filter(Boolean);
+  // The name: the parts before the first that starts with a street number, cut where a street number starts inside it.
+  const first = parts[0] ?? "";
+  const name = siteText(/^\d/.test(first) ? "" : first.split(/\s(?=\d+[A-Za-z]?\s)/)[0].replace(/[\s.-]+$/, ""), 80);
+  if (!name || !/[a-z]/i.test(name)) return { site_name: "", site_city: "" };
+  let city = "";
+  const stated = STATE.exec(t);
+  if (stated) {
+    const before = t.slice(0, stated.index).split(",").map((p) => p.trim()).filter(Boolean);
+    const last = before.at(-1) ?? "";
+    city = before.length > 1 && CITY.test(last) && !/\d/.test(last) ? last : cityAfterStreet(last);
+  } else if (parts.length >= 2 && CITY.test(parts.at(-1)) && parts.slice(0, -1).some((p) => /\d/.test(p))) {
+    city = parts.at(-1);
+  } else {
+    city = cityAfterStreet(parts.at(-1) ?? "");
+  }
+  if (city === name || /^(?:TX|Texas)$/i.test(city)) city = "";
+  return { site_name: name, site_city: siteText(city, 60) };
+}
+
+/** A Central date and "HH:MM" as the UTC kickoff the facts file keeps ("2026-11-21T01:30:00Z"), daylight time known. */
+export function kickoffUtc(date, time) {
+  const [y, mo, d] = date.split("-").map(Number);
+  const [h, mi] = time.split(":").map(Number);
+  for (const offset of [5, 6]) {
+    const at = new Date(Date.UTC(y, mo - 1, d, h + offset, mi));
+    const shown = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at);
+    if (shown === `${date}, ${time}`) return at.toISOString().replace(/\.\d{3}Z$/, "Z");
+  }
+  return "";
+}
+
+/**
+ * The facts rows the bracket gives for its own games still to play on or after `today` (Central): both teams named, no
+ * score, a date. Home is the team marked "(H)". Each has its kickoff when a time is shown and its site when venueOf reads
+ * one; a game with neither is left out. The bracket's own pairings are used, not the listed ones: a listing that
+ * contradicts the bracket is voided (ADR 0040), and the right one keys to the same date and two teams once it is listed.
+ */
+export function detailRows(games, today) {
+  const out = [];
+  for (const g of games) {
+    if (g.teams.length !== 2 || !g.date || g.date < today || g.teams.some((t) => t.score !== null)) continue;
+    const [home, away] = g.teams[1].home ? [g.teams[1], g.teams[0]] : g.teams;
+    const kickoff_utc = g.time ? kickoffUtc(g.date, g.time) : "";
+    const site = venueOf(g.site);
+    if (kickoff_utc || site.site_name) out.push({ date: g.date, home: home.name, away: away.name, kickoff_utc, ...site });
+  }
+  return out;
+}
+
+/** The bracket's games still to play, as the "Still missing" line counts them (missingDetails' due rows). */
+export const dueGames = (games, today) =>
+  games
+    .filter((g) => g.teams.length === 2 && g.date && g.date >= today && g.teams.every((t) => t.score === null))
+    .map((g) => ({ league: "TAIAO", game_date: g.date, home: g.teams[0].name, away: g.teams[1].name }));
+
+/** `--details --out <file>`: the bracket's kickoffs and sites merged into the facts file (never overwriting, ADR 0041). */
+async function details() {
+  const out = process.argv.includes("--out") ? process.argv[process.argv.indexOf("--out") + 1] : null;
+  if (!out) throw new Error("usage: taiao.mjs --details --out <game details file>");
+  const today = centralDate();
+  const games = await readBrackets();
+  const fresh = detailRows(games, today);
+  const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh);
+  writeFileSync(out, merged);
+  const due = dueGames(games, today);
+  console.log(`League bracket details: ${due.length} TAIAO bracket games still to play with both teams known; ${fresh.filter((r) => r.kickoff_utc).length} kickoffs and ${fresh.filter((r) => r.site_name).length} sites on the bracket.`);
+  console.log(missingDetails(due, merged));
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--text") ? text() : process.argv.includes("--details") ? details() : main());

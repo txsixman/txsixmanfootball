@@ -217,6 +217,22 @@ jobs:
           for _ in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && break; sleep 20; done
           node tools/league-watch/late-finals.mjs "private/maxpreps-$SEASON" --season "$SEASON" ${SECOND:+"$SECOND"} --missing "$RUNNER_TEMP/missing-finals.txt"
           [ ! -s "$RUNNER_TEMP/missing-finals.txt" ]
+      - name: League bracket kickoffs and sites
+        # ADR 0060: on the same runs, each TAIAO bracket game still to play gets the kickoff and site its league's own
+        # bracket shows (read as a visitor's browser does, ADR 0005), name and city only, into the same file outside the
+        # repo as the step above; the commit step merges it into the newest main's game details, never overwriting a filled
+        # value (ADR 0041). The log and summary give counts only. A failure leaves the file as it was.
+        if: ${{ (github.event_name != 'schedule' && !inputs.tonight) || github.event.schedule == '23 11 * 8-12,1 5,6,0' }}
+        continue-on-error: true
+        env:
+          SEASON: ${{ steps.season.outputs.year }}
+        run: |
+          f="data/seed/game-details/$SEASON.csv"
+          out="$RUNNER_TEMP/game-details.csv"
+          if [ ! -f "$out" ] && [ -f "$f" ]; then cp "$f" "$out"; fi
+          [ -d tools/league-watch/node_modules ] || npm ci --prefix tools/league-watch
+          for _ in 1 2 3; do timeout 240 npx --prefix tools/league-watch playwright install --with-deps chromium && break; sleep 20; done
+          node tools/league-watch/taiao.mjs --details --out "$out" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
         # stops the finals from being committed below.
