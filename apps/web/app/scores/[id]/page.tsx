@@ -197,7 +197,7 @@ export default async function GamePage({ params }: Props) {
       {followable.length > 0 && (
         <section aria-labelledby="game-alerts" data-pagefind-ignore className="mt-5 px-3">
           <h2 id="game-alerts" className="font-num text-[14px] font-bold uppercase tracking-wider text-navy">
-            Get score alerts
+            Follow these teams
           </h2>
           <div className="mt-2 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap">
             {followable.map((t) => (

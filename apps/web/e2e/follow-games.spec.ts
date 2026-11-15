@@ -51,7 +51,7 @@ test("a game page has a Follow button for each team, 44px tall, and tapping one 
   await fakePush(page);
   await page.route("https://vhgnaihnyjdnaaergtcl.supabase.co/rest/v1/rpc/push_*", (route) => route.fulfill({ status: 204, body: "" }));
   await page.goto(href);
-  const section = page.getByRole("region", { name: "Get score alerts" });
+  const section = page.getByRole("region", { name: "Follow these teams" });
   const buttons = [section.getByRole("button", { name: `Alert me to ${away} finals` }), section.getByRole("button", { name: `Alert me to ${home} finals` })];
   for (const b of buttons) {
     await expect(b).toBeEnabled({ timeout: 20_000 });
@@ -69,7 +69,7 @@ test("a game page has a Follow button for each team, 44px tall, and tapping one 
 test("a game page has no repeated ids and says nothing about betting", async ({ page }) => {
   const { href } = await aGame();
   await page.goto(href);
-  await expect(page.getByRole("region", { name: "Get score alerts" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Follow these teams" })).toBeVisible();
   const ids = await page.evaluate(() => [...document.querySelectorAll("[id]")].map((e) => e.id));
   expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
   expect(await page.locator("body").innerText()).not.toMatch(/\b(spread|spreads|odds|betting|wager|parlay)\b/i);
@@ -78,7 +78,7 @@ test("a game page has no repeated ids and says nothing about betting", async ({ 
 test("a game page passes axe", async ({ page }) => {
   const { href } = await aGame();
   await page.goto(href);
-  await expect(page.getByRole("region", { name: "Get score alerts" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Follow these teams" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Alert me to/ }).first()).toBeEnabled({ timeout: 20_000 });
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations.map((v) => v.id)).toEqual([]);
