@@ -3,14 +3,14 @@ import { programFor, type Alignment } from "@/lib/alignments";
 import type { Side } from "@/lib/bracket-fill";
 import { sideText } from "@/lib/bracket-fill";
 import type { BracketRow, BuiltRow } from "@/lib/brackets";
+import { gameDay } from "@/lib/game-day";
 import { EMPTY, type loadIdentities } from "@/lib/identity";
 import { gameStatus } from "@/lib/playoff-status";
 import { projectionParts } from "@/lib/projection";
 import { KickoffStatus } from "../kickoff-status";
 import { CrestSlot } from "../ui";
 
-const day = (iso: string) =>
-  new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+const day = gameDay;
 
 /** The mark on a final the sources give different winners (ADR 0040): bordered, so it reads on a phone in the sun. */
 export const DisputedMark = () => (
@@ -83,7 +83,7 @@ export function GameList({ games, league, alignments, identities, today, showSta
   );
 }
 
-/** Next-round games no site lists yet (ADR 0047): both winners, or the winner so far and the game it waits on. No date or
+/** Next-round games no site lists yet (ADR 0047): both winners, or the winner so far and the game it waits on. Its day, kickoff and site once the read finds them (ADR 0067), else no date or
  * site (none is listed), and the projection on a neutral field once both teams are known. A listing replaces the row. */
 export function BuiltList({ games, league, alignments, identities }: { games: BuiltRow[]; league: string; alignments: Alignment[]; identities: Awaited<ReturnType<typeof loadIdentities>> }) {
   // Each side on its own line like a listed game's: a team with its crest (one tap target, its program page), or the game
@@ -112,7 +112,18 @@ export function BuiltList({ games, league, alignments, identities }: { games: Bu
           <li key={g.sides.map(sideText).join("|")} data-built className="min-w-0 border-b border-dashed border-line px-3 py-1 text-[16px] text-ink">
             {side(g.sides[0])}
             {side(g.sides[1])}
-            <p className="pl-12 text-[14px] leading-6 text-muted">Next game · date and site not listed yet</p>
+            {g.date ? (
+              <p className="pl-12 text-[14px] leading-6 text-muted">
+                {/* The day, kickoff and site the read found for this pairing before any listing has it (ADR 0067). */}
+                Next game · {day(g.date)}
+                <span className="flex flex-wrap items-center gap-x-2">
+                  <KickoffStatus date={g.date} kickoff={g.kickoff} className="font-semibold" />
+                </span>
+                <span className="block">{g.site ? `Site: ${g.site}` : "Site not listed yet"}</span>
+              </p>
+            ) : (
+              <p className="pl-12 text-[14px] leading-6 text-muted">Next game · date and site not listed yet</p>
+            )}
             {proj && (
               <p className="pb-1.5 pl-12 text-[14px] font-semibold leading-6 text-navy">
                 <span>Projected: {proj.margin}</span> · <span className="whitespace-nowrap">{proj.chance}</span>

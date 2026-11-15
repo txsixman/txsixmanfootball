@@ -46,7 +46,7 @@ writeFileSync(
   ].join("\n") + "\n",
 );
 process.chdir(path.join(root, "apps/web"));
-const { NO_SITE, kickoffOf, loadKickoffs, loadSites, siteOf } = await import("../lib/kickoffs.ts");
+const { NO_SITE, kickoffOf, loadKickoffs, loadPairDetails, loadSites, pairDetailAfter, siteOf } = await import("../lib/kickoffs.ts");
 
 test("a game's site reads '<name>, <city>', whichever team is home", async () => {
   const sites = await loadSites(2031);
@@ -81,4 +81,11 @@ test("a kickoff and site from the league's own bracket fill a listed game the de
   assert.equal(siteOf(sites, "2031-11-21", "Big Draw", "Kite Hill"), "Prairie Bowl");
   // A kept detail is never overwritten.
   assert.equal(siteOf(sites, "2031-11-14", "Salt Fork", "Cedar Gap"), "Mesa Field, Red Bluff");
+});
+
+test("a next-round pairing finds the file's first game between its two teams after their last listed games (ADR 0067)", async () => {
+  const pairs = await loadPairDetails(2031);
+  assert.deepEqual(pairDetailAfter(pairs, "Cedar Gap", "Salt Fork", "2031-11-07"), { date: "2031-11-14", kickoff: "2031-11-15T01:00:00Z", site: "Mesa Field, Red Bluff" });
+  assert.equal(pairDetailAfter(pairs, "Salt Fork", "Cedar Gap", "2031-11-14"), undefined, "an earlier meeting is not the next game");
+  assert.equal(pairDetailAfter(pairs, "Salt Fork", "Owl Creek", "2031-11-07"), undefined);
 });

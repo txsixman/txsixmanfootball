@@ -708,3 +708,21 @@ test("venue rows: one a game with our program at home, its phase, and the venue'
   assert.equal(line, "Venues: 2 games with one of our programs at home; regular 1 (a venue name 1, a city 1, a venue id 1); playoff 1 (a venue name 1, a city 1, a venue id 1).");
   for (const word of ["wren", "lark", "Wrenville", "Finch"]) assert.ok(!line.includes(word));
 });
+test("a bracket-built pairing takes the date of the feed's next game between its two teams, within three weeks (ADR 0067)", async () => {
+  const { datedBuilt } = await import("./davecampbells.mjs");
+  const built = [{ league: "UIL", division: "I", round: "area", game_date: "", home: "Lark", away: "Finch", home_score: "", built: true }];
+  const ours = new Map([["lark-owls", "lark"], ["finch-falcons", "finch"]]);
+  const side = (participantType, team, schoolName) => ({ participantType, websiteUrl: `https://www.davecampbells.com/team/${team}`, schoolName });
+  const item = (kickoff, h, a) => ({ scheduledKickoff: kickoff, participants: [h, a] });
+  const items = [
+    item("2026-10-10T00:00:00Z", side("HOME", "lark-owls"), side("AWAY", "finch-falcons")), // a regular-season meeting: before today
+    item("2026-11-21T01:00:00Z", side("HOME", "finch-falcons"), side("AWAY", "lark-owls")),
+    item("2026-11-22T01:00:00Z", side("HOME", "lark-owls"), side("AWAY", "finch-falcons")),
+  ];
+  assert.deepEqual(datedBuilt(items, { built, ours, today: "2026-11-15" }), [{ ...built[0], game_date: "2026-11-20" }]);
+  // One side unmapped: its school name must be the pairing's other team.
+  const one = new Map([["lark-owls", "lark"]]);
+  assert.equal(datedBuilt([item("2026-11-21T01:00:00Z", side("HOME", "x-y", "Finch"), side("AWAY", "lark-owls"))], { built, ours: one, today: "2026-11-15" }).length, 1);
+  assert.equal(datedBuilt([item("2026-11-21T01:00:00Z", side("HOME", "x-y", "Robin"), side("AWAY", "lark-owls"))], { built, ours: one, today: "2026-11-15" }).length, 0);
+  assert.equal(datedBuilt([item("2026-12-20T01:00:00Z", side("HOME", "finch-falcons"), side("AWAY", "lark-owls"))], { built, ours, today: "2026-11-15" }).length, 0, "too far ahead");
+});
