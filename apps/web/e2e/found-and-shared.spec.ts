@@ -181,7 +181,7 @@ test("the playoff pages say what they hold in plain words, and a bracket page's 
   await expect(intro).toContainText("projected margin");
   await expect(intro).not.toContainText(/\b(odds|spread|lines?|favou?rites?|won|beat)\b/i);
 
-  const href = await page.getByRole("link", { name: /bracket page/i }).first().getAttribute("href");
+  const href = await page.getByRole("link", { name: /bracket, latest round first/i }).first().getAttribute("href");
   expect(href).toMatch(/^\/playoffs\/bracket\//);
   await page.goto(href!);
   await expect(page.locator("main h1 + p")).toContainText(/six-man playoff bracket, the round being played first\./);
