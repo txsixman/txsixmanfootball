@@ -82,8 +82,8 @@ test.describe("fan accounts on (FAN_SIGNIN=on)", () => {
     await expect(page.getByLabel("Email")).toBeHidden();
     await summary.click();
     await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
-    await expect(page.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
+    await expect(page.locator("main").getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+    await expect(page.locator("main").getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
     await expect(page.getByText("You must be 13 or older.")).toBeVisible();
     expect((await axe(page)).violations.map((v) => v.id)).toEqual([]);
   });

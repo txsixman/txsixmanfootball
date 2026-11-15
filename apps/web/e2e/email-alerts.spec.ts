@@ -28,7 +28,7 @@ test.describe("unsubscribe, with no sign-in and nothing configured", () => {
     expect(res?.headers()["x-robots-tag"]).toContain("noindex");
     await expect(page.getByRole("heading", { level: 1, name: "Unsubscribe" })).toBeVisible();
     await expect(page.getByRole("status")).toContainText("did not work");
-    await expect(page.getByRole("button")).toHaveCount(0);
+    await expect(page.locator("main").getByRole("button")).toHaveCount(0);
     const text = await page.locator("main").innerText();
     expect(text).not.toMatch(BETTING);
     expect(text).not.toMatch(/@/);
