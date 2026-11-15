@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { heading, loadAlignments, placeLabel, programFor, slugify, uniquePrograms } from "@/lib/alignments";
 import { finalScore, loadFinals } from "@/lib/champions";
+import { programEdge } from "@/lib/intros";
 import { programDescription, rankPhrase } from "@/lib/descriptions";
 import { titlesBySlug } from "@/lib/program-titles";
 import { loadCorrections } from "@/lib/correction-files";
@@ -18,7 +19,7 @@ import { FEW_GAMES, loadRatings, ratingSeasons, record, signed } from "@/lib/rat
 import { meetingScore, schedulesFor, type Meeting } from "@/lib/schedule-strength";
 import { whyItMoved } from "@/lib/why-moved";
 import { seasonHref } from "../../rankings/view";
-import { CURRENT_SEASON } from "@/lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
@@ -375,6 +376,7 @@ export default async function ProgramPage({ params }: Props) {
             <p className="mt-4 border-t border-current/30 pt-3 text-[15px] font-semibold">Not rated yet: a rating appears once this team has a game on record.</p>
           )}
         </header>
+        <p className="px-3 pt-3 text-[14px] leading-5 text-muted">{programEdge({ name: school.school, firstSeason: FIRST_SEASON })}</p>
 
         {(next || latest) && (
           <section aria-label="Next and latest game" className="grid gap-px border-b border-line bg-line sm:grid-cols-2">
