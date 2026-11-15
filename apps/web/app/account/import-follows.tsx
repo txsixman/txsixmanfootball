@@ -55,7 +55,7 @@ export function ImportFollows() {
 
   return (
     <section aria-labelledby="import" className="mt-6 max-w-prose border border-line bg-panel p-3">
-      <h2 id="import" className="font-num text-[20px] font-bold uppercase tracking-wide text-navy">Bring your teams along</h2>
+      <h3 id="import" className="font-num text-[18px] font-bold uppercase tracking-wide text-navy">Bring your teams along</h3>
       <p className="mt-1 text-[15px] text-ink">
         This browser follows {missing.length} {missing.length === 1 ? "team" : "teams"} that {missing.length === 1 ? "is" : "are"} not on your account yet. Add {missing.length === 1 ? "it" : "them"} so My teams is the same on every device?
       </p>

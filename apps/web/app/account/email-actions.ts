@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { adminUserId, fanSignIn } from "@/lib/auth/config";
 import { getUser } from "@/lib/auth/server";
 import { emailAlertsOn } from "@/lib/email/config";
+import { getEmailSettings } from "@/lib/email/settings";
 
-// Save the signed-in fan's email alert choices: every team they follow ("all"), or the teams ticked. email_set_optins
+// Save the signed-in fan's email alert choices: every team they follow ("all"), or the teams ticked one by one (My teams, ADR 0058). email_set_optins
 // (migration 0022) is the real check: own rows only, an adult account, a team the account follows, at most 101 entries. A
 // choice of nothing turns the alerts off. Never on by default: nothing is saved until this runs. Nothing here logs an address,
 // a team or the database's error text.
@@ -40,9 +41,39 @@ async function save(kind: "game_alerts" | "weekly_digest", slugs: string[]): Pro
   return { saved: true };
 }
 
-export async function saveEmailAlerts(_previous: EmailAlertsState, data: FormData): Promise<EmailAlertsState> {
-  const teams = data.getAll("team").filter((t): t is string => typeof t === "string" && t.length <= 80 && SLUG.test(t));
-  return save("game_alerts", data.get("all") === "on" ? ["*"] : [...new Set(teams)]);
+/**
+ * Email alerts for one team, from the Account Center's My teams list (ADR 0058): on adds the team to the fan's game alerts, off takes
+ * it away. It reads the fan's own current choice first, so the rest of it is kept. While "all the teams I follow" is on, a single
+ * team has nothing to change and nothing is saved.
+ */
+export async function setTeamEmail(slug: string, on: boolean): Promise<EmailAlertsState> {
+  if (typeof slug !== "string" || slug.length > 80 || !SLUG.test(slug) || typeof on !== "boolean") return { error: "That did not save. Try again in a minute." };
+  const found = await fanForEmail();
+  let current;
+  try {
+    current = await getEmailSettings(found.supabase, "game_alerts");
+  } catch {
+    return { error: "That did not save. Try again in a minute." };
+  }
+  if (current.allFollowed) return { error: "Email alerts are on for every team you follow. Turn that off under Alerts and devices first." };
+  return save("game_alerts", on ? [...new Set([...current.teams, slug])] : current.teams.filter((t) => t !== slug));
+}
+
+/**
+ * "All the teams I follow" (the "*" entry, which also covers a team followed later): on replaces the choice with it, off clears it.
+ * Turning it off when it was already off changes nothing, so the teams picked one by one are kept.
+ */
+export async function setAllTeamsEmail(on: boolean): Promise<EmailAlertsState> {
+  if (typeof on !== "boolean") return { error: "That did not save. Try again in a minute." };
+  const found = await fanForEmail();
+  if (on) return save("game_alerts", ["*"]);
+  let current;
+  try {
+    current = await getEmailSettings(found.supabase, "game_alerts");
+  } catch {
+    return { error: "That did not save. Try again in a minute." };
+  }
+  return current.allFollowed ? save("game_alerts", []) : { saved: true };
 }
 
 export async function saveEmailDigest(_previous: EmailAlertsState, data: FormData): Promise<EmailAlertsState> {

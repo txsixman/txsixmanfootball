@@ -11,7 +11,8 @@ import { unsubscribeUrl } from "../lib/email/unsubscribe";
 //   E2E_PORT=3063 E2E_STUB_PORT=54999 FAN_SIGNIN=on EMAIL_ALERTS=on \
 //   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54999 NEXT_PUBLIC_SUPABASE_ANON_KEY=stub \
 //   apps/web/node_modules/.bin/playwright test -c apps/web/playwright.config.ts e2e/email-alerts.spec.ts
-// (One dev server at a time on this Mac: take the lock named in the agent rules first.)
+// CI's signin-stub config sets all of this before the build and runs this spec and account-center.spec.ts with --workers=1 (both
+// bind the stub's port, so one at a time).
 test.use({ serviceWorkers: "block" });
 
 const axe = (page: Page) => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
@@ -96,7 +97,12 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
     await new Promise<void>((ok) => server!.listen(STUB_PORT, "127.0.0.1", ok));
   });
   test.afterAll(async () => {
-    await new Promise<void>((ok) => (server ? server.close(() => ok()) : ok()));
+    // Closed for good, idle connections and all, so the next spec that binds the same port (account-center.spec.ts) finds it free.
+    await new Promise<void>((ok) => {
+      if (!server) return ok();
+      server.close(() => ok());
+      server.closeAllConnections();
+    });
   });
   test.beforeEach(async ({ context, baseURL }) => {
     Object.assign(stub, fresh());
@@ -104,34 +110,40 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
     await context.addCookies([{ name: "sb-127-auth-token", value: `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`, url: baseURL! }]);
   });
 
-  test("email alerts start off, save for all followed teams or chosen ones, and turn off", async ({ page }) => {
+  test("email alerts start off, save for one team at a time or for all followed teams, and turn off", async ({ page }) => {
     await page.goto("/account");
+    // The per-team boxes live under My teams (ADR 0058); "All the teams I follow" and the digest, under Alerts and devices.
+    const teams = page.locator("#teams");
     const block = page.getByRole("region", { name: "Email alerts" });
+    const jayton = teams.getByRole("checkbox", { name: "Email alerts for Jayton" });
     await expect(block).toBeVisible();
-    await expect(block.getByRole("checkbox", { checked: true })).toHaveCount(0); // never on by default
-    await expect(block.getByRole("checkbox", { name: "Jayton" })).toBeVisible({ timeout: 20_000 }); // named from the team's own file
+    await expect(jayton).toBeVisible({ timeout: 20_000 }); // named from the team's own file
+    await expect(teams.getByRole("checkbox", { checked: true })).toHaveCount(0); // never on by default
+    await expect(block.getByRole("checkbox", { checked: true })).toHaveCount(0);
     expect((await axe(page)).violations.map((v) => v.id)).toEqual([]);
     expect(await block.innerText()).not.toMatch(BETTING);
+    expect(await teams.innerText()).not.toMatch(BETTING);
+
+    await jayton.check(); // saves at once
+    await expect.poll(() => stub.saved).toEqual([["jayton"]]);
+    await expect(teams.getByText("Email alerts on for Jayton.")).toBeVisible();
 
     await block.getByRole("checkbox", { name: "All the teams I follow" }).check();
-    await expect(block.getByRole("checkbox", { name: "Jayton" })).toBeDisabled();
-    await block.getByRole("button", { name: "Save email alerts" }).click();
-    await expect(block.getByText("Saved.")).toBeVisible();
-    expect(stub.saved).toEqual([["*"]]);
-
-    await block.getByRole("checkbox", { name: "All the teams I follow" }).uncheck();
-    await block.getByRole("checkbox", { name: "Jayton" }).check();
-    await block.getByRole("button", { name: "Save email alerts" }).click();
     await expect.poll(() => stub.saved.length).toBe(2);
-    expect(stub.saved[1]).toEqual(["jayton"]);
-
-    await page.reload();
-    await expect(page.getByRole("region", { name: "Email alerts" }).getByRole("checkbox", { name: "Jayton" })).toBeChecked();
-    await expect(page.getByRole("region", { name: "Email alerts" }).getByRole("checkbox", { name: "Guthrie" })).not.toBeChecked();
-    await page.getByRole("region", { name: "Email alerts" }).getByRole("checkbox", { name: "Jayton" }).uncheck();
-    await page.getByRole("region", { name: "Email alerts" }).getByRole("button", { name: "Save email alerts" }).click();
+    expect(stub.saved[1]).toEqual(["*"]);
+    await expect(teams.getByRole("checkbox", { name: "Email alerts for Jayton" })).toBeDisabled(); // every team is on
+    await block.getByRole("checkbox", { name: "All the teams I follow" }).uncheck();
     await expect.poll(() => stub.saved.length).toBe(3);
     expect(stub.saved[2]).toEqual([]);
+
+    await teams.getByRole("checkbox", { name: "Email alerts for Jayton" }).check();
+    await expect.poll(() => stub.saved.length).toBe(4);
+    await page.reload();
+    await expect(page.locator("#teams").getByRole("checkbox", { name: "Email alerts for Jayton" })).toBeChecked({ timeout: 20_000 });
+    await expect(page.locator("#teams").getByRole("checkbox", { name: "Email alerts for Guthrie" })).not.toBeChecked();
+    await page.locator("#teams").getByRole("checkbox", { name: "Email alerts for Jayton" }).uncheck();
+    await expect.poll(() => stub.saved.length).toBe(5);
+    expect(stub.saved[4]).toEqual([]);
   });
 
   test("the weekly digest starts off, saves for every followed team on its own, and turns off; game alerts are untouched", async ({ page }) => {
@@ -162,6 +174,7 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
     const block = page.getByRole("region", { name: "Email alerts" });
     await expect(block).toContainText("not available for this account");
     await expect(block.getByRole("checkbox")).toHaveCount(0); // no digest box either
+    await expect(page.locator("#teams").getByRole("checkbox", { name: /Email alerts/ })).toHaveCount(0);
     stub.eligible = true;
     stub.follows = [];
     await page.reload();

@@ -210,12 +210,15 @@ jobs:
           retention-days: 7
 
   # The launch switches (docs/fan-accounts.md): the account and posts specs against the site as Vercel will serve it once FAN_SIGNIN
-  # (and then FAN_POSTS) are set, so flipping them in Vercel cannot break production. Two configs, each its OWN production build
+  # (and then FAN_POSTS) are set, so flipping them in Vercel cannot break production. Three configs, each its OWN production build
   # with the switches set, not web-build's artifact: the switches are read per request almost everywhere, but a game page is
   # built statically and reads FAN_SIGNIN when it is built (app/scores/[id]/page.tsx: its comments and score-report blocks), and
-  # Vercel builds with its environment, so a build without the switch cannot show what the flip will. These tests need no
+  # Vercel builds with its environment, so a build without the switch cannot show what the flip will. The first two need no
   # Supabase project, and CI has none: the account and posts specs run as a signed-out visitor, the browser-side ones stub
-  # /api/me, and with no NEXT_PUBLIC_SUPABASE_* every real call fails closed as "signed out". No secret is set here.
+  # /api/me, and with no NEXT_PUBLIC_SUPABASE_* every real call fails closed as "signed out". The third, signin-stub, is the
+  # signed-in side: the specs start a stand-in for Supabase's API on E2E_STUB_PORT (a node http stub, no project and no secret)
+  # and the site is built pointing at it, so /account, its server actions and its routes run for a signed-in fan. NEXT_PUBLIC_*
+  # values are inlined at build time, which is why the stub's address is set before the build. No secret is set here.
   # launch-scope repeats web-build's `site` filter (keep the two lists the same) so a docs-only change builds nothing here.
   launch-scope:
     runs-on: ubuntu-latest
@@ -256,8 +259,13 @@ jobs:
         include:
           - config: signin # FAN_SIGNIN=on, FAN_POSTS unset
             posts: ""
+            stub: ""
           - config: signin-posts # FAN_SIGNIN=on, FAN_POSTS=on
             posts: "on"
+            stub: ""
+          - config: signin-stub # FAN_SIGNIN, FAN_POSTS and EMAIL_ALERTS on, and the site pointed at a stand-in for Supabase
+            posts: "on"
+            stub: "on"
     name: web-launch (${{ matrix.config }})
     steps:
       - uses: actions/checkout@v7
@@ -274,9 +282,20 @@ jobs:
       - name: The switches for this config
         env:
           POSTS: ${{ matrix.posts }}
+          STUB: ${{ matrix.stub }}
         run: |
           echo "FAN_SIGNIN=on" >> "$GITHUB_ENV"
           if [ "$POSTS" = on ]; then echo "FAN_POSTS=on" >> "$GITHUB_ENV"; fi
+          if [ "$STUB" = on ]; then
+            # The stand-in for Supabase (e2e/account-center.spec.ts, e2e/email-alerts.spec.ts) listens here; the site is built and
+            # started pointing at it. The anon key is any non-empty text: the stub never checks it.
+            {
+              echo "EMAIL_ALERTS=on"
+              echo "E2E_STUB_PORT=54999"
+              echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54999"
+              echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=stub"
+            } >> "$GITHUB_ENV"
+          fi
       - name: Account, posts and footer specs on a build with the switches set (${{ matrix.config }})
         working-directory: apps/web
         # The Playwright container's default shell is sh, which has no shopt or arrays.
@@ -285,9 +304,15 @@ jobs:
           shopt -s nullglob
           # Every account spec (accounts, push-account, ...), the posts and email specs, and the footer's.
           specs=(e2e/*account*.spec.ts e2e/posts.spec.ts e2e/email-*.spec.ts e2e/footer-legal.spec.ts)
-          echo "FAN_SIGNIN=$FAN_SIGNIN FAN_POSTS=${FAN_POSTS-unset}; specs: ${specs[*]}"
+          workers=2
+          if [ -n "${E2E_STUB_PORT-}" ]; then
+            # Only the specs that sign a fan in against the stub, one worker: both bind the same stub port.
+            specs=(e2e/account-center.spec.ts e2e/email-alerts.spec.ts)
+            workers=1
+          fi
+          echo "FAN_SIGNIN=$FAN_SIGNIN FAN_POSTS=${FAN_POSTS-unset} E2E_STUB_PORT=${E2E_STUB_PORT-unset} workers=$workers; specs: ${specs[*]}"
           # No E2E_BUILT: playwright.config.ts builds (the same `npm run build` Vercel runs) and then starts the site.
-          npx playwright test -c playwright.config.ts --workers=2 "${specs[@]}"
+          npx playwright test -c playwright.config.ts --workers="$workers" "${specs[@]}"
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -365,7 +390,7 @@ jobs:
           if-no-files-found: ignore
 
   # The site's one pass or fail. It fails unless web-checks and web-build succeeded and, when the site changed, every
-  # page-test shard and both launch-switch checks (web-launch) did too (failed, cancelled or skipped all fail it). Docs only: no shards, and it passes. Lighthouse
+  # page-test shard and every launch-config check (web-launch) did too (failed, cancelled or skipped all fail it). Docs only: no shards, and it passes. Lighthouse
   # is its own check.
   web:
     if: always()

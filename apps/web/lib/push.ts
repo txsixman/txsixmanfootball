@@ -64,6 +64,15 @@ export async function thisBrowserEndpoint(): Promise<string | null> {
   }
 }
 
+/** Stop this browser's push subscription (the Account Center's "Turn off"). The account's linked row is removed first, by the caller; false when there was nothing to stop or it could not be. */
+export async function unsubscribeThisBrowser(): Promise<boolean> {
+  try {
+    return pushSupported() ? ((await (await existingSubscription())?.unsubscribe()) ?? false) : false;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Signed in: link this browser's push subscription to the account, so the account's follows drive its alerts. The browser's
  * own follows move onto the account, and what does not fit stays in this browser's list (the server answers with it).
