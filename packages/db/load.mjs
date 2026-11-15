@@ -217,6 +217,8 @@ const SIGNED_IN_FUNCTIONS = [
   "public.admin_unhide_post(uuid, text)", "public.admin_unmute(uuid, text)", "public.admin_set_ban(uuid, boolean, text)",
   "public.admin_moderation_overview()", "public.submit_score_report(text, integer, integer)",
   "public.create_thread(text, text, text)", "public.reply_to_thread(uuid, text)",
+  // Push alerts tied to the account (migration 0023, ADR 0054): link and unlink one browser's subscription to auth.uid().
+  "public.link_push_subscription(text, text, text)", "public.unlink_push_subscription(text)",
 ];
 
 // Public reads, open to anon and authenticated alike: they return display names, text and counts, never a user id,

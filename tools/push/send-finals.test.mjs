@@ -4,6 +4,9 @@ import { PGlite } from "@electric-sql/pglite";
 import { migrate } from "../../packages/db/load.mjs";
 import { allowedEndpoint, message, newFinals, sendAll } from "./send-finals.mjs";
 
+const FAN_A = "33333333-3333-4333-8333-333333333333";
+const FAN_B = "44444444-4444-4444-8444-444444444444";
+
 const HEADER = "division,round,game_date,home,away,neutral,home_score,away_score,end_reason,end_period,source_url,notes";
 const row = (date, home, away, hs, as) => `I,season,${date},${home},${away},false,${hs},${as},unknown,,https://example.com/g,`;
 const csv = (...rows) => [HEADER, ...rows].join("\n");
@@ -61,6 +64,90 @@ test("sends one alert per following browser, deletes gone ones, counts failures"
   // Only the browser the push service accepted a message for is confirmed (migration 0018).
   const confirmed = await db.query("select endpoint from push_subscription where confirmed_at is not null");
   assert.deepEqual(confirmed.rows.map((x) => x.endpoint.split("/").at(-1)), ["ok"]);
+});
+
+// Push alerts tied to the account (migration 0023, ADR 0054): the real migrations, the real SQL, only the push itself is a stub.
+async function accountDb() {
+  const d = new PGlite();
+  await d.exec(`create role anon; create role authenticated; create schema auth;
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
+  await migrate(d);
+  for (const [id, name] of [[FAN_A, "Fan A"], [FAN_B, "Fan B"]]) await d.query("insert into profile (user_id, display_name, birth_year) values ($1, $2, 1990)", [id, name]);
+  return d;
+}
+const endpointOf = (id) => `https://fcm.googleapis.com/fcm/send/${id}`;
+const linkAs = async (d, sub, id) => {
+  await d.query("select set_config('request.jwt.claim.sub', $1, false)", [sub]);
+  await d.query("select link_push_subscription($1, $2, $3)", [endpointOf(id), "B".repeat(87), "a".repeat(22)]);
+};
+const followAs = async (d, sub, slugs) => {
+  await d.query("select set_config('request.jwt.claim.sub', $1, false)", [sub]);
+  for (const slug of slugs) await d.query("select follow_program($1)", [slug]);
+};
+const recorder = () => {
+  const sent = [];
+  return { sent, send: async (s, body) => void sent.push([s.endpoint.split("/").at(-1), JSON.parse(body)]) };
+};
+
+test("a browser linked to an account is alerted for the account's follows, one alert, whatever else it follows", async () => {
+  const d = await accountDb();
+  await followAs(d, FAN_A, ["strawn"]); // followed on another device
+  await linkAs(d, FAN_A, "laptop"); // a signed-in browser with nothing of its own
+  await linkAs(d, FAN_A, "phone"); // a second browser of the same account
+  await followAs(d, FAN_B, ["abbott"]);
+  await linkAs(d, FAN_B, "other-fan"); // another account, following a program that did not play
+  await d.query("select push_follow($1, $2, $3, $4)", [endpointOf("signed-out"), "B".repeat(87), "a".repeat(22), ["strawn"]]); // as ever
+  await d.query("select push_follow($1, $2, $3, $4)", [endpointOf("elsewhere"), "B".repeat(87), "a".repeat(22), ["jayton"]]);
+  const { sent, send } = recorder();
+  const r = await sendAll({ db: d, send, finals: newFinals("", csv(row("2026-11-13", "Strawn", "Gordon", 45, 0))) });
+  assert.deepEqual(sent.map(([id]) => id).sort(), ["laptop", "phone", "signed-out"]);
+  assert.ok(sent.every(([, m]) => m.title === "Gordon 0, Strawn 45" && m.url === "/programs/strawn"));
+  assert.deepEqual({ ...r, failed: r.failed.length }, { finals: 1, subscriptions: 3, sent: 3, removed: 0, skipped: 0, failed: 0 });
+});
+
+test("a program followed both ways, or with two finals, is still one alert to the one browser", async () => {
+  const d = await accountDb();
+  await followAs(d, FAN_A, ["strawn", "gordon"]);
+  await linkAs(d, FAN_A, "laptop");
+  // The browser's own list gets the same programs again (a signed-out push_follow on a linked browser, as when the session ended).
+  await d.query("select push_follow($1, $2, $3, $4)", [endpointOf("laptop"), "B".repeat(87), "a".repeat(22), ["strawn", "gordon"]]);
+  const { sent, send } = recorder();
+  const finals = newFinals("", csv(row("2026-11-13", "Strawn", "Gordon", 45, 0), row("2026-11-13", "Abbott", "Aquilla", 40, 34)));
+  const r = await sendAll({ db: d, send, finals });
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0][1].title, "Gordon 0, Strawn 45"); // one game involves both followed programs: one line
+  assert.equal(r.subscriptions, 1);
+});
+
+test("an unfollow on the account stops the alert on every linked browser; a gone linked browser is deleted like any other", async () => {
+  const d = await accountDb();
+  await followAs(d, FAN_A, ["strawn", "abbott"]);
+  await linkAs(d, FAN_A, "laptop");
+  await linkAs(d, FAN_A, "gone");
+  await d.query("select unfollow_program('strawn')");
+  const finals = newFinals("", csv(row("2026-11-13", "Strawn", "Gordon", 45, 0)));
+  const first = recorder();
+  await sendAll({ db: d, send: first.send, finals });
+  assert.deepEqual(first.sent, []);
+  await d.query("select follow_program('strawn')");
+  const send = async (s, body) => {
+    if (s.endpoint.endsWith("/gone")) throw Object.assign(new Error("gone"), { statusCode: 410 });
+    return recorder().send(s, body);
+  };
+  const r = await sendAll({ db: d, send, finals });
+  assert.deepEqual({ sent: r.sent, removed: r.removed }, { sent: 1, removed: 1 });
+  assert.deepEqual((await d.query("select endpoint from push_subscription")).rows.map((x) => x.endpoint.split("/").at(-1)), ["laptop"]);
+});
+
+test("before migration 0023 is on the database the sender still alerts, by each browser's own programs, and says so", async () => {
+  const d = await accountDb();
+  await d.query("select push_follow($1, $2, $3, $4)", [endpointOf("signed-out"), "B".repeat(87), "a".repeat(22), ["strawn"]]);
+  await d.exec("alter table push_subscription drop column user_id cascade");
+  const { sent, send } = recorder();
+  const r = await sendAll({ db: d, send, finals: newFinals("", csv(row("2026-11-13", "Strawn", "Gordon", 45, 0))) });
+  assert.deepEqual(sent.map(([id]) => id), ["signed-out"]);
+  assert.equal(r.accountLinksSkipped, true);
 });
 
 test("web-push provides what the sender and the key setup call (named exports, no default)", async () => {

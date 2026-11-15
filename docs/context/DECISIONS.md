@@ -78,3 +78,8 @@ Not in an ADR:
   read as finals (Nov 13, 2026). The store (ADR 0031) removes such a row from `games.csv`, which holds played games
   only, and writes it blank in `playoffs.csv`, which keeps unplayed bracket games (Nov 13, 2026).
 - Every mention of a playoff final reads **State Championship** (every league); a finished game's status word stays Final (Nov 14, 2026).
+- **Push alerts tied to the account** (ADR 0054, migration 0023): a signed-in fan's browser subscription is linked to the
+  account (`/api/push/link`, on the fan's own session), its own follows merge onto the account, and the sender alerts a
+  linked browser for the account's follows, one alert a browser. Sign-out deletes that browser's subscription (kept,
+  unlinked, only for follows that did not fit); deleting the account deletes them too. Signed-out browsers unchanged
+  (Nov 14, 2026).
