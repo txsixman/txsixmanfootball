@@ -104,3 +104,30 @@ body {
     zoom: var(--print-zoom, 1) !important;
   }
 }
+
+/* The past seasons' game lists on a program page (page.tsx): the row's look set once, on the list, so each of the ~100 rows is
+   only its date, its opponent and its score. The score link is stretched over the row; the opponent's name stays above it. */
+.pg {
+  @apply border-t border-line;
+}
+.pg > li {
+  @apply relative grid min-h-14 grid-cols-[4.5rem_1fr_auto] items-center gap-x-3 border-b border-line px-3 py-1 hover:bg-panel;
+}
+.pg > li > span {
+  @apply font-num text-[14px] font-bold uppercase leading-tight text-navy;
+}
+.pg > li > div {
+  @apply min-w-0 text-[15px] leading-5 text-ink;
+}
+.pg > li > div > p {
+  @apply flex items-center gap-1;
+}
+.pg > li > div > p > a {
+  @apply name-link relative z-10;
+}
+.pg > li > div > small {
+  @apply block text-[13px] leading-4 text-muted;
+}
+.pg > li > a {
+  @apply flex min-h-11 min-w-11 items-center justify-end font-num text-[19px] font-bold tabular-nums text-ink after:absolute after:inset-0;
+}
