@@ -35,7 +35,7 @@ export function SeasonRatings({ points }: { points: SeasonRating[] }) {
           <polyline key={run} points={run} fill="none" className="stroke-navy" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         ))}
         {chart.dots.map((d) => (
-          <circle key={d.x} cx={d.cx} cy={d.cy} r={3.5} className="fill-navy stroke-white" strokeWidth={1} />
+          <circle key={d.x} cx={d.cx} cy={d.cy} r={3.5} className="fill-navy stroke-page" strokeWidth={1} />
         ))}
         {chart.xTicks.map((t) => (
           <text key={t.x} x={t.cx} y={BOX.height - 8} textAnchor="middle" className="fill-muted">

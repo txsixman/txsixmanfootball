@@ -39,7 +39,7 @@ function ratingChart(points: RatingPoint[]): { svg: string; summary: string } {
     marks: [
       Plot.ruleY([0], { stroke: "var(--color-line)" }),
       Plot.line(data, { x: "date", y: "rating", stroke: "var(--color-navy)", strokeWidth: 2, curve: "monotone-x" }),
-      Plot.dot(data, { x: "date", y: "rating", fill: "var(--color-navy)", stroke: "white", r: 3.5 }),
+      Plot.dot(data, { x: "date", y: "rating", fill: "var(--color-navy)", stroke: "var(--color-page)", r: 3.5 }),
     ],
   });
   svg.setAttribute("role", "img");

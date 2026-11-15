@@ -7,7 +7,7 @@ import { gameKey, loadSeasonResults, playoffGameKeys, type SeasonResult } from "
 // counts toward the overall record and points, never the district record. Ordered by district record,
 // then overall record; the leagues' own tiebreakers (head to head, points) are not applied.
 export type Record3 = { won: number; lost: number; tied: number };
-type StandingRow = { school: Alignment; district: Record3; overall: Record3; pointsFor: number; pointsAgainst: number };
+export type StandingRow = { school: Alignment; district: Record3; overall: Record3; pointsFor: number; pointsAgainst: number };
 /** `districtPlay` is false for a league with no districts (TAIAO): its group is a division and conference, ordered by
  * overall record, and no district record exists. Only `loadStandings(season, { conferences: true })` returns those, so a
  * program page's "place in district" never reads one. */

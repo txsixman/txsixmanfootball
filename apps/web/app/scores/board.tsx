@@ -10,7 +10,7 @@ import { kickoffState } from "@/lib/kickoff";
 import { ORGS } from "@/lib/orgs";
 import { projectedLine } from "@/lib/outcome";
 import { isForfeit, outcomeOf, winnerOf, type Side } from "@/lib/score-display";
-import { CrestSlot, EmptyState, PageHeader } from "../ui";
+import { CrestSlot, EmptyState, PageHeader, UnconfirmedMark } from "../ui";
 import { KickoffStatus, useNow } from "../kickoff-status";
 import { ScoresChecked } from "./freshness";
 import { useLiveScores } from "./live-score";
@@ -20,7 +20,7 @@ function StatusCell({ g }: { g: Game }) {
   const base = "flex w-[68px] shrink-0 flex-col justify-center self-stretch px-2 font-num text-[14px] font-bold uppercase leading-4 tracking-wide";
   if (g.state === "live") {
     return (
-      <div className={`${base} bg-red text-white`}>
+      <div className={`${base} bg-alert text-white`}>
         <span>Live</span>
         <span>{/half/i.test(g.status) ? "Half" : g.status}</span>
       </div>
@@ -82,6 +82,17 @@ function Notes({ g }: { g: Game }) {
   // What was projected beside what happened (ADR 0044): before the game, the projection alone; after, "Final: …", "Forfeit"
   // or "Disputed"; under way, "Now: …". No upset label.
   const line = projectedLine(g.projected, outcomeOf(g));
+  // An unconfirmed score (a live one) is marked once, in the row, by the same mark as every other page. A full-width red bar
+  // under each game read as an alarm. A "Now: … · Unconfirmed" line already says it, so it takes no second mark; a disputed
+  // score keeps its bar (VerifyBar).
+  if (g.verification === "unconfirmed" && !line?.includes("Unconfirmed")) {
+    items.unshift(
+      <span key="v" className="flex items-center gap-1.5">
+        <UnconfirmedMark />
+        {g.sources && <span className="text-muted">{g.sources}</span>}
+      </span>,
+    );
+  }
   if (line) items.push(<span key="r" data-projected className="text-muted">{line}</span>);
   if (!items.length) return null;
   return <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[13px] leading-4">{items}</p>;
@@ -129,12 +140,7 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
 
 /** `live`: the live read of a game under way (asLive put its score in the score cells; this says where the game stands). */
 function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView }) {
-  const edge =
-    g.verification === "disputed"
-      ? "border-l-[6px] border-red"
-      : g.verification === "unconfirmed"
-        ? "border-l-[6px] border-dashed border-red"
-        : "border-l-[6px] border-transparent";
+  const edge = g.verification === "disputed" ? "border-l-[6px] border-red" : "border-l-[6px] border-transparent";
   return (
     <li data-game={g.id} className="border-b border-line">
       <Link href={`/scores/${g.id}`} className="block hover:bg-panel focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-navy active:bg-panel">
@@ -151,7 +157,7 @@ function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView })
             )}
           </div>
         </div>
-        <VerifyBar g={g} />
+        {g.verification === "disputed" && <VerifyBar g={g} />}
       </Link>
     </li>
   );
@@ -162,7 +168,7 @@ function Section({ id, title, live, games, crests, checked }: { id: string; titl
   const leagues = [...new Set(games.map((g) => g.league))];
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-[45px]">
-      <h2 id={`${id}-h`} className={`px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white ${live ? "bg-red" : "bg-navy"}`}>
+      <h2 id={`${id}-h`} className={`px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white ${live ? "bg-alert" : "bg-band"}`}>
         {title}
       </h2>
       {leagues.map((league) => (
@@ -191,7 +197,7 @@ function NextSection({ games }: { games: NextGame[] }) {
   if (!games.length) return null;
   return (
     <section id="next" aria-labelledby="next-h" className="scroll-mt-[45px]">
-      <h2 id="next-h" className="bg-navy px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">Next games</h2>
+      <h2 id="next-h" className="bg-band px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">Next games</h2>
       {[...new Set(games.map((g) => g.heading))].map((heading) => (
         <div key={heading}>
           <h3 className="sticky top-[45px] z-10 border-b border-line bg-panel px-3 py-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">{heading}</h3>
@@ -279,7 +285,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
                 aria-pressed={org === o}
                 onClick={() => setChosen(o.slug)}
                 className={`min-h-11 flex-1 border-2 border-navy px-1 font-num text-[15px] font-bold uppercase tracking-wide ${
-                  org === o ? "bg-navy text-white" : "text-navy hover:bg-panel"
+                  org === o ? "bg-band text-white" : "text-navy hover:bg-panel"
                 }`}
               >
                 {o.label}
@@ -298,7 +304,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
         </Link>
       )}
 
-      <nav aria-label="Jump to" className="sticky top-0 z-20 flex h-[45px] border-b border-line bg-white">
+      <nav aria-label="Jump to" className="sticky top-0 z-20 flex h-[45px] border-b border-line bg-page">
         {jumps.map((j) =>
           // A section with no games is not on the page, so its jump link would do nothing: show it as plain, dimmed text.
           j.n ? (
@@ -333,7 +339,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
           <dt className="font-bold text-ink">Check</dt>
           <dd>A confirmed final.</dd>
           <dt className="font-bold text-ink">Unconfirmed</dt>
-          <dd>Dashed score. A live score, not final yet.</dd>
+          <dd>Boxed word, dashed score. A live score, not final yet.</dd>
           <dt className="font-bold text-ink">Disputed</dt>
           <dd>Wavy score. Reports disagree, so no winner is marked.</dd>
           <dt className="font-bold text-ink">Forfeit</dt>
