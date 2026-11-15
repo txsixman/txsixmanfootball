@@ -141,7 +141,15 @@ for (const [path, heading] of [["/privacy", "Privacy"], ["/terms", "Terms"]] as 
       }
       expect(text).toMatch(/under 13[\s\S]*deleted/i);
       expect(text).toMatch(/delete your account/i);
-      expect(text).toMatch(/under 18 goes to any third party/);
+      expect(text).not.toMatch(/under 18 goes to any third party/); // ADR 0056: email goes to the email service for 18 or older by birth year
+      expect(text).toMatch(/accounts\s+18 or older by birth year/);
+      expect(text).toMatch(/email address goes to our email service only to send the emails you turned on/i);
+      expect(text).toMatch(/Unsubscribe link/);
+      expect(text).toMatch(/at most 5 browsers/i);
+      expect(text).toMatch(/short device label/i);
+      expect(text).toMatch(/never keep the browser.s full identifying text/i);
+      expect(text).toMatch(/Download my data/);
+      expect(text).toMatch(/Sign out of all devices/);
     }
     expect((await axe(page)).violations.map((v) => v.id)).toEqual([]);
     const m = await page.evaluate(() => ({
