@@ -89,11 +89,11 @@ export default async function Home() {
       <JsonLd data={websiteJsonLd()} />
       <p className="kicker">{ranked.season} season</p>
       <h1 className="page-title mt-1">Texas six-man football</h1>
-      <p className="mt-2 text-[14px] text-muted">
+      <p className="mt-2 max-w-prose text-[14px] text-muted">
         {ranked.teams.length} rated teams in UIL, TAPPS, TAIAO, TCAF and independent programs. Each organization has its own rankings, standings and
         brackets.
       </p>
-      <p className="mt-1 text-[14px] text-ink">{homeEdge({ firstSeason: FIRST_SEASON, firstFinal: Math.min(...finals.map((f) => f.season)) })}</p>
+      <p className="mt-1 max-w-prose text-[14px] text-ink">{homeEdge({ firstSeason: FIRST_SEASON, firstFinal: Math.min(...finals.map((f) => f.season)) })}</p>
 
       <MyTeams />
 
@@ -120,6 +120,8 @@ export default async function Home() {
         <section aria-labelledby="watch" className="mt-6">
           <h2 id="watch" className="section-title">Games to watch</h2>
           <p className="section-note">The closest playoff games still to play in each organization, by projected margin, with the projected team&rsquo;s chance to win.</p>
+          {/* Two organizations side by side from `lg`, so a wide screen is not one narrow list down its left side. */}
+          <div className="lg:grid lg:grid-cols-2 lg:gap-x-8">
           {watch.map(({ org, games }) => (
             <section key={org.slug} aria-labelledby={`watch-${org.slug}`} className="mt-3">
               <h3 id={`watch-${org.slug}`} className="sub-title">{org.label}</h3>
@@ -150,6 +152,7 @@ export default async function Home() {
               </ul>
             </section>
           ))}
+          </div>
           <div className="flex flex-wrap gap-x-5">
             <Link href="/scores" className="link-more">Playoff scores</Link>
             <Link href="/playoffs/this-round" className="link-more">This round</Link>

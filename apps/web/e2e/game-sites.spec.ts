@@ -8,8 +8,8 @@ import { noLiveScores } from "./live-route";
 // the page never says where the site came from. Fixtures come from the same lib the site is built from.
 noLiveScores(test);
 
-type Fixture = { id: string; site: string; home: string; address?: string; directions?: string };
-let cached: Promise<{ sited?: Fixture; unsited?: Fixture; addressed?: Fixture }> | undefined;
+type Fixture = { id: string; site: string; home: string; address?: string; directions?: string; kickoff?: string };
+let cached: Promise<{ sited?: Fixture; unsited?: Fixture; addressed?: Fixture; upcoming?: Fixture }> | undefined;
 const fixtures = () =>
   (cached ??= (async () => {
     const was = process.cwd();
@@ -19,15 +19,17 @@ const fixtures = () =>
       const { loadGames } = await import("../lib/games");
       const { NO_SITE } = await import("../lib/kickoffs");
       const { addressLine, directionsUrl } = await import("../lib/address");
+      const { kickoffTime } = await import("../lib/kickoff");
       const games = (await loadGames(await loadAlignments())).filter((g) => g.date);
       const pick = (want: (g: (typeof games)[number]) => boolean) => {
         const g = games.find(want);
-        return g && { id: g.id, site: g.venue, home: g.home.name, ...(g.address && { address: addressLine(g.address), directions: directionsUrl(g.venue, g.address) }) };
+        return g && { id: g.id, site: g.venue, home: g.home.name, ...(g.address && { address: addressLine(g.address), directions: directionsUrl(g.venue, g.address) }), ...(g.state === "scheduled" && g.kickoff && { kickoff: kickoffTime(g.kickoff) }) };
       };
       return {
         sited: pick((g) => g.venue !== NO_SITE && g.venue.includes(", ")),
         unsited: pick((g) => g.venue === NO_SITE),
         addressed: pick((g) => g.venue !== NO_SITE && Boolean(g.address)),
+        upcoming: pick((g) => g.state === "scheduled" && Boolean(g.kickoff)),
       };
     } finally {
       process.chdir(was);
@@ -65,4 +67,16 @@ test("a game with a site address shows the address and a Directions link under t
   expect((await page.locator("main").innerText()).toLowerCase()).not.toMatch(/maxpreps|dave campbell|sixmanfootball/);
   const axe = await new AxeBuilder({ page }).include("dl").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations.map((v) => v.id)).toEqual([]);
+});
+
+// Game night: a fan heading to the game finds the day, the kickoff and the site before anything else on the page.
+test("a game still to play shows its kickoff with its day, and its details come before the alerts", async ({ page }) => {
+  const { upcoming } = await fixtures();
+  test.skip(!upcoming, "no game is waiting to be played");
+  await page.goto(`/scores/${upcoming!.id}`);
+  const kickoff = page.locator("dl div", { has: page.locator("dt", { hasText: /^Kickoff$/ }) }).locator("dd");
+  await expect(kickoff).toContainText(upcoming!.kickoff!);
+  const details = await page.getByRole("region", { name: "Game details" }).boundingBox();
+  const alerts = page.getByRole("region", { name: "Follow these teams" });
+  if (await alerts.count()) expect(details!.y).toBeLessThan((await alerts.boundingBox())!.y);
 });

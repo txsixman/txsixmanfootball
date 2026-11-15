@@ -3,6 +3,7 @@
 import { CalendarClock, Check, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
+import type { Address } from "@/lib/address";
 import type { Game } from "@/lib/demo-games";
 import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files
 import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
@@ -13,6 +14,7 @@ import { projectedLine } from "@/lib/outcome";
 import { isForfeit, outcomeOf, winnerOf, type Side } from "@/lib/score-display";
 import { CrestSlot, EmptyState, PageHeader, UnconfirmedMark } from "../ui";
 import { KickoffStatus, useNow } from "../kickoff-status";
+import { SiteAddress } from "./directions";
 import { ScoresChecked } from "./freshness";
 import { useLiveScores } from "./live-score";
 import { ForfeitMark, VerifyBar, scoreClass } from "./parts";
@@ -164,9 +166,13 @@ function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView })
   );
 }
 
-function Section({ id, title, live, games, crests, checked }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; checked: Map<string, LiveView> }) {
+/** `newestFirst`: the round played last on top (finals), so this week's results are not under every earlier round's. */
+function Section({ id, title, live, games, crests, checked, newestFirst }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; checked: Map<string, LiveView>; newestFirst?: boolean }) {
   if (!games.length) return null;
+  const latest = (league: string) => games.reduce((d, g) => (g.league === league && (g.date ?? "") > d ? g.date! : d), "");
   const leagues = [...new Set(games.map((g) => g.league))];
+  // A stable sort: rounds played the same day keep the order they came in (Division I before Division II).
+  if (newestFirst) leagues.sort((a, b) => latest(b).localeCompare(latest(a)));
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-[45px]">
       <h2 id={`${id}-h`} className={`px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white ${live ? "bg-alert" : "bg-band"}`}>
@@ -192,7 +198,7 @@ function Section({ id, title, live, games, crests, checked }: { id: string; titl
 const orgOf = (g: Game) => ORGS.find((o) => g.league === o.league || g.league.startsWith(`${o.league} `));
 
 /** A next-round game the bracket sets before any site lists it (ADR 0047): "Team vs winner of X–Y", or both teams and the projection. */
-export type NextGame = { key: string; org: string; heading: string; sides: [{ name: string; href?: string }, { name: string; href?: string }]; projected?: string; date?: string; kickoff?: string; site?: string };
+export type NextGame = { key: string; org: string; heading: string; sides: [{ name: string; href?: string }, { name: string; href?: string }]; projected?: string; date?: string; kickoff?: string; site?: string; address?: Address };
 
 function NextSection({ games }: { games: NextGame[] }) {
   if (!games.length) return null;
@@ -218,6 +224,7 @@ function NextSection({ games }: { games: NextGame[] }) {
                     {/* The day, kickoff and site the read found before any listing has the game (ADR 0067). */}
                     Set by the bracket · {gameDay(g.date)} · <KickoffStatus date={g.date} kickoff={g.kickoff} className="font-semibold" />
                     <span className="block">{g.site ? `Site: ${g.site}` : "Site not listed yet"}</span>
+                    {g.site && g.address && <SiteAddress site={g.site} address={g.address} />}
                   </p>
                 ) : (
                   <p className="text-[14px] leading-6 text-muted">Set by the bracket · date and site not listed yet</p>
@@ -263,12 +270,26 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
   const notReported = shown.filter(awaiting);
   const later = shown.filter((g) => (g.state === "scheduled" || g.state === "postponed") && !awaiting(g));
   const nextShown = next.filter((g) => org && g.org === org.league && (!q || g.sides.some((s) => s.name.toLowerCase().includes(q))));
-  const jumps = [
-    { href: "#live", label: "Live", n: live.length },
+  // Between game nights, this week's games come before last week's finals once the next game day is nearer than the last
+  // one (worked out at the moment of viewing; before that, and on the server, finals first). Saturday reads last night's
+  // finals first; Tuesday reads Friday's games, kickoffs and sites first.
+  const noon = (d: string) => Date.parse(`${d}T12:00:00-06:00`);
+  const lastDay = [...final, ...reported].reduce((d, g) => (g.date && g.date > d ? g.date : d), "");
+  const nextDay = [...later.flatMap((g) => (g.state === "scheduled" && g.date ? [g.date] : [])), ...nextShown.flatMap((g) => (g.date ? [g.date] : []))].sort()[0];
+  const upcomingFirst = now !== null && !!lastDay && !!nextDay && noon(nextDay) - now.getTime() < now.getTime() - noon(lastDay);
+  // "Later" counts the next games the bracket sets too: they are listed right under it.
+  const coming = { href: later.length ? "#later" : "#next", label: "Later", n: later.length + nextShown.length };
+  const results = [
     { href: "#reported", label: "Reported", n: reported.length },
     { href: "#final", label: "Final", n: final.length },
-    { href: "#later", label: "Later", n: later.length },
   ];
+  const jumps = [{ href: "#live", label: "Live", n: live.length }, ...(upcomingFirst ? [coming, ...results] : [...results, coming])];
+  const upcoming = (
+    <>
+      <Section id="later" title="Later" games={later} crests={crests} checked={checked} />
+      <NextSection games={nextShown} />
+    </>
+  );
 
   return (
     <>
@@ -331,11 +352,11 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
       </nav>
 
       <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} />
-      <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} />
-      <Section id="final" title="Final" games={final} crests={crests} checked={checked} />
+      {upcomingFirst && upcoming}
+      <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} newestFirst />
+      <Section id="final" title="Final" games={final} crests={crests} checked={checked} newestFirst />
       <Section id="not-reported" title="Score not reported yet" games={notReported} crests={crests} checked={checked} />
-      <Section id="later" title="Later" games={later} crests={crests} checked={checked} />
-      <NextSection games={nextShown} />
+      {!upcomingFirst && upcoming}
       {!shown.length && (
         <div className="px-3 pb-6">
           <EmptyState>{q ? <>No team matches &ldquo;{query.trim()}&rdquo;.</> : "No games in this organization yet."}</EmptyState>

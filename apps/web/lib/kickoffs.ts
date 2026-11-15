@@ -13,7 +13,7 @@ import { addressFrom, type Address } from "./address.ts";
 const key = (date: string, a: string, b: string) => [date, ...[slugify(a), slugify(b)].sort()].join("|");
 const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 /** A game of the file by its two teams alone (ADR 0067): a next-round pairing no listing dates yet finds its game here. */
-type PairDetail = { date: string; kickoff?: string; site?: string };
+type PairDetail = { date: string; kickoff?: string; site?: string; address?: Address };
 type Details = { kickoffs: Map<string, string>; sites: Map<string, string>; addresses: Map<string, Address>; pairs: Map<string, PairDetail[]> };
 const pairKey = (a: string, b: string) => [slugify(a), slugify(b)].sort().join("|");
 const HEADER = "date,home,away,kickoff_utc,site_name,site_city";
@@ -49,7 +49,7 @@ async function read(season: number): Promise<Details> {
     if (address) addresses.set(key(date, home, away), address);
     if (utc || name) {
       const list = pairs.get(pairKey(home, away)) ?? [];
-      list.push({ date, ...(utc && { kickoff: utc }), ...(name && { site: city ? `${name}, ${city}` : name }) });
+      list.push({ date, ...(utc && { kickoff: utc }), ...(name && { site: city ? `${name}, ${city}` : name }), ...(address && { address }) });
       pairs.set(pairKey(home, away), list);
     }
   }

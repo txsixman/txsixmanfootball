@@ -55,9 +55,10 @@ export function Finder({ groups }: { groups: FinderGroup[] }) {
             <a
               key={org.slug}
               href={`#org-${org.slug}`}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel"
+              // On a phone the count sits under its label: side by side, five labels and counts ran together ("TAPPS 68 TAIAO 46").
+              className="inline-flex min-h-12 flex-auto flex-col items-center justify-center px-1 font-num text-[15px] font-bold uppercase leading-none tracking-wide text-navy hover:bg-panel sm:min-h-11 sm:flex-row sm:gap-1.5 sm:text-[16px]"
             >
-              {org.label} <span className="text-[13px] font-semibold text-muted">{n}</span>
+              {org.label} <span className="mt-0.5 text-[13px] font-semibold text-muted sm:mt-0">{n}</span>
             </a>
           ))}
         </nav>
