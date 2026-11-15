@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fanSignIn } from "@/lib/auth/config";
+import { fanPosts } from "@/lib/auth/config";
 import { boardOf } from "@/lib/forum-boards";
 import { loadThreads, pageOf, THREADS_PER_PAGE } from "@/lib/forums";
 import { PageHeader } from "../../ui";
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BoardPage({ params, searchParams }: Props) {
   const board = boardOf((await params).board);
-  if (!fanSignIn() || !board) notFound();
+  if (!fanPosts() || !board) notFound();
   const page = pageOf((await searchParams).page);
   const found = await loadThreads(board.slug, page);
   return (

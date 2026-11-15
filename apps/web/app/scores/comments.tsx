@@ -15,12 +15,17 @@ export function Comments({ gameKey }: { gameKey: string }) {
   const me = useMe();
   const [posts, setPosts] = useState<Post[]>([]);
   const [total, setTotal] = useState(0);
-  const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
+  // "off": the route answers 404 while posts are off (ADR 0052), so a page built while they were on hides this block.
+  const [state, setState] = useState<"loading" | "ready" | "failed" | "off">("loading");
 
   const load = useCallback(
     async (offset: number) => {
       try {
         const r = await fetch(`/api/games/${encodeURIComponent(gameKey)}/comments?offset=${offset}`);
+        if (r.status === 404) {
+          setState("off");
+          return;
+        }
         if (!r.ok) throw new Error("failed");
         const data = (await r.json()) as { comments: Post[]; total: number };
         setPosts((old) => (offset === 0 ? data.comments : [...old, ...data.comments]));
@@ -43,6 +48,7 @@ export function Comments({ gameKey }: { gameKey: string }) {
     return null;
   }
 
+  if (state === "off") return null;
   return (
     <section aria-labelledby="comments" className="mt-5 px-3">
       <h2 id="comments" className="mb-1 border-b-2 border-navy pb-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">

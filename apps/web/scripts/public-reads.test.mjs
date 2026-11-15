@@ -18,6 +18,7 @@ before(async () => {
 });
 beforeEach(() => {
   process.env.FAN_SIGNIN = "on";
+  process.env.FAN_POSTS = "on";
   signOut();
   calls.length = 0;
   sent.length = 0;
@@ -40,6 +41,16 @@ async function seedComments(key, author, n, from = 0) {
 
 test("fan accounts off: both reads are a bare 404 and nothing asks the database", async () => {
   process.env.FAN_SIGNIN = "off";
+  setPublic({ fail: { code: "XX000", message: "must not be called" } });
+  for (const r of [await getComments(KEYS.regular), await getScore(KEYS.regular)]) {
+    assert.equal(r.status, 404);
+    assert.equal(r.body, null);
+  }
+  assert.deepEqual(calls, []);
+});
+
+test("posts off with sign-in on: both reads are a bare 404 and nothing asks the database", async () => {
+  delete process.env.FAN_POSTS;
   setPublic({ fail: { code: "XX000", message: "must not be called" } });
   for (const r of [await getComments(KEYS.regular), await getScore(KEYS.regular)]) {
     assert.equal(r.status, 404);
