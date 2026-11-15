@@ -221,6 +221,10 @@ const SIGNED_IN_FUNCTIONS = [
   "public.link_push_subscription(text, text, text)", "public.unlink_push_subscription(text)",
   // Email alerts (migration 0022, ADR 0053): own opt-ins only. The sender's functions are not here: only the role email_sender runs them.
   "public.email_my_settings()", "public.email_set_optins(text, text[])",
+  // The Account Center (migration 0026, ADR 0058): each acts on auth.uid()'s own rows. None returns the birth year, an endpoint, a key or a token.
+  "public.my_account()", "public.change_display_name(text)", "public.label_push_subscription(text, text)", "public.my_devices()",
+  "public.this_device(text)", "public.remove_my_device(uuid)", "public.remove_all_my_devices()", "public.set_push_mute(text, text, boolean)",
+  "public.my_push_mutes(text)", "public.export_my_data()", "public.my_activity(integer)",
 ];
 
 // Public reads, open to anon and authenticated alike: they return display names, text and counts, never a user id,

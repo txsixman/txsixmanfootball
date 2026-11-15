@@ -22,7 +22,7 @@ test("follow stores only the endpoint, keys and sorted, unique program slugs; fo
   const cols = await d.query(
     "select column_name from information_schema.columns where table_name = 'push_subscription' order by ordinal_position",
   );
-  assert.deepEqual(cols.rows.map((r) => r.column_name), ["endpoint", "p256dh", "auth", "programs", "created_at", "updated_at", "confirmed_at", "user_id"]);
+  assert.deepEqual(cols.rows.map((r) => r.column_name), ["endpoint", "p256dh", "auth", "programs", "created_at", "updated_at", "confirmed_at", "user_id", "id", "device_label", "linked_at", "muted"]); // the last four: migration 0026
   assert.deepEqual((await d.query("select programs from push_subscription")).rows[0].programs, ["guthrie", "jayton"]);
   await d.query("select push_follow($1, $2, $3, $4)", [ENDPOINT, P256DH, AUTH, ["strawn"]]);
   assert.deepEqual((await d.query("select programs from push_subscription")).rows, [{ programs: ["strawn"] }]);
@@ -58,6 +58,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "admin_set_ban", anon: false },
     { proname: "admin_unhide_post", anon: false },
     { proname: "admin_unmute", anon: false },
+    { proname: "change_display_name", anon: false }, // migration 0026: the Account Center, signed-in fans only
     { proname: "create_profile", anon: false }, // migration 0011: signed-in fans only
     { proname: "create_thread", anon: false }, // migration 0015: signed-in fans only
     { proname: "delete_my_account", anon: false },
@@ -71,6 +72,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "email_record_game_events", anon: false },
     { proname: "email_set_optins", anon: false },
     { proname: "email_unsubscribe", anon: false },
+    { proname: "export_my_data", anon: false }, // migration 0026
     { proname: "fan_actor", anon: false },
     { proname: "fan_post_counts", anon: false },
     { proname: "fan_rate_check", anon: false },
@@ -83,6 +85,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "forum_thread_visible", anon: false },
     { proname: "forum_threads", anon: false },
     { proname: "is_admin", anon: false }, // migration 0010: not for anon, ever
+    { proname: "label_push_subscription", anon: false }, // migration 0026
     { proname: "link_push_subscription", anon: false }, // migration 0023: signed-in fans link one browser to the account
     { proname: "list_comments", anon: false }, // migration 0013: a public read, granted to anon only where auth.uid() exists (Supabase)
     { proname: "live_scores", anon: true }, // migration 0016: the games under way, read-only, for anon and signed-in alike
@@ -91,18 +94,26 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "moderation_normalize", anon: false },
     { proname: "moderation_reserved_name", anon: false },
     { proname: "moderation_strip", anon: false },
+    { proname: "my_account", anon: false }, // migration 0026
+    { proname: "my_activity", anon: false },
+    { proname: "my_devices", anon: false },
     { proname: "my_follows", anon: false },
     { proname: "my_profile", anon: false },
+    { proname: "my_push_mutes", anon: false },
     { proname: "post_evaluate", anon: false },
     { proname: "post_link_count", anon: false },
     { proname: "post_text_check", anon: false },
     { proname: "push_follow", anon: true },
     { proname: "push_unfollow", anon: true },
     { proname: "record_admin_audit", anon: false },
+    { proname: "remove_all_my_devices", anon: false }, // migration 0026
+    { proname: "remove_my_device", anon: false },
     { proname: "reply_to_thread", anon: false },
     { proname: "resolve_game_key", anon: false },
     { proname: "results_read_at", anon: true }, // migration 0017: when the last game-day read finished, read-only, for anon and signed-in alike
+    { proname: "set_push_mute", anon: false }, // migration 0026
     { proname: "submit_score_report", anon: false }, // migration 0014: signed-in fans only
+    { proname: "this_device", anon: false }, // migration 0026
     { proname: "unfollow_program", anon: false },
     { proname: "unlink_push_subscription", anon: false }, // migration 0023: sign-out unlinks that browser
   ]);

@@ -150,6 +150,47 @@ test("before migration 0023 is on the database the sender still alerts, by each 
   assert.equal(r.accountLinksSkipped, true);
 });
 
+test("a program muted on a browser gets no alert there, whoever follows it; the account's other browsers and the other programs are unaffected (migration 0026)", async () => {
+  const d = await accountDb();
+  await followAs(d, FAN_A, ["strawn", "abbott"]);
+  await linkAs(d, FAN_A, "laptop");
+  await linkAs(d, FAN_A, "phone");
+  await d.query("select push_follow($1, $2, $3, $4)", [endpointOf("signed-out"), "B".repeat(87), "a".repeat(22), ["strawn"]]);
+  const mute = (id, slugs) => d.query("update push_subscription set muted = $1 where endpoint = $2", [slugs, endpointOf(id)]);
+  await mute("laptop", ["strawn"]); // muted on this browser only
+  await mute("signed-out", ["strawn"]); // a browser's own program can be muted too
+  const finals = newFinals("", csv(row("2026-11-13", "Strawn", "Gordon", 45, 0)));
+  const first = recorder();
+  const r = await sendAll({ db: d, send: first.send, finals });
+  assert.deepEqual(first.sent.map(([id]) => id), ["phone"]);
+  assert.deepEqual({ subscriptions: r.subscriptions, sent: r.sent, skipped: r.skipped, mutesSkipped: r.mutesSkipped }, { subscriptions: 3, sent: 1, skipped: 2, mutesSkipped: undefined });
+  // Two finals, one muted: the alert is about the other one only; a muted program mutes nothing else.
+  await mute("phone", ["strawn"]);
+  const two = recorder();
+  await sendAll({ db: d, send: two.send, finals: newFinals("", csv(row("2026-11-13", "Strawn", "Gordon", 45, 0), row("2026-11-13", "Abbott", "Aquilla", 40, 34))) });
+  assert.deepEqual(two.sent.map(([id, m]) => [id, m.title, m.url]).sort(), [
+    ["laptop", "Aquilla 34, Abbott 40", "/programs/abbott"],
+    ["phone", "Aquilla 34, Abbott 40", "/programs/abbott"],
+  ]);
+  // Unmuting brings the alert back.
+  await mute("laptop", []);
+  const three = recorder();
+  await sendAll({ db: d, send: three.send, finals });
+  assert.deepEqual(three.sent.map(([id]) => id), ["laptop"]);
+});
+
+test("before migration 0026 is on the database the sender still alerts, account follows included, with no mutes, and says so", async () => {
+  const d = await accountDb();
+  await followAs(d, FAN_A, ["strawn"]);
+  await linkAs(d, FAN_A, "laptop");
+  await d.exec("alter table push_subscription drop column muted");
+  const { sent, send } = recorder();
+  const r = await sendAll({ db: d, send, finals: newFinals("", csv(row("2026-11-13", "Strawn", "Gordon", 45, 0))) });
+  assert.deepEqual(sent.map(([id]) => id), ["laptop"]);
+  assert.equal(r.mutesSkipped, true);
+  assert.equal(r.accountLinksSkipped, undefined);
+});
+
 test("web-push provides what the sender and the key setup call (named exports, no default)", async () => {
   const webpush = await import("web-push");
   for (const name of ["generateVAPIDKeys", "setVapidDetails", "sendNotification"]) assert.equal(typeof webpush[name], "function", name);

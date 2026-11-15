@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createRequestClient } from "@/lib/auth/request-client";
 
 // Runs only for the pages that touch a session: the admin console, sign-in, the auth callback, fan accounts, the forums, the
-// signed-in posting API (/api/fan) and the small routes the pages' scripts call (/api/me, /api/follows, /api/push; the service
+// signed-in posting API (/api/fan) and the small routes the pages' scripts call (/api/me, /api/follows, /api/push, /api/account; the service
 // worker never keeps /api/ either). The public comment reads (/api/games/<id>/comments) use no session and set their own headers.
 // It refreshes an expiring session before the page renders (a server component cannot set cookies) and puts the cache
 // and robots headers on every response, so nothing here is stored by a shared cache, a browser's back cache, or a search
@@ -26,5 +26,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/sign-in", "/auth/:path*", "/account", "/account/:path*", "/forums", "/forums/:path*", "/api/me", "/api/follows", "/api/push/:path*", "/api/fan/:path*"],
+  matcher: ["/admin", "/admin/:path*", "/sign-in", "/auth/:path*", "/account", "/account/:path*", "/forums", "/forums/:path*", "/api/me", "/api/follows", "/api/push/:path*", "/api/account/:path*", "/api/fan/:path*"],
 };

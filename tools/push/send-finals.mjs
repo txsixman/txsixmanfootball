@@ -4,7 +4,8 @@
 // A new final is a played game in the season's games.csv or playoffs.csv that `--before` did not have with that score.
 // Subscriptions come from Supabase's push_subscription table (migration 0008; PG* variables as in supabase.yml). A browser
 // linked to a fan's account (migration 0023, ADR 0054) is alerted for the account's follows (table `follow`, migration 0012) as
-// well as its own programs; an unlinked one only for its own, as before. One row a browser, so one alert a browser.
+// well as its own programs; an unlinked one only for its own, as before. One row a browser, so one alert a browser. A program a
+// browser has muted (push_subscription.muted, migration 0026, ADR 0058) gets no alert on that browser, whoever follows it.
 // Needs VAPID_PRIVATE_KEY (repo secret); without it, or without the database password, says so and sends nothing.
 // A subscription the push service reports gone (404, 410) is deleted. Any other failure is counted and exits 1.
 import { execFileSync } from "node:child_process";
@@ -70,15 +71,19 @@ export const allowedEndpoint = (endpoint) => {
 
 /**
  * The subscriptions that follow one of `$1`'s programs, with the programs each is alerted for: its own list joined with the
- * account's follows when it is linked (user_id), each program once. The primary key is the endpoint, so a browser is one row
- * however many of its programs were played, and a browser that follows a program both ways still gets one alert.
+ * account's follows when it is linked (user_id), each program once, and the programs the browser has muted (migration 0026) kept
+ * apart in `muted`, which sendAll takes out. The primary key is the endpoint, so a browser is one row however many of its programs
+ * were played, and a browser that follows a program both ways still gets one alert.
  */
 export const SUBSCRIPTIONS_SQL = `
-  select s.endpoint, s.p256dh, s.auth,
+  select s.endpoint, s.p256dh, s.auth, s.muted,
          array(select distinct p from unnest(s.programs || coalesce((select array_agg(f.program_slug) from follow f where f.user_id = s.user_id), '{}'::text[])) p order by p) as programs
     from push_subscription s
    where s.programs && $1::text[]
       or exists (select 1 from follow f where f.user_id = s.user_id and f.program_slug = any($1::text[]))`;
+
+/** Before migration 0026 is on the database (no `muted` column, SQL state 42703): the same, with no mutes to honour. */
+const WITHOUT_MUTES_SQL = SUBSCRIPTIONS_SQL.replace("s.p256dh, s.auth, s.muted,", "s.p256dh, s.auth,");
 
 /** Before migration 0023 is on the database (the column is missing, SQL state 42703): each browser by its own programs, as ever. */
 const OWN_PROGRAMS_SQL = "select endpoint, p256dh, auth, programs from push_subscription where programs && $1::text[]";
@@ -92,14 +97,23 @@ export async function sendAll({ db, send, finals }) {
   try {
     ({ rows } = await db.query(SUBSCRIPTIONS_SQL, [programs]));
   } catch (e) {
-    // Alerts must not stop because this run came before the migration did: send by each browser's own programs and say so.
+    // Alerts must not stop because this run came before a migration did: send without mutes (0026 missing), and if the account
+    // links are missing too (0023), by each browser's own programs; and say so.
     if (e.code !== "42703") throw e;
-    ({ rows } = await db.query(OWN_PROGRAMS_SQL, [programs]));
-    result.accountLinksSkipped = true;
+    result.mutesSkipped = true;
+    try {
+      ({ rows } = await db.query(WITHOUT_MUTES_SQL, [programs]));
+    } catch (e2) {
+      if (e2.code !== "42703") throw e2;
+      ({ rows } = await db.query(OWN_PROGRAMS_SQL, [programs]));
+      result.accountLinksSkipped = true;
+    }
   }
   result.subscriptions = rows.length;
   for (const s of rows) {
-    const msg = message(finals, s.programs);
+    // A muted program is not alerted on this browser (the account still follows it, and its other browsers still alert).
+    const muted = new Set(s.muted ?? []);
+    const msg = message(finals, s.programs.filter((p) => !muted.has(p)));
     if (!msg || !allowedEndpoint(s.endpoint)) {
       result.skipped += 1;
       continue;
@@ -154,6 +168,7 @@ async function main() {
   try {
     const r = await sendAll({ db, finals, send: (sub, body) => webpush.sendNotification(sub, body, { TTL: 6 * 60 * 60, urgency: "normal" }) });
     if (r.accountLinksSkipped) console.log("::warning::push_subscription.user_id (migration 0023) is not on the database yet; alerts went by each browser's own programs only.");
+    if (r.mutesSkipped) console.log("::warning::push_subscription.muted (migration 0026) is not on the database yet; per-team mutes were not applied.");
     console.log(`Push alerts: ${r.subscriptions} following, ${r.sent} sent, ${r.removed} gone and deleted, ${r.skipped} skipped, ${r.failed.length} failed.`);
     if (r.failed.length) {
       console.error(r.failed.join("\n"));

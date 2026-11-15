@@ -172,3 +172,17 @@ the load, so the security check always runs.
 
 Not done here: reserved and slur display names enforced in the database (`create_profile`); the forums round adds them in
 migration 0013. `lib/moderation/names.ts` keeps `displayNameProblem(name)` for the form.
+
+## Account Center (ADR 0058)
+
+- **Migration 0026** adds `profile.name_changed_at` and, on `push_subscription`, `id` (a device id), `device_label`, `linked_at` and
+  `muted` (up to 100 team slugs), one trigger that clears a browser's label, link date and mutes when it leaves an account or
+  moves to another, and eleven signed-in functions, all in `SIGNED_IN_FUNCTIONS`: `my_account`, `change_display_name` (sign-up's
+  rules, once every 30 days), `label_push_subscription`, `my_devices`, `this_device`, `remove_my_device`,
+  `remove_all_my_devices`, `set_push_mute`, `my_push_mutes`, `export_my_data` and `my_activity`. None returns the birth year, a
+  push endpoint or key, or an unsubscribe token.
+- The site's one server module is `apps/web/lib/account/center.ts` (plain data or `{ error }`, never a database message). Routes:
+  `GET /api/account/export` (the JSON file), `POST /api/account/push-mute` and `POST /api/account/this-device` (same-site, JSON,
+  session), all in `proxy.ts`'s matcher; `/api/push/link` also stores the browser's short label (`deviceLabel`, from the
+  User-Agent, which is never stored).
+- The sender skips a program a browser has muted (`tools/push/send-finals.mjs`).

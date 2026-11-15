@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { fanSignIn } from "@/lib/auth/config";
 import { getUser } from "@/lib/auth/server";
+import { deviceLabel } from "@/lib/account/center";
 import { checkSameOriginJson } from "@/lib/same-origin";
 
 // Link this browser's push subscription to the signed-in fan's account (ADR 0054, migration 0023), so the account's follows
@@ -38,6 +39,13 @@ export async function POST(request: NextRequest) {
     if (error.code === "42501") return reply({ error: "finish sign-up" }, 403);
     if (error.code === "23514" || error.code === "22001" || error.code === "22P02") return reply({ error: "bad request" }, 400);
     return reply({ error: "unavailable" }, 503);
+  }
+  // Give the browser the short label the account page lists it by ("Chrome on iPhone", ADR 0058, migration 0026). Only that label is
+  // kept, never the User-Agent, and it is not logged. It is a convenience: a failure here leaves the link in place.
+  try {
+    await found.supabase.rpc("label_push_subscription", { p_endpoint: parsed.data.endpoint, p_label: deviceLabel(request.headers.get("user-agent") ?? "") });
+  } catch {
+    // The link stands without a label.
   }
   // The programs this browser still follows by itself: the ones that did not fit on the account (usually none).
   const left = z.array(z.string()).safeParse(data);
