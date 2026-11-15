@@ -3,13 +3,13 @@
 // appears. Pure.
 import { unsubscribeUrl } from "../../apps/web/lib/email/unsubscribe.ts";
 
-const ROUND = { "round-1": "First round", "bi-district": "Bi-district", area: "Area", quarterfinal: "Quarterfinal", regional: "Regional", semifinal: "Semifinal", final: "Final", state: "State final" };
+export const ROUND = { "round-1": "First round", "bi-district": "Bi-district", area: "Area", quarterfinal: "Quarterfinal", regional: "Regional", semifinal: "Semifinal", final: "Final", state: "State final" };
 
-const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+export const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 /** A header or subject value on one line, whatever a team name holds. */
-const oneLine = (s) => String(s).replace(/[\r\n]+/g, " ").trim();
+export const oneLine = (s) => String(s).replace(/[\r\n]+/g, " ").trim();
 
-const clock = (iso) =>
+export const clock = (iso) =>
   `${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" }).format(new Date(iso))} Central`;
 
 /** The email for one due row of email_pending_game_alerts: { subject, text, html, headers }. */

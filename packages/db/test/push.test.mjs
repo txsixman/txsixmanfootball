@@ -66,6 +66,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "email_adult", anon: false },
     { proname: "email_mark_sent", anon: false },
     { proname: "email_my_settings", anon: false },
+    { proname: "email_pending_digests", anon: false }, // migration 0025: the weekly digest, the email_sender role only
     { proname: "email_pending_game_alerts", anon: false },
     { proname: "email_record_game_events", anon: false },
     { proname: "email_set_optins", anon: false },
