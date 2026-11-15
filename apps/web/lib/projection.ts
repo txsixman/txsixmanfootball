@@ -31,6 +31,15 @@ export function homeEdge(table: Pick<RatingsTable, "home_field" | "playoff_edge"
   return neutral ? (trueNeutral ? 0 : (table.home_field ?? 0) * (table.playoff_edge ?? 0)) : (table.home_field ?? 0);
 }
 
+/** A listed game's field as its file writes `neutral`: "true" a true neutral site (no edge), "false" the home team's field,
+ * "" not named (a robot-read playoff game gets the `playoff_edge` share). Read this one way on every page, the same as
+ * services/ratings/rows.py. */
+export type Field = { neutral: boolean; trueNeutral?: true };
+export const fieldOf = (neutral: string): Field => (neutral === "true" ? { neutral: true, trueNeutral: true } : { neutral: neutral !== "false" });
+
+/** `project` for a listed game at its own site. */
+export const projectAt = (table: RatingsTable, g: { home: string; away: string } & Field) => project(table, g.home, g.away, g.neutral, g.trueNeutral ?? false);
+
 /**
  * undefined when either team is unrated, or the table predates home_field and sigma. `neutral` is a site the data calls
  * neutral or does not name, which for a robot-read playoff game still gives the listed home team `playoff_edge` of the

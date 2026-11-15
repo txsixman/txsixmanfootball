@@ -6,7 +6,7 @@ import { memo } from "./memo";
 import { pairsOf, type Pair } from "./playoff-path";
 import { slugify } from "./slug";
 import { loadPlayoffGames, playoffLeagueSet, ROUNDS, type PlayoffGame } from "./games";
-import { project, type Projection } from "./projection";
+import { project, projectAt, type Projection } from "./projection";
 import { loadRatings, ratingSeasons } from "./ratings";
 import { bracketTitleChances, loadBracketTemplate, type Chance, type RegionChances } from "./title-chances";
 import { CURRENT_SEASON } from "./season";
@@ -97,7 +97,7 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
     const tree = treeGames(own.length ? own : derivedSlots(list, league === "UIL" ? "state" : "final", ROUNDS), list, ROUNDS).map((n): TreeRow => {
       const [a, b] = n.sides;
       const projection =
-        n.state === "upcoming" && n.game ? project(ratings, n.game.home, n.game.away, n.game.neutral)
+        n.state === "upcoming" && n.game ? projectAt(ratings, n.game)
         : n.state === "open" && a.team && b.team ? project(ratings, a.team, b.team, true, true)
         : undefined;
       return { ...n, label: roundLabel(n.round, league), ...(projection ? { projection } : {}) };
@@ -113,7 +113,7 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
       .map((round) => ({
         round,
         label: roundLabel(round, league),
-        games: list.filter((g) => g.round === round).map((g) => (g.homeScore == null ? { ...g, projection: project(ratings, g.home, g.away, g.neutral) } : g)),
+        games: list.filter((g) => g.round === round).map((g) => (g.homeScore == null ? { ...g, projection: projectAt(ratings, g) } : g)),
         built: built.filter((g) => g.round === round),
       }));
     const found = bracketTitleChances(ratings, alignments, template, name, list);

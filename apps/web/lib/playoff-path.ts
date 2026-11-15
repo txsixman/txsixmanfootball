@@ -1,5 +1,5 @@
 import type { BracketRow } from "./brackets";
-import { project, type Projection } from "./projection";
+import { project, projectAt, type Projection } from "./projection";
 import type { RatingsTable } from "./ratings";
 
 // Where a bracket goes next, from the ratings. The data lists only games that are on the schedule, so the next round
@@ -36,7 +36,7 @@ export function pairsOf(rounds: RoundRows[], regionOf?: (team: string) => string
 
 /** The chance `side` wins `g` at its own site, or undefined when either team is unrated. */
 function winChance(table: RatingsTable, g: BracketRow, side: string): number | undefined {
-  const p = project(table, g.home, g.away, g.neutral);
+  const p = projectAt(table, g);
   return p && (p.favorite === side ? p.winProbability : 1 - p.winProbability);
 }
 
@@ -59,7 +59,7 @@ export function aheadFor(table: RatingsTable, pair: Pair, team: string): { next:
 
 /** The pairing if the higher-rated team wins each game of the pair, with each side's chance to get there and the projection for that meeting. */
 export function previewOf(table: RatingsTable, pair: Pair): { sides: [{ team: string; reach: number }, { team: string; reach: number }]; projection: Projection } | undefined {
-  const sides = pair.games.map((g) => project(table, g.home, g.away, g.neutral));
+  const sides = pair.games.map((g) => projectAt(table, g));
   if (!sides[0] || !sides[1]) return undefined;
   const projection = project(table, sides[0].favorite, sides[1].favorite, true, true);
   return projection && { sides: [{ team: sides[0].favorite, reach: sides[0].winProbability }, { team: sides[1].favorite, reach: sides[1].winProbability }], projection };

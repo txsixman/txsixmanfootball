@@ -4,7 +4,7 @@ import { pregameShown } from "./pregame";
 import path from "node:path";
 import type { Game, Team } from "./demo-games";
 import { heading, programFor, slugify, type Alignment } from "./alignments";
-import { project, projectionText } from "./projection";
+import { projectAt, projectionText, fieldOf, type Field } from "./projection";
 import { GAME_COLUMNS, parseCsv, PlayedGameRow, PlayoffRow, RESULT_COLUMNS, RobotPlayoffRow } from "./data-schemas";
 import { loadRatings } from "./ratings";
 import { roundLabel } from "./brackets";
@@ -119,7 +119,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
     const projection = played
       ? beforeBy.get(season)!.get(gameKey(r.game_date, r.home, r.away))
       : ratings.season === season
-        ? project(ratings, home.name, away.name, r.neutral !== "false", r.neutral === "true")
+        ? projectAt(ratings, { home: home.name, away: away.name, ...fieldOf(r.neutral) })
         : undefined;
     return {
       id: playoffGameId(season, r),
@@ -152,11 +152,11 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
 
 /** A season's playoff game for the bracket page: hand capture or robot-read, team names as our alignments spell them.
  * Scores are absent until played; a forfeit carries no score to show (ADR 0004). */
-export type PlayoffGame = {
+export type PlayoffGame = Field & {
   league: string; bracket: string; round: string; date: string; home: string; away: string;
   /** The league's division as the files write it ("I", "2", "III Small School"), for its bracket slots (ADR 0047). */
   division: string;
-  homeScore?: number; awayScore?: number; forfeit: boolean; neutral: boolean;
+  homeScore?: number; awayScore?: number; forfeit: boolean;
   /** A played game: its final score is confirmed, however it was read, unless the sources give it different winners (ADR 0040). */
   confirmed: boolean;
   /** Kickoff in UTC, for a game not yet played, when known (lib/kickoffs.ts, ADR 0036). */
@@ -179,7 +179,7 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
       away: name(r.away),
       ...(played ? { homeScore: h, awayScore: a } : {}),
       forfeit: r.end_reason === "forfeit" || (played && forfeitScore(h, a)),
-      neutral: r.neutral !== "false",
+      ...fieldOf(r.neutral),
       confirmed: played && !isDisputed(disputed, r.game_date, r.home, r.away), // a final is confirmed unless disputed (ADR 0040)
       ...(!played && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
     };
@@ -187,8 +187,8 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
 }
 
 /** Playoff games with their bracket ("TAPPS Division II Large School") and round, team names as our alignments spell them. */
-export type BracketGame = {
-  bracket: string; round: string; home: string; away: string; played: boolean; neutral: boolean;
+export type BracketGame = Field & {
+  bracket: string; round: string; home: string; away: string; played: boolean;
   /** The winner of a played game that is a confirmed final and not a tie (ADR 0040); absent otherwise. */
   winner?: string;
 };
