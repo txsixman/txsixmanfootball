@@ -50,9 +50,21 @@ export type BoxInfo = { kickoff?: string; site?: string; href?: string; live?: b
 export async function treeData(b: Bracket, season = CURRENT_SEASON): Promise<TreeData> {
   const [alignments, kickoffs, sites, pages] = await Promise.all([loadAlignments(), loadKickoffs(season), loadSites(season), season === CURRENT_SEASON ? bracketGames() : []]);
   const hrefs = new Map(pages.map((g) => [`${g.date}|${g.home.name}|${g.away.name}`, `/scores/${g.id}`]));
+  // A pairing the bracket sets before any listing has it: the day, kickoff and site the scores page shows for it (ADR 0067).
+  const pair = (x: string, y: string) => [x, y].sort().join("|");
+  const built = new Map(
+    b.rounds.flatMap((r) => r.built).flatMap((g) => {
+      const [x, y] = g.sides;
+      return "team" in x && "team" in y && g.date ? [[pair(x.team, y.team), g] as const] : [];
+    }),
+  );
   return buildTree(b.name, b.league, b.tree, (n) => {
     const g = n.game;
-    if (!g) return { kickoff: n.kickoff_utc, site: n.site };
+    if (!g) {
+      const [x, y] = n.sides;
+      const set = x.team && y.team ? built.get(pair(x.team, y.team)) : undefined;
+      return { kickoff: n.kickoff_utc ?? set?.kickoff, site: n.site ?? set?.site };
+    }
     const site = siteOf(sites, g.date, g.home, g.away);
     return {
       kickoff: kickoffOf(kickoffs, g.date, g.home, g.away),

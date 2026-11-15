@@ -8,7 +8,16 @@ import { EMPTY, type loadIdentities } from "@/lib/identity";
 import { gameStatus } from "@/lib/playoff-status";
 import { projectionParts } from "@/lib/projection";
 import { KickoffStatus } from "../kickoff-status";
+import { SiteAddress } from "../scores/directions";
 import { CrestSlot } from "../ui";
+
+/** A round's heading count: "16 games", "2 games · 6 more set by the bracket", or "1 game set by the bracket" when no
+ * listing has any yet (never "0 games"). */
+export function roundCount(r: { games: unknown[]; built: unknown[] }): string {
+  const n = (k: number) => `${k} ${k === 1 ? "game" : "games"}`;
+  if (!r.games.length && r.built.length) return `${n(r.built.length)} set by the bracket`;
+  return `${n(r.games.length)}${r.built.length ? ` · ${r.built.length} more set by the bracket` : ""}`;
+}
 
 const day = gameDay;
 
@@ -120,6 +129,7 @@ export function BuiltList({ games, league, alignments, identities }: { games: Bu
                   <KickoffStatus date={g.date} kickoff={g.kickoff} className="font-semibold" />
                 </span>
                 <span className="block">{g.site ? `Site: ${g.site}` : "Site not listed yet"}</span>
+                {g.site && g.address && <SiteAddress site={g.site} address={g.address} />}
               </p>
             ) : (
               <p className="pl-12 text-[14px] leading-6 text-muted">Next game · date and site not listed yet</p>
