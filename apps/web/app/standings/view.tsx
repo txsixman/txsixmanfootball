@@ -191,10 +191,11 @@ function AreaHeading({ area }: { area: AreaGroup }) {
 }
 
 /** The tables for one page's districts, at every level its alignment holds (ADR 0048). */
-export function StandingsLevels({ districts, identities, idPrefix = "s" }: { districts: DistrictStandings[]; identities: Identities; idPrefix?: string }) {
+/** `linked`: name each district with a link to its own page; off for the sample page's invented districts, which have none. */
+export function StandingsLevels({ districts, identities, idPrefix = "s", linked = true }: { districts: DistrictStandings[]; identities: Identities; idPrefix?: string; linked?: boolean }) {
   const levels = levelsOf(districts);
   const league = districts[0] ? leagueOf(districts[0]) : "";
-  if (levels.length === 1) return <>{districts.map((d) => <District key={d.key} d={d} identities={identities} />)}</>;
+  if (levels.length === 1) return <>{districts.map((d) => <District key={d.key} d={d} identities={identities} linked={linked} />)}</>;
   const at = (level: Level) => regionsOf(districts, `${idPrefix}-${level}`);
   const district = at("district");
   const area = at("area");
@@ -219,8 +220,8 @@ export function StandingsLevels({ districts, identities, idPrefix = "s" }: { dis
                         identities={identities}
                         title={districtLabel(a, d)}
                         bar={
-                          <h4 id={districtId(d.key)} className="scroll-mt-12 bg-panel px-3 font-num text-[16px] font-bold uppercase tracking-wider text-navy">
-                            <DistrictLink d={d}>{districtLabel(a, d)}</DistrictLink>
+                          <h4 id={districtId(d.key)} className={`scroll-mt-12 bg-panel px-3 font-num text-[16px] font-bold uppercase tracking-wider text-navy ${linked ? "" : "py-1"}`}>
+                            {linked ? <DistrictLink d={d}>{districtLabel(a, d)}</DistrictLink> : districtLabel(a, d)}
                           </h4>
                         }
                       />
