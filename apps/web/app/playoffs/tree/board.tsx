@@ -156,7 +156,7 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
   };
   const treeShown = view === "tree" ? "block" : view === "rounds" ? "hidden" : "hidden md:block";
   const roundsShown = view === "rounds" ? "block" : view === "tree" ? "hidden" : "md:hidden";
-  const btn = (on: boolean) => `inline-flex min-h-11 items-center px-3 text-[14px] font-bold ${on ? "bg-navy text-white" : "text-navy hover:bg-panel"}`;
+  const btn = (on: boolean) => `inline-flex min-h-11 items-center px-3 text-[14px] font-bold ${on ? "bg-band text-white" : "text-navy hover:bg-panel"}`;
   const printZoom = geo.width ? Math.min(1, 995 / geo.width, 700 / geo.height) : 1;
   const teamName = team && data.boxes.flatMap((b) => b.sides).find((s) => s.key === team)?.text;
 

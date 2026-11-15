@@ -41,7 +41,7 @@ export function LevelViews({ levels, views }: { levels: Level[]; views: Partial<
                 choose(l);
               }}
               className={`inline-flex min-h-11 flex-auto items-center justify-center px-2 whitespace-nowrap font-num text-[16px] font-bold uppercase tracking-wide ${
-                l === view ? "bg-navy text-white" : "text-navy hover:bg-panel"
+                l === view ? "bg-band text-white" : "text-navy hover:bg-panel"
               }`}
             >
               {LEVEL_LABEL[l]}
