@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { loadAlignments, slugify } from "@/lib/alignments";
+import { loadAlignments } from "@/lib/alignments";
 import { type Final, finalScore } from "@/lib/champions";
-import { EMPTY, type Identity, loadIdentities } from "@/lib/identity";
+import { finalLinker, type Linker } from "@/lib/final-linker";
+import { loadIdentities } from "@/lib/identity";
 import { loadLineage, successorOf } from "@/lib/lineage";
 import { CrestSlot, SectionBar } from "../ui";
-
-/** `now`: today's program when the school merged into one (ADR 0003). */
-export type Linker = (name: string) => { href?: string; identity: Identity; now?: string };
 
 export function Team({ name, link, crest = true }: { name: string; link: Linker; crest?: boolean }) {
   const { href, identity, now } = link(name);
@@ -88,17 +86,10 @@ export function Bracket({ id, title, finals, link, yearLinks = true }: { id: str
   );
 }
 
-/** Where a school's name goes: its program page if it has one, or the program it became (ADR 0003). Also the successor map. */
+/** Where a school's name goes (lib/final-linker.ts), and the successor map for title counts. */
 export async function loadLinker() {
   const [alignments, identities, lineage] = await Promise.all([loadAlignments(), loadIdentities(), loadLineage()]);
   const successors = successorOf(lineage);
-  const slugs = new Set(alignments.map((a) => a.slug));
-  const link: Linker = (name) => {
-    const slug = slugify(name);
-    if (slugs.has(slug)) return { href: `/programs/${slug}`, identity: identities.get(slug) ?? EMPTY };
-    const now = successors.get(slug);
-    // A merged school keeps its own name and a plain badge; the link goes to the program it became.
-    return now && slugs.has(slugify(now)) ? { href: `/programs/${slugify(now)}`, identity: EMPTY, now } : { identity: EMPTY };
-  };
+  const link = finalLinker(alignments, identities, successors);
   return { link, successors };
 }

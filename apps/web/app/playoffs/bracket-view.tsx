@@ -2,16 +2,23 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { loadAlignments } from "@/lib/alignments";
 import { bracketHref, bracketLabel, type Bracket, latestRound, roundLabel } from "@/lib/brackets";
+import { bracketGames } from "@/lib/game-pages";
 import { loadIdentities } from "@/lib/identity";
+import { bracketIntro } from "@/lib/intros";
+import { bracketGamesList, breadcrumbList } from "@/lib/json-ld";
 import { previewOf } from "@/lib/playoff-path";
 import { centralClock, currentRound } from "@/lib/playoff-status";
 import { chanceText, projectionParts } from "@/lib/projection";
 import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
+import { SITE_URL } from "@/lib/site";
+import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { PageHeader } from "../ui";
 import { ChanceList } from "./chance-list";
 import { BuiltList, GameList } from "./game-list";
+import { BracketBoard } from "./tree/board";
+import { treeData } from "./tree/data";
 
 const leagueHref = (league: string) => (league === "UIL" ? "/playoffs" : `/playoffs/${league.toLowerCase()}`);
 
@@ -22,7 +29,7 @@ const leagueHref = (league: string) => (league === "UIL" ? "/playoffs" : `/playo
  * unconfirmed and names no winner (ADR 0004); a bracket may go on from one (ADR 0013).
  */
 export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; siblings: Bracket[] }) {
-  const [alignments, identities, table] = await Promise.all([loadAlignments(), loadIdentities(), loadRatings(CURRENT_SEASON)]);
+  const [alignments, identities, table, tree] = await Promise.all([loadAlignments(), loadIdentities(), loadRatings(CURRENT_SEASON), treeData(b)]);
   const clock = centralClock();
   const current = currentRound(b.rounds, clock.date);
   const rounds = [...(current ? [current] : []), ...b.rounds.filter((r) => r !== current)];
@@ -31,16 +38,26 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
     return preview ? [{ pair, ...preview }] : [];
   });
   const roundId = (round: string) => `round-${round}`;
+  // The games that have a page of their own (a game a bracket only sets has none yet), earliest round first, for search engines.
+  const pages = new Map((await bracketGames()).filter((g) => g.id.startsWith(`${CURRENT_SEASON}-`)).map((g) => [`${g.date}|${g.home.name}|${g.away.name}`, g.id]));
+  const listed = b.rounds.flatMap((r) => r.games.flatMap((g) => {
+    const id = pages.get(`${g.date}|${g.home}|${g.away}`);
+    return id ? [{ away: g.away, home: g.home, date: g.date, kickoff: g.kickoff, url: `${SITE_URL}/scores/${id}` }] : [];
+  }));
 
   return (
     <section aria-labelledby="bracket">
+      <div className="print:hidden">
       <nav aria-label="Back" className="-mx-1">
         <Link href={leagueHref(b.league)} className="inline-flex min-h-11 items-center gap-1.5 px-1 text-[14px] font-semibold text-navy">
           <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={2.5} />
           All {b.league} playoffs
         </Link>
       </nav>
-      <PageHeader id="bracket" size="md" eyebrow={`${CURRENT_SEASON} season · ${b.league} · latest: ${latestRound(b)!.label}`} title={b.name} />
+      {/* The back link is the trail on screen; search engines get the same trail as markup. */}
+      <JsonLd data={breadcrumbList([{ name: "Home", href: "/" }, { name: `${b.league} playoffs`, href: leagueHref(b.league) }, { name: b.name, href: bracketHref(b.name) }])} />
+      {listed.length > 0 && <JsonLd data={bracketGamesList(`${b.name} games`, listed)} />}
+      <PageHeader id="bracket" size="md" eyebrow={`${CURRENT_SEASON} season · ${b.league} · latest: ${latestRound(b)!.label}`} title={b.name} note={bracketIntro({ name: b.name, season: CURRENT_SEASON })} />
       {siblings.length > 1 && (
         <TabNav label={`${b.league} brackets`} tabs={siblings.map((s) => ({ href: bracketHref(s.name), label: bracketLabel(s) }))} current={bracketHref(b.name)} wrap />
       )}
@@ -51,7 +68,11 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
           This page is rebuilt with the newest scores read, about every 30 minutes on playoff Friday nights. Scores may be corrected if a mistake is found.
         </p>
       </div>
+      </div>
 
+      <BracketBoard data={tree} imageBase={`${bracketHref(b.name)}/image`} />
+
+      <div id="games-by-round" className="scroll-mt-4 print:hidden">
       {b.rounds.length > 1 && (
         <nav aria-label={`${b.name} rounds`} className="mt-3 flex flex-wrap border-b border-line px-1">
           {b.rounds.map((r) => (
@@ -59,7 +80,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
               key={r.round}
               href={`#${roundId(r.round)}`}
               aria-current={r === current ? "location" : undefined}
-              className={`inline-flex min-h-11 items-center px-2 font-num text-[17px] font-bold uppercase tracking-wide underline-offset-4 hover:underline ${r === current ? "bg-navy text-white" : "text-navy"}`}
+              className={`inline-flex min-h-11 items-center px-2 font-num text-[17px] font-bold uppercase tracking-wide underline-offset-4 hover:underline ${r === current ? "bg-band text-white" : "text-navy"}`}
             >
               {r.label}
             </a>
@@ -125,6 +146,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
       <p className="mt-6 text-[13px] text-muted">
         Away team first. Projections and title chances use the current ratings, on a neutral field unless the game is at a home site. A team&rsquo;s next game shows who went on.
       </p>
+      </div>
     </section>
   );
 }

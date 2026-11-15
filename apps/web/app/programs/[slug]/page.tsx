@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { heading, loadAlignments, placeLabel, programFor, slugify, uniquePrograms } from "@/lib/alignments";
 import { finalScore, loadFinals } from "@/lib/champions";
+import { programEdge } from "@/lib/intros";
 import { programDescription, rankPhrase } from "@/lib/descriptions";
 import { titlesBySlug } from "@/lib/program-titles";
 import { loadCorrections } from "@/lib/correction-files";
@@ -18,7 +19,7 @@ import { FEW_GAMES, loadRatings, ratingSeasons, record, signed } from "@/lib/rat
 import { meetingScore, schedulesFor, type Meeting } from "@/lib/schedule-strength";
 import { whyItMoved } from "@/lib/why-moved";
 import { seasonHref } from "../../rankings/view";
-import { CURRENT_SEASON } from "@/lib/season";
+import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { tonightsDate } from "@/lib/tonight";
 import { loadStandings, ordinal, standingsHref, wl } from "@/lib/standings";
 import { loadGames, loadSeasonResults, roundPhrase } from "@/lib/games";
@@ -75,6 +76,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const NAVY = "#0a2a5e";
+const DARK_PAGE = "#0d1526";
 
 /** A section: the site's navy heading band, with a stripe in one of the school's own colors down its left edge. */
 function Section({ id, title, accent, children, className = "mt-7" }: { id: string; title: string; accent: string; children: ReactNode; className?: string }) {
@@ -82,7 +84,7 @@ function Section({ id, title, accent, children, className = "mt-7" }: { id: stri
     <section aria-labelledby={id} className={className}>
       <h2
         id={id}
-        className="bg-navy py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white"
+        className="bg-band py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white"
         style={{ boxShadow: `inset 8px 0 0 ${accent}` }}
       >
         {title}
@@ -146,9 +148,10 @@ export default async function ProgramPage({ params }: Props) {
   };
   const { theme } = identity;
   // The school's own colors carry the page without hurting contrast: the heading stripe is whichever of its colors shows
-  // up on navy, and the rank line uses the school's main color only where it stands out on white.
+  // up on navy, and the rank line uses the school's main color only where it stands out on both the light and the dark
+  // page (globals.css --color-page); otherwise the theme's own navy.
   const accent = [theme.stripe, theme.bg, theme.fg].find((c): c is string => !!c && contrast(c, NAVY) >= 3) ?? "#ffffff";
-  const lineColor = contrast(theme.bg, "#ffffff") >= 3 ? theme.bg : NAVY;
+  const lineColor = contrast(theme.bg, "#ffffff") >= 3 && contrast(theme.bg, DARK_PAGE) >= 3 ? theme.bg : "var(--color-navy)";
   const mates = all.filter(
     (a) => a.slug !== slug && a.league === school.league && a.division === school.division && a.region === school.region && a.district === school.district,
   );
@@ -290,7 +293,7 @@ export default async function ProgramPage({ params }: Props) {
   const page = (
     <EdgeToEdge>
       {/* data-pagefind-body: this page is in the site search (app/search). */}
-      <article data-pagefind-body aria-labelledby="school" className="mx-auto max-w-3xl border-line bg-white pb-6 sm:border-x">
+      <article data-pagefind-body aria-labelledby="school" className="mx-auto max-w-3xl border-line bg-page pb-6 sm:border-x">
         <Breadcrumbs trail={[{ name: "Home", href: "/" }, { name: "Programs", href: "/programs" }, { name: school.school, href: `/programs/${slug}` }]} />
         <JsonLd data={programJsonLd({ name: school.school, slug, league: school.league === "Independent" ? undefined : school.league, logo: identity.logo && identity.logo.aspect <= HEADER_CREST_MAX_ASPECT ? identity.logo.src : undefined })} />
         <header className="px-3 pb-3 pt-5" style={{ background: theme.bg, color: theme.fg, borderBottom: `6px solid ${theme.stripe ?? theme.bg}` }}>
@@ -373,11 +376,12 @@ export default async function ProgramPage({ params }: Props) {
             <p className="mt-4 border-t border-current/30 pt-3 text-[15px] font-semibold">Not rated yet: a rating appears once this team has a game on record.</p>
           )}
         </header>
+        <p className="px-3 pt-3 text-[14px] leading-5 text-muted">{programEdge({ name: school.school, firstSeason: FIRST_SEASON })}</p>
 
         {(next || latest) && (
           <section aria-label="Next and latest game" className="grid gap-px border-b border-line bg-line sm:grid-cols-2">
             {next && (
-              <div className="bg-white px-3 py-2.5">
+              <div className="bg-page px-3 py-2.5">
                 {/* A game dated before tonight with no score yet is waiting on its score, not still to play. */}
                 <p className="text-[12px] font-bold uppercase tracking-widest text-red">{next.date < tonightsDate() ? "Score not in yet" : "Next game"}</p>
                 {next.href ? (
@@ -403,7 +407,7 @@ export default async function ProgramPage({ params }: Props) {
               </div>
             )}
             {latest && (
-              <div className="bg-white px-3 py-2.5">
+              <div className="bg-page px-3 py-2.5">
                 <p className="text-[12px] font-bold uppercase tracking-widest text-red">Latest score</p>
                 <div className="flex min-h-11 items-center justify-between gap-2 text-[16px] font-semibold text-ink">
                   <span>
@@ -730,7 +734,7 @@ export default async function ProgramPage({ params }: Props) {
         {/* The embeddable scoreboard (ADR 0023): the iframe is text to copy, never an element on this page. */}
         <details data-pagefind-ignore className="mx-3 mt-6 border-t border-line">
           <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">Put this on your site</summary>
-          <p className="text-[14px] text-ink">Copy this into your school or booster page to show {school.school}&rsquo;s record, latest scores and next game.</p>
+          <p className="text-[14px] text-ink">Copy this into your school or booster page to show {school.school}&rsquo;s record, latest scores and next game, with a link to the full schedule.</p>
           <pre className="mt-2 whitespace-pre-wrap break-words border border-line bg-panel p-3 text-[13px] text-ink">
             <code>{embedSnippet(slug, school.school)}</code>
           </pre>

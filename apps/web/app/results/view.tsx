@@ -7,8 +7,10 @@ import { isDisputed, loadDisputed } from "@/lib/disputed";
 import { projectedLine, resultOutcome } from "@/lib/outcome";
 import { pregameShown } from "@/lib/pregame";
 import { projectionText } from "@/lib/projection";
+import { weekNeighbours } from "@/lib/neighbours";
 import { loadWeeks, resultSeasons, weekLabel, type Week } from "@/lib/weeks";
 import { TabNav } from "../tab-nav";
+import { WeekStrip } from "../week-strip";
 import { CrestSlot, EmptyState, PageHeader, SectionBar } from "../ui";
 import { seasonHref, weekHref } from "./paths";
 
@@ -25,6 +27,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
     Promise.all(ORGS.map(async (o) => [o, await resultSeasons(o)] as const)),
   ]);
   const shown = weeks.find((w) => w.number === week) as Week;
+  const { review, rankings } = await weekNeighbours({ season, week, org });
   const days = Map.groupBy(shown.games, (g) => g.status);
 
   const team = (name: string) => {
@@ -74,21 +77,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
           current={seasonHref(season, seasons[0], org)}
         />
       )}
-      <nav aria-label="Week" className="mt-3 flex flex-wrap gap-1.5">
-        {weeks.map((w) => (
-          <Link
-            key={w.number}
-            href={weekHref(season, w.number, org)}
-            aria-current={w.number === week ? "page" : undefined}
-            aria-label={`Week ${w.number}, from ${weekLabel(w.monday)}`}
-            className={`inline-flex size-11 items-center justify-center border-2 border-navy font-num text-[17px] font-bold ${
-              w.number === week ? "bg-navy text-white" : "text-navy hover:bg-panel"
-            }`}
-          >
-            {w.number}
-          </Link>
-        ))}
-      </nav>
+      <WeekStrip weeks={weeks.map((w) => ({ number: w.number, href: weekHref(season, w.number, org), label: `Week ${w.number}, from ${weekLabel(w.monday)}`, current: w.number === week }))} />
       {!shown.games.length && <EmptyState>No {org.label} games this week.</EmptyState>}
       {[...days].map(([day, games]) => (
         <section key={day} aria-labelledby={`day-${day.replace(/\W+/g, "-")}`} className="mt-6">
@@ -115,6 +104,11 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
           </ul>
         </section>
       ))}
+      {(review || rankings) && (
+        <nav aria-label="Related pages" className="mt-4 flex flex-wrap gap-x-5">
+          {[review, rankings].map((n) => n && <Link key={n.href} href={n.href} prefetch={false} className="link-more">{n.label}</Link>)}
+        </nav>
+      )}
       <p className="mt-4 text-[13px] text-muted">
         Away team first. Scores may be corrected if a mistake is found. Projections use both teams&rsquo; ratings from the week
         before, once each has played four games.

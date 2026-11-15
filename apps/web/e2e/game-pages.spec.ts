@@ -178,6 +178,10 @@ test("a results row and a program schedule row link to the game page", async ({ 
   await expect(row).toHaveAttribute("href", r.href);
   await row.click();
   await expect(page).toHaveURL(r.href);
+  // Its breadcrumb leads back to that week.
+  const back = page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link").nth(1);
+  await expect(back).toHaveText(`2025 week ${weekOf(r.id)}`);
+  await expect(back).toHaveAttribute("href", new RegExp(`^/results/2025/${weekOf(r.id)}(/[a-z]+)?$`));
 
   await page.goto(`/programs/${programSlug(regular.home)}`);
   const schedule = page.getByRole("region", { name: /2026 games/ });

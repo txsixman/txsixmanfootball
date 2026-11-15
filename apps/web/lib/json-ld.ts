@@ -1,6 +1,6 @@
 import type { Game, Team } from "./demo-games";
 import { isForfeit } from "./score-display";
-import { SITE_URL } from "./site";
+import { SITE_NAME, SITE_URL } from "./site";
 
 // Structured data (schema.org JSON-LD) for search engines. It says only what the page already says: a score only when
 // the page's own rules call it confirmed (ADR 0004, 0011, 0013), never a winner from an unconfirmed score, nothing
@@ -9,6 +9,12 @@ import { SITE_URL } from "./site";
 const CONTEXT = "https://schema.org";
 const SPORT = "Six-man football";
 const abs = (path: string) => `${SITE_URL}${path}`;
+
+/**
+ * A block's text for the script tag. Empty strings and nulls are dropped (a property with nothing to say is left out, never
+ * written empty), and `<` is escaped so no text in the data can close the script tag.
+ */
+export const jsonLdText = (data: object) => JSON.stringify(data, (_, v) => (v === "" || v === null ? undefined : v)).replace(/</g, "\\u003c");
 
 /** A page's own trail, last entry the page itself: breadcrumbs on screen and in the markup come from one list. */
 export type Crumb = { name: string; href: string };
@@ -19,7 +25,16 @@ export const breadcrumbList = (trail: Crumb[]) => ({
   itemListElement: trail.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: abs(c.href) })),
 });
 
-/** The ranked teams in table order: position, name and page. No ratings or numbers. */
+/** The home page's: the site's own name, so a search result can show "TX Six-Man Football" rather than the address. */
+export const websiteJsonLd = () => ({
+  "@context": CONTEXT,
+  "@type": "WebSite",
+  name: SITE_NAME,
+  alternateName: ["TX Six-Man", "txsixmanfootball.com"],
+  url: `${SITE_URL}/`,
+});
+
+/** Pages in list order (ranked teams, a league's brackets): position, name and page. No ratings or numbers. */
 export const rankedList = (name: string, teams: { name: string; href: string }[]) => ({
   "@context": CONTEXT,
   "@type": "ItemList",
@@ -60,7 +75,9 @@ export function gameJsonLd(g: Game, { url, home, away }: { url: string; home?: {
     name: `${g.away.name} vs ${g.home.name}`,
     url,
     sport: SPORT,
-    ...(g.date && { startDate: g.date }),
+    // The kickoff (a full UTC time) when the page knows it, else the day (both ISO 8601).
+    ...((g.kickoff || g.date) && { startDate: g.kickoff || g.date }),
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     ...(g.state === "scheduled" && { eventStatus: "https://schema.org/EventScheduled" }),
     ...(g.state === "postponed" && { eventStatus: "https://schema.org/EventPostponed" }),
     ...(place && { location: { "@type": "Place", name: place } }),
@@ -68,3 +85,29 @@ export function gameJsonLd(g: Game, { url, home, away }: { url: string; home?: {
     ...(played && { description: `Final: ${g.away.name} ${g.awayScore}, ${g.home.name} ${g.homeScore}.` }),
   };
 }
+
+/**
+ * A bracket's games as a list, each a SportsEvent with its own page: name, day (or kickoff) and the two teams. Said once
+ * and plainly: no score and no result, so a forfeit and an unconfirmed score read the same as a game not yet played.
+ * `games` holds only games that have a page; a site not listed is left out, as on the game page.
+ */
+export const bracketGamesList = (
+  name: string,
+  games: { away: string; home: string; date: string; kickoff?: string; url: string }[],
+) => ({
+  "@context": CONTEXT,
+  "@type": "ItemList",
+  name,
+  itemListElement: games.map((g, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    item: {
+      "@type": "SportsEvent",
+      name: `${g.away} vs ${g.home}`,
+      url: g.url,
+      sport: SPORT,
+      startDate: g.kickoff || g.date,
+      competitor: [g.away, g.home].map((t) => ({ "@type": "SportsTeam", name: t, sport: SPORT })),
+    },
+  })),
+});
