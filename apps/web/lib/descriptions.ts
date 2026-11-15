@@ -112,6 +112,15 @@ export function standingsDescription({ label, season, teams, groups, districtPla
       ]);
 }
 
+/** One district's page: its standings and every district game's score. `label` is "UIL Division I District 8". */
+export function districtStandingsDescription({ label, season, teams, games }: { label: string; season: number; teams: number; games: number }) {
+  return fit(`${label} six-man standings for ${season}: ${count(teams, "team")}, ${count(games, "district game")} played.`, [
+    "District records, overall records, point difference and every district game.",
+    "District and overall records and every district game.",
+    "District and overall records.",
+  ]);
+}
+
 /** One league's playoffs, the latest season or a past one: `brackets` is how many it had. */
 export function playoffsDescription({ league, season, brackets, past }: { league: string; season: number; brackets: number; past: boolean }) {
   const base = `${season} ${league} six-man playoffs: ${count(brackets, "bracket")}`;

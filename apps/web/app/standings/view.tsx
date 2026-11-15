@@ -4,7 +4,7 @@ import { standingsDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { ORGS, orgHref } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
-import { type DistrictStandings, districtId, loadStandings, wl } from "@/lib/standings";
+import { type DistrictStandings, districtHref, districtId, loadStandings, wl } from "@/lib/standings";
 import { type AreaGroup, districtLabel, type Level, levelsOf, type RankedRow, regionsOf } from "@/lib/standings-levels";
 import { TabNav } from "../tab-nav";
 import { CrestSlot, PageHeader, SectionBar } from "../ui";
@@ -23,7 +23,19 @@ export const GROUPS = [
 ];
 
 export type Group = (typeof GROUPS)[number];
-const hrefOf = (g: Group) => (g.slug ? `/standings/${g.slug}` : "/standings");
+export const hrefOf = (g: Group) => (g.slug ? `/standings/${g.slug}` : "/standings");
+
+/** Every district with district play this season, each with its standings page group and its heading ("TAPPS Division
+ * III": one standings page can hold several divisions), in page order: one page each (/standings/district/…). TAIAO has
+ * no districts, so none of its groups is here. */
+export async function districtPages() {
+  const all = await loadStandings(SEASON);
+  return GROUPS.flatMap((group) =>
+    all
+      .filter((d) => d.districtPlay && group.test(d))
+      .map((d) => ({ d, group, heading: d.key.split("|")[0], href: districtHref(d), number: d.rows[0].school.district })),
+  );
+}
 const uilDivisions = GROUPS.filter((g) => g.org === ORGS[0]);
 
 type Identities = Awaited<ReturnType<typeof loadIdentities>>;
@@ -57,13 +69,30 @@ const DiffHeader = () => (
   </th>
 );
 
-/** A district's table, ordered by district record (lib/standings.ts). `title` and `bar` let a level page name it in full. */
-function District({ d, identities, title = d.title, bar }: { d: DistrictStandings; identities: Identities; title?: string; bar?: ReactNode }) {
+/** A district's name, linked to its own page (/standings/district/…). */
+const DistrictLink = ({ d, children }: { d: DistrictStandings; children: ReactNode }) => (
+  <Link href={districtHref(d)} prefetch={false} className="inline-flex min-h-11 items-center underline decoration-current/40 underline-offset-4 hover:decoration-current">
+    {children}
+  </Link>
+);
+
+/** A district's table, ordered by district record (lib/standings.ts). `title` and `bar` let a level page name it in full;
+ * `linked` names it with a link to the district's own page (not on that page itself). */
+export function District({ d, identities, title = d.title, bar, linked = true }: { d: DistrictStandings; identities: Identities; title?: string; bar?: ReactNode; linked?: boolean }) {
   const caption = title === d.title ? title : `${leagueOf(d)} · ${title}`;
   const id = districtId(d.key);
   return (
     <section aria-labelledby={id} className="mt-6">
-      {bar ?? <SectionBar id={id} title={title} className="" />}
+      {bar ??
+        (linked && d.districtPlay ? (
+          <div className="bg-band px-3 text-white">
+            <h2 id={id} className="scroll-mt-4 font-num text-[18px] font-bold uppercase tracking-wider">
+              <DistrictLink d={d}>{title}</DistrictLink>
+            </h2>
+          </div>
+        ) : (
+          <SectionBar id={id} title={title} className="" />
+        ))}
       <table className="w-full border-collapse text-[15px]">
         <caption className="sr-only">{caption} standings</caption>
         <thead>
@@ -162,10 +191,11 @@ function AreaHeading({ area }: { area: AreaGroup }) {
 }
 
 /** The tables for one page's districts, at every level its alignment holds (ADR 0048). */
-export function StandingsLevels({ districts, identities, idPrefix = "s" }: { districts: DistrictStandings[]; identities: Identities; idPrefix?: string }) {
+/** `linked`: name each district with a link to its own page; off for the sample page's invented districts, which have none. */
+export function StandingsLevels({ districts, identities, idPrefix = "s", linked = true }: { districts: DistrictStandings[]; identities: Identities; idPrefix?: string; linked?: boolean }) {
   const levels = levelsOf(districts);
   const league = districts[0] ? leagueOf(districts[0]) : "";
-  if (levels.length === 1) return <>{districts.map((d) => <District key={d.key} d={d} identities={identities} />)}</>;
+  if (levels.length === 1) return <>{districts.map((d) => <District key={d.key} d={d} identities={identities} linked={linked} />)}</>;
   const at = (level: Level) => regionsOf(districts, `${idPrefix}-${level}`);
   const district = at("district");
   const area = at("area");
@@ -189,7 +219,11 @@ export function StandingsLevels({ districts, identities, idPrefix = "s" }: { dis
                         d={d}
                         identities={identities}
                         title={districtLabel(a, d)}
-                        bar={<h4 id={districtId(d.key)} className="scroll-mt-12 bg-panel px-3 py-1 font-num text-[16px] font-bold uppercase tracking-wider text-navy">{districtLabel(a, d)}</h4>}
+                        bar={
+                          <h4 id={districtId(d.key)} className={`scroll-mt-12 bg-panel px-3 font-num text-[16px] font-bold uppercase tracking-wider text-navy ${linked ? "" : "py-1"}`}>
+                            {linked ? <DistrictLink d={d}>{districtLabel(a, d)}</DistrictLink> : districtLabel(a, d)}
+                          </h4>
+                        }
                       />
                     ))}
                   </div>

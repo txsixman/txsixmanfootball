@@ -179,7 +179,7 @@ export async function SeasonHubView({ hub }: Props) {
   const link = finalLinker(alignments, identities, successorOf(lineage));
   const { season, latest } = hub;
   const orgs = hub.orgs.map((o) => o.org.label);
-  const jump = [{ id: "finals", label: "UIL finals" }, ...hub.orgs.map((o) => ({ id: seasonId(o.org), label: o.org.label })), { id: "weeks", label: "Weeks" }];
+  const jump = [{ id: "finals", label: "State Championships" }, ...hub.orgs.map((o) => ({ id: seasonId(o.org), label: o.org.label })), { id: "weeks", label: "Weeks" }];
 
   return (
     <>
@@ -229,7 +229,7 @@ export async function SeasonHubView({ hub }: Props) {
         ) : (
           <div className="px-3 py-3">
             <p className="text-[15px] leading-6 text-ink">
-              {latest ? `The ${season} UIL State Championships are in December. Until then, follow the brackets round by round.` : `UIL has no State Championship on record for ${season}.`}
+              {latest ? `The ${season} UIL State Championships are in December. Until then, follow the brackets round by round.` : `UIL has no State Championship game on record for ${season}.`}
             </p>
             <Link href={latest ? "/playoffs" : "/championships"} className={LINK}>
               {latest ? "UIL playoffs" : "Every state championship"}

@@ -13,6 +13,8 @@ export type FinderGroup = {
   heading: string;
   place: string;
   key: string;
+  /** The district's standings page, for a district with district play. */
+  href?: string;
   schools: { slug: string; school: string; identity: Identity }[];
 };
 
@@ -77,7 +79,15 @@ export function Finder({ groups }: { groups: FinderGroup[] }) {
                       .filter((g) => g.heading === division)
                       .map((g) => (
                         <article key={g.key} className="border border-line bg-panel">
-                          <H className="border-b border-line bg-page px-3 py-2 font-num text-[15px] font-bold uppercase tracking-wider text-navy">{g.place}</H>
+                          <H className={`border-b border-line bg-page px-3 font-num text-[15px] font-bold uppercase tracking-wider text-navy ${g.href ? "" : "py-2"}`}>
+                            {g.href ? (
+                              <Link href={g.href} prefetch={false} className="flex min-h-11 items-center underline decoration-current/40 underline-offset-4 hover:decoration-current">
+                                {g.place}
+                              </Link>
+                            ) : (
+                              g.place
+                            )}
+                          </H>
                           <ul>
                             {g.schools.map((s) => (
                               <li key={s.slug} className="border-b border-line last:border-b-0">

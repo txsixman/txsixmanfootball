@@ -50,7 +50,7 @@ test("programs: the organization bar shows each organization's count, and the co
 
 test("programs: school names line up in a district whatever the logo's shape", async ({ page }) => {
   await page.goto("/programs", { waitUntil: "networkidle" });
-  const lefts = await page.locator("#org-uil article").first().getByRole("link").evaluateAll((els) => els.map((a) => Math.round(a.querySelector("span.min-w-0")!.getBoundingClientRect().left)));
+  const lefts = await page.locator("#org-uil article").first().locator("ul").getByRole("link").evaluateAll((els) => els.map((a) => Math.round(a.querySelector("span.min-w-0")!.getBoundingClientRect().left)));
   expect(lefts.length).toBeGreaterThan(1);
   expect(new Set(lefts).size).toBe(1);
 });

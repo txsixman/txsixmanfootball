@@ -37,7 +37,7 @@ export default function SampleStandingsPage() {
   return (
     <section aria-labelledby="standings">
       <PageHeader id="standings" eyebrow="Sample standings. Invented schools." title="Standings" note={`${districts.length} districts in two regions.`} />
-      <StandingsLevels districts={districts} identities={new Map()} idPrefix="sample" />
+      <StandingsLevels districts={districts} identities={new Map()} idPrefix="sample" linked={false} />
     </section>
   );
 }

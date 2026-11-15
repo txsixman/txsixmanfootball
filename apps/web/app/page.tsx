@@ -19,6 +19,7 @@ import { homeEdge } from "@/lib/intros";
 import { websiteJsonLd } from "@/lib/json-ld";
 import { JsonLd } from "./json-ld";
 import { MyTeams } from "./my-teams/block";
+import { HomeBrowse } from "./home-browse";
 import { ChanceList } from "./playoffs/chance-list";
 import { Crest } from "./programs/crest";
 import { homeTitle } from "@/lib/titles";
@@ -232,6 +233,8 @@ export default async function Home() {
           </Link>
         </section>
       )}
+
+      <HomeBrowse finals={finals} />
     </>
   );
 }

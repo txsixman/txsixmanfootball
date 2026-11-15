@@ -6,8 +6,9 @@ const BANNED = /\b(spreads?|odds|lines?|bets?|betting|underdogs?|favou?rites?|lo
 
 test("/scores says what the site has", async ({ page }) => {
   await page.goto("/scores");
-  const line = page.getByText(/^Live scores on game nights, a projected margin/);
+  const line = page.getByText(/^Live scores, a projected margin/);
   await expect(line).toBeVisible();
+  await expect(line).toContainText("district, area and region standings");
   await expect(line).toContainText("Free, no sign-in.");
   expect(await line.innerText()).not.toMatch(BANNED);
 });

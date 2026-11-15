@@ -55,7 +55,7 @@ test("the scores page's and a program page's lines: what a fan gets, under the l
   const scores = clean(t.scoresEdge({ firstSeason: 2018, firstFinal: 1972 }));
   assert.equal(
     scores,
-    "Live scores on game nights, a projected margin and chance to win for every game still to play, brackets that fill in as games finish, district standings, results since 2018 and every UIL State Championship since 1972. Free, no sign-in.",
+    "Live scores, a projected margin and chance to win for every game still to play, brackets that fill in as games finish, district, area and region standings, results since 2018 and every UIL State Championship since 1972. Free, no sign-in.",
   );
   assert.ok(scores.length <= 240, `${scores.length} characters`);
   for (const name of ["Jayton", "O'Donnell", "Sherman Grayson Christian School"]) {
