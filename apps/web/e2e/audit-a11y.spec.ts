@@ -94,7 +94,7 @@ test("body copy is at least 13px; only the 12px uppercase eyebrow labels stay sm
       ),
     );
   const sample = demoGames.find((g) => g.state === "postponed")?.id ?? "g1";
-  for (const url of ["/scores", "/scores/sample", `/scores/${sample}`, "/rankings", "/rankings/sample", "/programs/jayton", "/championships", "/records", "/standings"]) {
+  for (const url of ["/scores", "/scores/sample", `/scores/${sample}`, "/rankings", "/rankings/sample", "/playoffs/bracket/sample", "/programs/jayton", "/championships", "/records", "/standings"]) {
     expect(await small(url), url).toEqual([]);
   }
 });
