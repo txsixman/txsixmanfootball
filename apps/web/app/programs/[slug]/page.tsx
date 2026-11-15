@@ -730,7 +730,7 @@ export default async function ProgramPage({ params }: Props) {
         {/* The embeddable scoreboard (ADR 0023): the iframe is text to copy, never an element on this page. */}
         <details data-pagefind-ignore className="mx-3 mt-6 border-t border-line">
           <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">Put this on your site</summary>
-          <p className="text-[14px] text-ink">Copy this into your school or booster page to show {school.school}&rsquo;s record, latest scores and next game.</p>
+          <p className="text-[14px] text-ink">Copy this into your school or booster page to show {school.school}&rsquo;s record, latest scores and next game, with a link to the full schedule.</p>
           <pre className="mt-2 whitespace-pre-wrap break-words border border-line bg-panel p-3 text-[13px] text-ink">
             <code>{embedSnippet(slug, school.school)}</code>
           </pre>

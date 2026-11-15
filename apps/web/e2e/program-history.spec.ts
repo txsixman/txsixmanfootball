@@ -202,14 +202,15 @@ for (const slug of ["jayton", "dell-city", "calvert"]) {
   });
 }
 
-test("\"Put this on your site\" holds the iframe as text to copy, and no iframe is on the page", async ({ page }) => {
+test("\"Put this on your site\" holds the iframe and a plain link to the program page as text to copy, and no iframe is on the page", async ({ page }) => {
   await open(page, "jayton");
   const block = page.locator("details").filter({ has: page.getByText("Put this on your site", { exact: true }) });
   await expect(block).toHaveCount(1);
   await expect(block.locator("details, summary")).toHaveCount(1); // only its own summary
   await block.getByText("Put this on your site", { exact: true }).click();
   await expect(block.locator("pre code")).toHaveText(
-    `<iframe src="https://txsixmanfootball.com/embed/programs/jayton" title="Jayton scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>`,
+    `<iframe src="https://txsixmanfootball.com/embed/programs/jayton" title="Jayton scores" width="100%" height="${EMBED_HEIGHT}" style="border:0" loading="lazy"></iframe>\n` +
+      `<p><a href="https://txsixmanfootball.com/programs/jayton">Jayton football scores and schedule</a></p>`,
   );
   await expect(block).toContainText("?theme=dark");
   await expect(page.locator("iframe")).toHaveCount(0);
