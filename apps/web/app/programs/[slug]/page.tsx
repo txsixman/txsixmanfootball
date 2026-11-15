@@ -34,6 +34,7 @@ import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../crest";
+import { LeanCrest } from "../lean-crest";
 import { PathToFinal } from "../path-to-final";
 import { Follow } from "../follow";
 import { Breadcrumbs } from "../../breadcrumbs";
@@ -44,7 +45,7 @@ import { SITE_NAME } from "@/lib/site";
 import { RatingChart, ratingPoints } from "../rating-chart";
 import { SeasonRatings } from "../season-ratings";
 import { RankTrend, rankTrend } from "../trend";
-import { CrestSlot, EdgeToEdge } from "../../ui";
+import { EdgeToEdge } from "../../ui";
 import { programTitle } from "@/lib/titles";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -143,7 +144,7 @@ export default async function ProgramPage({ params }: Props) {
    * (no invented badge), so names line up down a list. */
   const opponentCrest = (name: string) => {
     const opponent = programFor(all, name, school.league);
-    return opponent ? <CrestSlot school={opponent.school} identity={identities.get(opponent.slug) ?? EMPTY} /> : <span aria-hidden="true" className="mr-2 w-10 shrink-0" />;
+    return opponent ? <LeanCrest school={opponent.school} identity={identities.get(opponent.slug) ?? EMPTY} /> : <span className="cs" />;
   };
   const { theme } = identity;
   // The school's own colors carry the page without hurting contrast: the heading stripe is whichever of its colors shows
@@ -200,9 +201,9 @@ export default async function ProgramPage({ params }: Props) {
 
   /** A game row: date, opponent (and a projection or round), score. Every game links to its page: the score is the link,
    * stretched over the row, and the opponent's name stays its own link above it. */
-  const GameRow = ({ r, big = true }: { r: Row; big?: boolean }) => {
+  const GameRow = ({ r }: { r: Row }) => {
     const score = (
-      <span className={`font-num font-bold tabular-nums text-ink ${big ? "text-[22px]" : "text-[19px]"}`}>
+      <span className="font-num text-[22px] font-bold tabular-nums text-ink">
         {r.score ??
           // The next game, while under way, shows its live score here (ADR 0021); every other unplayed game, the arrow.
           (r.id === next?.id && r.date ? (
@@ -244,6 +245,37 @@ export default async function ProgramPage({ params }: Props) {
             score
           )}
         </div>
+      </li>
+    );
+  };
+
+  /** A game of a past season, in the least markup (about 100 a page, each sent twice: as HTML and in the page data): the same
+   * date, opponent with its crest, projection or round and score as `GameRow`, laid out by `.pg` in globals.css. The score is
+   * the link to the game's page, stretched over the row; the opponent's name stays its own link above it. */
+  const PastGame = ({ r }: { r: Row }) => {
+    const opponent = programFor(all, r.opponent, school.league);
+    const prefix = `${lead(r)} `;
+    return (
+      <li>
+        <span>{r.status}</span>
+        <div>
+          <p>
+            {opponentCrest(r.opponent)}
+            {opponent ? (
+              <>
+                {prefix}
+                <Link href={`/programs/${opponent.slug}`}>{r.opponent}</Link>
+              </>
+            ) : (
+              `${prefix}${r.opponent}`
+            )}
+          </p>
+          {r.note && <small>{r.note}</small>}
+          {r.projected && <small data-projected>{r.projected}</small>}
+        </div>
+        <Link href={r.href} aria-label={`${r.status} ${lead(r)} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}>
+          {r.score}
+        </Link>
       </li>
     );
   };
@@ -608,11 +640,11 @@ export default async function ProgramPage({ params }: Props) {
                 {played.length > 0 && (
                   <details className="px-3 pb-2">
                     <summary className="flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">
-                      {line.season} games ({played.length})
+                      {`${line.season} games (${played.length})`}
                     </summary>
-                    <ul className="border-t border-line">
+                    <ul className="pg">
                       {played.map((r) => (
-                        <GameRow key={r.id} r={r} big={false} />
+                        <PastGame key={r.id} r={r} />
                       ))}
                     </ul>
                     <p className="pt-1 text-[13px] text-muted">Playoff games name their round.</p>
