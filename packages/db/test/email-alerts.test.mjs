@@ -224,7 +224,7 @@ test("the sender's query returns each due fan's own token, and no other function
     `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and (pg_get_function_result(p.oid) ilike '%token%') order by 1`,
   );
-  assert.deepEqual(returning.rows.map((r) => r.proname), ["email_pending_game_alerts"]);
+  assert.deepEqual(returning.rows.map((r) => r.proname), ["email_pending_digests", "email_pending_game_alerts"]); // the digest (migration 0025) is the other, for its own kind of token
 });
 
 test("nobody but the sender role reaches the sender's functions, the sender reaches no table, and the live check stays clean", async () => {

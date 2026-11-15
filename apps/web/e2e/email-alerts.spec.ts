@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createServer, type Server } from "node:http";
 import { unsubscribeUrl } from "../lib/email/unsubscribe";
 
-// Email alerts (ADR 0053): the opt-in block on /account, and the signed one-click unsubscribe.
+// Email alerts (ADR 0053) and the weekly digest (ADR 0055): the opt-in block on /account, and the one-click unsubscribe.
 //
 // Two sets. The first runs anywhere, with no Supabase project (CI): the unsubscribe page and route fail closed and say the
 // same thing for every malformed link, and nothing leaks. The second needs a server that can sign a fan in, so the test starts a
@@ -56,8 +56,9 @@ test.describe("unsubscribe, with no sign-in and nothing configured", () => {
 });
 
 // ---- the stand-in for Supabase ------------------------------------------------------------------------------------------
-type Stub = { eligible: boolean; follows: string[]; optins: string[]; saved: string[][]; unsubscribed: { p_token: string }[] };
-const stub: Stub = { eligible: true, follows: ["jayton", "guthrie"], optins: [], saved: [], unsubscribed: [] };
+type Stub = { eligible: boolean; follows: string[]; optins: string[]; digest: string[]; saved: string[][]; savedDigest: string[][]; unsubscribed: { p_token: string }[] };
+const fresh = (): Stub => ({ eligible: true, follows: ["jayton", "guthrie"], optins: [], digest: [], saved: [], savedDigest: [], unsubscribed: [] });
+const stub: Stub = fresh();
 let server: Server | undefined;
 
 const jwt = () => {
@@ -82,9 +83,10 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
         if (rpc === "my_profile") return json([{ display_name: "Bobcat Fan", created_at: "2026-01-01T00:00:00Z", muted_until: null, banned: false }]);
         if (rpc === "my_follows") return json(stub.follows.map((program_slug) => ({ program_slug, created_at: "2026-01-01T00:00:00Z" })));
         if (rpc === "email_my_settings") {
-          const rows = stub.optins.map((program_slug) => ({ eligible: stub.eligible, kind: "game_alerts", program_slug }));
+          const rows = [...stub.optins.map((program_slug) => ({ eligible: stub.eligible, kind: "game_alerts", program_slug })), ...stub.digest.map((program_slug) => ({ eligible: stub.eligible, kind: "weekly_digest", program_slug }))];
           return json(rows.length ? rows : [{ eligible: stub.eligible, kind: null, program_slug: null }]);
         }
+        if (rpc === "email_set_optins" && args.p_kind === "weekly_digest") return (stub.savedDigest.push(args.p_slugs), (stub.digest = args.p_slugs), res.writeHead(204), res.end());
         if (rpc === "email_set_optins") return (stub.saved.push(args.p_slugs), (stub.optins = args.p_slugs), res.writeHead(204), res.end());
         if (rpc === "email_unsubscribe") return (stub.unsubscribed.push(args), res.writeHead(204), res.end());
         res.writeHead(404);
@@ -97,7 +99,7 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
     await new Promise<void>((ok) => (server ? server.close(() => ok()) : ok()));
   });
   test.beforeEach(async ({ context, baseURL }) => {
-    Object.assign(stub, { eligible: true, follows: ["jayton", "guthrie"], optins: [], saved: [], unsubscribed: [] });
+    Object.assign(stub, fresh());
     const session = { access_token: jwt(), refresh_token: "r", expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: "bearer", user };
     await context.addCookies([{ name: "sb-127-auth-token", value: `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`, url: baseURL! }]);
   });
@@ -132,12 +134,34 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
     expect(stub.saved[2]).toEqual([]);
   });
 
+  test("the weekly digest starts off, saves for every followed team on its own, and turns off; game alerts are untouched", async ({ page }) => {
+    await page.goto("/account");
+    const block = page.getByRole("region", { name: "Email alerts" });
+    const digest = block.getByRole("checkbox", { name: "Email me the weekly digest" });
+    await expect(digest).toBeVisible();
+    await expect(digest).not.toBeChecked(); // never on by default
+    expect((await axe(page)).violations.map((v) => v.id)).toEqual([]);
+    expect(await block.innerText()).not.toMatch(BETTING);
+    expect(await block.innerText()).not.toMatch(/\b(favou?rite|pick|line|lock)\b/i);
+    await digest.check();
+    await block.getByRole("button", { name: "Save weekly digest" }).click();
+    await expect(block.getByText("Saved.")).toBeVisible();
+    expect(stub.savedDigest).toEqual([["*"]]); // every followed team, now and later
+    expect(stub.saved).toEqual([]); // the game alerts were not touched
+    await page.reload();
+    await expect(page.getByRole("region", { name: "Email alerts" }).getByRole("checkbox", { name: "Email me the weekly digest" })).toBeChecked();
+    await page.getByRole("region", { name: "Email alerts" }).getByRole("checkbox", { name: "Email me the weekly digest" }).uncheck();
+    await page.getByRole("region", { name: "Email alerts" }).getByRole("button", { name: "Save weekly digest" }).click();
+    await expect.poll(() => stub.savedDigest.length).toBe(2);
+    expect(stub.savedDigest[1]).toEqual([]);
+  });
+
   test("an account that is not eligible, and one that follows no one, get a plain note and no form", async ({ page }) => {
     stub.eligible = false;
     await page.goto("/account");
     const block = page.getByRole("region", { name: "Email alerts" });
     await expect(block).toContainText("not available for this account");
-    await expect(block.getByRole("checkbox")).toHaveCount(0);
+    await expect(block.getByRole("checkbox")).toHaveCount(0); // no digest box either
     stub.eligible = true;
     stub.follows = [];
     await page.reload();

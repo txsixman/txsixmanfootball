@@ -1,7 +1,7 @@
 # Email alerts
 
-Email alerts for the teams a signed-in fan follows (ADR 0053). Opt-in, adults only, plain alerts, sent through Resend. This page
-is how it works and what the owner sets up. A weekly digest builds on the same pieces.
+Email alerts for the teams a signed-in fan follows (ADR 0053), and the weekly digest (ADR 0055). Opt-in, 18 or older by birth year (ADR 0056), plain
+emails, sent through Resend. This page is how it works and what the owner sets up.
 
 ## What a fan sees
 - `/account` has an Email alerts block (when the server env `EMAIL_ALERTS` is `on`): "All the teams I follow" or one box per
@@ -21,11 +21,37 @@ is how it works and what the owner sets up. A weekly digest builds on the same p
 | Resend call (outcome classes, idempotency key) | `tools/email/resend.mjs` |
 | The run | `tools/email/send-game-alerts.mjs`, `.github/workflows/email-alerts.yml` |
 
-## A second kind of email (the weekly digest)
-- `email_kind` already has `weekly_digest`. `email_optin`, `email_sent` (`item` = the week, say `2026-w47`), `email_set_optins(kind, slugs)`,
-  `email_my_settings()` and `email_unsubscribe(token)` are kind-neutral. A fan has one unsubscribe token per kind (made at their first opt-in of that kind), so a digest link turns off the digest and nothing else; the digest's pending function returns its token as `email_pending_game_alerts` does.
-- Add: a sender (a pending function like `email_pending_game_alerts`, granted to `email_sender`), its message builder, and a block
-  on `/account` that calls `email_set_optins("weekly_digest", ["*"])`. `resend.mjs` and `runGameAlerts`' loop are reusable as they are.
+## The weekly digest (ADR 0055)
+One email on Monday morning to each fan who opted in, covering every team they follow. The pieces it reuses are the alerts' own:
+`email_kind` has `weekly_digest`; `email_optin`, `email_sent` (`item` = the ISO week, `2026-w47`), `email_set_optins(kind, slugs)`,
+`email_my_settings()`, `email_unsubscribe(token)` and `email_mark_sent` do not care which kind they hold. A fan has one unsubscribe
+token per kind, so a digest link turns the digest off and nothing else.
+
+**What a fan sees.** On `/account`, under Email alerts: a "Weekly digest" box with its own save ("Email me the weekly digest", "Save
+weekly digest"), off until saved, for every team they follow (those followed later too). Same adult rule as the alerts. Each digest has,
+per team: *Last week* (the confirmed final, or "No game last week" / "No confirmed result yet"), *Ranking* ("#4 in Division I, up 2
+places from #6"; the rankings pages' own rank and move) and *Next game* (with the day and kickoff when known, and each side's chance
+to win; "No game scheduled" when none). It ends with why they got it, a link to change it, an Unsubscribe link (List-Unsubscribe plus
+One-Click Post too) and the postal address. A fan none of whose teams has a result or a next game is sent nothing that week.
+
+| Piece | Where |
+|---|---|
+| Opt-in box and save | `apps/web/app/account/email-alerts-form.tsx` (`WeeklyDigest`), `email-actions.ts` (`saveEmailDigest`) |
+| Who is due a week | `packages/db/migrations/0025_email_digest.sql` (`email_pending_digests`, granted to `email_sender` only) |
+| A team's last result, ranking move, next game, chance to win | `tools/email/digest-data.mjs` (held to the site's rules by `apps/web/scripts/email-digest-parity.test.mjs`) |
+| The email (text, HTML, headers, the address footer) | `tools/email/digest-message.mjs` |
+| The run | `tools/email/send-weekly-digest.mjs`, `.github/workflows/email-digest.yml` |
+
+**How a run decides.** (1) `email_pending_digests(week)` lists the fans due this ISO week's digest: opted in, an adult, a confirmed
+address, not banned, not already in `email_sent` for the week, with the teams of theirs it covers. (2) For each, the digest is built
+from the repo's data (last week is Monday to Sunday before the send; the ranking move is the trend column of that Sunday against the
+one before; the next game is the earliest listed game from today, or the bracket's next-round game with the date to come). (3) Sent
+through Resend (about 1.6 a second) and recorded for the week; a repeat of the run skips them. A real send is allowed Monday to
+Wednesday (Central) only; a dry run runs any day. The summary lists counts, never an address.
+
+**The postal address is required.** The owner's decision of 2026-11-15: every digest carries the address in the repo variable
+`EMAIL_POSTAL_ADDRESS`. While it is empty or unset the digest refuses to send, the job fails, and its summary says how many digests it
+refused. Game alerts do not carry it.
 
 ## How a run decides
 1. `events.mjs` lists the season's events from `data/seed` (finals from `games.csv` and `playoffs.csv`, kickoffs from `game-details`,
@@ -58,6 +84,20 @@ Nothing sends until all of this is done. Until then the job succeeds and its sum
    the same thing by itself, since the first recording is always a baseline.)
 8. Send yourself one: opt in on `/account` with an adult account that follows a team playing tonight; the next kickoff or final emails you.
 
+### The weekly digest's setup (after the steps above)
+Nothing in steps 1 to 6 changes; the digest uses the same Resend key, sender and database role. Migration 0025 (applied by the Supabase
+workflow after the merge) gives that role its one extra function. Then:
+9. **The postal address (required).** Set it as a repo variable, to an address that is not your home (a PO box or a mail service
+   address). It goes at the bottom of every digest. Up to five short lines, no markup:
+   `gh variable set EMAIL_POSTAL_ADDRESS -R txsixman/txsixmanfootball --body "<postal address>"` (replace the placeholder with the address).
+   While it is empty or unset the digest refuses to send and the run fails.
+10. **Prove it before the switch:** Actions, Weekly digest, Run workflow, leave `dry_run` ticked. The summary shows how many digests are
+    due and would be sent, and nothing is sent. If it shows `REFUSED`, step 9 is not done.
+11. **Switch it on:** `gh variable set EMAIL_DIGEST -R txsixman/txsixmanfootball --body true`. The Monday run (7:30 AM Central) sends it. The
+    run is gated by the repo variable `LIVE` like the other weekly jobs, and GitHub's `schedule` has not been reliable here (ADR 0024), so
+    if a Monday passes with no run, start Weekly digest by hand with `dry_run` unticked, any time Monday to Wednesday.
+12. Send yourself one: opt in to the digest on `/account` (the site's `EMAIL_ALERTS=on` shows the box), then run it by hand on a Monday to Wednesday.
+
 ## Checks that belong to the owner
 - The `/privacy` sentence about the email service (the age rule is set: 18 or older by birth year, ADR 0056).
-- The weekly digest carries a postal address in its footer (the owner's decision of 2026-11-15); see the digest's setup.
+- The weekly digest carries a postal address in its footer (the owner's decision of 2026-11-15); step 9 above sets it, and the digest refuses to send without it.

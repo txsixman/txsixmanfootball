@@ -27,7 +27,7 @@ const NAME = /^[^<>\r\n]{1,80}$/;
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const fits = (e) => NAME.test(e.home_name) && NAME.test(e.away_name) && SLUG.test(e.home_slug) && SLUG.test(e.away_slug) && e.home_slug.length <= 80 && e.away_slug.length <= 80;
 
-const scored = (r) => r.home_score !== "" && r.away_score !== "" && !(r.home_score === "0" && r.away_score === "0");
+export const scored = (r) => r.home_score !== "" && r.away_score !== "" && !(r.home_score === "0" && r.away_score === "0");
 
 /**
  * The events of one season now. `files.read(path)` gives a file's text ("" when missing); `files.list(dir)` its folder's names.
