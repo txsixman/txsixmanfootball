@@ -1,7 +1,7 @@
 import { loadAlignments, programFor } from "@/lib/alignments";
 import { layoutTree, type Group } from "@/lib/bracket-layout";
 import type { Bracket } from "@/lib/brackets";
-import { bracketGames } from "@/lib/game-pages";
+import { bracketGames, builtGamePages } from "@/lib/game-pages";
 import { kickoffTime } from "@/lib/kickoff";
 import { kickoffOf, loadKickoffs, loadSites, NO_SITE, siteOf } from "@/lib/kickoffs";
 import type { Projected } from "@/lib/advancement";
@@ -52,7 +52,7 @@ type Node = TreeGame & { label: string; projection?: Projection; projected?: [Pr
 export type BoxInfo = { kickoff?: string; site?: string; href?: string; live?: boolean };
 
 export async function treeData(b: Bracket, season = CURRENT_SEASON): Promise<TreeData> {
-  const [alignments, kickoffs, sites, pages] = await Promise.all([loadAlignments(), loadKickoffs(season), loadSites(season), season === CURRENT_SEASON ? bracketGames() : []]);
+  const [alignments, kickoffs, sites, pages, builtPages] = await Promise.all([loadAlignments(), loadKickoffs(season), loadSites(season), season === CURRENT_SEASON ? bracketGames() : [], season === CURRENT_SEASON ? builtGamePages() : []]);
   const hrefs = new Map(pages.map((g) => [`${g.date}|${g.home.name}|${g.away.name}`, `/scores/${g.id}`]));
   // A pairing the bracket sets before any listing has it: the day, kickoff and site the scores page shows for it (ADR 0067).
   const pair = (x: string, y: string) => [x, y].sort().join("|");
@@ -67,7 +67,9 @@ export async function treeData(b: Bracket, season = CURRENT_SEASON): Promise<Tre
     if (!g) {
       const [x, y] = n.sides;
       const set = x.team && y.team ? built.get(pair(x.team, y.team)) : undefined;
-      return { kickoff: n.kickoff_utc ?? set?.kickoff, site: n.site ?? set?.site };
+      // Its own page once both teams are known (ADR 0079).
+      const page = x.team && y.team ? builtPages.find((p) => p.round === n.round && pair(p.home.name, p.away.name) === pair(x.team!, y.team!)) : undefined;
+      return { kickoff: n.kickoff_utc ?? set?.kickoff, site: n.site ?? set?.site, ...(page && { href: `/scores/${page.id}` }) };
     }
     const site = siteOf(sites, g.date, g.home, g.away);
     return {

@@ -107,7 +107,7 @@ export function gameJsonLd(g: Game, { url, home, away }: { url: string; home?: {
  */
 export const bracketGamesList = (
   name: string,
-  games: { away: string; home: string; date: string; kickoff?: string; url: string }[],
+  games: { away: string; home: string; date?: string; kickoff?: string; url: string }[],
 ) => ({
   "@context": CONTEXT,
   "@type": "ItemList",
@@ -120,7 +120,8 @@ export const bracketGamesList = (
       name: `${g.away} vs ${g.home}`,
       url: g.url,
       sport: SPORT,
-      startDate: g.kickoff || g.date,
+      // A game the bracket sets may have no day yet (ADR 0079): then no start date, as on its page.
+      ...((g.kickoff || g.date) && { startDate: g.kickoff || g.date }),
       competitor: [g.away, g.home].map((t) => ({ "@type": "SportsTeam", name: t, sport: SPORT })),
     },
   })),

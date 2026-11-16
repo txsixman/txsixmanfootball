@@ -15,7 +15,7 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `packages/db/migrations/`: SQL migrations, run in filename order
 - `packages/db/test/`: schema and import tests on an in-process Postgres (PGlite)
 - `packages/db/seed.mjs`, `games.mjs`, `champions.mjs`, `lineage.mjs`: alignment, game, state-final and lineage importers (safe to re-run, audited); `load.mjs` applies new
-  migrations and every seed file to Supabase, then removes any program no alignment file lists that has no game, final or
+  migrations and every seed file to Supabase (and replaces the season's `bracket_pairing` comment keys, migration 0030, ADR 0079), then removes any program no alignment file lists that has no game, final or
   lineage row (each removal in `audit_log`); `supabase-ca.crt` is Supabase's public root certificate
 - `packages/db/live.mjs`: writes the file `maxpreps.mjs --live-out` made into `live_score` in one transaction (upsert, delete
   what is not in it, delete rows over 6 hours old); run by `results-watch.yml` right after the read (ADR 0021)

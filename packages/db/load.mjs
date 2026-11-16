@@ -13,9 +13,13 @@ import { parseFinals, seedFinals } from "./champions.mjs";
 import { parseGames, seedGames } from "./games.mjs";
 import { parseLineage, seedLineage } from "./lineage.mjs";
 import { parseAlignments, seedAlignments, slugify } from "./seed.mjs";
+import { CURRENT_SEASON } from "../../apps/web/lib/season.ts";
+import { pagePairings, seasonSlotRows } from "../../tools/league-watch/bracket-due.mjs";
+import { parseCsv } from "../../tools/league-watch/store.mjs";
 
 const MIGRATIONS = new URL("./migrations/", import.meta.url);
 const SEED = new URL("../../data/seed/", import.meta.url);
+const CORRECTIONS = new URL("../../data/corrections/games.csv", import.meta.url);
 // Robot-read games (maxpreps-<season>/) with their source pages, and teams.csv, are in the private data repo, checked out
 // at PRIVATE_DATA by the workflows that load the hosted database. data/seed holds only their facts, with no source column.
 const RESULTS = process.env.PRIVATE_DATA ? pathToFileURL(`${process.env.PRIVATE_DATA.replace(/\/$/, "")}/`) : SEED;
@@ -176,8 +180,40 @@ export async function withoutUnlisted(db, rows, season) {
 const withoutLeague = (text) =>
   text.trim().split("\n").map((line) => line.slice(line.indexOf(",") + 1)).join("\n");
 
+/**
+ * The comment keys of the season's bracket-set games (ADR 0079, migration 0030): every game the bracket sets by winners whose
+ * two teams are known, listed yet or not, as `<season>-<round>-<away>-at-<home>` in BOTH orders, so a key matches whichever
+ * way round the site writes it. The season's rows are replaced whole in one transaction (a pairing no longer set goes), from
+ * the public files: playoffs.csv (the same rows as the private copy, no sources), UIL's bracket file, the robot-read bracket
+ * file and data/corrections (a voided game is no game). Slugs are the database's own (`slugify`, seed.mjs).
+ * Never throws: Results watch runs this on every read and must not lose the finals to it. Where the table is missing (the
+ * per-read load applies no migrations, so migration 0030 may not be there yet) or the load fails, it returns `{ skipped }` or
+ * `{ error }`, which the load report and Results watch's summary print.
+ */
+export async function loadBracketPairings(db, season = CURRENT_SEASON) {
+  try {
+    const known = (await db.query("select to_regclass('public.bracket_pairing') is not null as ok")).rows[0].ok;
+    if (!known) return { season, skipped: "bracket_pairing is missing (migration 0030 not applied yet): bracket-set games cannot take comments until the next full load" };
+    const file = new URL(`maxpreps-${season}/playoffs.csv`, SEED);
+    const playoffs = existsSync(file) ? parseCsv(readFileSync(file, "utf8"), file.pathname).rows : [];
+    const corrections = existsSync(CORRECTIONS) ? readFileSync(CORRECTIONS, "utf8") : "";
+    const pairings = pagePairings(seasonSlotRows(fileURLToPath(SEED), season), playoffs, { corrections });
+    const keys = [...new Set(pairings.flatMap((p) => {
+      const [home, away] = [slugify(p.home), slugify(p.away)];
+      return [`${season}-${p.round}-${away}-at-${home}`, `${season}-${p.round}-${home}-at-${away}`];
+    }))].sort();
+    await db.transaction(async (tx) => {
+      await tx.query("delete from bracket_pairing where season = $1", [season]);
+      if (keys.length) await tx.query("insert into bracket_pairing (season, game_key) select $1, k from unnest($2::text[]) as k", [season, keys]);
+    });
+    return { season, pairings: pairings.length, keys: keys.length };
+  } catch (error) {
+    return { season, error: String(error?.message ?? error) };
+  }
+}
+
 export async function loadAll(db, { retrievedOn, reason, publicResults = false }) {
-  const report = { migrations: await migrate(db), alignments: [], lineage: null, games: [], finals: [], pastSeasons: [], removed: [] };
+  const report = { migrations: await migrate(db), alignments: [], lineage: null, games: [], pairings: null, finals: [], pastSeasons: [], removed: [] };
   const listed = new Set();
   for (const a of ALIGNMENTS) {
     const rows = parseAlignments(readFileSync(new URL(a.file, SEED), "utf8"));
@@ -196,6 +232,7 @@ export async function loadAll(db, { retrievedOn, reason, publicResults = false }
     const { inserted, updated, unchanged, flags } = await seedGames(db, rows, { season: g.season, retrievedOn, reason });
     report.games.push({ file: g.file, inserted, updated, unchanged, flags: flags.length, ...(unlisted && { unlisted }) });
   }
+  report.pairings = await loadBracketPairings(db);
   for (const f of FINALS.filter((f) => existsSync(new URL(f.file, SEED)))) {
     const rows = parseFinals(readFileSync(new URL(f.file, SEED), "utf8"));
     const { inserted, updated, linked, unlinked } = await seedFinals(db, rows, { league: f.league, retrievedOn, reason });
@@ -210,7 +247,8 @@ export async function loadAll(db, { retrievedOn, reason, publicResults = false }
  * One season's games only (ADR 0031): Results watch writes a read's games to the hosted database in the same run, not
  * only at the Monday load. The same upsert as loadAll (seedGames, keyed on round or date and the two teams): a game
  * whose stored row says the same thing is left alone, and no game is deleted. Alignments, lineage and migrations wait for
- * the full load.
+ * the full load. Returns { games, pairings }: the season's bracket-set comment keys are replaced after the games
+ * (loadBracketPairings; where migration 0030 is not applied yet it says so in `pairings.skipped` and the games still load).
  */
 export async function loadSeasonGames(db, season, { retrievedOn, reason, publicResults = false }) {
   const report = [];
@@ -222,7 +260,7 @@ export async function loadSeasonGames(db, season, { retrievedOn, reason, publicR
     const { inserted, updated, unchanged, flags } = await seedGames(db, rows, { season, retrievedOn, reason });
     report.push({ file: g.file, inserted, updated, unchanged, flags: flags.length, ...(unlisted && { unlisted }) });
   }
-  return report;
+  return { games: report, pairings: season === CURRENT_SEASON ? await loadBracketPairings(db, season) : null };
 }
 
 // Functions a signed-in user (never anon) may call, each as schema.name(argument types) so an overload with other
@@ -409,7 +447,7 @@ async function main() {
       const season = Number(process.argv[only + 1]);
       if (!/^\d{4}$/.test(String(season))) throw new Error("usage: load.mjs --games <season>");
       const games = await loadSeasonGames(db, season, { retrievedOn: today, reason: "packages/db/load.mjs --games (Results watch)" });
-      return console.log(JSON.stringify({ season, games }));
+      return console.log(JSON.stringify({ season, ...games }));
     }
     const report = await loadAll(db, { retrievedOn: today, reason: "packages/db/load.mjs" });
     report.problems = await checkLive(db);

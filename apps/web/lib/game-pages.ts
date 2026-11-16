@@ -1,7 +1,8 @@
 import { heading, loadAlignments, placeLabel, programFor, programsFor, slugify } from "./alignments";
-import { roundLabel } from "./brackets";
+import { loadBrackets, roundLabel } from "./brackets";
 import { demoGames, type Game, type Team } from "./demo-games";
-import { initials, loadGames, loadPlayoffGames, loadSeasonResults, gameKey, type SeasonResult } from "./games";
+import { initials, loadGames, loadPlayoffGames, loadSeasonResults, gameKey, playoffAliases, shortDate, type SeasonResult } from "./games";
+import { orderId } from "./page-id";
 import { commonOpponents, type CommonOpponent } from "./game-preview";
 import { pairKey } from "./meetings";
 import { memo } from "./memo";
@@ -191,9 +192,56 @@ function resultAsGame({ season, result: r }: Entry, d: GameDetail, disputed: Set
  * every robot-read game of every season has a page too, and would otherwise read these files again. */
 export const bracketGames = memo<void, Game[]>(async () => [...(await loadGames(await loadAlignments())), ...demoGames]);
 
-/** One address per game: bracket and sample games, then every robot-read game that is not also a bracket game. The game
- * page and its share image (app/scores/[id]) are built for exactly these ids. */
-export const gameIds = async () => [...new Set([...(await bracketGames()).map((g) => g.id), ...(await resultPageIds())])];
+/**
+ * The games the bracket sets this season with both teams known and no listing yet (ADR 0047), each with a page of its own
+ * (ADR 0079) at the id it keeps once a listing and its final arrive: the bracket's order (home its slot's first side). The
+ * day, kickoff and site once the read finds them (ADR 0067), else none; the projection on a neutral field.
+ */
+export const builtGamePages = memo<void, Game[]>(async () =>
+  (await loadBrackets()).flatMap((b) =>
+    b.rounds.flatMap((r) =>
+      r.built.flatMap((g): Game[] => {
+        const [x, y] = g.sides;
+        if (!("team" in x) || !("team" in y)) return [];
+        const order = b.orders.find((o) => o.round === g.round && [o.home, o.away].sort().join("|") === [x.team, y.team].sort().join("|"));
+        if (!order) return [];
+        const team = (name: string): Team => ({ name, mascot: "", initials: initials(name), color: "#0a2a5e", record: "" });
+        return [{
+          id: orderId(CURRENT_SEASON, order),
+          ...(g.date && { date: g.date }),
+          round: g.round,
+          league: `${b.name.replace("Division ", "D")} · ${roundLabel(g.round, b.league)}`,
+          home: team(order.home),
+          away: team(order.away),
+          homeScore: null,
+          awayScore: null,
+          state: "scheduled",
+          status: g.date ? shortDate(g.date) : "Date not listed yet",
+          ...(g.kickoff && { kickoff: g.kickoff }),
+          verification: "none",
+          ...(g.projection && { projected: projectionText(g.projection), projectedMargin: g.projection.margin }),
+          venue: g.site ?? "Site not listed yet",
+          ...(g.site && g.address && { address: g.address }),
+        }];
+      }),
+    ),
+  ),
+);
+
+/** One address per game: bracket and sample games, the games the bracket sets, then every robot-read game that is not also
+ * a bracket game, and the listing-order addresses that now redirect (ADR 0079). The game page and its share image
+ * (app/scores/[id]) are built for exactly these ids. */
+export const gameIds = async () =>
+  [...new Set([...(await bracketGames()).map((g) => g.id), ...(await builtGamePages()).map((g) => g.id), ...(await resultPageIds()), ...(await playoffAliases(CURRENT_SEASON)).keys()])];
+
+/** A listed game's old listing-order address, now its page's elsewhere (ADR 0079): the page id it redirects to. */
+export const aliasTarget = async (id: string) => (await playoffAliases(CURRENT_SEASON)).get(id);
+
+/** The key a score report uses for a page (migration 0014): the database's order, which is the listing's. */
+export async function reportKey(id: string): Promise<string> {
+  for (const [from, to] of await playoffAliases(CURRENT_SEASON)) if (to === id) return from;
+  return id;
+}
 
 /**
  * Everything a game page and its share image start from: the game as the scoreboard's Game, whether it is an invented
@@ -204,15 +252,20 @@ export async function resolveGame(id: string) {
   // A robot-read game, which is also a bracket game's result when it is a current-season playoff game.
   const found = await findGame(id);
   const own = found?.result.id === id ? found : undefined;
-  const bracket = own ? undefined : (await bracketGames()).find((x) => x.id === id);
+  const listed = own ? undefined : (await bracketGames()).find((x) => x.id === id);
+  // A game the bracket sets (ADR 0079): no listing, no database row, so no score report; its day may not be known yet.
+  const built = own || listed ? undefined : (await builtGamePages()).find((x) => x.id === id);
+  const bracket = listed ?? built;
   if (!own && !bracket) return undefined;
   const sample = bracket !== undefined && demoGames.includes(bracket);
   const date = own?.result.date ?? bracket?.date;
+  // An undated game the bracket sets counts every game read so far, as a game on any later day would.
+  const asOf = date ?? (built ? "9999-12-31" : undefined);
   const detail =
-    !sample && date
+    !sample && asOf
       ? await gameDetail({
           season: found?.season ?? CURRENT_SEASON,
-          date,
+          date: asOf,
           home: own?.result.home ?? bracket!.home.name,
           away: own?.result.away ?? bracket!.away.name,
           id: found?.result.id,
@@ -221,7 +274,7 @@ export async function resolveGame(id: string) {
   // A played game's projection is the one from the week before it (ADR 0044), shown beside its outcome.
   const before = own && (await pregameShown(own.season)).byId.get(own.result.id);
   const g: Game = own ? { ...resultAsGame(own, detail!, await loadDisputed(own.season), await loadHomeFields(), await loadSites(own.season), await loadAddresses(own.season)), ...(before && { projected: projectionText(before) }) } : bracket!;
-  return { g, found, own, sample, detail, neutral: own !== undefined && detail?.playoff !== undefined };
+  return { g, found, own, sample, built: built !== undefined, detail, neutral: own !== undefined && detail?.playoff !== undefined };
 }
 
 /** Every game between two programs (slugs in `pairKey` order), all seasons read, oldest first: what the series pages are made of. Shared: never mutate it. */

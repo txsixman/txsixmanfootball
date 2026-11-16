@@ -2,7 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { loadAlignments } from "@/lib/alignments";
 import { bracketHref, bracketLabel, type Bracket, latestRound, roundLabel } from "@/lib/brackets";
-import { bracketGames } from "@/lib/game-pages";
+import { bracketGames, builtGamePages } from "@/lib/game-pages";
 import { loadIdentities } from "@/lib/identity";
 import { bracketIntro } from "@/lib/intros";
 import { bracketGamesList, breadcrumbList } from "@/lib/json-ld";
@@ -40,12 +40,21 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
     return preview ? [{ pair, ...preview }] : [];
   });
   const roundId = (round: string) => `round-${round}`;
-  // The games that have a page of their own (a game a bracket only sets has none yet), earliest round first, for search engines.
+  // The games that have a page of their own, earliest round first, for search engines: listed games, then in each round the
+  // games the bracket sets with both teams known (ADR 0079), in the page's order, with the day and kickoff once known.
   const pages = new Map((await bracketGames()).filter((g) => g.id.startsWith(`${CURRENT_SEASON}-`)).map((g) => [`${g.date}|${g.home.name}|${g.away.name}`, g.id]));
-  const listed = b.rounds.flatMap((r) => r.games.flatMap((g) => {
-    const id = pages.get(`${g.date}|${g.home}|${g.away}`);
-    return id ? [{ away: g.away, home: g.home, date: g.date, kickoff: g.kickoff, url: `${SITE_URL}/scores/${id}` }] : [];
-  }));
+  const pairOf = (round: string, x: string, y: string) => [round, ...[x, y].sort()].join("|");
+  const builtPages = new Map((await builtGamePages()).map((g) => [pairOf(g.round ?? "", g.home.name, g.away.name), g]));
+  const listed = b.rounds.flatMap((r) => [
+    ...r.games.flatMap((g) => {
+      const id = pages.get(`${g.date}|${g.home}|${g.away}`);
+      return id ? [{ away: g.away, home: g.home, date: g.date, kickoff: g.kickoff, url: `${SITE_URL}/scores/${id}` }] : [];
+    }),
+    ...r.built.flatMap(({ round, sides: [x, y] }) => {
+      const g = "team" in x && "team" in y ? builtPages.get(pairOf(round, x.team, y.team)) : undefined;
+      return g ? [{ away: g.away.name, home: g.home.name, date: g.date, kickoff: g.kickoff, url: `${SITE_URL}/scores/${g.id}` }] : [];
+    }),
+  ]);
 
   return (
     <section aria-labelledby="bracket">
@@ -142,7 +151,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
             </span>
           </h2>
           {r.games.length > 0 && <GameList games={r.games} league={b.league} alignments={alignments} identities={identities} today={clock.date} comments="count" />}
-          {r.built.length > 0 && <BuiltList games={r.built} league={b.league} alignments={alignments} identities={identities} />}
+          {r.built.length > 0 && <BuiltList games={r.built} league={b.league} alignments={alignments} identities={identities} comments="count" />}
         </section>
       ))}
 

@@ -106,6 +106,28 @@ export function builtGames(filled: Filled[]): Built[] {
   );
 }
 
+/** A game the bracket sets, as its page address orders it (ADR 0079): `home` the slot's first side, `away` its second. */
+export type PageOrder = { round: string; home: string; away: string };
+
+/**
+ * The page order of every game the bracket sets by winners (a slot both of whose sides are fed by an earlier slot), once
+ * both teams are known: home is the slot's first side and away its second, the bracket's own designation. The same
+ * whether a listing has the game yet or not, and whichever way round a listing or a recorded final writes it, so the game
+ * keeps one address from the day the bracket sets it. A listed game whose feeding game is not yet a confirmed final takes
+ * each side's team from the listing (the one of its two teams that side can produce). A first-round slot (fed by teams)
+ * has none: its listing's order stands.
+ */
+export function pageOrders(slots: Slot[], filled: Filled[]): PageOrder[] {
+  const bySlot = new Map(slots.map((s) => [s.slot, s]));
+  return filled.flatMap((f) => {
+    if (!("winnerOf" in f.slot.a) || !("winnerOf" in f.slot.b)) return [];
+    const teamOf = (side: Side, feed: Feed) =>
+      "team" in side ? side.team : f.game ? [f.game.home, f.game.away].find((t) => candidates(feed, bySlot).has(t)) : undefined;
+    const [home, away] = [teamOf(f.a, f.slot.a), teamOf(f.b, f.slot.b)];
+    return home && away && home !== away ? [{ round: f.slot.round, home, away }] : [];
+  });
+}
+
 /** "Kress–Jayton": a game's two teams, away first, as the pages list them. */
 const pairLabel = (g: Pick<FillGame, "home" | "away">) => `${g.away}–${g.home}`;
 

@@ -127,6 +127,13 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
   card's key on a page into one request (chunks of 200), asks again only for counts older than 30 seconds, and draws nothing on
   a 404 or a failure. `CommentCountLink` is the same count as a link to `/scores/<id>#comments`, for a row that is not
   already a link (a card that is a link holds the plain `CommentCount`: a link in a link is not valid HTML).
+- **Comments on bracket-set games (ADR 0079, migration 0030).** `add_comment` accepts a key when `comment_game_known(key)` says so
+  (an internal helper, granted to nobody): `resolve_game_key` finds a stored game in its stored order, OR a stored playoff game
+  with home and away swapped (the page id follows the bracket's order), OR the key is in `bracket_pairing` (no policy, no grant;
+  both orders of every game the bracket sets by winners that no listing has yet). `packages/db/load.mjs` `loadBracketPairings`
+  replaces the current season's rows in one transaction in both `loadAll` and `loadSeasonGames`; it never throws, and where the
+  table is missing it reports `skipped` (Results watch's per-read load runs no migrations). Score reports (`submit_score_report`,
+  `fan_score_status`) still use `resolve_game_key` alone, so a swapped or bracket-set key is refused there.
 - **Server checks, then the database checks again.** Server actions and `/api/follows` validate with Zod, check the session
   (`getUser()` asks Supabase; never `getSession()`), and the database re-checks age, name shape, uniqueness, slug shape and the cap.
 - `/api/me` (GET) answers `{ enabled, posts, me }`: `enabled` is `FAN_SIGNIN`, `posts` is `FAN_POSTS` (and `FAN_SIGNIN`); `me` is `null` when signed out, else

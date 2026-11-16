@@ -48,7 +48,7 @@ test("the forums' pages and the game page's fan blocks ask the switch", () => {
   }
   const game = readFileSync(path.join(app, "scores/[id]/page.tsx"), "utf8");
   assert.match(game, /const fan = fanPosts\(\)/);
-  assert.match(game, /\{fan && !sample && g\.state === "scheduled" && <ScoreReport/);
+  assert.match(game, /\{fan && !sample && !built && g\.state === "scheduled" && <ScoreReport/);
   assert.match(game, /\{fan && !sample && \(\s*<div className="pb-6">\s*<Comments/);
 });
 

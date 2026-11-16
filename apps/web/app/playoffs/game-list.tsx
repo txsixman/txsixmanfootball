@@ -5,7 +5,7 @@ import type { Side } from "@/lib/bracket-fill";
 import { sideText } from "@/lib/bracket-fill";
 import type { BracketRow, BuiltRow } from "@/lib/brackets";
 import { gameDay } from "@/lib/game-day";
-import { bracketGames } from "@/lib/game-pages";
+import { bracketGames, builtGamePages } from "@/lib/game-pages";
 import { EMPTY, type loadIdentities } from "@/lib/identity";
 import { gameStatus } from "@/lib/playoff-status";
 import { projectionParts } from "@/lib/projection";
@@ -101,8 +101,15 @@ export async function GameList({ games, league, alignments, identities, today, s
 }
 
 /** Next-round games no site lists yet (ADR 0047): both winners, or the winner so far and the game it waits on. Its day, kickoff and site once the read finds them (ADR 0067), else no date or
- * site (none is listed), and the projection on a neutral field once both teams are known. A listing replaces the row. */
-export function BuiltList({ games, league, alignments, identities }: { games: BuiltRow[]; league: string; alignments: Alignment[]; identities: Awaited<ReturnType<typeof loadIdentities>> }) {
+ * site (none is listed), and the projection on a neutral field once both teams are known. A listing replaces the row.
+ * `comments` as GameList's: a game with both teams known has its own page (ADR 0079), so it links to its comments. */
+export async function BuiltList({ games, league, alignments, identities, comments: asked }: {
+  games: BuiltRow[]; league: string; alignments: Alignment[]; identities: Awaited<ReturnType<typeof loadIdentities>>; comments?: "count" | "always";
+}) {
+  // The page of each game with both teams known, by its round and two teams in either order (lib/game-pages.ts builtGamePages).
+  const comments = fanPosts() ? asked : undefined;
+  const pairOf = (round: string, x: string, y: string) => [round, ...[x, y].sort()].join("|");
+  const pages = comments ? new Map((await builtGamePages()).map((g) => [pairOf(g.round ?? "", g.home.name, g.away.name), g.id])) : undefined;
   // Each side on its own line like a listed game's: a team with its crest (one tap target, its program page), or the game
   // whose winner it will be, in words beside an empty crest place.
   const side = (s: Side) => {
@@ -125,6 +132,8 @@ export function BuiltList({ games, league, alignments, identities }: { games: Bu
     <ul className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
       {games.map((g) => {
         const proj = g.projection && projectionParts(g.projection);
+        const [x, y] = g.sides;
+        const pageId = "team" in x && "team" in y ? pages?.get(pairOf(g.round, x.team, y.team)) : undefined;
         return (
           <li key={g.sides.map(sideText).join("|")} data-built className="min-w-0 border-b border-dashed border-line px-3 py-1 text-[16px] text-ink">
             {side(g.sides[0])}
@@ -147,6 +156,8 @@ export function BuiltList({ games, league, alignments, identities }: { games: Bu
                 <span>Projected: {proj.margin}</span> · <span className="whitespace-nowrap">{proj.chance}</span>
               </p>
             )}
+            {/* As on a listed game: a sibling of the team links, nothing until the counts answer, never with posts off. */}
+            {pageId && <CommentCountLink gameKey={pageId} matchup={`${sideText(x)} vs ${sideText(y)}`} alwaysWhenOpen={comments === "always"} className="flex pl-12" />}
           </li>
         );
       })}

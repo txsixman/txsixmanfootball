@@ -89,7 +89,8 @@ test("one season's games (Results watch, ADR 0031): after the full load it chang
   await loadAll(db, opts);
   const count = async () => (await db.query("select count(*)::int as n from game where season = 2026")).rows[0].n;
   const before = await count();
-  const report = await loadSeasonGames(db, 2026, opts);
+  const { games: report, pairings } = await loadSeasonGames(db, 2026, opts);
+  assert.ok(pairings.pairings >= 19, "the season's bracket-set games are loaded too (ADR 0079)");
   assert.ok(report.length >= 2, "the season's games.csv and playoffs.csv");
   for (const r of report) {
     assert.equal(r.inserted, 0, r.file);

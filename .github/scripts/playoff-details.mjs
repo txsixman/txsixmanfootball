@@ -23,7 +23,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { bracketSlots, fill, ROUND_ORDER } from "../../apps/web/lib/bracket-fill.ts";
 import { slugify } from "../../apps/web/lib/slug.ts";
-import { builtDue, fillGame, seasonSlotRows } from "../../tools/league-watch/bracket-due.mjs";
+import { builtDue, fillGame, seasonSlotRows, withoutVoided } from "../../tools/league-watch/bracket-due.mjs";
+// Moved to bracket-due.mjs (pagePairings shares it); still exported from here.
+export { withoutVoided };
 import { parseCsv } from "../../tools/league-watch/store.mjs";
 import { seasonOf } from "./gameday-clock.mjs";
 import { BOT, github, keyIn, REASON_QUIET_HOURS } from "./ops-alert.mjs";
@@ -78,20 +80,6 @@ export function parseDetails(text) {
     }
   }
   return out;
-}
-
-/** playoffs.csv rows without the games a correction voids (the last correction for a game wins; the site drops them). */
-export function withoutVoided(playoffs, correctionsText) {
-  const void_ = new Set();
-  const [, ...lines] = correctionsText.trim().split("\n");
-  for (const line of lines) {
-    const [date, home, away, action] = line.split(",");
-    if (!date || !home || !away) continue;
-    const key = [date, ...[home, away].sort()].join("|");
-    if (action === "void") void_.add(key);
-    else void_.delete(key);
-  }
-  return playoffs.filter((r) => !void_.has([r.game_date, ...[r.home, r.away].sort()].join("|")));
 }
 
 /**

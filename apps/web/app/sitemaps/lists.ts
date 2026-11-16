@@ -1,6 +1,6 @@
 import { slugify } from "@/lib/alignments";
 import { demoGames } from "@/lib/demo-games";
-import { loadSeasonResults } from "@/lib/games";
+import { loadSeasonResults, playoffAliases } from "@/lib/games";
 import { pairKey } from "@/lib/meetings";
 import { memo } from "@/lib/memo";
 import { ORGS } from "@/lib/orgs";
@@ -62,7 +62,11 @@ const PATHS: Record<Kind, () => Promise<string[]>> = {
     ...(await programs()).map((p) => `programs/${p.slug}`),
     ...(await programSeasons()).map((p) => `programs/${p.slug}/${p.season}`),
   ],
-  scores: async () => (await games()).filter((p) => !SAMPLE_GAMES.has(p.id)).map((p) => `scores/${p.id}`),
+  // A listing-order address that redirects to the bracket's (ADR 0079) is not a page of its own.
+  scores: async () => {
+    const aliases = await playoffAliases(CURRENT_SEASON);
+    return (await games()).filter((p) => !SAMPLE_GAMES.has(p.id) && !aliases.has(p.id)).map((p) => `scores/${p.id}`);
+  },
   series: async () => (await series()).map((p) => `series/${p.first}/${p.second}`),
   results: async () => (await results()).filter((p) => p.path.length).map((p) => `results/${p.path.join("/")}`),
   weeks: async () => (await weeks()).map((p) => ["weeks", ...(p.path ?? [])].join("/")),

@@ -1,6 +1,6 @@
 import { heading, loadAlignments, programFor, type Alignment } from "./alignments";
 import type { Address } from "./address";
-import { bracketSlots, builtGames, derivedSlots, fill, ownSlots, type Side } from "./bracket-fill";
+import { bracketSlots, builtGames, derivedSlots, fill, ownSlots, pageOrders, type PageOrder, type Side } from "./bracket-fill";
 import { treeGames, type TreeGame } from "./bracket-tree";
 import { loadSlotRows } from "./bracket-slots";
 import { memo } from "./memo";
@@ -36,6 +36,8 @@ type BracketRound = { round: string; label: string; games: BracketRow[]; built: 
 /** `chances`: state title chances (the last four, or a template plus every region settled). `regionChances`: UIL region titles.
  * `pairs`: games whose winners meet next, so the next pairing is known (lib/playoff-path.ts). */
 export type Bracket = { name: string; league: string; rounds: BracketRound[]; tree: TreeRow[]; pairs: Pair[]; chances?: Chance[]; regionChances?: RegionChances[];
+  /** The page order of each game the bracket sets by winners, listed or not (bracket-fill.ts pageOrders, ADR 0079); this season only. */
+  orders: PageOrder[];
   /** This season's chance to reach each round still to be set and to win the State Championship (ADR 0071). */
   advancement?: Advancement };
 
@@ -120,7 +122,9 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
     });
     const advance = season === CURRENT_SEASON ? advancement(shape, list, ROUNDS, win, STATE_CHAMPIONSHIP_ROUNDS) : undefined;
     // Past seasons are all played: their pages stay as listed.
-    const built = (season === CURRENT_SEASON ? builtGames(fill(slots, list, ROUNDS)) : []).map(({ round, sides }): BuiltRow => {
+    const filled = season === CURRENT_SEASON ? fill(slots, list, ROUNDS) : [];
+    const orders = pageOrders(slots, filled);
+    const built = builtGames(filled).map(({ round, sides }): BuiltRow => {
       const [a, b] = sides;
       const projection = "team" in a && "team" in b ? project(ratings, a.team, b.team, true, true) : undefined;
       // Both teams known: the file's first game between them after their last listed games, if the read found it.
@@ -139,7 +143,7 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
     const found = bracketTitleChances(ratings, alignments, template, name, list);
     const chances = found.state?.chances;
     return {
-      name, league, rounds: ordered(rounds), tree, pairs: pairsOf(rounds, regionLookup(alignments, league, name)),
+      name, league, rounds: ordered(rounds), tree, pairs: pairsOf(rounds, regionLookup(alignments, league, name)), orders,
       ...(chances ? { chances } : {}),
       ...(found.regions.length ? { regionChances: found.regions } : {}),
       ...(advance ? { advancement: advance } : {}),

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { loadAlignments } from "@/lib/alignments";
 import { gameDescription } from "@/lib/descriptions";
 import { fanPosts } from "@/lib/auth/config";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { demoGames, type Game, type Team } from "@/lib/demo-games";
-import { bracketGames, findGame, gameIds, gamePreview, longDate, mediumDate, playoffLabels, resolveGame } from "@/lib/game-pages";
+import { aliasTarget, bracketGames, builtGamePages, findGame, gameIds, gamePreview, longDate, mediumDate, playoffLabels, reportKey, resolveGame } from "@/lib/game-pages";
 import { gameKey } from "@/lib/games";
 import { gameJsonLd } from "@/lib/json-ld";
 import { kickoffTime } from "@/lib/kickoff";
@@ -43,9 +43,13 @@ export const generateStaticParams = async () => (await gameIds()).map((id) => ({
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  // A listing-order address that now redirects (ADR 0079) says only where the game is.
+  const target = await aliasTarget(id);
+  if (target) return { alternates: { canonical: `/scores/${target}` }, robots: { index: false } };
   const found = await findGame(id);
   // A current-season playoff game's page is the bracket game's, whose result (if played) is `found`: it still has the round.
-  const g = found?.result.id === id ? undefined : (await bracketGames()).find((x) => x.id === id);
+  // A game the bracket sets has its page before any listing (ADR 0079).
+  const g = found?.result.id === id ? undefined : ((await bracketGames()).find((x) => x.id === id) ?? (await builtGamePages()).find((x) => x.id === id));
   const teams = found ? found.result : g && { away: g.away.name, home: g.home.name };
   const sample = g !== undefined && demoGames.includes(g);
   const season = found?.season ?? CURRENT_SEASON;
@@ -129,9 +133,12 @@ function Linescore({ g }: { g: Game }) {
 
 export default async function GamePage({ params }: Props) {
   const { id } = await params;
+  // A listed game whose listing order differs from the bracket's keeps one page, at the bracket's address (ADR 0079).
+  const target = await aliasTarget(id);
+  if (target) permanentRedirect(`/scores/${target}`);
   const resolved = await resolveGame(id);
   if (!resolved) notFound();
-  const { g, found, own, sample, detail, neutral } = resolved;
+  const { g, found, own, sample, built, detail, neutral } = resolved;
   // A bracket game not yet played gets a preview in place of "Going in" and "Earlier meetings" (it holds both).
   const preview =
     detail && g.date && !own && !sample && g.state === "scheduled"
@@ -303,7 +310,9 @@ export default async function GamePage({ params }: Props) {
         </nav>
       )}
 
-      {fan && !sample && g.state === "scheduled" && <ScoreReport gameKey={id} away={g.away.name} home={g.home.name} date={g.date} />}
+      {/* A game the bracket sets has no database row to report on until a listing holds it; a listed game reports in the
+          database's order, its listing's (migration 0014, ADR 0079). */}
+      {fan && !sample && !built && g.state === "scheduled" && <ScoreReport gameKey={await reportKey(id)} away={g.away.name} home={g.home.name} date={g.date} />}
 
       {fan && !sample && (
         <div className="pb-6">

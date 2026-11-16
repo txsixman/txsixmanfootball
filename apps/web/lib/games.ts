@@ -3,11 +3,12 @@ import { memo } from "./memo";
 import { pregameShown } from "./pregame";
 import path from "node:path";
 import type { Game, Team } from "./demo-games";
-import { heading, programFor, slugify, type Alignment } from "./alignments";
+import { heading, loadAlignments, programFor, slugify, type Alignment } from "./alignments";
+import { listingId, orderMap, pageId } from "./page-id";
 import { projectAt, projectionText, fieldOf, type Field } from "./projection";
 import { GAME_COLUMNS, parseCsv, PlayedGameRow, PlayoffRow, RESULT_COLUMNS, RobotPlayoffRow } from "./data-schemas";
 import { loadRatings } from "./ratings";
-import { roundLabel } from "./brackets";
+import { loadBrackets, roundLabel } from "./brackets";
 import { CURRENT_SEASON } from "./season";
 import { forfeitScore } from "./forfeit";
 import { applyToGame } from "./corrections";
@@ -31,7 +32,7 @@ function endReason(code: string, period: string): string | undefined {
   return undefined;
 }
 
-function shortDate(iso: string): string {
+export function shortDate(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`);
   const day = d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
   return `${day} ${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
@@ -90,9 +91,28 @@ async function playoffRows(seasons = [CURRENT_SEASON]): Promise<Row[]> {
   return rows;
 }
 
-/** The address id of a playoff game's page (/scores/<id>). */
-const playoffGameId = (season: number, r: Record<string, string>) =>
-  `${season}-${r.round}-${slugify(r.away)}-at-${slugify(r.home)}`;
+/**
+ * The page id of a playoff game (/scores/<id>), as a function of its row (lib/page-id.ts, ADR 0079). A game of the season
+ * under way that the bracket sets by winners takes the bracket's order, the same id its page had before any listing held it,
+ * whichever way round the listing or the recorded final writes the teams; any other game (a first round, a past season) its
+ * listing's.
+ */
+const playoffIdOf = memo(async (season: number) => {
+  const [alignments, brackets] = await Promise.all([loadAlignments(), season === CURRENT_SEASON ? loadBrackets(season) : []]);
+  const orders = orderMap(brackets.flatMap((b) => b.orders));
+  return (r: Record<string, string>, league: string) =>
+    pageId(season, orders, { round: r.round, home: r.home, away: r.away }, (n) => programFor(alignments, n, league)?.school ?? n);
+});
+
+/** The season's listed playoff games whose listing order differs from their page id (ADR 0079), listing id to page id:
+ * the old address answers with a redirect, and a score report still uses the listing's (the database's) order. */
+export const playoffAliases = memo(async (season: number): Promise<Map<string, string>> => {
+  const idOf = await playoffIdOf(season);
+  return new Map((await playoffRows([season])).flatMap(({ r, league }) => {
+    const [from, to] = [listingId(season, { round: r.round, home: r.home, away: r.away }), idOf(r, league)];
+    return from === to ? [] : [[from, to] as const];
+  }));
+});
 
 /** Leagues with playoff games in a season (hand-captured or robot-read). */
 export async function playoffLeagueSet(season: number): Promise<Set<string>> {
@@ -100,7 +120,7 @@ export async function playoffLeagueSet(season: number): Promise<Set<string>> {
 }
 
 export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
-  const [rows, ratings, kickoffs, sites, addresses] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON), loadSites(CURRENT_SEASON), loadAddresses(CURRENT_SEASON)]);
+  const [rows, ratings, kickoffs, sites, addresses, idOf] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON), loadSites(CURRENT_SEASON), loadAddresses(CURRENT_SEASON), playoffIdOf(CURRENT_SEASON)]);
   const seasons = [...new Set(rows.map((x) => x.season))];
   const disputedBy = new Map(await Promise.all(seasons.map(async (s) => [s, await loadDisputed(s)] as const)));
   // A played game's projection is the one from the week before it (ADR 0044), never today's ratings, which count it.
@@ -123,7 +143,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
         ? projectAt(ratings, { home: home.name, away: away.name, ...fieldOf(r.neutral, r.round) })
         : undefined;
     return {
-      id: playoffGameId(season, r),
+      id: idOf(r, league),
       date: r.game_date,
       round: r.round,
       league: `${heading({ league, division: r.division, region: "1" }).replace("Division ", "D")} · ${roundLabel(r.round, league)}`,
@@ -254,7 +274,8 @@ export const loadSeasonResults = memo(async (season: number): Promise<SeasonResu
     throw e;
   });
   if (!text) return [];
-  const playoffPages = new Map(season === CURRENT_SEASON ? (await playoffRows([season])).map(({ r }) => [gameKey(r.game_date, r.home, r.away), playoffGameId(season, r)]) : []);
+  const idOf = season === CURRENT_SEASON ? await playoffIdOf(season) : undefined;
+  const playoffPages = new Map(idOf ? (await playoffRows([season])).map(({ r, league }) => [gameKey(r.game_date, r.home, r.away), idOf(r, league)]) : []);
   const { results, voided, duplicates } = buildSeasonResults(season, text, await loadCorrections(), playoffPages, gameKey);
   reportSkipped(`data/seed/maxpreps-${season}/games.csv#voided`, voided, "voided by a correction");
   reportSkipped(`data/seed/maxpreps-${season}/games.csv#duplicates`, duplicates, "one game listed twice");

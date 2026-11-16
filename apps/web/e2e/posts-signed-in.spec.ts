@@ -416,20 +416,27 @@ test.describe("posts for a signed-in fan (a stand-in for Supabase)", () => {
     expect(errors).toEqual([]);
   });
 
-  test("/playoffs/this-round: every game with a page links to its comments, named for the matchup, from one request", async ({ page }) => {
+  test("/playoffs/this-round: every game with both teams known links to its comments, named for the matchup, from one request, and its page answers", async ({ page, request }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto("/playoffs/this-round", { waitUntil: "networkidle" });
-    // Rows the bracket only sets (data-built) have no game page and so no link.
-    const rows = page.locator("main section li:not([data-built])");
-    const n = await rows.count();
+    // Every game whose two teams are known has a page (ADR 0079): a listed one, and one the bracket sets (data-built) from
+    // two winners. A row still waiting on a game ("winner of X–Y") has no page and so no link.
+    const rows = page.locator("main section li");
+    const known = await rows.evaluateAll((els) => els.map((e) => !/winner of|to be decided/i.test((e as HTMLElement).innerText)));
+    const n = known.filter(Boolean).length;
     const links = page.locator("main a[data-comment-count]");
-    await expect(page.locator("main li[data-built] a[data-comment-count]")).toHaveCount(0);
     if (n === 0) {
       await expect(links).toHaveCount(0);
       return;
     }
     await expect(links).toHaveCount(n, { timeout: 20_000 });
+    for (const [i, has] of known.entries()) await expect(rows.nth(i).locator("a[data-comment-count]"), `row ${i}`).toHaveCount(has ? 1 : 0);
+    // Each link's page answers, as itself (never a redirect to another game's address).
+    for (const href of await links.evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""))) {
+      const r = await request.get(href.replace(/#.*$/, ""), { maxRedirects: 0 });
+      expect(r.status(), href).toBe(200);
+    }
     // The stub gave the first game it was asked about 3 comments and the second 1; the rest have none and say "Comments".
     const [first, second] = stub.countKeys;
     const link = (key: string) => page.locator(`main a[href="/scores/${key}#comments"]`);
