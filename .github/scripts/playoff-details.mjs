@@ -118,8 +118,10 @@ export function roundText(round) {
  * The unscored playoff games starting within `hours` hours that lack a kickoff, a site or both, each named.
  * `playoffs`: playoffs.csv rows (voided games already out); `details`: parseDetails(); `slotDetails`: slotDetailsOf();
  * `built`: builtDue() rows (pairings set by winners with no listing). A game's date, not its hour, puts it in the window
- * unless its kickoff is known (the kickoff then decides).
- * @returns {{ id: string, date: string, built: boolean, missing: ("kickoff"|"site")[], line: string }[]}
+ * unless its kickoff is known (the kickoff then decides). A pairing no source dates at all (no row of its own, no game of
+ * its round listed) is taken to be a week after its teams' last game and named for its missing date too: on Nov 16, 2026
+ * four TAIAO semifinals had no date anywhere, and the alert said nothing about them.
+ * @returns {{ id: string, date: string, built: boolean, missing: ("date"|"kickoff"|"site")[], line: string }[]}
  */
 export function missingDetails({ playoffs, details, slotDetails = [], built = [], now, hours = WINDOW_HOURS }) {
   const today = centralDate(now);
@@ -128,12 +130,17 @@ export function missingDetails({ playoffs, details, slotDetails = [], built = []
   const found = [];
   const scored = (r) => r.home_score !== "" && r.away_score !== "";
 
-  const add = (r, date, kickoff, site, isBuilt) => {
+  // `dated`: "own" (the game's own date), "round" (its round's, from another game of it) or "guessed" (a week after its
+  // teams' last game: no source dates it).
+  const add = (r, date, kickoff, site, dated = "own") => {
     if (kickoff && Date.parse(kickoff) > now + hours * HOUR) return; // a kickoff beyond the window, on the last day
-    const missing = [...(kickoff ? [] : ["kickoff"]), ...(site ? [] : ["site"])];
+    const missing = [...(dated === "guessed" ? ["date"] : []), ...(kickoff ? [] : ["kickoff"]), ...(site ? [] : ["site"])];
     if (!missing.length) return;
-    const what = missing.map((m) => `no ${m}`).join(" and ");
-    const round = `${roundText(r.round)}, ${dayLabel(date)}${isBuilt ? " (the round's date)" : ""}`;
+    const nos = missing.map((m) => `no ${m}`);
+    const what = nos.length > 1 ? `${nos.slice(0, -1).join(", ")} and ${nos.at(-1)}` : nos[0];
+    const note = { own: "", round: " (the round's date)", guessed: " (a week after their last game)" }[dated];
+    const isBuilt = dated !== "own";
+    const round = `${roundText(r.round)}, ${dayLabel(date)}${note}`;
     const line = `${plain(r.home)} v ${plain(r.away)} — ${leagueLabel(r.league, r.division)} ${round}: ${what}`;
     const id = createHash("sha1").update([r.league, r.division, r.round, date, r.home, r.away, missing.join("+")].join("|")).digest("hex").slice(0, 8);
     found.push({ id, date, built: isBuilt, missing, line });
@@ -144,7 +151,7 @@ export function missingDetails({ playoffs, details, slotDetails = [], built = []
     if (r.game_date < today || r.game_date > lastDay) continue;
     const key = gameKey(r.game_date, r.home, r.away);
     const slot = slotBy.get(key);
-    add(r, r.game_date, details.kickoffs.get(key) ?? slot?.kickoff, details.sites.get(key) ?? slot?.site, false);
+    add(r, r.game_date, details.kickoffs.get(key) ?? slot?.kickoff, details.sites.get(key) ?? slot?.site);
   }
 
   for (const b of built) {
@@ -153,9 +160,10 @@ export function missingDetails({ playoffs, details, slotDetails = [], built = []
     const last = same.filter((r) => [r.home, r.away].some((t) => t === b.home || t === b.away)).map((r) => r.game_date).sort().at(-1) ?? "";
     const pair = (details.pairs.get(pairKey(b.home, b.away)) ?? []).filter((d) => d.date > last).sort((x, y) => x.date.localeCompare(y.date))[0];
     const roundDate = same.filter((r) => r.round === b.round && r.game_date >= today && r.game_date <= lastDay).map((r) => r.game_date).sort()[0];
-    const date = pair?.date ?? roundDate;
+    const guessed = !pair && !roundDate && last ? new Date(Date.parse(`${last}T12:00:00Z`) + 7 * 24 * HOUR).toISOString().slice(0, 10) : undefined;
+    const date = pair?.date ?? roundDate ?? guessed;
     if (!date || date < today || date > lastDay) continue;
-    add(b, date, pair?.kickoff, pair?.site, !pair);
+    add(b, date, pair?.kickoff, pair?.site, pair ? "own" : roundDate ? "round" : "guessed");
   }
 
   return found.sort((a, b) => a.date.localeCompare(b.date) || a.line.localeCompare(b.line));

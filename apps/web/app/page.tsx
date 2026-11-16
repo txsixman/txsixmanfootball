@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { loadAlignments, slugify } from "@/lib/alignments";
-import { loadBrackets } from "@/lib/brackets";
+import { loadBrackets, loadTitleChances } from "@/lib/brackets";
 import { homeDescription } from "@/lib/descriptions";
 import { loadGames } from "@/lib/games";
 import { loadFinals } from "@/lib/champions";
@@ -11,7 +11,6 @@ import { loadRanked, type Ranked } from "@/lib/rankings";
 import { FEW_GAMES, ratingText } from "@/lib/ratings";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
-import { loadTitleChances } from "@/lib/title-chances";
 import { loadNight } from "@/lib/tonight";
 import { weekHref } from "@/lib/week-review-hrefs";
 import { latestReview } from "@/lib/week-review-load";

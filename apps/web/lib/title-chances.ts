@@ -1,13 +1,12 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { heading, loadAlignments, type Alignment } from "./alignments";
+import { heading, type Alignment } from "./alignments";
 import { parseCsv } from "./data-schemas";
 import { memo } from "./memo";
-import { type BracketGame, loadPlayoffGames, type PlayoffGame } from "./games";
+import type { BracketGame, PlayoffGame } from "./games";
 import { chanceTexts, project, type Field } from "./projection";
-import { loadRatings, type RatingsTable } from "./ratings";
-import { CURRENT_SEASON } from "./season";
+import type { RatingsTable } from "./ratings";
 
 // Title chances from the same win probabilities as the projections, for only the parts of a bracket the data settles.
 //
@@ -184,22 +183,26 @@ const readTemplate = () =>
 /** The template, or an empty one when the file has not been written. Read once per process: never mutate it. */
 export const loadBracketTemplate = memo<void, BracketTemplate>(readTemplate);
 
-/** Title chances for one bracket of a season's playoff games; regions and semifinal pairings apply to UIL only (ADR 0012). */
-export function bracketTitleChances(t: RatingsTable, alignments: Alignment[], template: BracketTemplate, name: string, games: PlayoffGame[]) {
+/** A game the bracket sets by winners with both teams known and no listing yet (ADR 0047): unplayed, on a neutral field, as
+ * its row on the bracket page projects it. */
+type SetGame = { round: string; home: string; away: string };
+
+/**
+ * Title chances for one bracket of a season's playoff games; regions and semifinal pairings apply to UIL only (ADR 0012).
+ * `set`: the games the bracket sets that no listing holds yet. They settle a region or the last four as a listed game
+ * does: on Nov 16, 2026 six of each UIL division's eight area games and every TAIAO semifinal were set by the bracket
+ * alone, so without them no region chance showed until game night.
+ */
+export function bracketTitleChances(t: RatingsTable, alignments: Alignment[], template: BracketTemplate, name: string, games: PlayoffGame[], set: SetGame[] = []) {
   const asGames: BracketGame[] = games.map((g) => {
     const won = g.confirmed && g.homeScore != null && g.awayScore != null && g.homeScore !== g.awayScore;
     const winner = won ? (g.homeScore! > g.awayScore! ? g.home : g.away) : undefined;
     return { bracket: name, round: g.round, home: g.home, away: g.away, played: g.homeScore != null, neutral: g.neutral, ...(g.trueNeutral ? { trueNeutral: true as const } : {}), ...(winner ? { winner } : {}) };
   });
+  for (const g of set) asGames.push({ bracket: name, round: g.round, home: g.home, away: g.away, played: false, neutral: true, trueNeutral: true });
+  if (!asGames.length) return { regions: [] };
   if (games[0]?.league !== "UIL") return titleChances(t, asGames);
   const region = new Map(alignments.filter((a) => a.league === "UIL" && heading(a) === name).map((a) => [a.school, a.region]));
   const semifinals = template.get(name);
   return titleChances(t, asGames, { regionOf: (team) => region.get(team), ...(semifinals ? { semifinals } : {}) });
-}
-
-export async function loadTitleChances(season = CURRENT_SEASON): Promise<{ state: BracketChances[]; regions: RegionChances[] }> {
-  const [ratings, alignments, template] = await Promise.all([loadRatings(season), loadAlignments(), loadBracketTemplate()]);
-  const games = await loadPlayoffGames(alignments, season);
-  const found = [...Map.groupBy(games, (g) => g.bracket)].map(([name, list]) => bracketTitleChances(ratings, alignments, template, name, list));
-  return { state: found.flatMap((f) => f.state ?? []), regions: found.flatMap((f) => f.regions) };
 }

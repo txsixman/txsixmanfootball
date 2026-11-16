@@ -80,3 +80,21 @@ test("a game still to play shows its kickoff with its day, and its details come 
   const alerts = page.getByRole("region", { name: "Follow these teams" });
   if (await alerts.count()) expect(details!.y).toBeLessThan((await alerts.boundingBox())!.y);
 });
+
+// Nov 16, 2026: Runge v Mount Calm, listed, unplayed and with no known site, showed no site line at all in the bracket lists,
+// while every game the bracket sets said "Site not listed yet". A listed game not yet played says it too.
+test("a listed bracket game not yet played and with no known site says 'Site not listed yet' in the bracket lists", async ({ page }) => {
+  const was = process.cwd();
+  process.chdir(path.join(__dirname, ".."));
+  let brackets: Awaited<ReturnType<typeof import("../lib/brackets").loadBrackets>>;
+  try {
+    brackets = await (await import("../lib/brackets")).loadBrackets();
+  } finally {
+    process.chdir(was);
+  }
+  const unsited = brackets.flatMap((b) => b.rounds.flatMap((r) => r.games)).find((g) => g.homeScore == null && !g.forfeit && !g.site);
+  test.skip(!unsited, "every listed game still to play has a site");
+  await page.goto("/playoffs/this-round");
+  const row = page.locator("li", { hasText: unsited!.home }).filter({ hasText: unsited!.away }).first();
+  await expect(row).toContainText("Site not listed yet");
+});

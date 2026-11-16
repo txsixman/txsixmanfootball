@@ -81,8 +81,9 @@ export async function GameList({ games, league, alignments, identities, today, s
                   {showStatus && status.unconfirmed && <DisputedMark />}
                 </span>
               )}
-              {/* Where a game not yet played is, when the game details have it (ADR 0041), with directions (ADR 0066). */}
-              {g.site && <span className="block">Site: {g.site}</span>}
+              {/* Where a game not yet played is, when the game details have it (ADR 0041), with directions (ADR 0066); else
+                  it says so, as a game the bracket sets does, rather than leaving the line out (Runge v Mount Calm, Nov 16, 2026). */}
+              {g.site ? <span className="block">Site: {g.site}</span> : g.homeScore == null && !g.forfeit && <span className="block">Site not listed yet</span>}
               {g.site && g.address && <SiteAddress site={g.site} address={g.address} />}
               {/* The projection is the line a fan wants, so it gets a line of its own. */}
               {proj && (

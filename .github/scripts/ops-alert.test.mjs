@@ -123,3 +123,15 @@ test("a named problem posts its fixed text, at most once every REASON_QUIET_HOUR
   const old = fakeApi({ issue: { ...post("other", 20), number: 7 }, comments: [post(key, REASON_QUIET_HOURS + 1)] });
   assert.equal(await run(old, { reason: "second-source-refused" }), "commented");
 });
+
+test("each continue-on-error game-night step that names a reason in results-watch.yml has a known reason, and the step ids exist", async () => {
+  const { readFileSync } = await import("node:fs");
+  const wf = readFileSync(new URL("../workflows/results-watch.yml", import.meta.url), "utf8");
+  // A failed step that may not fail the run (continue-on-error) is posted by "Problems to post" (Nov 16, 2026: three were silent).
+  for (const [id, reason] of [["live_db", "live-scores-failed"], ["games_db", "games-db-failed"], ["kickoff_alerts", "kickoff-alerts-failed"]]) {
+    assert.ok(REASONS[reason], reason);
+    assert.match(wf, new RegExp(`\\n\\s+id: ${id}\\n`), `step id ${id}`);
+    assert.match(wf, new RegExp(`steps\\.${id}\\.outcome`), `${id} is read by Problems to post`);
+    assert.ok(wf.includes(`echo ${reason} >> "$f"`), `${reason} is written`);
+  }
+});

@@ -183,3 +183,19 @@ test("Thanksgiving week: a Thursday game with a kickoff in the game details and 
   assert.deepEqual(builtDue(slotRows, rowsOf(merged.playoffs)), []);
   assert.equal(playoffWeekCount(slotRows, rowsOf(merged.playoffs), "2026-11-27"), 0);
 });
+
+test("a listing a correction voids is never looked for: it gets no final, so it would keep every tick reading for nothing", () => {
+  // Nov 20, 2026: five TAIAO semifinal listings contradicted the league's own bracket and were voided in data/corrections.
+  // Counted as due, they kept the game-day reads going (and reading their teams' pages) for three nights after the games.
+  const friday = csv(game("area", "2026-11-20", "Lark", "Jay"), game("area", "2026-11-20", "Owl", "Finch"));
+  const corrections = "game_date,home,away,action,home_score,away_score,source_url,reason,corrected_on\n2026-11-20,Finch,Owl,void,,,https://example.org,contradicts the bracket,2026-11-16\n";
+  assert.deepEqual(dueGames(friday, "2026-11-20", 3, corrections).map((r) => r.home), ["Lark"]);
+  assert.equal(dueGames(friday, "2026-11-20").length, 2, "with no corrections both are due");
+  // Two nights later, once Lark v Jay has its final, nothing is due: the voided listing does not hold the reads open.
+  const scored = csv(game("area", "2026-11-20", "Lark", "Jay", ["40", "20"]), game("area", "2026-11-20", "Owl", "Finch"));
+  assert.equal(dueGames(scored, "2026-11-22", 3, corrections).length, 0);
+  assert.equal(dueGames(scored, "2026-11-22").length, 1);
+  // A later correction that restores the game (any action but void) makes it due again: the last correction wins.
+  const restored = `${corrections}2026-11-20,Owl,Finch,score,,,https://example.org,listed again,2026-11-17\n`;
+  assert.equal(dueGames(scored, "2026-11-22", 3, restored).length, 1);
+});

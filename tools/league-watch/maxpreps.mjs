@@ -28,7 +28,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { duplicateRows } from "../../apps/web/lib/duplicate-game.ts";
-import { builtDue, seasonSlotRows } from "./bracket-due.mjs";
+import { builtDue, seasonSlotRows, withoutVoided } from "./bracket-due.mjs";
 import { CHANGES_FILE, changeLines, countsLine, mergeStored, movedDate, MOVES_FILE, parseCsv, PENDING_FILE, pendingCsv, readMoves, readPending, rowKey } from "./store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -846,10 +846,12 @@ export const CATCH_UP_NIGHTS = 3;
 /**
  * Bracket rows with no score yet that a game-day read looks for (ADR 0030): tonight's, and those of the last
  * `nights` game nights before it (the latest dates before `date` that have any bracket row). A game postponed past them
- * leaves the list; the morning read and the next full read still find it.
+ * leaves the list; the morning read and the next full read still find it. A listing `corrections` (data/corrections/games.csv)
+ * voids is no game: it never gets a final, so looking for it would keep every tick reading pages for nothing (five wrong
+ * TAIAO semifinal listings on Nov 20, 2026).
  */
-export function dueGames(playoffsText, date, nights = CATCH_UP_NIGHTS) {
-  const rows = parseRows(playoffsText).rows;
+export function dueGames(playoffsText, date, nights = CATCH_UP_NIGHTS, corrections = "") {
+  const rows = withoutVoided(parseRows(playoffsText).rows, corrections);
   const earlier = [...new Set(rows.map((r) => r.game_date).filter((d) => d && d < date))].sort().slice(-nights);
   const dates = new Set([date, ...(nights > 0 ? earlier : [])]);
   return rows.filter((r) => dates.has(r.game_date) && r.home_score === "");
@@ -884,11 +886,17 @@ export function withBuiltRows(playoffsText, built, detailsText, date, nights = C
   return { text: `${playoffsText.trimEnd()}\n${lines.join("\n")}\n`, added: extra.length };
 }
 
+/** This checkout's data/corrections/games.csv ("" when there is none): the games it voids are not looked for. */
+const readCorrections = () => {
+  const file = path.join(ROOT, "data/corrections/games.csv");
+  return existsSync(file) ? readFileSync(file, "utf8") : "";
+};
+
 /** `playoffsText` with tonight's built pairings added (withBuiltRows), from this checkout's brackets and game details. */
 function withBuiltTonight(playoffsText, date) {
   const seed = path.join(ROOT, "data/seed");
   const details = path.join(seed, "game-details", `${SEASON}.csv`);
-  const built = builtDue(seasonSlotRows(seed, SEASON), parseRows(playoffsText).rows);
+  const built = builtDue(seasonSlotRows(seed, SEASON), withoutVoided(parseRows(playoffsText).rows, readCorrections()));
   return withBuiltRows(playoffsText, built, existsSync(details) ? readFileSync(details, "utf8") : "", date);
 }
 
@@ -977,7 +985,7 @@ async function tonight() {
   } catch (e) {
     console.warn(`bracket-built pairings not added: ${e.message}`);
   }
-  const due = dueGames(playoffsText, date);
+  const due = dueGames(playoffsText, date, CATCH_UP_NIGHTS, readCorrections());
   const dates = new Set(due.map((r) => r.game_date));
   const earlier = due.filter((r) => r.game_date !== date).length;
   const liveOut = process.argv.includes("--live-out") ? process.argv[process.argv.indexOf("--live-out") + 1] : null;
@@ -1057,7 +1065,7 @@ function due() {
   const file = process.argv[process.argv.indexOf("--due") + 1];
   const date = gameNight();
   // A failure here propagates: the workflow reads anyway rather than miss a final.
-  console.log(dueGames(withBuiltTonight(readFileSync(file, "utf8"), date).text, date).length);
+  console.log(dueGames(withBuiltTonight(readFileSync(file, "utf8"), date).text, date, CATCH_UP_NIGHTS, readCorrections()).length);
 }
 
 /** A read writes its captures under RESULTS. In CI that must be the private data repo: without PRIVATE_DATA they would land

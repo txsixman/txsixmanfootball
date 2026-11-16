@@ -27,6 +27,10 @@ export const REASONS = {
   "second-source-no-agreement": "The finals cross-check found no agreeing final among 10 or more games of past game nights: its matching or the source's answers may have changed. See the private report.",
   "second-source-no-season": "The second score source has no season id for the season under way, so its reads do nothing until one is added.",
   "missing-finals": "A bracket game of a past game night still has no score after the morning read and the late-final fill. The run summary names it.",
+  // Game-night steps that must never hold back the finals' commit, so they do not fail the run; these make their failure loud.
+  "live-scores-failed": "Results watch could not send the games under way to the hosted database, so the site's live scores are stale. The finals were still committed. See the run's Live scores step.",
+  "games-db-failed": "Results watch could not load the season's games into the hosted database after its commit (score reports and comments use it). The site's pages are not affected. See the run's Games to the hosted database step.",
+  "kickoff-alerts-failed": "Results watch could not send the kickoff push alerts. The finals were still committed. See the run's Kickoff alerts step.",
 };
 /** A named problem is a condition, not one run's failure: it is posted at most once every REASON_QUIET_HOURS. */
 export const REASON_QUIET_HOURS = 12;
