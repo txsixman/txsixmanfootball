@@ -103,11 +103,15 @@ test("/standings/private redirects to TAPPS", async ({ page }) => {
 
 test("the programs finder groups schools by organization, never one mixed list", async ({ page }, info) => {
   await checkPage(page, "/programs", `orgs-programs-${info.project.name}`);
-  const headings = page.getByRole("heading", { level: 2 });
+  // One block per organization. "Not yet listed" (ADR 0073) is its own section after them, not an organization: it
+  // holds no program link, so it never mixes a school into another organization's list.
+  const headings = page.locator("section[id^='org-']").getByRole("heading", { level: 2 });
   await expect(headings).toHaveCount(5);
   expect(await headings.allTextContents()).toEqual([
     expect.stringMatching(/^UIL/), expect.stringMatching(/^TAPPS/), expect.stringMatching(/^TAIAO/), expect.stringMatching(/^TCAF/), expect.stringMatching(/^Independent/),
   ]);
+  expect((await page.getByRole("heading", { level: 2 }).allTextContents()).at(-1)).toBe("Not yet listed");
+  await expect(page.getByRole("region", { name: "Not yet listed" }).getByRole("link")).toHaveCount(0);
   // A school sits under its own organization only.
   await expect(page.locator("#org-uil").getByRole("link", { name: "Jayton" })).toHaveCount(1);
   await expect(page.locator("#org-tapps").getByRole("link", { name: "Jayton" })).toHaveCount(0);

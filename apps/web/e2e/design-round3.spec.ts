@@ -36,7 +36,7 @@ test("programs: the organization bar shows each organization's count, and the co
   await page.goto("/programs", { waitUntil: "networkidle" });
   const links = page.getByRole("navigation", { name: "Jump to an organization" }).getByRole("link");
   const counts = (await links.allTextContents()).map((t) => Number(/(\d+)$/.exec(t.trim())![1]));
-  expect(counts).toHaveLength(5); // UIL, TAPPS, TAIAO, TCAF and Independent (one program for now)
+  expect(counts).toHaveLength(5); // UIL, TAPPS, TAIAO, TCAF and Independent; "Not yet listed" (ADR 0073) is no organization and has no jump link
   await expect(page.getByRole("status")).toHaveText(`${counts.reduce((a, b) => a + b, 0)} programs`);
   // Each count is the one on that organization's own bar.
   for (const [i, slug] of ["uil", "tapps", "taiao", "tcaf", "independent"].entries()) {
