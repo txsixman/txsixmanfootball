@@ -12,7 +12,9 @@ import { roundCount } from "@/lib/this-round";
 import { chanceText, projectionParts } from "@/lib/projection";
 import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
+import { stateChampionships } from "@/lib/state-championships";
 import { SITE_URL } from "@/lib/site";
+import { StateChampionshipLink } from "../championships/shared";
 import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { PageHeader } from "../ui";
@@ -32,6 +34,7 @@ const leagueHref = (league: string) => (league === "UIL" ? "/playoffs" : `/playo
  */
 export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; siblings: Bracket[] }) {
   const [alignments, identities, table, tree] = await Promise.all([loadAlignments(), loadIdentities(), loadRatings(CURRENT_SEASON), treeData(b)]);
+  const championship = (await stateChampionships(CURRENT_SEASON)).find((c) => c.bracket === b.name);
   const clock = centralClock();
   const current = currentRound(b.rounds, clock.date);
   const rounds = [...(current ? [current] : []), ...b.rounds.filter((r) => r !== current)];
@@ -72,6 +75,8 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
       {siblings.length > 1 && (
         <TabNav label={`${b.league} brackets`} tabs={siblings.map((s) => ({ href: bracketHref(s.name), label: bracketLabel(s) }))} current={bracketHref(b.name)} wrap />
       )}
+
+      {championship && <StateChampionshipLink c={championship} className="mt-4 border-2 border-navy" />}
 
       <div className="mt-4 border-2 border-navy bg-panel px-3 py-2">
         <p className="font-num text-[22px] font-bold uppercase leading-tight tracking-wide text-navy">Scores as of {clock.label}</p>

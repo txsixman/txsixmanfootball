@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Trophy } from "lucide-react";
 import Link from "next/link";
 import { KickoffStatus } from "../kickoff-status";
 import { loadAlignments, programFor } from "@/lib/alignments";
@@ -9,8 +9,11 @@ import { EMPTY, loadIdentities, type Identity } from "@/lib/identity";
 import { aheadFor, gamesOf } from "@/lib/playoff-path";
 import { centralClock, gameStatus } from "@/lib/playoff-status";
 import { chanceText, projectionParts } from "@/lib/projection";
+import { loadLineage, successorOf } from "@/lib/lineage";
 import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
+import { championshipFor, recordedFinals } from "@/lib/state-championships";
+import { appearancesOf, championLine } from "@/lib/state-finals";
 import { DisputedMark } from "../playoffs/game-list";
 import { CrestSlot } from "../ui";
 
@@ -175,6 +178,67 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
       <p className="px-3 pt-2 text-[13px] text-muted">
         Scores may be corrected if a mistake is found. A team&rsquo;s next game shows who went on. Projections use the current ratings, with the home edge for the listed home team, except in the State Championship, a neutral site.
       </p>
+    </section>
+  );
+}
+
+/** "2026 State Champion" once this season's State Championship has a champion that is this school (any league), else
+ * "Plays in the 2026 <bracket> State Championship" while it is not played, each linking to that State Championship's page
+ * (ADR 0083). Nothing for a school in no State Championship this season. */
+export async function StateChampionLine({ school }: { school: string }) {
+  const [c, finals] = await Promise.all([championshipFor(school), recordedFinals()]);
+  if (!c) return null;
+  const won = championLine(school, CURRENT_SEASON, finals);
+  const lost = c.final && !won && c.final.runnerUp === school;
+  const text = won ?? (lost ? `${CURRENT_SEASON} State Championship runner-up` : c.final ? undefined : `${c.scores ? "In" : "Plays in"} the ${CURRENT_SEASON} ${c.bracket} State Championship`);
+  if (!text) return null;
+  const sub = c.final ? (c.final.forfeit ? undefined : `${c.final.championScore}-${c.final.runnerUpScore} · ${c.bracket}`) : c.sides.map((s) => s.text).join(" vs ");
+  return (
+    <Link href={c.href} className="mt-4 flex min-h-11 items-center justify-between gap-2 border-2 border-navy bg-panel px-3 py-1.5 hover:bg-page">
+      <span className="min-w-0">
+        <span className="flex items-center gap-1.5 font-num text-[20px] font-bold uppercase leading-tight tracking-wide text-navy">
+          {won && <Trophy aria-hidden="true" className="size-5 shrink-0 text-red" />}
+          {text}
+        </span>
+        {sub && <span className="block text-[14px] leading-5 text-muted">{sub}</span>}
+      </span>
+      <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-navy" />
+    </Link>
+  );
+}
+
+/** A school's private-league State Championships (TAPPS, TAIAO, TCAF), from the recorded finals: the title count apart from
+ * the UIL one above it, then each game. Renders nothing for a school with none. */
+export async function PrivateLeagueFinals({ school, accent }: { school: string; accent: string }) {
+  const [finals, lineage] = await Promise.all([recordedFinals(), loadLineage()]);
+  const rows = appearancesOf(school, finals.filter((f) => f.league !== "UIL"), successorOf(lineage));
+  if (!rows.length) return null;
+  const titles = rows.filter((r) => r.won).length;
+  return (
+    <section aria-labelledby="private-finals" className="mt-7">
+      <h2 id="private-finals" className="bg-band py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white" style={{ boxShadow: `inset 8px 0 0 ${accent}` }}>
+        Private league State Championships
+      </h2>
+      <p className="px-3 pt-2 font-num text-[20px] font-bold text-ink">
+        {titles === 0 ? "No private league state titles" : titles === 1 ? "1 private league state title" : `${titles} private league state titles`}
+        {rows.length > titles && `, ${rows.length - titles} runner-up ${rows.length - titles === 1 ? "finish" : "finishes"}`}
+      </p>
+      <ul className="mt-1">
+        {rows.map((r) => (
+          <li key={`${r.season}-${r.bracket}`} className="grid min-h-12 grid-cols-[3.5rem_1fr_auto] items-center gap-x-3 border-b border-line px-3 py-1.5">
+            <span className="font-num text-[18px] font-bold text-navy">{r.season}</span>
+            <span className="min-w-0 text-[15px] leading-5 text-ink">
+              {r.won && <Trophy aria-hidden="true" className="mr-1 inline size-4 align-[-2px] text-red" />}
+              <b className={r.won ? "text-red" : "text-muted"}>{r.won ? "Champion" : "Runner-up"}</b>
+              <span className="text-muted"> · {r.bracket}</span>
+              <span className="block text-[14px] text-muted">
+                {r.won ? "over" : "to"} {r.opponent}
+              </span>
+            </span>
+            <span className="text-right font-num text-[19px] font-bold tabular-nums text-ink">{r.score}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

@@ -33,6 +33,7 @@ import { Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 import { SiteAddress } from "../directions";
 import { hasCard } from "./card/ids";
+import { stateChampionshipOf } from "./card/state-championship";
 import { gameTitle } from "@/lib/titles";
 
 type Props = { params: Promise<{ id: string }> };
@@ -173,6 +174,8 @@ export default async function GamePage({ params }: Props) {
       : own
         ? { href: own.season === CURRENT_SEASON ? "/results" : `/results/${own.season}`, name: own.season === CURRENT_SEASON ? "Results" : `${own.season} results` }
         : { href: "/scores", name: "Scoreboard" };
+  // A State Championship game links to its State Championship page (this season's only).
+  const championship = sample ? undefined : await stateChampionshipOf(id);
   const places = [
     [g.away.name, detail?.places.away],
     [g.home.name, detail?.places.home],
@@ -295,6 +298,14 @@ export default async function GamePage({ params }: Props) {
         </div>
       )}
       {!detail && <div className="pb-6" />}
+
+      {championship && (
+        <p className="px-3 pb-6">
+          <Link href={championship.href} prefetch={false} className="link-more">
+            {championship.season} {championship.bracket} State Championship page
+          </Link>
+        </p>
+      )}
 
       {around.length > 0 && (
         <nav aria-label="Around this game" className="px-3 pb-6">

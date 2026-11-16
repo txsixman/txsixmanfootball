@@ -34,7 +34,7 @@ import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../crest";
-import { PathToFinal } from "../path-to-final";
+import { PathToFinal, PrivateLeagueFinals, StateChampionLine } from "../path-to-final";
 import { Follow } from "../follow";
 import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
@@ -468,6 +468,9 @@ export default async function ProgramPage({ params }: Props) {
         <Follow slug={slug} school={school.school} />
         <ShareButton title={`${school.school} | ${SITE_NAME}`} className="mt-4 px-3" />
 
+        {/* This season's State Championship: the title once it is won, else where the school plays for it (ADR 0083). */}
+        <StateChampionLine school={school.school} />
+
         {/* A team in this season's playoff bracket: its path, round by round, before the full schedule. */}
         <PathToFinal school={school.school} accent={accent} />
 
@@ -735,6 +738,8 @@ export default async function ProgramPage({ params }: Props) {
             </ul>
           </Section>
         )}
+
+        <PrivateLeagueFinals school={school.school} accent={accent} />
 
         {aka.length > 0 && (
           <Section id="other-names" title="Other names" accent={accent}>

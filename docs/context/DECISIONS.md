@@ -137,3 +137,7 @@ Not in an ADR:
   teams a fan follows, each opening the game page; every event sent at most once (`push_sent`, migration 0031); built dark
   behind the `push_alerts` database switch (the sender) and `FAN_PUSH_ALERTS` (the "Game alerts on this device" toggle on My
   teams and `/account`); no route can send (Nov 16, 2026).
+- **State Championship pages and recorded champions** (ADR 0083): a page for each bracket's State Championship of the
+  season under way (`/championships/<season>/<bracket>`); a final recorded by the robot or a correction names its
+  champion on every page with no hand edit; UIL's archive stays the UIL record, a recorded UIL final fills its gap; the
+  private leagues' recorded finals since 2018 are their record (Nov 16, 2026).

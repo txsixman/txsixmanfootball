@@ -270,3 +270,18 @@ export function seriesDescription({ first, second, games, since, playoff, projec
     projection ? [`${what}, and a projection if they met now.`, `${what}.`] : `${what}.`,
   );
 }
+
+/** One league bracket's State Championship page: the two teams when known, the date, and what the page holds. No score and no
+ * winner, as every description (the page names the champion once the game is recorded). */
+export function stateChampionshipDescription({ season, bracket, teams, date, played }: { season: number; bracket: string; teams: string[]; date?: string; played: boolean }) {
+  const matchup = teams.length === 2 ? `${teams[0]} vs ${teams[1]}` : undefined;
+  const when = date ? `, ${date}` : "";
+  return fit(
+    matchup
+      ? [`The ${season} ${bracket} State Championship${when}: ${matchup}.`, `The ${season} ${bracket} State Championship: ${matchup}.`, `The ${season} ${bracket} State Championship.`]
+      : [`The ${season} ${bracket} State Championship${when}.`, `The ${season} ${bracket} State Championship.`],
+    played
+      ? ["The result, each team's playoff path, season record and State Championship history.", "The result, each team's playoff path and history."]
+      : ["The kickoff and site, each team's playoff path and season record, and the projected margin and chance to win.", "The kickoff, site, playoff paths and the projected margin and chance to win."],
+  );
+}

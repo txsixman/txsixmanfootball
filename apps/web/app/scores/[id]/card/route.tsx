@@ -10,10 +10,13 @@ import { isForfeit, winnerOf, type Side } from "@/lib/score-display";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { brandFont } from "../../../mark";
 import { cardIds } from "./ids";
+import { championBanner, stateCardTitle, stateCardTitleSize } from "./state-card";
+import { stateChampionshipOf } from "./state-championship";
 
 // The card a link preview shows when a game page is shared (/scores/<id>/card, the page's og:image): both teams (logo
 // from the school's own site, ADR 0006, shown as published beside the name; the school's colors and initials when there
-// is none), the date, and the score. The score says "Final" only for a confirmed final; a robot-read score says
+// is none), the date, and the score. A State Championship's card is titled with its season and bracket and, once the game is
+// recorded and confirmed, names the champion (state-card.ts); every other game's card is drawn as it always was. The score says "Final" only for a confirmed final; a robot-read score says
 // "Score reported" and names no winner (ADR 0004). An unplayed game shows no score. Drawn at build time from the same game
 // the page shows (lib/game-pages.ts).
 //
@@ -50,6 +53,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const played = g.state === "final" && !forfeit && g.homeScore != null && g.awayScore != null;
   const winner = winnerOf(g);
   const status = forfeit ? "Forfeit" : played ? (g.verification === "confirmed" ? "Final" : "Score reported") : g.state === "postponed" ? "Postponed" : "Scheduled";
+  const championship = await stateChampionshipOf(id);
+  const title = championship && stateCardTitle(championship.season, championship.bracket);
+  const banner = championBanner(championship?.final);
   const rows = await Promise.all(
     (["away", "home"] as const).map(async (side: Side) => ({ team: g[side], score: side === "home" ? g.homeScore : g.awayScore, tile: await tile(g[side]), lost: winner !== null && winner !== side })),
   );
@@ -57,9 +63,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", fontFamily: "Barlow Condensed", background: "#0a2a5e", color: "#ffffff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", padding: "40px 72px 0", fontSize: 34, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", color: "#ff8a95" }}>
-          <div>{g.league.replace(/\. Sample game.*/, "")}</div>
+          {title ? <div style={{ display: "flex", fontSize: stateCardTitleSize(title) }}>{title}</div> : <div>{g.league.replace(/\. Sample game.*/, "")}</div>}
           {g.date && <div>{mediumDate(g.date)}</div>}
         </div>
+        {banner && <div style={{ display: "flex", padding: "14px 72px 0", fontSize: banner.length > 40 ? 44 : 56, fontWeight: 700, lineHeight: 1, letterSpacing: 2, textTransform: "uppercase", color: "#ffd24a" }}>{banner}</div>}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 72px" }}>
           {rows.map(({ team, score, tile: t, lost }, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", marginTop: i ? 28 : 0, opacity: lost ? 0.65 : 1 }}>

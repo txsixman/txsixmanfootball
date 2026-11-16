@@ -124,3 +124,8 @@ export const championshipYearTitle = ({ year, divisions }: { year: number; divis
 export const programsTitle = () => "Texas six-man football teams: every program";
 
 export const matchupTitle = () => "Six-man matchup: any two teams, projected margin";
+
+/** One league bracket's State Championship page: "2026 TAPPS Division I State Championship". `bracket` is the bracket's name
+ * with its league ("TCAF", "UIL Division II"). Says what the page holds; the champion is in the page, not the title. */
+export const stateChampionshipTitle = ({ season, bracket }: { season: number; bracket: string }) =>
+  fit(`${season} ${bracket} State Championship`, `${season} ${bracket.split(" ")[0]} State Championship`);
