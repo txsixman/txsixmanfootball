@@ -10,7 +10,7 @@ import { slugify } from "./slug";
 
 export type Lineage = { predecessor: string; successor: string; event: (typeof LINEAGE_EVENTS)[number]; season: number };
 /** A spelling or a former name of one school, no lineage event. `until`: the former name's last season, if known. */
-export type SchoolName = { name: string; program: string; kind: "spelling" | "former"; until?: number };
+type SchoolName = { name: string; program: string; kind: "spelling" | "former"; until?: number };
 
 async function readSeed(file: string): Promise<string | undefined> {
   try {
@@ -72,7 +72,7 @@ export const loadAliases = memo<void, Record<string, string>>(async () => {
 });
 
 /** Where a name sits on the page: the schools a program was formed from, what it became, and its other names. */
-export type OtherNameGroup = "formed" | "became" | "name";
+type OtherNameGroup = "formed" | "became" | "name";
 export type OtherName = { name: string; note: string; group: OtherNameGroup; /** The program page to link, when that program has one. */ slug?: string };
 
 type FinalYears = { season: number; champion: string; runnerUp: string }[];

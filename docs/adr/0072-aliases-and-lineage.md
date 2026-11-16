@@ -12,9 +12,12 @@ page names a source) as it is.
   successor.
 - Measured Nov 15, 2026 against the repo's seasons (UIL state finals 1972 to 2025, game and playoff files 2018 to 2026,
   the 2026 brackets; the 1941 to 1971 no-final file names no schools): 280 current programs, 349 distinct team names, every
-  current program in at least one season. __MEASURE__
+  current program in at least one season. 66 names reach no current program: 14 are bracket
+  placeholders ("winner:NR1"), 3 are UIL finalists still independent but out of six-man (Christoval, Jarrell, Marathon),
+  and 49 are private-league playoff teams of 2018 to 2025 that are not in a 2026 list.
 - TEA's list (Consolidations, Annexations, and Name Changes ... Through School Year 2024-2025) has about 65 rows since
-  1983. Twelve of them reach a current six-man program; the rest go to 11-man or 8-man districts, so they have no page here.
+  1983. Eleven schools on it reach a current six-man program; the rest went to 11-man or 8-man districts, with no page
+  here.
 
 ## Decision
 1. **Sources.** Every row cites a public record that states the fact outright: TEA's list first, then UIL's own archive,
@@ -47,7 +50,14 @@ page names a source) as it is.
    call left open (plan cut-first rule 2).
 
 ## Consequences
-- __COUNTS__
+- Programs with an Other names list: 5 before, 16 after. Lineage rows: 3 before, 18 after (TEA 14, Three Way ISD's own page 3, and
+  Knox City's existing row from a newspaper repost). Other names in `names.csv`: 2 (TEA's "Welman", and
+  "Spring Lake", Springlake-Earth's name through 1965 on its own history page).
+- Left out for want of an allowed source, Nov 15, 2026: mergers that only secondary pages state for 15 current programs
+  (Gilmer Union Hill, Lenorah Grady, Turkey Valley, Roscoe Highland, Matador Motley County, Cotton Center, Rochelle, Lohn,
+  Kress, Guthrie, Loop, Paint Rock, Moran, Westbrook, Ladonia Fannindel), and Haskell Paint Creek's (its page gives a
+  span of years, not one). Of the 49 past private-league teams, no school site states a rename or merger; two say they
+  closed (no successor, so no row); the rest are open schools that left six-man, or not found.
 - Names left out for want of a source are listed in the pull request and in `docs/context/PROJECT_STATE.md`.
 - The database loads `programs.csv` as before (`packages/db/lineage.mjs`, which now accepts `annexation`); `names.csv` is
   read by the site only for now. When the admin console needs school aliases, load it into `school_alias`.
