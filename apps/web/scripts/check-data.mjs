@@ -63,6 +63,7 @@ function files() {
     { file: CORRECTIONS.programs, csv: [s.PROGRAM_MERGE_COLUMNS, s.ProgramMergeRow], optional: true },
     { file: CORRECTIONS.games, csv: [s.GAME_CORRECTION_COLUMNS, s.GameCorrectionRow], optional: true },
     { file: seed("lineage/programs.csv"), csv: [s.LINEAGE_COLUMNS, s.LineageRow], optional: true },
+    { file: seed("lineage/names.csv"), csv: [s.NAME_COLUMNS, s.NameRow], optional: true },
     { file: seed("uil-champions/six-man.csv"), csv: [s.FINAL_COLUMNS, s.FinalRow], optional: true },
     { file: seed("uil-champions/six-man-no-final.csv"), csv: [s.NO_FINAL_COLUMNS, s.NoFinalRow], optional: true },
     { file: seed("schools/identity.json"), json: s.IdentityFile, optional: true },
@@ -118,7 +119,60 @@ export function checkAll() {
   results.push(checkFirstSeason());
   results.push(...checkMaxprepsFolders(path.join(root, "data/seed")));
   results.push(...checkDisputed(path.join(root, "data/seed")));
+  const programs = new Set(Object.keys(parsed).filter((f) => f.endsWith("alignments.csv")).flatMap((f) => parsed[f].map((r) => slugify(r.school))));
+  const lineage = parsed[seed("lineage/programs.csv")];
+  if (lineage) results.push(checkLineage(lineage, parsed[seed("lineage/names.csv")] ?? [], programs));
   return results;
+}
+
+/**
+ * Lineage and other names (ADRs 0003, 0072) against today's programs (`programs`: every alignment file's slugs). Each
+ * lineage row (its source checked by the schema) must end at a current program, never at itself, once per pair, with no
+ * cycle; a predecessor still listed today can only be in a co-op or a split, or it would be one school on two pages. A
+ * name in names.csv must belong to a current program and not be another program's own name.
+ */
+export function checkLineage(lineage, names, programs) {
+  const file = seed("lineage/programs.csv");
+  const problems = [];
+  const next = new Map();
+  const pairs = new Set();
+  for (const l of lineage) {
+    const [from, to] = [slugify(l.predecessor), slugify(l.successor)];
+    const row = `${l.predecessor} -> ${l.successor}`;
+    if (from === to) problems.push(`${row}: a program cannot follow itself`);
+    if (!programs.has(to)) problems.push(`${row}: ${l.successor} is no current program (check the spelling against the alignment files)`);
+    if (programs.has(from) && l.event !== "coop" && l.event !== "split") problems.push(`${row}: ${l.predecessor} is still a current program, so it cannot have been ${l.event === "rename" ? "renamed" : "merged"} away`);
+    if (pairs.has(`${from}>${to}`)) problems.push(`${row}: listed twice`);
+    pairs.add(`${from}>${to}`);
+    next.set(from, [...(next.get(from) ?? []), to]);
+  }
+  // A cycle: following predecessor -> successor from some program comes back to it.
+  const state = new Map();
+  const visit = (slug, trail) => {
+    if (state.get(slug) === "done") return;
+    if (state.get(slug) === "open") {
+      problems.push(`a cycle: ${[...trail.slice(trail.indexOf(slug)), slug].join(" -> ")}`);
+      return;
+    }
+    state.set(slug, "open");
+    for (const to of next.get(slug) ?? []) visit(to, [...trail, slug]);
+    state.set(slug, "done");
+  };
+  for (const slug of next.keys()) visit(slug, []);
+  const seen = new Set();
+  for (const n of names) {
+    const row = `names.csv ${n.name} (${n.program})`;
+    if (!programs.has(slugify(n.program))) problems.push(`${row}: ${n.program} is no current program`);
+    if (programs.has(slugify(n.name))) problems.push(`${row}: ${n.name} is a current program's own name`);
+    if (seen.has(`${slugify(n.name)}>${slugify(n.program)}`)) problems.push(`${row}: listed twice`);
+    seen.add(`${slugify(n.name)}>${slugify(n.program)}`);
+  }
+  const reached = new Set(lineage.map((l) => slugify(l.successor)));
+  return {
+    file,
+    ok: problems.length === 0,
+    note: problems.length ? problems.join("; ") : `${lineage.length} lineage rows and ${names.length} other names, every one at a current program, no cycle (${reached.size} programs formed from others)`,
+  };
 }
 
 /**

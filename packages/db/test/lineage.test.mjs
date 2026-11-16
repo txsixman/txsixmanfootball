@@ -9,6 +9,7 @@ test("a lineage row needs a known event, a season and a cited source", () => {
   const [row] = parseLineage(csv("Dry Wash,Cedar Gap,consolidation,1990,https://x.test/a,merged"));
   assert.deepEqual([row.predecessor, row.successor, row.season], ["Dry Wash", "Cedar Gap", 1990]);
   assert.throws(() => parseLineage(csv("Dry Wash,Cedar Gap,merger,1990,https://x.test/a,")), /unknown event/);
+  assert.equal(parseLineage(csv("Dry Wash,Cedar Gap,annexation,1985,https://x.test/a,annexed"))[0].event, "annexation");
   assert.throws(() => parseLineage(csv("Dry Wash,Cedar Gap,consolidation,1990,,")), /cites no source/);
   assert.throws(() => parseLineage(csv("Dry Wash,Cedar Gap,consolidation,1990,https://x.test/a,a, b")), /no commas/);
 });

@@ -66,8 +66,10 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `data/seed/uil-champions/`: written by `tools/history/uil-champions.mjs` from UIL's own final archive, never by
   hand: `six-man.csv` (every six-man state final since 1972) and `six-man-no-final.csv` (1941 to 1971, no state final).
   UIL's town-plus-school spellings map to current names in `tools/history/uil-aliases.json`. Rerun after each December final: `UIL_CACHE=$TMPDIR/uil NODE_USE_ENV_PROXY=1 node tools/history/uil-champions.mjs`
-- `data/seed/lineage/programs.csv`: mergers and renames (ADR 0003), by hand, one cited source a row (TEA's consolidation
-  list first). A merged school's finals show on the program it became
+- `data/seed/lineage/programs.csv`: mergers, renames, annexations and splits (ADRs 0003, 0072), by hand, one cited source
+  a row (TEA's consolidation list first); `names.csv`: other names of the same school (spellings, former names). A
+  renamed or consolidated school's finals show on the program it became; an annexed or split one's stay under its name.
+  `check-data` fails a row that ends at no current program, repeats, or makes a cycle
 - `data/seed/schools/`: `identity.json` (each school's site, mascot, colors and logo, every fact with its source URL)
   and `colors.json` (color name to hex) (ADR 0006)
 - `tools/school-identity/`: `merge.mjs` fills gaps from research batches, `wikipedia.mjs` fills colors and mascots

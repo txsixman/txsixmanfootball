@@ -57,6 +57,15 @@ test("a program can have two predecessors", async () => {
   assert.equal(row.n, 2);
 });
 
+test("a lineage row may be an annexation (TEA's word, migration 0028), and no event outside the list", async () => {
+  const [a, b] = await Promise.all(["annex-a", "annex-b"].map((slug) => one("insert into program (slug) values ($1) returning id", [slug])));
+  const source = await one("insert into source_document (url, retrieved_on) values ('https://x.test/annex', '2026-11-15') returning id");
+  const insert = (event) =>
+    db.query("insert into program_lineage (predecessor_id, successor_id, event, season, source_document_id) values ($1, $2, $3, 1985, $4)", [a.id, b.id, event, source.id]);
+  await assert.rejects(insert("merger"), /program_lineage_event_check/);
+  await insert("annexation");
+});
+
 test("a final needs an end reason and both scores", async () => {
   const game = await newGame();
   await assert.rejects(db.query("update game set status = 'final', home_score = 50, away_score = 0 where id = $1", [game.id]), /final_is_complete/);

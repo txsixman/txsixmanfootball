@@ -10,7 +10,7 @@ import { programEdge } from "@/lib/intros";
 import { programDescription, rankPhrase } from "@/lib/descriptions";
 import { titlesBySlug } from "@/lib/program-titles";
 import { loadCorrections } from "@/lib/correction-files";
-import { loadAliases, loadLineage, otherNames } from "@/lib/lineage";
+import { countingRows, loadAliases, loadLineage, loadNames, type OtherName, otherNames } from "@/lib/lineage";
 import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
 import { loadRanked, rankLabel } from "@/lib/rankings";
@@ -94,6 +94,13 @@ function Section({ id, title, accent, children, className = "mt-7" }: { id: stri
   );
 }
 
+/** The Other names section's three lists, in page order (lib/lineage.ts). */
+const OTHER_NAME_GROUPS: [OtherName["group"], string][] = [
+  ["formed", "Formed from"],
+  ["became", "Became"],
+  ["name", "Also known as"],
+];
+
 /** A dash for a figure the data does not have, with words for a screen reader. */
 function Dash({ what }: { what: string }) {
   return (
@@ -162,14 +169,15 @@ export default async function ProgramPage({ params }: Props) {
     await loadSeasonResults(CURRENT_SEASON),
     await shownBefore(CURRENT_SEASON),
   );
-  // This program's own finals, and those of the schools that merged into it (ADR 0003), marked "as <old name>".
+  // This program's own finals, and those of the schools renamed or merged into it (ADR 0072), marked "as <old name>".
   const lineage = await loadLineage();
-  const names = new Set([slug, ...lineage.filter((l) => slugify(l.successor) === slug).map((l) => slugify(l.predecessor))]);
+  const names = new Set([slug, ...countingRows(lineage).filter((l) => slugify(l.successor) === slug).map((l) => slugify(l.predecessor))]);
   const allFinals = await loadFinals();
   const aka = otherNames(slug, lineage, await loadAliases(), {
     merges: (await loadCorrections()).merges,
     finals: allFinals,
     programs: new Set(all.map((a) => a.slug)),
+    names: await loadNames(),
   });
   const finals = allFinals
     .filter((f) => names.has(slugify(f.champion)) || names.has(slugify(f.runnerUp)))
@@ -730,20 +738,27 @@ export default async function ProgramPage({ params }: Props) {
 
         {aka.length > 0 && (
           <Section id="other-names" title="Other names" accent={accent}>
-            <ul>
-              {aka.map((n) => (
-                <li key={`${n.name}-${n.note}`} className="flex min-h-11 flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2 text-[15px] text-ink">
-                  {n.slug ? (
-                    <Link href={`/programs/${n.slug}`} className="font-bold text-navy hover:underline">
-                      {n.name}
-                    </Link>
-                  ) : (
-                    <b>{n.name}</b>
-                  )}
-                  <span className="text-[14px] text-muted">{n.note}</span>
-                </li>
-              ))}
-            </ul>
+            {OTHER_NAME_GROUPS.filter(([group]) => aka.some((n) => n.group === group)).map(([group, label]) => (
+              <div key={group}>
+                <h3 className="border-b border-line bg-panel px-3 py-1.5 text-[13px] font-bold uppercase tracking-wider text-muted">{label}</h3>
+                <ul>
+                  {aka
+                    .filter((n) => n.group === group)
+                    .map((n) => (
+                      <li key={`${n.name}-${n.note}`} className="flex min-h-11 flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2 text-[15px] text-ink">
+                        {n.slug ? (
+                          <Link href={`/programs/${n.slug}`} className="font-bold text-navy hover:underline">
+                            {n.name}
+                          </Link>
+                        ) : (
+                          <b>{n.name}</b>
+                        )}
+                        <span className="text-[14px] text-muted">{n.note}</span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ))}
           </Section>
         )}
 

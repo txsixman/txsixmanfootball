@@ -6,7 +6,7 @@ import * as s from "../lib/data-schemas.ts";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { checkAll, checkDisputed, checkMaxprepsFolders } from "./check-data.mjs";
+import { checkAll, checkDisputed, checkLineage, checkMaxprepsFolders } from "./check-data.mjs";
 
 // Robot-read games as this repo holds them: the facts, no source column (data-schemas.ts RESULT_COLUMNS).
 const HEADER = s.RESULT_COLUMNS.join(",");
@@ -159,4 +159,38 @@ test("a voided playoff listing that later reads a score is named for review, nev
   const stored = { game_date: "2026-11-20", home: "Alpha", away: "Beta", home_score: "30", away_score: "28", end_reason: "" };
   assert.deepEqual(voidedButScored([row("Beta", "Alpha", "28", "30")], fixes, "f.csv", [stored]), []);
   assert.equal(voidedButScored([row("Beta", "Alpha", "28", "31")], fixes, "f.csv", [stored]).length, 1, "another score is new");
+});
+
+// Lineage (ADRs 0003, 0072), invented schools only: every row ends at a current program, never itself, once, no cycle.
+test("lineage rows must end at a current program, once, with no cycle; a school still listed today can only be in a co-op or split", () => {
+  const programs = new Set(["cedar-gap", "dry-wash", "elk-flat"]);
+  const row = (predecessor, successor, event = "consolidation") => ({ predecessor, successor, event, season: "1990", source_url: "https://x.test/a", notes: "" });
+  const name = (n, program, kind = "spelling") => ({ name: n, program, kind, until: "", source_url: "https://x.test/a", notes: "" });
+  const ok = checkLineage([row("Old Mesa", "Cedar Gap"), row("Far Mesa", "Dry Wash", "split"), row("Far Mesa", "Elk Flat", "split")], [name("Cedar Gapp", "Cedar Gap")], programs);
+  assert.equal(ok.ok, true, ok.note);
+  assert.match(ok.note, /3 lineage rows and 1 other names/);
+  const bad = (rows, names, pattern) => {
+    const r = checkLineage(rows, names, programs);
+    assert.equal(r.ok, false);
+    assert.match(r.note, pattern);
+  };
+  bad([row("Old Mesa", "New Mesa")], [], /New Mesa is no current program/);
+  bad([row("Cedar Gap", "Cedar Gap")], [], /cannot follow itself/);
+  bad([row("Dry Wash", "Cedar Gap")], [], /Dry Wash is still a current program/);
+  bad([row("Old Mesa", "Cedar Gap"), row("Old Mesa", "Cedar Gap")], [], /listed twice/);
+  bad([row("Dry Wash", "Cedar Gap", "coop"), row("Cedar Gap", "Dry Wash", "coop")], [], /a cycle: (dry-wash -> cedar-gap -> dry-wash|cedar-gap -> dry-wash -> cedar-gap)/);
+  bad([], [name("Cedar Gapp", "Nowhere")], /Nowhere is no current program/);
+  bad([], [name("Dry Wash", "Cedar Gap")], /Dry Wash is a current program's own name/);
+});
+
+test("a lineage or names row without an https source, or with an unknown event or kind, fails its file", () => {
+  const lineage = (line) => s.parseCsv("programs.csv", [s.LINEAGE_COLUMNS.join(","), line].join("\n"), s.LINEAGE_COLUMNS, s.LineageRow);
+  lineage("Old Mesa,Cedar Gap,annexation,1985,https://x.test/a,");
+  assert.throws(() => lineage("Old Mesa,Cedar Gap,merger,1985,https://x.test/a,"), /event/);
+  assert.throws(() => lineage("Old Mesa,Cedar Gap,consolidation,1985,,"), /source_url/);
+  assert.throws(() => lineage("Old Mesa,Cedar Gap,consolidation,1985,http://x.test/a,"), /source_url/);
+  const names = (line) => s.parseCsv("names.csv", [s.NAME_COLUMNS.join(","), line].join("\n"), s.NAME_COLUMNS, s.NameRow);
+  names("Cedar Gapp,Cedar Gap,former,2019,https://x.test/a,");
+  assert.throws(() => names("Cedar Gapp,Cedar Gap,nickname,,https://x.test/a,"), /kind/);
+  assert.throws(() => names("Cedar Gapp,Cedar Gap,former,19,https://x.test/a,"), /until/);
 });
