@@ -65,6 +65,8 @@ export function AlertsToggle() {
     setBusy(true);
     setNote("");
     try {
+      // Signed out, alerts follow this browser's own list: with nothing on it there is nothing to alert, so no prompt.
+      if (turnOn && !signedIn && !followedHere().length) return setNote("Follow a team first, then turn on game alerts.");
       if (turnOn && Notification.permission !== "granted" && (await Notification.requestPermission()) !== "granted") {
         setBlocked(true);
         return;

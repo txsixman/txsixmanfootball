@@ -151,6 +151,20 @@ test("each read answers plain camel-case data, and any failure or odd shape is {
   assert.deepEqual(await setPushMute(fake({ set_push_mute: { data: null } }), "https://fcm.googleapis.com/x", "strawn", true), { error: "failed" });
 });
 
+test("every failed call is logged by function and SQL state only; a rename the fan is told about (too soon, taken, not allowed) is not", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
+  await listDevices(fake({ my_devices: boom }));
+  await setPushMute(fake({ set_push_mute: new Error("network down secret") }), "https://fcm.googleapis.com/x", "strawn", true);
+  await changeDisplayName(fake({ change_display_name: { error: { code: "42501", message: "change_display_name: banned" } } }), "Wildcat Fan");
+  for (const code of ["55000", "23505", "23514"]) await changeDisplayName(fake({ change_display_name: { error: { code, message: "x" } } }), "Wildcat Fan");
+  assert.deepEqual(logged.mock.calls.map((c) => c.arguments), [
+    ["account: database call failed", "my_devices", "XX000"],
+    ["account: database call failed", "set_push_mute", "unknown"],
+    ["account: database call failed", "change_display_name", "42501"],
+  ]);
+  assert.doesNotMatch(JSON.stringify(logged.mock.calls.map((c) => c.arguments)), /secret|fcm|Wildcat/);
+});
+
 test("the calls send the argument names the SQL functions have (p_endpoint, p_slug, p_muted, p_id, p_limit)", async () => {
   const s = fake({ my_activity: { data: [] }, set_push_mute: { data: [] }, remove_my_device: {} });
   await myActivity(s);

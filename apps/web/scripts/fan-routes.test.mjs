@@ -421,9 +421,23 @@ test("follows refusals: off 404, another site 403, not JSON 415, bad shape 400, 
   assert.deepEqual([over.status, over.body], [409, { error: "limit" }]);
 });
 
-test("follows: a database failure is 503 with nothing of the error", async () => {
+test("follows: a database failure is 503 with nothing of the error, and one log line with the SQL state only", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
   signIn(await fan(d, "Follow Hiccup"), { fail: { code: "57014", message: "canceling statement due to statement timeout" } });
   const r = await read(await followReq({ op: "follow", slug: "jayton" }));
   assert.deepEqual([r.status, r.body], [503, { error: "unavailable" }]);
   noInternals(r);
+  assert.deepEqual(logged.mock.calls.map((c) => c.arguments), [["follows: database call failed", "follow_program", "57014"]]);
+});
+
+test("/api/me: a database failure is 503 and one log line with no detail; the fan's own refusals (limit, no profile) log nothing", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
+  signIn(await fan(d, "Me Hiccup"), { fail: { code: "57014", message: "canceling statement due to statement timeout" } });
+  const r = await read(await me.GET(request("/api/me", { method: "GET", cookie: "sb-localhost-auth-token=base64-test" })));
+  assert.deepEqual([r.status, r.body], [503, { error: "unavailable" }]);
+  assert.deepEqual(logged.mock.calls.map((c) => c.arguments), [["me: database call failed", "my_profile or my_follows", "unknown"]]);
+  logged.mock.resetCalls();
+  signIn(newId());
+  assert.equal((await followReq({ op: "follow", slug: "jayton" })).status, 403);
+  assert.deepEqual(logged.mock.calls, []);
 });

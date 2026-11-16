@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { adminUserId, fanPosts, fanSignIn, siteOrigin } from "@/lib/auth/config";
 import { getFollows, getProfile } from "@/lib/auth/profile";
 import { getUser } from "@/lib/auth/server";
+import { logDbFailure } from "@/lib/log-db";
 
 // Who is signed in, for the page's own script (the auth cookies are httpOnly): `{ enabled, posts, me }`. `enabled` is whether fan
 // accounts are on (FAN_SIGNIN, read per request, so the header and Follow button need no rebuild); `posts` is whether forums,
@@ -9,7 +10,7 @@ import { getUser } from "@/lib/auth/server";
 // is signed in, else the display name (null until sign-up is finished), the programs the account follows, and `admin` when
 // this is the admin. With fan accounts off Supabase is not asked at all, except when the request comes from an admin page.
 // Never cached or indexed (proxy.ts sets the same headers). Nothing else leaves here: no email, no birth year, no id.
-// Nothing is logged.
+// A failure is logged as one line with no detail (lib/log-db.ts).
 export const dynamic = "force-dynamic";
 
 const reply = (body: unknown, status = 200) =>
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
       me: { displayName: profile?.displayName ?? null, follows: profile ? await getFollows(found.supabase) : [], ...(admin && { admin: true }) },
     });
   } catch {
+    logDbFailure("me", "my_profile or my_follows");
     return reply({ error: "unavailable" }, 503);
   }
 }

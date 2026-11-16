@@ -1,11 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { NAME_MESSAGE, SignUpFields } from "../auth/sign-up.ts";
+import { logDbFailure } from "../log-db.ts";
 import { displayNameProblem } from "../moderation/names.ts";
 
 // The Account Center's server half (ADR 0058, migration 0026). The account page, its server actions and its routes call only
 // these. Each takes the request's Supabase client (getUser()'s `supabase`: the visitor's own session, never a service key) and
-// answers with plain data or `{ error }`; it never throws and never logs. The database acts on auth.uid()'s own rows alone and
+// answers with plain data or `{ error }`; it never throws, and logs a failed call by its SQLSTATE only (lib/log-db.ts). The database acts on auth.uid()'s own rows alone and
 // checks everything again. No function here returns the birth year, a push endpoint or key, or an unsubscribe token, and no
 // Supabase error text is kept: an error is one of four fixed words (the codes below are Postgres SQLSTATEs, not wording).
 //
@@ -24,12 +25,17 @@ type DbError = { code?: string | null; message?: string | null; details?: string
 
 type Answer = { data: unknown; error: NonNullable<DbError> | null };
 
-/** One rpc() call that never throws: a network failure is an error answer like any other. */
+/** A rename's refusals the fan is told about (too soon, taken, not allowed): answers, not failures, so not logged. */
+const TOLD = new Set(["55000", "23505", "23514"]);
+
+/** One rpc() call that never throws: a network failure is an error answer like any other. Every failure is logged by its code, except a rename's told refusals. */
 async function rpc(supabase: SupabaseClient, fn: string, args: Record<string, unknown> = {}): Promise<Answer> {
   try {
     const { data, error } = await supabase.rpc(fn, args);
+    if (error && !(fn === "change_display_name" && TOLD.has(error.code ?? ""))) logDbFailure("account", fn, error.code);
     return { data, error: error ?? null };
   } catch {
+    logDbFailure("account", fn);
     return { data: null, error: {} };
   }
 }

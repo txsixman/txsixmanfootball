@@ -131,15 +131,44 @@ export async function linkToAccount(subscribe: boolean): Promise<boolean> {
   return true;
 }
 
-/** Follow (on) or stop following (off) one program; returns the programs followed afterwards. */
-export async function setFollow(slug: string, on: boolean): Promise<string[]> {
+/** The most programs one signed-out browser follows: push_subscription's own check (migration 0008). An account follows up to 100. */
+export const BROWSER_FOLLOW_LIMIT = 25;
+
+/** The list after following (on) or unfollowing (off) `slug`; throws "limit" when following would pass BROWSER_FOLLOW_LIMIT. */
+function nextList(slug: string, on: boolean): string[] {
   const list = on ? [...new Set([...followedHere(), slug])].sort() : followedHere().filter((s) => s !== slug);
+  if (on && list.length > BROWSER_FOLLOW_LIMIT) throw new Error("limit");
+  return list;
+}
+
+/**
+ * Follow or unfollow on this browser only, for a browser that cannot show alerts (an iPhone's Safari outside the Home Screen):
+ * the list is what My teams shows, and what alerts use once this browser can show them. Nothing leaves the device.
+ */
+export function setFollowHere(slug: string, on: boolean): string[] {
+  const list = nextList(slug, on);
+  remember(list);
+  return list;
+}
+
+/**
+ * Follow (on) or stop following (off) one program; returns the programs followed afterwards. Only a follow asks for permission:
+ * an unfollow updates the subscription this browser already has (or just the list, when it has none), so a fan who blocked
+ * notifications later can still unfollow. Throws "permission" when blocked, "limit" past BROWSER_FOLLOW_LIMIT.
+ */
+export async function setFollow(slug: string, on: boolean): Promise<string[]> {
+  const list = nextList(slug, on);
   const registration = await navigator.serviceWorker.ready;
   let subscription = await registration.pushManager.getSubscription();
   if (!list.length) {
     if (subscription) {
       await rpc("push_unfollow", { p_endpoint: subscription.endpoint });
       await subscription.unsubscribe();
+    }
+  } else if (!on) {
+    if (subscription) {
+      const json = subscription.toJSON();
+      await rpc("push_follow", { p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_programs: list });
     }
   } else {
     if (Notification.permission !== "granted" && (await Notification.requestPermission()) !== "granted") {

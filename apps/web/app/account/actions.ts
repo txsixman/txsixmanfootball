@@ -3,11 +3,13 @@
 import { redirect } from "next/navigation";
 import { adminUserId, fanSignIn } from "@/lib/auth/config";
 import { getUser } from "@/lib/auth/server";
+import { logDbFailure } from "@/lib/log-db";
 
 // Delete my account: delete_my_account() (migrations 0011, 0012, 0023) removes the Auth user (email and sign-in) and, by
 // cascade, the profile and the follows; it deletes the account's push subscriptions (the browsers linked to it, ADR 0054)
 // first, explicitly. Posts in later rounds hang off the profile the same way. A browser's own, unlinked alerts (followed
-// signed out) are not the account's: "Stop alerts" on a program page ends those. Nothing here logs who deleted what.
+// signed out) are not the account's: "Stop alerts" on a program page ends those. Nothing here logs who deleted what; a
+// failure logs the database's code only (lib/log-db.ts).
 
 export type DeleteState = { error?: string };
 
@@ -18,7 +20,10 @@ export async function deleteAccount(_previous: DeleteState, data: FormData): Pro
   if (!found) redirect("/sign-in");
   if (found.user.id.toLowerCase() === adminUserId()) redirect("/admin"); // never deletes the admin's account
   const { error } = await found.supabase.rpc("delete_my_account");
-  if (error) return { error: "Could not delete your account right now. Try again in a minute." };
+  if (error) {
+    logDbFailure("account", "delete_my_account", error.code);
+    return { error: "Could not delete your account right now. Try again in a minute." };
+  }
   // The user is gone, so there is no token to revoke: clear this browser's cookies only.
   await found.supabase.auth.signOut({ scope: "local" });
   redirect("/sign-in?deleted=1");

@@ -329,23 +329,37 @@ export async function sendAll({ db, send, finals = [], kickoffs = [], pairings =
     const outgoing = on
       ? evs.map((e) => ({ body: { title: e.title, body: e.body, url: e.url, tag: e.tag }, ttl: TTL[e.kind] }))
       : [{ body: message(evs.map((e) => e.final), followed), ttl: TTL.final }];
+    const host = new URL(s.endpoint).hostname;
     for (const o of outgoing) {
       try {
         await send({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(o.body), { ttl: o.ttl });
-        result.sent += 1;
-        // The push service took it: this browser is real, and push_follow's full-table eviction (migration 0018) leaves it alone.
-        await db.query("update push_subscription set confirmed_at = now() where endpoint = $1 and confirmed_at is null", [s.endpoint]);
       } catch (e) {
         if (e.statusCode === 404 || e.statusCode === 410) {
-          await db.query("delete from push_subscription where endpoint = $1", [s.endpoint]);
-          result.removed += 1;
+          // Gone: delete it. A database error here is counted and the run goes on: the events are already claimed, so stopping
+          // would cost every browser after this one its alerts for good. The row goes on the next run that reaches it.
+          if (await bookkeep(db, "delete from push_subscription where endpoint = $1", [s.endpoint], `${host}: gone, not deleted`, result)) result.removed += 1;
           break; // gone: nothing more to send it
         }
-        result.failed.push(`${new URL(s.endpoint).hostname}: ${e.statusCode ?? e.message}`);
+        result.failed.push(`${host}: ${e.statusCode ?? e.message}`);
+        continue;
       }
+      result.sent += 1;
+      // The push service took it: this browser is real, and push_follow's full-table eviction (migration 0018) leaves it alone.
+      await bookkeep(db, "update push_subscription set confirmed_at = now() where endpoint = $1 and confirmed_at is null", [s.endpoint], `${host}: sent, not marked confirmed`, result);
     }
   }
   return result;
+}
+
+/** One cleanup query after a send; true when it ran. It never throws: a failure goes in `result.failed` (the run then exits 1) with the database's code only. */
+async function bookkeep(db, sql, params, what, result) {
+  try {
+    await db.query(sql, params);
+    return true;
+  } catch (e) {
+    result.failed.push(`${what} (database ${e.code ?? "error"})`);
+    return false;
+  }
 }
 
 const fileAt = (rev, file) => {
