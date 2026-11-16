@@ -131,12 +131,27 @@ export const NotListedRow = z.object({
 });
 
 export const LINEAGE_COLUMNS = ["predecessor", "successor", "event", "season", "source_url", "notes"];
+/** The events program_lineage stores (migrations 0001, 0028; packages/db/lineage.mjs): TEA's own words where it has one. */
+export const LINEAGE_EVENTS = ["rename", "consolidation", "annexation", "split", "coop"] as const;
 export const LineageRow = z.object({
   predecessor: text,
   successor: text,
-  event: text,
+  event: z.enum(LINEAGE_EVENTS),
   season: z.string().regex(/^(19|20)\d\d$/, "season is a year"),
-  source_url: url,
+  source_url: z.url({ protocol: /^https$/ }),
+  notes: z.string(),
+});
+
+/** Other names of one school that are no lineage event (ADR 0072): an older spelling, or a former name of the same school
+ * (data/seed/lineage/names.csv, by hand, one cited source a row). `until`: the last season of a former name, if the source
+ * says it. */
+export const NAME_COLUMNS = ["name", "program", "kind", "until", "source_url", "notes"];
+export const NameRow = z.object({
+  name: text,
+  program: text,
+  kind: z.enum(["spelling", "former"]),
+  until: z.string().regex(/^((19|20)\d\d)?$/, "until is a year or blank"),
+  source_url: z.url({ protocol: /^https$/ }),
   notes: z.string(),
 });
 

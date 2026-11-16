@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import { loadAll, loadSeasonGames, withoutUnlisted } from "../load.mjs";
@@ -24,7 +25,10 @@ test("every migration, alignment and game file loads, and a second run changes n
   )).rows[0].n;
   assert.ok(titles >= 1, "a known champion links to its program");
 
-  assert.equal(first.lineage.inserted, 3);
+  // Every row of the hand file (ADR 0072), however many it holds.
+  const lineageRows = readFileSync(new URL("../../../data/seed/lineage/programs.csv", import.meta.url), "utf8").trim().split("\n").length - 1;
+  assert.ok(lineageRows >= 18);
+  assert.equal(first.lineage.inserted, lineageRows);
   const now = await db.query(
     `select f.season, p.slug as was, s.slug as now from state_final f
        join program_lineage l on l.predecessor_id = f.runner_up_program_id

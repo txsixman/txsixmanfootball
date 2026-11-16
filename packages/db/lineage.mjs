@@ -6,7 +6,7 @@
 import { slugify } from "./seed.mjs";
 
 export const LINEAGE_COLUMNS = "predecessor,successor,event,season,source_url,notes";
-const EVENTS = new Set(["rename", "consolidation", "split", "coop"]);
+const EVENTS = new Set(["rename", "consolidation", "annexation", "split", "coop"]); // migrations 0001, 0028
 
 export function parseLineage(text) {
   const names = LINEAGE_COLUMNS.split(",");
