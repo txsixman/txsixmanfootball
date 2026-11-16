@@ -19,8 +19,8 @@ import { SignOutButton } from "./sign-out-button";
 import { SignOutEverywhere } from "./sign-out-everywhere";
 import { TeamsList } from "./teams-list";
 
-// Your account, the Account Center (ADR 0058): one page, six sections with anchors (#profile, #teams, #alerts, #security, #data and,
-// while posts are on, #activity). From the md breakpoint a sticky list of the sections sits on the left; on a phone the same links sit
+// Your account, the Account Center (ADR 0058): one page, six sections with anchors (#profile, then, while posts are on, #activity, then
+// #teams, #alerts, #security and #data). From the md breakpoint a sticky list of the sections sits on the left; on a phone the same links sit
 // above the stacked sections. Per request, never cached or indexed. It shows the display name, the date joined, the person's own email
 // (only under Sign-in and security, to them) and what they have chosen. The birth year is never read back: no function returns it.
 export const dynamic = "force-dynamic";
@@ -28,11 +28,11 @@ export const metadata: Metadata = { title: "Your account", robots: { index: fals
 
 const SECTIONS = [
   { id: "profile", title: "Profile" },
+  { id: "activity", title: "My activity" },
   { id: "teams", title: "My teams" },
   { id: "alerts", title: "Alerts and devices" },
   { id: "security", title: "Sign-in and security" },
   { id: "data", title: "Privacy and data" },
-  { id: "activity", title: "My activity" },
 ] as const;
 
 function Section({ id, title, children }: { id: (typeof SECTIONS)[number]["id"]; title: string; children: ReactNode }) {
@@ -110,6 +110,29 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             <ProfileForm displayName={displayName} nextChangeAt={mine?.nextNameChangeAt ?? null} />
           </Section>
 
+          {posts && (
+            <Section id="activity" title="My activity">
+              {activity === null || isCenterError(activity) ? (
+                <p className="mt-2 max-w-sm text-[14px] text-muted">Your activity is not available right now. Try again in a minute.</p>
+              ) : activity.length ? (
+                <ul className="mt-2">
+                  {activity.map((a) => (
+                    <li key={`${a.kind}-${a.id}`} className="border-b border-line py-2">
+                      <p className="text-[13px] text-muted">
+                        <span className="font-bold uppercase tracking-wider text-red">{KIND[a.kind]}</span> &middot; {longDate(a.createdAt)}
+                      </p>
+                      <p className="text-[15px] text-ink">
+                        {a.href ? <Link href={a.href} className="inline-flex min-h-11 items-center text-navy underline hover:no-underline">{a.excerpt}</Link> : a.excerpt}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 max-w-sm text-[14px] text-muted">Nothing yet. Your comments, forum posts and score reports will show here.</p>
+              )}
+            </Section>
+          )}
+
           <Section id="teams" title="My teams">
             {follows === null ? (
               <p className="mt-2 max-w-sm text-[14px] text-muted">Your teams are not available right now. Try again in a minute.</p>
@@ -151,29 +174,6 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             <DeleteAccount />
             <LegalLinks className="mt-4" />
           </Section>
-
-          {posts && (
-            <Section id="activity" title="My activity">
-              {activity === null || isCenterError(activity) ? (
-                <p className="mt-2 max-w-sm text-[14px] text-muted">Your activity is not available right now. Try again in a minute.</p>
-              ) : activity.length ? (
-                <ul className="mt-2">
-                  {activity.map((a) => (
-                    <li key={`${a.kind}-${a.id}`} className="border-b border-line py-2">
-                      <p className="text-[13px] text-muted">
-                        <span className="font-bold uppercase tracking-wider text-red">{KIND[a.kind]}</span> &middot; {longDate(a.createdAt)}
-                      </p>
-                      <p className="text-[15px] text-ink">
-                        {a.href ? <Link href={a.href} className="inline-flex min-h-11 items-center text-navy underline hover:no-underline">{a.excerpt}</Link> : a.excerpt}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 max-w-sm text-[14px] text-muted">Nothing yet. Your comments, forum posts and score reports will show here.</p>
-              )}
-            </Section>
-          )}
         </div>
       </div>
     </div>

@@ -103,7 +103,7 @@ Do these in order, in one sitting. Each step names how to check it worked.
 | Program page | The Follow button: signed out, push alerts on this browser as before; signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) and links this browser's push alerts to the account, so a follow on any device alerts every linked browser (ADR 0054) |
 | Home, My teams | The account's follows when signed in, else this browser's |
 | `/forums`, a board, a thread | Only while `FAN_POSTS` is on (otherwise 404). Anyone reads; a signed-in fan with a profile posts, replies, edits their own and flags others |
-| A game page | Only while `FAN_POSTS` is on: the comments block, and for a game with no score yet the fan score-report block. With it off the page is as it was |
+| A game page | Only while `FAN_POSTS` is on: the comments block (it checks for new comments once a minute while the tab is visible and offers "Show N new comments" rather than moving the list), and for a game with no score yet the fan score-report block. With it off the page is as it was |
 
 No age, birth year, email or school is shown anywhere. The birth year is stored in `profile.birth_year` and no function returns it.
 
@@ -144,7 +144,7 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
 - **Posts launch (migration 0027, ADRs 0060 to 0062).** Every write is also limited per minute (`fan_rate_check`; new accounts:
   posts 2, threads 1, reports of posts 3, score reports 2; established: 4, 2, 5, 3). Gambling talk is refused in posts and titles
   (`moderation_betting`, the `betting` list in `lib/moderation/wordlist.json`, the shared vectors). Report shows on every other
-  fan's post for every viewer: signed out it links to sign-in and back. The owner's `/admin/moderation` lists every reported post
+  fan's post for every viewer: signed out it links to sign-in and back (from a game's comments, back to `#comments`); signed in it asks "Report this post to the moderators?" with Report and Cancel before it sends, because a report cannot be taken back. The owner's `/admin/moderation` lists every reported post
   that is not hidden (most reports first, how many count, never who reported) and can hide a post (`admin_hide_post`) or mute an
   account for 1 to 90 days (`admin_mute`), each written to `audit_log` with his reason. `/admin/corrections` lists fan score
   reports from the last 60 days (`admin_fan_score_reports`, read-only), marked where they differ from the final. All three
