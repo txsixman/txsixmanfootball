@@ -3,7 +3,8 @@ import { countingRows, loadLineage } from "./lineage";
 import { memo } from "./memo";
 import { slugify } from "./slug";
 
-/** UIL state titles by program slug, a renamed or merged school's titles counted under the program it became (ADR 0072):
+/** UIL state titles by program slug (the archive's and any UIL State Championship the results robot has recorded that it does not
+ * list yet, lib/champions.ts loadFinals; the private leagues' titles are counted apart, on the program page), a renamed or merged school's titles counted under the program it became (ADR 0072):
  * the figure a program page shows (app/programs/[slug]). Worked out once per build worker, so a page's description adds no
  * file read. Never mutate it. */
 export const titlesBySlug = memo<void, Map<string, number>>(async () => {

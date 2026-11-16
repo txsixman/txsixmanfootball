@@ -7,8 +7,10 @@ import { loadIdentities } from "@/lib/identity";
 import { playoffsIntro } from "@/lib/intros";
 import { rankedList } from "@/lib/json-ld";
 import { centralClock } from "@/lib/playoff-status";
+import { stateChampionships } from "@/lib/state-championships";
 import { roundCount } from "@/lib/this-round";
 import { JsonLd } from "../json-ld";
+import { StateChampionshipLink } from "../championships/shared";
 import { TabNav } from "../tab-nav";
 import { PageHeader, SectionBar } from "../ui";
 import { ChanceList } from "./chance-list";
@@ -34,12 +36,13 @@ export async function PlayoffsView({ league, season }: { league: League; season?
   const seasons = await playoffSeasons();
   const year = season ?? seasons[0];
   const past = year !== seasons[0];
-  const [all, alignments, identities, leagues, perSeason] = await Promise.all([
+  const [all, alignments, identities, leagues, perSeason, championships] = await Promise.all([
     loadBrackets(year),
     loadAlignments(),
     loadIdentities(),
     playoffLeagues(year),
     Promise.all(seasons.map(playoffLeagues)),
+    past ? [] : stateChampionships(year),
   ]);
   const brackets = all.filter((b) => b.league === league);
   const { date: today } = centralClock();
@@ -70,6 +73,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
       {brackets.map((b) => {
         const id = `bracket-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
         const roundId = (round: string) => `${id}-${round}`;
+        const championship = championships.find((c) => c.bracket === b.name);
         return (
           <section key={b.name} aria-labelledby={id} className="mt-8">
             <SectionBar id={id} title={b.name} aside={`Latest: ${latestRound(b)!.label}`} className="" />
@@ -79,6 +83,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
                 <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
               </Link>
             )}
+            {championship && <StateChampionshipLink c={championship} className="border-b border-line" />}
             {b.rounds.length > 1 && (
               // Rounds run earliest first, so the latest is far down a phone: one tap gets to any of them.
               <nav aria-label={`${b.name} rounds`} className="flex flex-wrap border-b border-line px-1">

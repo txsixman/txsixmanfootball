@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { loadFinals, loadNoFinal, noFinalSpans, titleCounts } from "@/lib/champions";
 import { championshipsDescription } from "@/lib/descriptions";
+import { CURRENT_SEASON } from "@/lib/season";
+import { recordedFinals, stateChampionships } from "@/lib/state-championships";
 import { PageHeader, SectionBar } from "../ui";
-import { Bracket, loadLinker, Team } from "./shared";
+import { Bracket, LeagueFinals, loadLinker, StateChampionshipTable, Team } from "./shared";
 import { championshipsTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
@@ -17,7 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ChampionshipsPage() {
-  const [finals, noFinal, { link, successors }] = await Promise.all([loadFinals(), loadNoFinal(), loadLinker()]);
+  const [finals, noFinal, { link, successors }, season, recorded] = await Promise.all([loadFinals(), loadNoFinal(), loadLinker(), stateChampionships(CURRENT_SEASON), recordedFinals()]);
+  const privateFinals = recorded.filter((f) => f.league !== "UIL");
   const brackets = [
     { id: "division-1", title: "Division I", finals: finals.filter((f) => f.division === "I") },
     { id: "division-2", title: "Division II", finals: finals.filter((f) => f.division === "II") },
@@ -46,6 +49,10 @@ export default async function ChampionshipsPage() {
         ))}
       </nav>
 
+      {season.length > 0 && (
+        <StateChampionshipTable id="this-season" title={`${CURRENT_SEASON} State Championships`} aside="every league" items={season} link={link} />
+      )}
+
       {brackets.map((b) => (
         <Bracket key={b.id} {...b} link={link} />
       ))}
@@ -64,6 +71,13 @@ export default async function ChampionshipsPage() {
               </li>
             ))}
           </ol>
+        </section>
+      )}
+
+      {privateFinals.length > 0 && (
+        <section aria-labelledby="private-leagues" className="mt-8">
+          <SectionBar id="private-leagues" title="Private league State Championships" aside={[...new Set(privateFinals.map((f) => f.league))].sort().join(", ")} className="" />
+          <LeagueFinals finals={privateFinals} link={link} />
         </section>
       )}
 

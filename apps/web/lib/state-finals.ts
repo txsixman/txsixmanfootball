@@ -1,4 +1,4 @@
-// State Championship results as one list for every page (ADR 0082). Pure, one local import: the node tests run it as it is
+// State Championship results as one list for every page (ADR 0083). Pure, one local import: the node tests run it as it is
 // (scripts/state-finals.test.mjs).
 //
 // A State Championship game's champion is known the moment its final is recorded, by the results robot or a correction:

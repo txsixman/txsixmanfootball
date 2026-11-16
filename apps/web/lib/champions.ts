@@ -25,7 +25,7 @@ export type Final = {
 };
 
 /** UIL's archive, plus each UIL State Championship the results robot or a correction has recorded that the archive does
- * not list yet (ADR 0082): a December final shows on every page on the next build, before the archive is rerun. */
+ * not list yet (ADR 0083): a December final shows on every page on the next build, before the archive is rerun. */
 export const loadFinals = memo<void, Final[]>(async () => withRecorded(await loadArchive(), await recordedFinals()));
 
 async function loadArchive(): Promise<Final[]> {

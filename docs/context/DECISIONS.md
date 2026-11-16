@@ -133,3 +133,7 @@ Not in an ADR:
 - **Accessibility sweep** (ADR 0081): the full axe rule set runs in CI at 375 px, light and dark, on one page of each kind
   and fails on serious or critical findings; a link's accessible name holds the text it shows (results, week, series
   game links); the home page's two "TAPPS" sections are no longer one landmark name (Nov 16, 2026).
+- **State Championship pages and recorded champions** (ADR 0083): a page for each bracket's State Championship of the
+  season under way (`/championships/<season>/<bracket>`); a final recorded by the robot or a correction names its
+  champion on every page with no hand edit; UIL's archive stays the UIL record, a recorded UIL final fills its gap; the
+  private leagues' recorded finals since 2018 are their record (Nov 16, 2026).

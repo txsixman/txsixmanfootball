@@ -1,4 +1,4 @@
-import type { Address } from "./address";
+import { directionsUrl, type Address } from "./address";
 import { loadAlignments } from "./alignments";
 import { bracketHref, bracketLabel, bracketSlug, loadBrackets, type Bracket } from "./brackets";
 import { loadPlayoffGames } from "./games";
@@ -8,7 +8,7 @@ import type { Projection } from "./projection";
 import { CURRENT_SEASON, FIRST_SEASON } from "./season";
 import { finalOf, STATE_ROUNDS, type LeagueFinal } from "./state-finals";
 
-// Every league's State Championship games (ADR 0082): the recorded finals of every season, and this season's games, played
+// Every league's State Championship games (ADR 0083): the recorded finals of every season, and this season's games, played
 // or not, for the State Championship pages (/championships/<season>/<bracket>). Shared across pages: never mutate.
 
 /** Every recorded State Championship with a champion, every league, every season with playoff files, oldest first. A final
@@ -23,7 +23,7 @@ export const recordedFinals = memo<void, LeagueFinal[]>(async () => {
 });
 
 /** A State Championship page's address. */
-export const championshipHref = (season: number, bracket: string) => `/championships/${season}/${bracketSlug(bracket)}`;
+const championshipHref = (season: number, bracket: string) => `/championships/${season}/${bracketSlug(bracket)}`;
 
 /** One bracket's State Championship game this season, played or not. */
 export type StateChampionship = {
@@ -36,6 +36,9 @@ export type StateChampionship = {
   sides: [{ team?: string; text: string }, { team?: string; text: string }];
   /** Date, kickoff (UTC) and site, from the listing, the playoff-week details, or the league's own bracket. */
   date?: string; kickoff?: string; site?: string; address?: Address;
+  /** A maps search for the site: at its street address when known, else by the site's name and city (a State Championship
+   * stadium the league names, such as UIL's, before any listing gives its street). */
+  directions?: string;
   /** The game's page (/scores/<id>), once both teams are known. */
   gameHref?: string;
   /** Unplayed, both teams known: the projection on the game's field (no home edge at a State Championship, ADR 0057). */
@@ -47,6 +50,11 @@ export type StateChampionship = {
   /** The listed scores of a played game, home first, whether or not it names a champion. */
   scores?: [number, number];
 };
+
+const directionsOf = (site?: string, address?: Address) =>
+  !site ? undefined
+  : address ? directionsUrl(site, address)
+  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${site}, Texas`)}`;
 
 function championshipOf(season: number, b: Bracket): StateChampionship | undefined {
   const round = b.rounds.find((r) => STATE_ROUNDS.has(r.round));
@@ -65,7 +73,7 @@ function championshipOf(season: number, b: Bracket): StateChampionship | undefin
     return {
       ...base,
       sides: [{ team: game.home, text: game.home }, { team: game.away, text: game.away }],
-      date: game.date, kickoff: game.kickoff, site: game.site, address: game.address,
+      date: game.date, kickoff: game.kickoff, site: game.site, address: game.address, directions: directionsOf(game.site, game.address),
       gameHref: `/scores/${pageId(season, orders, { round: game.round, home: game.home, away: game.away })}`,
       ...(game.projection ? { projection: game.projection } : {}),
       ...(final ? { final } : {}),
@@ -81,10 +89,12 @@ function championshipOf(season: number, b: Bracket): StateChampionship | undefin
   };
   const sides: StateChampionship["sides"] = [side(0), side(1)];
   const [a, b2] = sides;
+  const site = built?.site ?? node?.site;
   return {
     ...base,
     sides,
-    date: built?.date ?? node?.kickoff_utc?.slice(0, 10), kickoff: built?.kickoff ?? node?.kickoff_utc, site: built?.site ?? node?.site, address: built?.address,
+    date: built?.date ?? node?.kickoff_utc?.slice(0, 10), kickoff: built?.kickoff ?? node?.kickoff_utc, site, address: built?.address,
+    directions: directionsOf(site, built?.address),
     ...(a.team && b2.team ? { gameHref: `/scores/${pageId(season, orders, { round: finalRound, home: a.team, away: b2.team })}` } : {}),
     ...(built?.projection ? { projection: built.projection } : node?.projection ? { projection: node.projection } : {}),
   };
