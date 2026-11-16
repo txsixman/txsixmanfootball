@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PostText } from "@/lib/posts/linkify";
@@ -42,25 +42,44 @@ export function WhyNotForm({ me, next, what }: { me: Me | undefined; next: strin
 export function Composer({ id, label, button, max = 2000, onSubmit }: { id: string; label: string; button: string; max?: number; onSubmit: (text: string) => Promise<string | null> }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // The status line: "Posted." in the ink color when it worked, the server's sentence in red when it did not.
+  const [status, setStatus] = useState<{ text: string; error: boolean } | null>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setError(null);
+    setStatus(null);
     const problem = await onSubmit(text);
     setBusy(false);
-    if (problem) setError(problem);
-    else setText("");
+    if (problem) setStatus({ text: problem, error: true });
+    else {
+      setText("");
+      setStatus({ text: "Posted.", error: false });
+      box.current?.focus(); // the button is disabled again with an empty box, so focus would otherwise be lost
+    }
   }
   return (
     <form onSubmit={submit} className="flex flex-col gap-2">
       <Label htmlFor={id}>{label}</Label>
-      <textarea id={id} value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={max} required className={TEXTAREA} />
+      <textarea
+        ref={box}
+        id={id}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setStatus((old) => (old?.error ? old : null));
+        }}
+        rows={3}
+        maxLength={max}
+        required
+        aria-busy={busy}
+        className={TEXTAREA}
+      />
       <div className="flex items-center justify-between gap-3">
         <Button type="submit" disabled={busy || text.trim() === ""}>{busy ? "Posting…" : button}</Button>
         <span className="text-[13px] text-muted">{text.length} / {max}</span>
       </div>
-      <p role="status" aria-live="polite" className="min-h-5 text-[14px] font-semibold text-red">{error}</p>
+      <p role="status" aria-live="polite" className={`min-h-5 text-[14px] font-semibold ${status?.error ? "text-red" : "text-ink"}`}>{status?.text}</p>
     </form>
   );
 }
@@ -74,6 +93,19 @@ export function PostItem({ post, me, next, onEdited }: { post: Post; me: Me | un
   const [draft, setDraft] = useState(post.body);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Report asks once before it sends (ADR 0060 follow-up): a flag cannot be taken back, and a thumb mid-scroll mis-taps.
+  const [confirming, setConfirming] = useState(false);
+  const reportBtn = useRef<HTMLButtonElement>(null);
+  const confirmBtn = useRef<HTMLButtonElement>(null);
+  const noteRef = useRef<HTMLSpanElement>(null);
+  const moveFocus = useRef<"confirm" | "report" | "note" | null>(null);
+  useEffect(() => {
+    const to = moveFocus.current;
+    moveFocus.current = null;
+    if (to === "confirm") confirmBtn.current?.focus();
+    else if (to === "report") reportBtn.current?.focus();
+    else if (to === "note") noteRef.current?.focus();
+  }, [confirming, note]);
   const mine = canPost(me) && me.displayName === post.author;
   const flaggable = canPost(me) && !mine;
   // Signed out, or signed in without a profile: Report is a link (nothing is sent). While asking, or paused or banned, nothing.
@@ -90,10 +122,20 @@ export function PostItem({ post, me, next, onEdited }: { post: Post; me: Me | un
       setNote(null);
     } else setNote(r.message);
   }
+  function askToReport() {
+    moveFocus.current = "confirm";
+    setConfirming(true);
+  }
+  function cancelReport() {
+    moveFocus.current = "report";
+    setConfirming(false);
+  }
   async function flag() {
     setBusy(true);
     const r = await send("POST", `/api/fan/posts/${post.id}/flag`);
     setBusy(false);
+    moveFocus.current = r.ok ? "note" : "report"; // the buttons are gone after a report: focus the confirmation instead of losing it
+    setConfirming(false);
     setNote(r.ok ? "Reported. Thank you." : r.message);
   }
 
@@ -116,15 +158,22 @@ export function PostItem({ post, me, next, onEdited }: { post: Post; me: Me | un
       ) : (
         <div className="mt-1"><PostText text={post.body} /></div>
       )}
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-x-1">
         {mine && !editing && <button type="button" className={button} onClick={() => setEditing(true)}>Edit</button>}
-        {flaggable && !note?.startsWith("Reported") && (
-          <button type="button" className={button} onClick={flag} disabled={busy} aria-label={`Report ${post.author}'s post`}>Report</button>
+        {flaggable && !note?.startsWith("Reported") && !confirming && (
+          <button ref={reportBtn} type="button" className={button} onClick={askToReport} aria-label={`Report ${post.author}'s post`}>Report</button>
+        )}
+        {flaggable && confirming && (
+          <div role="group" aria-label="Confirm report" className="flex flex-wrap items-center gap-x-1" onKeyDown={(e) => e.key === "Escape" && !busy && cancelReport()}>
+            <span className="text-[14px] text-ink">Report this post to the moderators?</span>
+            <button ref={confirmBtn} type="button" className={button} onClick={flag} disabled={busy} aria-label={`Confirm report of ${post.author}'s post`}>Report</button>
+            <button type="button" className={button} onClick={cancelReport} disabled={busy}>Cancel</button>
+          </div>
         )}
         {report && (
           <Link href={report.href} className={`inline-flex items-center ${button}`} aria-label={`Report ${post.author}'s post (${report.first})`}>Report</Link>
         )}
-        <span role="status" aria-live="polite" className="text-[14px] text-muted">{note}</span>
+        <span ref={noteRef} tabIndex={-1} role="status" aria-live="polite" className="text-[14px] text-muted outline-none">{note}</span>
       </div>
     </li>
   );
