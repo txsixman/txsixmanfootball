@@ -40,7 +40,6 @@ const PAGES = [
   "/seasons/2025",
   "/records",
   "/search?q=jayton",
-  "/forums",
   "/sign-in",
   "/no-such-page",
 ];
