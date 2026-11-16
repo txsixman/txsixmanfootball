@@ -58,10 +58,10 @@ test("a played final carries both scores, away team first, and the round or the 
   // Too long for the round: the date, then the score alone; the names always lead.
   const long = t.gameTitle({ away: "Valor North Austin", home: "Fort Bend Chargers", date: "Nov 6, 2026", scheduled: false, final: { away: 28, home: 12 }, round: "TAIAO D1 · First round", season: 2026 });
   assert.equal(long, "Valor North Austin 28, Fort Bend Chargers 12 · Nov 6, 2026");
-  // Names too long for any of it keep both scores whole.
+  // Names too long for any of it keep both scores whole, and the season, so two meetings with one score differ.
   assert.equal(
     t.gameTitle({ away: "The Emery/Weiner School-Houston", home: "Faith Academy of Bellville", date: "Aug 20, 2026", scheduled: false, final: { away: 48, home: 0 } }),
-    "The Emery/Weiner School-Houston 48, Faith Academy of Bellville 0",
+    "The Emery/Weiner School-Houston 48, Faith Academy of Bellville 0 · 2026",
   );
   for (const text of [long, t.gameTitle({ away: "Kress", home: "Jayton", scheduled: false, final })]) {
     assert.ok(text.length <= 61, text);
@@ -97,4 +97,21 @@ test("a State Championship year names the year and 'State Championship', and fit
   assert.equal(clean(t.championshipYearTitle({ year: 2019, divisions: true })), "2019 UIL six-man State Championship: Division I and II");
   assert.equal(clean(t.championshipYearTitle({ year: 1987, divisions: false })), "1987 UIL six-man State Championship game");
   for (const s of [t.championshipYearTitle({ year: 2006, divisions: true }), t.championshipYearTitle({ year: 1972, divisions: false })]) assert.doesNotMatch(s, /\bfinals?\b/i);
+});
+
+test("a name too long is cut, never the season or date that tells one page from the next", () => {
+  const school = "The Christian School at Castle Hills-San Antonio";
+  const seasons = [2024, 2025, 2026].map((season) => clean(t.programSeasonTitle({ name: school, mascot: "Eagles", season })));
+  assert.equal(new Set(seasons).size, 3, seasons.join(" / "));
+  for (const [i, s] of seasons.entries()) assert.match(s, new RegExp(`^The Christian School.*… football ${2024 + i}$`));
+  const thesa = "Texas Home Educator's Sports Association (THESA)";
+  const game = clean(t.gameTitle({ away: thesa, home: "Richland Springs", date: "Oct 12, 2018", scheduled: false }));
+  const series = clean(t.seriesTitle({ first: thesa, second: "Richland Springs" }));
+  assert.match(game, /football score, Oct 12, 2018$/);
+  assert.notEqual(game, series);
+  // Two series whose second schools differ only at the end of the name.
+  const bellville = clean(t.seriesTitle({ first: "Covenant Christian School-Conroe", second: "Faith Academy of Bellville" }));
+  const marble = clean(t.seriesTitle({ first: "Covenant Christian School-Conroe", second: "Faith Academy of Marble Falls" }));
+  assert.notEqual(bellville, marble);
+  assert.match(marble, /^Covenant.*… vs Faith Academy of Marble Falls football$/);
 });

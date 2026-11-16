@@ -10,6 +10,14 @@ function fit(...options: string[]): string {
   return options.find((t) => t.length <= MAX) ?? `${options.at(-1)!.slice(0, MAX - 1).replace(/\s+\S*$/, "")}…`;
 }
 
+/**
+ * `lead` then `tail` in 60 characters: a name too long is cut at a word, never the tail, which is what tells the page from
+ * its neighbours (a season, a date). Cutting the end instead gave nine seasons of one school the same title (Nov 16, 2026).
+ */
+function keepTail(lead: string, tail: string): string {
+  return lead.length + tail.length <= MAX ? `${lead}${tail}` : `${lead.slice(0, MAX - tail.length - 1).replace(/\s+\S*$/, "")}…${tail}`;
+}
+
 /** The home page's whole title (the layout's suffix is not added, so the site's name leads). */
 export const homeTitle = () => "TX Six-Man Football: Texas six-man scores, brackets, rankings";
 
@@ -45,7 +53,7 @@ export function programTitle({ name, mascot, season }: { name: string; mascot?: 
 }
 
 export const programSeasonTitle = ({ name, mascot, season }: { name: string; mascot?: string | null; season: number }) =>
-  fit(`${schoolAndMascot(name, mascot)} football ${season}: schedule and scores`, `${name} football ${season}: schedule and scores`, `${name} football ${season}`);
+  fit(`${schoolAndMascot(name, mascot)} football ${season}: schedule and scores`, `${name} football ${season}: schedule and scores`, keepTail(name, ` football ${season}`));
 
 /** "UIL Division I bi-district" from a bracket label ("UIL DI · Bi-district", "TAIAO D1 · First round"). */
 const roundWords = (label: string) => {
@@ -65,16 +73,25 @@ export function gameTitle({ away, home, date, scheduled, final, round, season }:
   if (final) {
     const score = `${away} ${final.away}, ${home} ${final.home}`;
     const tail = round ? `${roundWords(round)}${season ? ` ${season}` : ""}` : (date ?? "");
-    // Never cut a score short: names too long for even the bare score keep it whole (search results trim the end).
-    return [tail && `${score} · ${tail}`, date && `${score} · ${date}`].find((t) => t && t.length <= MAX) || score;
+    // Never cut a score short: names too long for even the score and date keep the score whole and add the season, so two
+    // meetings with the same score keep their own titles (search results trim the end).
+    const year = season ?? date?.match(/\d{4}$/)?.[0];
+    return [tail && `${score} · ${tail}`, date && `${score} · ${date}`].find((t) => t && t.length <= MAX) || (year ? `${score} · ${year}` : score);
   }
   return scheduled
-    ? fit(`${teams} football preview${when}`, `${teams}${when}`, teams)
-    : fit(`${teams} football score${when}`, `${teams} score${when}`, `${teams}${when}`, teams);
+    ? fit(`${teams} football preview${when}`, `${teams}${when}`, keepTail(teams, ` football preview${when}`))
+    : fit(`${teams} football score${when}`, `${teams} score${when}`, `${teams}${when}`, keepTail(teams, ` football score${when}`));
 }
 
-export const seriesTitle = ({ first, second }: { first: string; second: string }) =>
-  fit(`${first} vs ${second} football: every meeting`, `${first} vs ${second} football`, `${first} vs ${second}`);
+/** Too long for both names: the first is cut and the second kept whole ("Faith Academy of Bellville" and "of Marble Falls" differ only at the end). */
+export function seriesTitle({ first, second }: { first: string; second: string }) {
+  const rest = ` vs ${second} football`;
+  return fit(
+    `${first} vs ${second} football: every meeting`,
+    `${first} vs ${second} football`,
+    rest.length <= MAX - 12 ? keepTail(first, rest) : keepTail(`${first} vs ${second}`, " football: every meeting"),
+  );
+}
 
 /** `label` is "UIL", "UIL Division I", "TAPPS"... `week` for a table at the end of a week. */
 export function rankingsTitle({ label, season, week }: { label: string; season: number; week?: number }) {
