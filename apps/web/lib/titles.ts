@@ -21,6 +21,9 @@ function keepTail(lead: string, tail: string): string {
 /** The home page's whole title (the layout's suffix is not added, so the site's name leads). */
 export const homeTitle = () => "TX Six-Man Football: Texas six-man scores, brackets, rankings";
 
+/** The landing page (/welcome, ADR 0084): what the site holds, for someone who has never seen it. */
+export const welcomeTitle = () => "Every Texas six-man team and game: start here";
+
 export const scoresTitle = (season: number) => fit(`Texas six-man football scores: ${season} playoffs`, "Texas six-man football scores");
 
 export const tonightTitle = () => "Six-man football scores tonight, live";

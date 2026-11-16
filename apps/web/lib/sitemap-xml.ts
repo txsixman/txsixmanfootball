@@ -31,6 +31,7 @@ export function lastmodFor(path: string, d: SitemapDates): string | undefined {
   const [section, ...rest] = path.split("/");
   switch (section) {
     case "":
+    case "welcome": // its counts and this round's line change with every game (ADR 0084)
     case "standings":
     case "records":
       return d.latest;

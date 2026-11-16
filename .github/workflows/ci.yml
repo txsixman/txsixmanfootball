@@ -338,7 +338,7 @@ jobs:
           - "/results,/programs/jayton"
           - "/scores,/playoffs"
           - "/playoffs/this-round,/playoffs/bracket/uil-division-i"
-          - "/scores/2026-11-06-earth-springlake-at-whitharral"
+          - "/scores/2026-11-06-earth-springlake-at-whitharral,/welcome"
     name: lighthouse (${{ matrix.pages }})
     steps:
       - uses: actions/checkout@v7

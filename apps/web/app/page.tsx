@@ -23,6 +23,8 @@ import { HomeBrowse } from "./home-browse";
 import { ChanceList } from "./playoffs/chance-list";
 import { Crest } from "./programs/crest";
 import { homeTitle } from "@/lib/titles";
+import { NEW_HERE_SCRIPT } from "@/lib/welcome";
+import { NewHere } from "./welcome/new-here";
 
 export const dynamic = "force-static";
 export const metadata: Metadata = { title: { absolute: homeTitle() }, description: homeDescription(CURRENT_SEASON, ORGS.map((o) => o.label)), alternates: { canonical: "/" } };
@@ -94,6 +96,9 @@ export default async function Home() {
         brackets.
       </p>
       <p className="mt-1 max-w-prose text-[14px] text-ink">{homeEdge({ firstSeason: FIRST_SEASON, firstFinal: Math.min(...finals.map((f) => f.season)) })}</p>
+      {/* A first visit only: the script hides the link before it paints for a browser that has been here (ADR 0084). */}
+      <script dangerouslySetInnerHTML={{ __html: NEW_HERE_SCRIPT }} />
+      <NewHere />
 
       <MyTeams />
 

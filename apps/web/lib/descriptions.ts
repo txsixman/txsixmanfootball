@@ -32,6 +32,13 @@ export const homeDescription = (season: number, orgs: string[]) =>
     "Every program and every State Championship.",
   ]);
 
+/** The landing page (/welcome, ADR 0084). */
+export const welcomeDescription = (programs: number, orgs: string[]) =>
+  fit(`Every Texas six-man football team and game, free: ${programs} programs in ${list(orgs)}.`, [
+    "Live scores, rankings with each team's chance to win, playoff brackets, program histories and every State Championship.",
+    "Live scores, rankings, playoff brackets and every State Championship.",
+  ]);
+
 export const scoresDescription = (season: number) =>
   fit(`The ${season} Texas six-man playoff scoreboard, one organization at a time.`, [
     "Every bracket game, with a projected margin and chance to win for each game still to play.",

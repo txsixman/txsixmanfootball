@@ -141,3 +141,6 @@ Not in an ADR:
   season under way (`/championships/<season>/<bracket>`); a final recorded by the robot or a correction names its
   champion on every page with no hand edit; UIL's archive stays the UIL record, a recorded UIL final fills its gap; the
   private leagues' recorded finals since 2018 are their record (Nov 16, 2026).
+- **Landing page** (ADR 0084): `/welcome` says what the site is and sends a first-time visitor on (find your team, tonight's
+  scores), every number from the data; home stays the scoreboard and shows a dismissible "New here?" link on a first visit
+  only, hidden before it paints (Nov 16, 2026).
