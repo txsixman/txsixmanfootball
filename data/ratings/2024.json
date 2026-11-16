@@ -15,7 +15,7 @@
   "sigma_prior": 17.0,
   "group_sd": 15.0,
   "prior_season": true,
-  "prior_sha256": "7d1e87a78edb4998cf0ac770146d2ba1597f519709915aa13241f42ecaa0e4e9"
+  "prior_sha256": "a838502fd3cb67731e927a483a78f5c66d79b6da714711fd72822c9eeb80b5a5"
  },
  "group_means": {
   "Independent": -19.5,
@@ -11227,5 +11227,5 @@
   3.3,
   3.3
  ],
- "inputs_sha256": "4d8fc6af3f30ab44e17e1d542538e4d2dc0d5f22ffbe9fe630e15e4be32879e7"
+ "inputs_sha256": "9de2134b0efe5f9a7ec295ce1bf13da4d515645742a64243c94eed9400efca08"
 }

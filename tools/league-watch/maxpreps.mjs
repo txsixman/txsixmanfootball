@@ -11,7 +11,8 @@
 // Mondays (the weekly audit) and --full, which walk every team page from the seeds.
 //   node tools/league-watch/maxpreps.mjs --due data/seed/maxpreps-2026/playoffs.csv
 // prints how many bracket games of tonight, or of the 3 game nights before it (ADR 0030), have no score yet
-// (results-watch.yml reads only when it is not 0).
+// (results-watch.yml reads only when it is not 0). A next-round pairing the bracket sets by winners that has no row yet,
+// but whose game details give it tonight's date, counts as a bracket game (datedBuiltRows).
 //   node tools/league-watch/maxpreps.mjs --canary
 // reads one seed team's schedule page and fails if MaxPreps changed its shape (maxpreps-canary.yml, before game nights).
 //   node tools/league-watch/maxpreps.mjs --tonight
@@ -27,6 +28,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { duplicateRows } from "../../apps/web/lib/duplicate-game.ts";
+import { builtDue, seasonSlotRows } from "./bracket-due.mjs";
 import { CHANGES_FILE, changeLines, countsLine, mergeStored, movedDate, MOVES_FILE, parseCsv, PENDING_FILE, pendingCsv, readMoves, readPending, rowKey } from "./store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -854,6 +856,43 @@ export function dueGames(playoffsText, date, nights = CATCH_UP_NIGHTS) {
 }
 
 /**
+ * Bracket-built next-round pairings (bracket-due.mjs, ADR 0067) that the game details date to tonight or one of the last
+ * `nights` days, as unscored playoffs.csv rows. A pairing the bracket sets by winners has no playoffs.csv row until a MaxPreps
+ * listing is read, and a game-day read only looks at playoffs.csv rows, so a Thursday regional game whose kickoff the
+ * morning read found (data/seed/game-details/<season>.csv) would be missed. `built`: builtDue's rows; `detailsText`: the game
+ * details file ("" when there is none). The same date and two teams are one game, either way round (store.mjs rowKey), so a
+ * later listing of it merges into the row and one it never lists drops off at the next full read (mergeStored).
+ */
+export function datedBuiltRows(built, detailsText, date, nights = CATCH_UP_NIGHTS) {
+  const since = new Date(Date.parse(`${date}T12:00:00Z`) - nights * 86_400_000).toISOString().slice(0, 10);
+  const details = detailsText.trim() ? parseCsv(detailsText, "game details").rows.filter((r) => r.date >= since && r.date <= date) : [];
+  const dated = new Map(details.map((r) => [rowKey({ game_date: r.date, home: r.home, away: r.away }), r.date]));
+  const days = [...new Set(details.map((r) => r.date))].sort();
+  return built.flatMap((b) => {
+    const day = days.find((d) => dated.has(rowKey({ game_date: d, home: b.home, away: b.away })));
+    return day ? [{ league: b.league, division: b.division, round: b.round, game_date: day, home: b.home, away: b.away, home_score: "", away_score: "" }] : [];
+  });
+}
+
+/** playoffs.csv's text with the built pairings of datedBuiltRows added as unscored rows (every other column blank), so the
+ * ordinary due count and night read see them; unchanged when there are none. */
+export function withBuiltRows(playoffsText, built, detailsText, date, nights = CATCH_UP_NIGHTS) {
+  const extra = datedBuiltRows(built, detailsText, date, nights);
+  if (!extra.length) return { text: playoffsText, added: 0 };
+  const p = parseRows(playoffsText);
+  const lines = extra.map((r) => rowLine(p.cols, Object.fromEntries(p.cols.map((c) => [c, r[c] ?? ""]))));
+  return { text: `${playoffsText.trimEnd()}\n${lines.join("\n")}\n`, added: extra.length };
+}
+
+/** `playoffsText` with tonight's built pairings added (withBuiltRows), from this checkout's brackets and game details. */
+function withBuiltTonight(playoffsText, date) {
+  const seed = path.join(ROOT, "data/seed");
+  const details = path.join(seed, "game-details", `${SEASON}.csv`);
+  const built = builtDue(seasonSlotRows(seed, SEASON), parseRows(playoffsText).rows);
+  return withBuiltRows(playoffsText, built, existsSync(details) ? readFileSync(details, "utf8") : "", date);
+}
+
+/**
  * Tonight's finals into the season's files. A bracket row with no score takes the final for the same date and teams
  * (scores in the row's own home and away order); games.csv gains each such game once, in toCsv's order. Nothing else
  * changes, so a night read never drops what the last full read found.
@@ -929,7 +968,16 @@ async function tonight() {
   const date = gameNight();
   const [playoffsFile, gamesFile] = ["playoffs.csv", "games.csv"].map((f) => path.join(OUT, f));
   // Tonight's unscored bracket games and those of the last few game nights (ADR 0030). Live scores stay tonight's only.
-  const due = dueGames(readFileSync(playoffsFile, "utf8"), date);
+  let playoffsText = readFileSync(playoffsFile, "utf8");
+  // A pairing the bracket sets by winners, whose kickoff the game details already give, has no playoffs.csv row until a listing is read.
+  try {
+    const withBuilt = withBuiltTonight(playoffsText, date);
+    playoffsText = withBuilt.text;
+    if (withBuilt.added) console.log(`${withBuilt.added} bracket-built pairings dated by the game details are read as bracket games.`);
+  } catch (e) {
+    console.warn(`bracket-built pairings not added: ${e.message}`);
+  }
+  const due = dueGames(playoffsText, date);
   const dates = new Set(due.map((r) => r.game_date));
   const earlier = due.filter((r) => r.game_date !== date).length;
   const liveOut = process.argv.includes("--live-out") ? process.argv[process.argv.indexOf("--live-out") + 1] : null;
@@ -956,7 +1004,7 @@ async function tonight() {
     }
     if (i < urls.length - 1 && !page?.cached) await sleep(DELAY_MS);
   }
-  const merged = mergeTonight({ playoffsText: readFileSync(playoffsFile, "utf8"), gamesText: readFileSync(gamesFile, "utf8"), finals, bySlug });
+  const merged = mergeTonight({ playoffsText, gamesText: readFileSync(gamesFile, "utf8"), finals, bySlug });
   writeFileSync(playoffsFile, merged.playoffs);
   writeFileSync(gamesFile, merged.games);
   // Games that went final in this very read are no longer live (a bracket row now has their score).
@@ -1002,11 +1050,14 @@ async function canary() {
   if (problems.length) process.exitCode = 1;
 }
 
-/** `--due <playoffs.csv>`: how many bracket games of tonight and the last few game nights have no score yet (dueGames).
+/** `--due <playoffs.csv>`: how many bracket games of tonight and the last few game nights have no score yet (dueGames), a
+ * bracket-built pairing the game details date to those nights included.
  * The workflow reads only when it is not 0. */
 function due() {
   const file = process.argv[process.argv.indexOf("--due") + 1];
-  console.log(dueGames(readFileSync(file, "utf8"), gameNight()).length);
+  const date = gameNight();
+  // A failure here propagates: the workflow reads anyway rather than miss a final.
+  console.log(dueGames(withBuiltTonight(readFileSync(file, "utf8"), date).text, date).length);
 }
 
 /** A read writes its captures under RESULTS. In CI that must be the private data repo: without PRIVATE_DATA they would land
