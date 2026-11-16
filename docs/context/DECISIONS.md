@@ -130,3 +130,6 @@ Not in an ADR:
 - **Phone speed** (ADR 0080): only the Scores and Playoffs section links prefetch, program links in lists do not, the service
   worker installs after the page loads, Inter loads from the head, the error boundary stays light, logos cache a week; CI's
   Lighthouse covers nine kinds of page with tighter budgets and prints JS and HTML size (Nov 16, 2026).
+- **Accessibility sweep** (ADR 0081): the full axe rule set runs in CI at 375 px, light and dark, on one page of each kind
+  and fails on serious or critical findings; a link's accessible name holds the text it shows (results, week, series
+  game links); the home page's two "TAPPS" sections are no longer one landmark name (Nov 16, 2026).
