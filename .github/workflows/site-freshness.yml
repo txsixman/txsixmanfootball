@@ -2,7 +2,9 @@
 # hours: Vercel's Ignored Build Step skipped the deploys and nothing said so. This compares the commit production was
 # built from (its /build.json marker) with the newest commit on main that changed data/, and fails, so GitHub emails
 # the repo owner, when production has lacked a data commit for more than 30 minutes (.github/scripts/site-freshness.mjs).
-# Hourly in November and December (playoffs), every 6 hours otherwise. Reads only: the workflow's own token, no secrets.
+# Hourly in November and December (playoffs), every 6 hours otherwise. The workflow's own token, no secrets. A second step
+# names the playoff games of the next 72 hours that have no kickoff or no site on the robot-alert issue
+# (.github/scripts/playoff-details.mjs), hence issues: write; it warns and never fails the run.
 name: Site freshness
 
 on:
@@ -24,10 +26,18 @@ jobs:
     if: vars.LIVE == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write # the playoff-details step comments on the robot-alert issue
     steps:
       - uses: actions/checkout@v7
         with:
-          sparse-checkout: .github/scripts
+          sparse-checkout: |
+            .github/scripts
+            tools/league-watch
+            apps/web/lib
+            data/seed
+            data/corrections
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -35,3 +45,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node .github/scripts/site-freshness.mjs | tee -a "$GITHUB_STEP_SUMMARY"; exit "${PIPESTATUS[0]}"
+      - name: Playoff games with no kickoff or no site
+        if: always()
+        continue-on-error: true # a warning: the freshness verdict above stays the job's result
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/playoff-details.mjs --alert

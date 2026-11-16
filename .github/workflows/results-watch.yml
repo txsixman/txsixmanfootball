@@ -10,13 +10,28 @@
 # no rebuild, the site reads them in the browser. Only finals are committed.
 # Before cut-over (repo variable LIVE not true) the schedules do nothing, a dispatch reads and checks but pushes only
 # with the input `write`, and alerts and the hosted database are never touched.
+#
+# Three kinds of read, told apart by the `mode` the `due` job works out (the run's title, below, says it too):
+#   morning   Friday to Sunday mornings (the first cron; 5:23 AM Central in standard time, 6:23 in daylight time) and a
+#             dispatch that is neither of the others: the full read, every step below.
+#   game-day  `tonight` dispatches from the game-day clock (and the schedules that rarely fire): only the unscored
+#             bracket games of tonight and the 3 game nights before it (ADRs 0015, 0019, 0030); the late finals and the
+#             league bracket details are left out, and a schedule tick also leaves out the ratings model checks.
+#   details   Monday to Thursday mornings (the second cron, or the game-day clock's morning tick; a dispatch with `details`):
+#             the playoff-week read of kickoffs, sites and league bracket details ONLY, so a playoff week's schedule is
+#             current every day with no hand run. `due` counts the playoff games still to play (the brackets' unplayed
+#             rounds, tools/league-watch/bracket-due.mjs --playoff-week) and the read is skipped at 0. No MaxPreps read.
 name: Results watch
+run-name: "${{ ((github.event_name == 'workflow_dispatch' && inputs.details) || (github.event_name == 'schedule' && github.event.schedule == '23 11 * 11-12 1-4')) && 'Results watch: details read' || ((github.event_name == 'workflow_dispatch' && inputs.tonight) || (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0')) && 'Results watch: game-day read' || 'Results watch: morning read' }}"
 
 on:
   schedule:
-    # Game nights are Thursday to Saturday. Read Friday, Saturday and Sunday mornings (6:23 AM Central), August to
-    # January. Playoffs run into December; January catches late corrections.
+    # Game nights are Thursday to Saturday. Read Friday, Saturday and Sunday mornings (11:23 UTC: 5:23 AM Central in
+    # standard time, 6:23 in daylight time), August to January. Playoffs run into December; January catches late corrections.
     - cron: "23 11 * 8-12,1 5,6,0"
+    # Playoff-week details read (kickoffs and sites only): Monday to Thursday mornings, November and December. The game-day
+    # clock starts the same read at 13:00 to 14:59 UTC when this schedule does not fire (gameday-clock.mjs).
+    - cron: "23 11 * 11-12 1-4"
     # Playoff game days (ADR 0015, widened by ADR 0019): every 10 minutes, noon to midnight Central (CST, UTC-6: 18:00
     # to 06:00 UTC), every day of November and December. The `due` job lets a run read only when a bracket game of
     # that game night has no score yet, so days without games cost one short check. A run reads only those games, one
@@ -31,6 +46,10 @@ on:
         required: false
       tonight:
         description: "Game-day read: only the unscored bracket games of today and the 3 game nights before (ADRs 0015, 0019, 0030)"
+        type: boolean
+        default: false
+      details:
+        description: "Playoff-week details read: kickoffs, sites and league bracket details only (skipped when no playoff game is left to play)"
         type: boolean
         default: false
       write:
@@ -52,41 +71,76 @@ permissions:
 concurrency: results-watch
 
 jobs:
-  # A game-day run (any schedule but the morning one) goes on only when a bracket game of today's game night, or of one
-  # of the 3 game nights before it (ADR 0030: a final posted after a night's last read), has no score yet (ADR 0019). Read from this repo's published playoffs.csv, which carries every bracket row and score.
+  # The kind of read (`mode`: morning, game-day or details; see the header) and, for the last two, whether anything is due.
+  # A game-day run goes on only when a bracket game of today's game night, or of one of the 3 game nights before it (ADR
+  # 0030: a final posted after a night's last read), has no score yet (ADR 0019). Read from this repo's published
+  # playoffs.csv, which carries every bracket row and score. A details run goes on only while a playoff game is still to play.
   due:
     # Always runs, so `maxpreps` never depends on a skipped job: a skipped `due` skipped every morning read and dispatch
-    # (Nov 13, 2026). Only a game-day tick counts tonight's games; any other run answers "run". A dispatch with
-    # `tonight` is a game-day tick too: GitHub's schedules never fired in this repo (Nov 2026), so an outside timer
-    # dispatches the game-day reads, and each must cost one short check when nothing is due.
+    # (Nov 13, 2026). Only a game-day or details tick counts what is due; a morning read answers "run". A dispatch with
+    # `tonight` is a game-day tick and one with `details` a details tick: GitHub's schedules fire only now and then in this
+    # repo (Nov 2026), so an outside timer dispatches the game-day reads, and each must cost one short check when nothing
+    # is due.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       count: ${{ steps.due.outputs.count }}
+      mode: ${{ steps.mode.outputs.mode }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Bracket games of tonight and the last 3 game nights without a score
+      - name: Which read this is
+        id: mode
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          TONIGHT: ${{ inputs.tonight }}
+          DETAILS: ${{ inputs.details }}
+        run: |
+          # Inputs go through the environment, never into the script's text. `details` wins over `tonight`.
+          if [ "$EVENT" = schedule ]; then
+            case "$SCHEDULE" in
+              "23 11 * 8-12,1 5,6,0") mode=morning ;;
+              "23 11 * 11-12 1-4") mode=details ;;
+              *) mode=game-day ;;
+            esac
+          elif [ "$DETAILS" = true ]; then
+            mode=details
+          elif [ "$TONIGHT" = true ]; then
+            mode=game-day
+          else
+            mode=morning
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+      - name: Games still to play, or of tonight and the last 3 game nights without a score
         id: due
         env:
-          GAME_DAY_TICK: ${{ (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0') || (github.event_name == 'workflow_dispatch' && inputs.tonight) }}
+          MODE: ${{ steps.mode.outputs.mode }}
         run: |
-          if [ "$GAME_DAY_TICK" != true ]; then
+          if [ "$MODE" = morning ]; then
             echo "count=run" >> "$GITHUB_OUTPUT"
-            echo "Not a game-day tick: the read runs." >> "$GITHUB_STEP_SUMMARY"
+            echo "A morning read: it runs." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           season=$(( $(date -u +%-m) >= 7 ? $(date -u +%Y) : $(date -u +%Y) - 1 ))
           # A failed check reads anyway rather than miss a final.
+          if [ "$MODE" = details ]; then
+            # The playoff-week rule: unscored playoff games still to play plus the next-round pairings the brackets set by
+            # winners, never a list of dates (bracket-due.mjs playoffWeekCount). 0: no playoff game left, the read is skipped.
+            count=$(node tools/league-watch/bracket-due.mjs --playoff-week data/seed "$season") || count=run
+            echo "count=$count" >> "$GITHUB_OUTPUT"
+            echo "Playoff games still to play (the details read runs only above 0): $count" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           count=$(node tools/league-watch/maxpreps.mjs --due "data/seed/maxpreps-$season/playoffs.csv") || count=run
           echo "count=$count" >> "$GITHUB_OUTPUT"
           echo "Bracket games of tonight and the last 3 game nights without a score: $count" >> "$GITHUB_STEP_SUMMARY"
 
   maxpreps:
     needs: due
-    # `due` says "run" for morning reads, dispatches and a failed count; only a game-day tick with nothing due skips.
+    # `due` says "run" for morning reads and a failed count; only a game-day or details tick with nothing due skips.
     if: ${{ (github.event_name != 'schedule' || vars.LIVE == 'true') && needs.due.outputs.count != '0' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -127,11 +181,13 @@ jobs:
           [[ "$season" =~ ^20[0-9][0-9]$ ]] || { echo "season must be a year like 2026, not: $season"; exit 1; }
           echo "year=$season" >> "$GITHUB_OUTPUT"
       - name: Reader checks
-        run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/store.test.mjs tools/league-watch/davecampbells.test.mjs tools/league-watch/late-finals.test.mjs
+        run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/store.test.mjs tools/league-watch/davecampbells.test.mjs tools/league-watch/late-finals.test.mjs tools/league-watch/bracket-due.test.mjs tools/league-watch/playoff-week.test.mjs
       - name: Read MaxPreps schedule pages
+        # Not on a details read: it reads no MaxPreps page.
+        if: ${{ needs.due.outputs.mode != 'details' }}
         env:
-          # Any schedule but the morning one is a playoff-night run.
-          TONIGHT: ${{ (inputs.tonight || (github.event_name == 'schedule' && github.event.schedule != '23 11 * 8-12,1 5,6,0')) && 'true' || 'false' }}
+          # A game-day read is a playoff-night run (see `mode` in the due job).
+          TONIGHT: ${{ needs.due.outputs.mode == 'game-day' && 'true' || 'false' }}
           # A season stored and marked complete is read again only on this input (ADR 0031).
           REREAD: ${{ inputs.reread == true && 'true' || 'false' }}
           FULL: ${{ inputs.full == true && 'true' || 'false' }}
@@ -151,7 +207,7 @@ jobs:
         # ADR 0025: on a night read, the games under way from a second feed, merged into the same live file (one row a
         # game, the newer read). Off until the repo variable SECOND_LIVE is "true". A failure here (a 403 or 429 stops it
         # at once) leaves the first source's rows as they were.
-        if: ${{ vars.SECOND_LIVE == 'true' }}
+        if: ${{ vars.SECOND_LIVE == 'true' && needs.due.outputs.mode != 'details' }}
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
@@ -165,7 +221,7 @@ jobs:
         # finals, into the private repo's davecampbells-<season>/ (committed below with the captures, never to this
         # repo). The summary shows counts only. Off until the repo variable SECOND_FINALS is "true". A failure (a 403 or
         # 429 stops it at once) writes nothing and changes nothing else.
-        if: ${{ vars.SECOND_FINALS == 'true' }}
+        if: ${{ vars.SECOND_FINALS == 'true' && needs.due.outputs.mode != 'details' }}
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
@@ -176,19 +232,19 @@ jobs:
         # sources name the same winner but their margins are 7 or more points apart, into the private repo's
         # davecampbells-<season>/margin-check.csv (committed below, never to this repo). No feed is read. The summary
         # shows counts only. It changes no score and no rating.
-        if: ${{ vars.SECOND_FINALS == 'true' }}
+        if: ${{ vars.SECOND_FINALS == 'true' && needs.due.outputs.mode != 'details' }}
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
         run: node tools/league-watch/margins.mjs "$SEASON" --private private | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Kickoffs and sites
-        # ADRs 0036, 0041, 0065 and 0067: on the morning read and a dispatch, each bracket game still to play, each played one
+        # ADRs 0036, 0041, 0065 and 0067: on the morning read, the playoff-week details read and a dispatch, each bracket game still to play, each played one
         # of the last two weeks still missing a kickoff or site, and each next-round pairing the bracket sets by winners
         # before any listing has it, gets the second feed's kickoff and site, into a file outside the repo; the commit step merges it into the newest main's
         # data/seed/game-details/<season>.csv, never overwriting a filled value. The log and summary give counts only, by
         # league, never a school. Off until the repo variable SECOND_LIVE is "true" (the same feed's upcoming games). A
-        # failure (a 403 or 429 stops it at once) leaves the file as it was.
-        if: ${{ vars.SECOND_LIVE == 'true' && (github.event_name != 'schedule' || github.event.schedule == '23 11 * 8-12,1 5,6,0') }}
+        # failure (a 403 or 429 stops it at once) leaves the file as it was. Not on a game-day schedule (a dispatch runs it).
+        if: ${{ vars.SECOND_LIVE == 'true' && (github.event_name != 'schedule' || needs.due.outputs.mode != 'game-day') }}
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
@@ -203,8 +259,9 @@ jobs:
         # ADR 0065: on the same runs, each regular-season game of the last 3 days with no site yet gets the second feed's
         # venue, name and city only, unless it is the home team's own field (data/seed/schools/home-fields.csv already names
         # it), into the same file; the commit step merges it, never overwriting a filled value. One mapped team a game, at
-        # most 15 minutes; a failure (a 403 or 429 stops it at once) leaves the file as it was. Counts only.
-        if: ${{ vars.SECOND_LIVE == 'true' && (github.event_name != 'schedule' || github.event.schedule == '23 11 * 8-12,1 5,6,0') }}
+        # most 15 minutes; a failure (a 403 or 429 stops it at once) leaves the file as it was. Counts only. Not on a
+        # details read: that read is the kickoffs and league bracket details only.
+        if: ${{ vars.SECOND_LIVE == 'true' && needs.due.outputs.mode != 'details' && (github.event_name != 'schedule' || needs.due.outputs.mode != 'game-day') }}
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
@@ -220,7 +277,7 @@ jobs:
         # store's merge, so the commit below carries it and a later MaxPreps read can only propose a change (ADR 0031).
         # Any still blank are named in the summary and raise "missing-finals" for the notify job; this step then shows red
         # without stopping the run. A failed source read is counted and never stops the check.
-        if: ${{ (github.event_name != 'schedule' && !inputs.tonight) || github.event.schedule == '23 11 * 8-12,1 5,6,0' }}
+        if: ${{ needs.due.outputs.mode == 'morning' }}
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
@@ -233,11 +290,11 @@ jobs:
           node tools/league-watch/late-finals.mjs "private/maxpreps-$SEASON" --season "$SEASON" ${SECOND:+"$SECOND"} --missing "$RUNNER_TEMP/missing-finals.txt"
           [ ! -s "$RUNNER_TEMP/missing-finals.txt" ]
       - name: League bracket kickoffs and sites
-        # ADRs 0063 and 0065: on the same runs, each TAIAO bracket game, played or still to play, gets the kickoff and site its league's own
+        # ADRs 0063 and 0065: on the morning read, the details read and a dispatch that is not a game-day read, each TAIAO bracket game, played or still to play, gets the kickoff and site its league's own
         # bracket shows (read as a visitor's browser does, ADR 0005), name and city only, into the same file outside the
         # repo as the step above; the commit step merges it into the newest main's game details, never overwriting a filled
         # value (ADR 0041). The log and summary give counts only. A failure leaves the file as it was.
-        if: ${{ (github.event_name != 'schedule' && !inputs.tonight) || github.event.schedule == '23 11 * 8-12,1 5,6,0' }}
+        if: ${{ needs.due.outputs.mode == 'morning' || needs.due.outputs.mode == 'details' }}
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
@@ -251,7 +308,7 @@ jobs:
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
         # stops the finals from being committed below.
-        if: ${{ vars.LIVE == 'true' }}
+        if: ${{ vars.LIVE == 'true' && needs.due.outputs.mode != 'details' }}
         continue-on-error: true
         env:
           PGHOST: aws-0-us-east-1.pooler.supabase.com
@@ -269,9 +326,10 @@ jobs:
             echo "Live scores sent: $result" >> "$GITHUB_STEP_SUMMARY"
           fi
       # The ratings model's own tests use only its sample games, and CI ran them on the main this checks out. A game-day
-      # tick (every 10 minutes) skips them so a new score publishes sooner; the morning read and a dispatch still run them.
+      # tick (every 10 minutes) skips them so a new score publishes sooner; the morning read and a dispatch still run them,
+      # a details read does not (it reads no score).
       - name: Ratings model checks
-        if: github.event_name != 'schedule' || github.event.schedule == '23 11 * 8-12,1 5,6,0'
+        if: ${{ needs.due.outputs.mode != 'details' && (github.event_name != 'schedule' || needs.due.outputs.mode != 'game-day') }}
         run: uv run --directory services/ratings pytest -q
       - name: Commit, the private repo first, then this one
         id: commit
@@ -288,14 +346,15 @@ jobs:
           DETAILS: ${{ runner.temp }}/game-details.csv
         # .github/scripts/commit-results.sh: the private repo first, then this one, each on its newest main, with retries;
         # publish, rerate, the data checks (Zod blocks, cross-file reports) and the summary lines. Tested against local
-        # bare repos (commit-results.test.mjs).
+        # bare repos (commit-results.test.mjs). A details read has no new captures: it republishes from the private store
+        # (a repair for an earlier failed push, never a change) and merges the kickoffs and sites it read.
         run: .github/scripts/commit-results.sh "$YEAR"
       # ADR 0031: the season's games go to the hosted database in the same run, from the private store just committed (the
       # same upsert as the full load: a game whose stored row says the same thing is left alone, and none is deleted). The
       # full load (supabase.yml) still runs on Mondays for alignments, lineage and migrations. A failure here is reported and
       # never undoes the commit.
       - name: Games to the hosted database
-        if: ${{ vars.LIVE == 'true' && steps.commit.outcome == 'success' }}
+        if: ${{ vars.LIVE == 'true' && steps.commit.outcome == 'success' && needs.due.outputs.mode != 'details' }}
         continue-on-error: true
         env:
           PGHOST: aws-0-us-east-1.pooler.supabase.com
@@ -353,6 +412,37 @@ jobs:
       - run: npm ci --prefix tools/push
       - name: Send alerts for the new finals
         run: node tools/push/send-finals.mjs --season ${{ needs.maxpreps.outputs.year }} --before HEAD~1
+
+  # After a morning or details read: the playoff games of the next 72 hours that still have no kickoff or no site, each
+  # named on the robot-alert issue (.github/scripts/playoff-details.mjs; the same games at most once every 12 hours).
+  # Read from the newest main, so the kickoffs and sites just committed count. A warning: it never fails the run. The
+  # hourly Site freshness check runs the same script.
+  playoff-details:
+    needs: [due, maxpreps]
+    if: ${{ !cancelled() && vars.LIVE == 'true' && needs.maxpreps.result != 'skipped' && (needs.due.outputs.mode == 'morning' || needs.due.outputs.mode == 'details') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          sparse-checkout: |
+            .github/scripts
+            tools/league-watch
+            apps/web/lib
+            data/seed
+            data/corrections
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Playoff games with no kickoff or no site
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/playoff-details.mjs --alert
 
   # Did the new scores reach the live site? Report only: waits up to 5 minutes for production's /build.json to show the
   # commit just pushed and says "Deployed" or "Not yet" in the run summary; it never fails the run. The hourly Site

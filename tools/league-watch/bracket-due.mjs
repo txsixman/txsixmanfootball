@@ -4,6 +4,7 @@
 // set by winners is due; a side still waiting on a game is not. No date: the feed's kickoff gives it.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { builtGames, fill, ownSlots, ROUND_ORDER, uilSlotRows } from "../../apps/web/lib/bracket-fill.ts";
 import { parseCsv } from "./store.mjs";
 
@@ -44,3 +45,27 @@ export function seasonSlotRows(seedDir, season) {
     .flatMap((d) => uilSlotRows(read(path.join(seedDir, d, `bracket-${season}.csv`), "UIL bracket")));
   return [...uil, ...read(path.join(seedDir, "brackets", `${season}.csv`), "bracket slots")];
 }
+
+/**
+ * The playoff-week rule (results-watch.yml's details read): how many playoff games are still to play. Every unscored
+ * playoffs.csv row dated today or later (or not dated yet), plus every next-round pairing the bracket sets by winners that no
+ * listing holds yet (builtDue). It reads the brackets' unplayed rounds, never a date list: 0 means no playoff game is left
+ * to place, so the read is skipped. `today`: the Central date, YYYY-MM-DD.
+ */
+export function playoffWeekCount(slotRows, playoffs, today) {
+  const listed = playoffs.filter((r) => r.home_score === "" && (r.game_date === "" || r.game_date >= today)).length;
+  return listed + builtDue(slotRows, playoffs).length;
+}
+
+const centralToday = (now = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(now);
+
+/** `--playoff-week <seedDir> <season>`: prints playoffWeekCount for the season's published files (a missing playoffs.csv counts none listed). */
+function playoffWeek() {
+  const [seedDir, season] = process.argv.slice(process.argv.indexOf("--playoff-week") + 1);
+  if (!seedDir || !/^20\d\d$/.test(season ?? "")) throw new Error("usage: bracket-due.mjs --playoff-week <seedDir> <season>");
+  const file = path.join(seedDir, `maxpreps-${season}`, "playoffs.csv");
+  const playoffs = existsSync(file) ? parseCsv(readFileSync(file, "utf8"), "playoffs.csv").rows : [];
+  console.log(playoffWeekCount(seasonSlotRows(seedDir, season), playoffs, centralToday()));
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv.includes("--playoff-week")) playoffWeek();

@@ -2,7 +2,8 @@
 // emails the owner (who watches the repo). A run that the game-day clock started is the github-actions bot's, and GitHub
 // emails no one about a bot's run, so without this a failure would go unseen. The issue is public: it says only which
 // workflow, job and step failed (or a fixed reason the caller names) and links the run; never a score, a school or a
-// detail of a source.
+// detail of a source. The one exception is playoff-details.mjs, which names a playoff game (two schools, league,
+// division, round, date, and what is missing, never a score) so a missing kickoff or site can be fixed in time.
 //
 //   node .github/scripts/ops-alert.mjs                    a run that failed: names its failed jobs and steps (notify jobs)
 //   node .github/scripts/ops-alert.mjs --reason <key>     a named problem (REASONS below), from a step that did not fail,
@@ -18,7 +19,7 @@ import { fileURLToPath } from "node:url";
 export const LABEL = "ops-alert";
 export const TITLE = "Robot alert: a scheduled job needs a look";
 export const QUIET_HOURS = 3;
-const BOT = "github-actions[bot]";
+export const BOT = "github-actions[bot]";
 /** The fixed texts a step may raise without failing (ADR 0028). Only these words reach the public issue. */
 export const REASONS = {
   "read-stuck": "A Results watch read has waited or run far longer than any read takes; the game-day clock started a new one. Look at the older run.",
@@ -58,7 +59,7 @@ export function bodyOf({ workflow, runUrl, failed, reason, key }) {
   return lines.join("\n");
 }
 
-const keyIn = (text) => {
+export const keyIn = (text) => {
   const m = /<!-- ops-alert key=(\S+) -->/.exec(String(text ?? ""));
   return m ? decodeURIComponent(m[1]) : null;
 };

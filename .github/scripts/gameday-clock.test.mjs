@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { catchUpTick, CLOCK_WORKFLOW, decide, github, inWindow, isStuck, nextTick, READ_WORKFLOW, runClock, seasonDone, seasonOf } from "./gameday-clock.mjs";
+import { catchUpTick, centralWeekday, CLOCK_WORKFLOW, decide, decideMorning, github, inWindow, isDetailsDay, isMorningTitle, isStuck, morningTick, nextTick, READ_WORKFLOW, runClock, seasonDone, seasonOf } from "./gameday-clock.mjs";
 
 const at = (iso) => Date.parse(iso);
 const run = (id, event, createdIso, status = "completed") => ({ id, event, status, created_at: createdIso });
@@ -235,4 +235,102 @@ test("a read waiting over 60 minutes, or running over 90, is stuck: the clock st
   const none = [];
   await runClock({ minutes: 5, dryRun: true, playoffsText: null, ...d, notify: async (x) => none.push(x) });
   assert.deepEqual(none, []);
+});
+
+// ---- the daily morning read ----
+// 2026-11-16 is a Monday; 11-20 a Friday, 11-21 a Saturday, 11-22 a Sunday, 11-26 a Thursday (Thanksgiving).
+const titled = (id, createdIso, title, status = "completed", event = "workflow_dispatch") => ({ ...run(id, event, createdIso, status), display_title: title });
+
+test("a morning tick is 13:00 to 14:59 UTC (7 to 9 AM Central) in November and December", () => {
+  for (const t of ["2026-11-16T13:03:00Z", "2026-11-16T13:53:00Z", "2026-11-16T14:53:00Z", "2026-12-30T14:03:00Z"]) assert.ok(morningTick(at(t)), t);
+  for (const t of ["2026-11-16T12:53:00Z", "2026-11-16T15:03:00Z", "2026-11-16T20:03:00Z", "2026-10-30T13:03:00Z", "2027-01-04T13:03:00Z"]) assert.ok(!morningTick(at(t)), t);
+});
+
+test("Monday to Thursday (Central) the morning read is the details read; Friday to Sunday it is the plain morning read", () => {
+  const days = { "2026-11-16": 1, "2026-11-17": 2, "2026-11-18": 3, "2026-11-19": 4, "2026-11-20": 5, "2026-11-21": 6, "2026-11-22": 0, "2026-11-26": 4 };
+  for (const [day, weekday] of Object.entries(days)) {
+    assert.equal(centralWeekday(at(`${day}T13:03:00Z`)), weekday, day);
+    assert.equal(centralWeekday(at(`${day}T14:53:00Z`)), weekday, day);
+    assert.equal(isDetailsDay(at(`${day}T13:03:00Z`)), weekday >= 1 && weekday <= 4, day);
+  }
+});
+
+test("a run titled a details read or a morning read is told apart from a game-day read", () => {
+  assert.ok(isMorningTitle({ display_title: "Results watch: details read" }));
+  assert.ok(isMorningTitle({ display_title: "Results watch: morning read" }));
+  assert.ok(!isMorningTitle({ display_title: "Results watch: game-day read" }));
+  assert.ok(!isMorningTitle({}));
+});
+
+test("a morning tick starts a details read Monday to Thursday and a plain morning read Friday to Sunday, once a day", () => {
+  const mon = decideMorning(at("2026-11-16T13:03:00Z"), []);
+  assert.deepEqual([mon.dispatch, mon.inputs], [true, { details: "true" }]);
+  assert.match(mon.line, /details read/);
+  for (const day of ["2026-11-20", "2026-11-21", "2026-11-22"]) {
+    const v = decideMorning(at(`${day}T13:03:00Z`), []);
+    assert.deepEqual([v.dispatch, v.inputs], [true, {}], day);
+    assert.match(v.line, /morning read/);
+  }
+  const now = at("2026-11-17T13:23:00Z");
+  // GitHub's own morning schedule (11:23 UTC) already started one today: the clock stands down, quietly.
+  const cron = decideMorning(now, [run(1, "schedule", "2026-11-17T11:23:40Z")]);
+  assert.deepEqual([cron.dispatch, cron.quiet], [false, true]);
+  // A read the clock started at 13:03, whose title says so, covers every later tick, finished or not.
+  for (const status of ["completed", "in_progress", "queued"]) {
+    assert.equal(decideMorning(now, [titled(2, "2026-11-17T13:03:00Z", "Results watch: details read", status)]).dispatch, false, status);
+  }
+  assert.equal(decideMorning(now, [titled(2, "2026-11-17T13:03:00Z", "Results watch: morning read")]).dispatch, false);
+  // Not these: yesterday's morning read, last night's game-day schedule runs (before 10:00 UTC), a game-day read today.
+  assert.equal(decideMorning(now, [titled(3, "2026-11-16T13:03:00Z", "Results watch: details read"), run(4, "schedule", "2026-11-17T05:50:00Z"), titled(5, "2026-11-17T05:53:00Z", "Results watch: game-day read")]).dispatch, true);
+  assert.equal(decideMorning(now, [titled(6, "2026-11-17T12:00:00Z", "Results watch: game-day read")]).dispatch, true);
+});
+
+test("a morning tick waits for a read that is active, and starts its read when every active read is stuck", () => {
+  const now = at("2026-11-17T13:23:00Z");
+  const busy = decideMorning(now, [titled(7, "2026-11-17T12:30:00Z", "Results watch: game-day read", "in_progress")]);
+  assert.equal(busy.dispatch, false);
+  assert.match(busy.line, /in_progress/);
+  const stuck = decideMorning(now, [titled(8, "2026-11-17T09:00:00Z", "Results watch: game-day read", "queued")]);
+  assert.deepEqual([stuck.dispatch, stuck.stuck, stuck.inputs], [true, true, { details: "true" }]);
+  assert.match(stuck.line, /counted as stuck; started a new playoff-week details read/);
+});
+
+/** Results watch's runs as the API lists them after the clock's own dispatches: a run per dispatch, titled as run-name does. */
+const listed = (now, calls) =>
+  calls.filter((c) => c.workflow === READ_WORKFLOW).map((c, i) => titled(100 + i, c.at, c.inputs.details ? "Results watch: details read" : c.inputs.tonight ? "Results watch: game-day read" : "Results watch: morning read"));
+
+test("the clock starts one details read on a Monday morning, stands down for the rest of it, and the 15:03 catch-up is unchanged", async () => {
+  const f = fake({ startIso: "2026-11-16T12:50:00Z", runs: listed });
+  await runClock({ minutes: 150, playoffsText: null, ...f });
+  const reads = f.calls.filter((c) => c.workflow === READ_WORKFLOW);
+  assert.deepEqual(reads.map((c) => [c.at, c.inputs]), [["2026-11-16T13:03:00.000Z", { details: "true" }], ["2026-11-16T15:03:00.000Z", { tonight: "true" }]]);
+  assert.equal(f.lines.filter((l) => /started the playoff-week details read/.test(l)).length, 1);
+  assert.equal(f.lines.filter((l) => /already started/.test(l)).length, 1, "the later morning ticks are not logged one by one");
+});
+
+test("the clock starts a plain morning read on a Saturday when the morning schedule did not fire, and none when it did", async () => {
+  const f = fake({ startIso: "2026-11-21T12:50:00Z", runs: listed });
+  await runClock({ minutes: 100, playoffsText: null, ...f });
+  assert.deepEqual(f.calls.filter((c) => c.workflow === READ_WORKFLOW).map((c) => [c.at, c.inputs]), [["2026-11-21T13:03:00.000Z", {}]]);
+
+  const cron = fake({ startIso: "2026-11-21T12:50:00Z", runs: (now, calls) => [run(1, "schedule", "2026-11-21T11:25:00Z"), ...listed(now, calls)] });
+  await runClock({ minutes: 100, playoffsText: null, ...cron });
+  assert.deepEqual(cron.calls.filter((c) => c.workflow === READ_WORKFLOW), []);
+});
+
+test("a morning dry run says what it would start and starts nothing; outside November and December there is no morning read", async () => {
+  const f = fake({ startIso: "2026-11-17T12:50:00Z" });
+  await runClock({ minutes: 20, dryRun: true, playoffsText: null, ...f });
+  assert.deepEqual(f.calls, []);
+  assert.ok(f.lines.some((l) => /would have started the playoff-week details read \(dry run\)/.test(l)));
+  assert.equal(decideMorning(at("2026-11-17T13:03:00Z"), []).dispatch, true);
+  const oct = fake({ startIso: "2026-10-30T13:00:00Z" });
+  assert.deepEqual(await runClock({ minutes: 30, playoffsText: null, ...oct }), { failed: false, handedOn: false, ticks: 0 });
+});
+
+test("a failed morning dispatch fails the run like a failed game-day read, naming it", async () => {
+  const f = fake({ startIso: "2026-11-17T12:50:00Z", dispatchFails: (w) => w === READ_WORKFLOW });
+  const r = await runClock({ minutes: 30, playoffsText: null, ...f });
+  assert.equal(r.failed, true);
+  assert.ok(f.lines.some((l) => /FAILED to start the playoff-week details read: HTTP 403/.test(l)));
 });
