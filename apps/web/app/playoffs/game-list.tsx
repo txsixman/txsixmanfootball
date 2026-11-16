@@ -26,7 +26,7 @@ export const DisputedMark = () => (
  * A final is confirmed (ADR 0040); `today` is a Central-time date (lib/playoff-status.ts).
  * `showStatus` is off for a past season, where every game is old and the page says once that its scores are unconfirmed
  * (a forfeit still says so). `comments` (a current season's lists only) links each game that has a page to its comments
- * (ADR 0077): "count" only when the game has some, "always" also "Comments" for one with none while posts are open. */
+ * (ADR 0078): "count" only when the game has some, "always" also "Comments" for one with none while posts are open. */
 export async function GameList({ games, league, alignments, identities, today, showStatus = true, comments: asked }: {
   games: BracketRow[]; league: string; alignments: Alignment[]; identities: Awaited<ReturnType<typeof loadIdentities>>; today: string; showStatus?: boolean; comments?: "count" | "always";
 }) {

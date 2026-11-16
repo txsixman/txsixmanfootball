@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { checkLive } from "../load.mjs";
 import { as, asFan, db, fan, KEYS, sudo } from "./posts-helpers.mjs";
 
-// comment_counts (migration 0029, ADR 0077): the public count of visible comments for up to 200 game keys, under the same
+// comment_counts (migration 0029, ADR 0078): the public count of visible comments for up to 200 game keys, under the same
 // visibility rule as list_comments (migration 0013): hidden posts and banned authors' posts are never counted.
 const counts = async (d, keys) => (await d.query("select * from comment_counts($1)", [keys])).rows;
 const post = (d, author, key, n = 1) =>

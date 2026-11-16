@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createServer, type Server } from "node:http";
 import path from "node:path";
 
-// Fan posts for a signed-in fan (ADRs 0018, 0052, 0060, 0077): every posts page with its forms, on phone and desktop, passes axe;
+// Fan posts for a signed-in fan (ADRs 0018, 0052, 0060, 0078): every posts page with its forms, on phone and desktop, passes axe;
 // Report is on every other fan's post (it asks first; signed out, it is a sign-in link); the site refuses gambling talk before the
 // database is asked; a paused account sees why and no form; the empty states of a board and of a game's comments; new comments
 // that appear behind a button; the comment counts on the /scores cards. The database's own rules are tested in packages/db/test.

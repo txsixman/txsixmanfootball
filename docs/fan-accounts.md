@@ -34,7 +34,7 @@ Forums, game comments and score reports are behind `FAN_POSTS`, which must be ex
   comment and score-report blocks appear or vanish only with that deploy. CI's launch job builds with the switches set, as Vercel does.
   A page built with posts on and served after the flag goes off hides both blocks itself, because their routes then answer 404.
   The forums, every `/api/*` route and `/api/me` read the flag per request.
-- **`/scores` and the playoff lists are static too**: their comment counts and comments links (ADR 0077) are in a build made with posts on and absent from one made with posts off, so they never ask the counts route while posts are off. A page built with posts on and served after the flag goes off draws nothing, because the route then answers 404.
+- **`/scores` and the playoff lists are static too**: their comment counts and comments links (ADR 0078) are in a build made with posts on and absent from one made with posts off, so they never ask the counts route while posts are off. A page built with posts on and served after the flag goes off draws nothing, because the route then answers 404.
 - `/api/me` answers `{ enabled, posts, me }`: `posts` is `FAN_POSTS` for the page scripts, never true while `enabled` is false.
 - **`/admin/moderation` stays open to the owner** whichever way the switch is set, so he can ban an account or show a post again
   after turning posts off. With posts off it says so in one sentence and shows a post's place as text, not a link.
@@ -105,8 +105,8 @@ Do these in order, in one sitting. Each step names how to check it worked.
 | Home, My teams | The account's follows when signed in, else this browser's |
 | `/forums`, a board, a thread | Only while `FAN_POSTS` is on (otherwise 404). Anyone reads; a signed-in fan with a profile posts, replies, edits their own and flags others |
 | A game page | Only while `FAN_POSTS` is on: the comments block (it checks for new comments once a minute while the tab is visible and offers "Show N new comments" rather than moving the list), and for a game with no score yet the fan score-report block. With it off the page is as it was |
-| `/scores` | Only while `FAN_POSTS` is on: a game with comments shows "1 comment" or "N comments" with a small icon at the bottom of its score card (plain text; the card is one link to the game page). Nothing for a game with none, while the number loads, and with posts off (ADR 0077) |
-| `/playoffs/this-round`, `/playoffs`, a bracket page | Only while `FAN_POSTS` is on, for a current-season game that has its own page (a game a bracket only sets has none): a link under the game, on its own line, to the game's comments (`/scores/<id>#comments`). On this-round it reads "Comments" for a game with none, "1 comment" or "N comments" otherwise, with a small icon; on `/playoffs` and the bracket pages only a game that has comments shows one. Each link's accessible name names its game ("3 comments on Away vs Home"). Nothing while the counts load, with posts off, and when the request fails. Past seasons' lists have none. One counts request serves the whole page (ADR 0077) |
+| `/scores` | Only while `FAN_POSTS` is on: a game with comments shows "1 comment" or "N comments" with a small icon at the bottom of its score card (plain text; the card is one link to the game page). Nothing for a game with none, while the number loads, and with posts off (ADR 0078) |
+| `/playoffs/this-round`, `/playoffs`, a bracket page | Only while `FAN_POSTS` is on, for a current-season game that has its own page (a game a bracket only sets has none): a link under the game, on its own line, to the game's comments (`/scores/<id>#comments`). On this-round it reads "Comments" for a game with none, "1 comment" or "N comments" otherwise, with a small icon; on `/playoffs` and the bracket pages only a game that has comments shows one. Each link's accessible name names its game ("3 comments on Away vs Home"). Nothing while the counts load, with posts off, and when the request fails. Past seasons' lists have none. One counts request serves the whole page (ADR 0078) |
 
 No age, birth year, email or school is shown anywhere. The birth year is stored in `profile.birth_year` and no function returns it.
 
@@ -117,7 +117,7 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
   account, the slug's shape checked, a profile required), `unfollow_program`, `my_follows`, all `security definer` on `auth.uid()`'s
   own rows. `follow.user_id` references `profile` with `on delete cascade`, so deleting the account removes the follows.
   The three functions are in `SIGNED_IN_FUNCTIONS` (`packages/db/load.mjs`): CI checks anon cannot run them.
-- **Comment counts on the score cards (ADR 0077, migration 0029).** `comment_counts(p_game_keys text[])` is a public read (in
+- **Comment counts on the score cards (ADR 0078, migration 0029).** `comment_counts(p_game_keys text[])` is a public read (in
   `ANON_FUNCTIONS`): per game key the number of comments `list_comments` would show (not hidden, author not banned), only keys
   with at least one, only the first 200 keys given; a key and a number, nothing else. `GET /api/games/comment-counts?keys=k1,k2,...`
   (404 while posts are off, before anything else) drops every key that is not a game page id, dedupes, takes at most 200 and

@@ -1,4 +1,4 @@
-// /api/games/comment-counts (ADR 0077) runs as it is on the real migrations in PGlite, as the anon role, through
+// /api/games/comment-counts (ADR 0078) runs as it is on the real migrations in PGlite, as the anon role, through
 // route-harness.mjs: the switch, the key rules, the answer's shape and cache header, what is never counted, and what a
 // database error shows. The pure key parsing is tested without a database in the same file.
 //   node --test apps/web/scripts/*.test.mjs   (needs `npm ci --prefix packages/db` for PGlite)

@@ -243,7 +243,7 @@ function NextSection({ games }: { games: NextGame[] }) {
 }
 
 /** `weekInReview`: a link to the newest week in review, on the live page only (the sample page stays as it is). `next`: games the bracket sets (live page only).
- * `commentCounts`: each real game's fan comment count (ADR 0077), on the live page only; the invented sample games never ask. */
+ * `commentCounts`: each real game's fan comment count (ADR 0078), on the live page only; the invented sample games never ask. */
 export default function Board({ games, eyebrow, title, crests, weekInReview, next = [], commentCounts = false }: { games: Game[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string }; next?: NextGame[]; commentCounts?: boolean }) {
   const [query, setQuery] = useState("");
   // Only a game with a date and no final can be under way, and only inside its kickoff window; invented sample games or finals ask for nothing.

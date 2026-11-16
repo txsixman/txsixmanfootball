@@ -1,6 +1,6 @@
 import { CommentCount, CommentCountLink } from "@/app/scores/comment-count";
 
-// The comment count of a game (ADR 0077), as plain text inside a card that is itself a link, and as a link for a row that is
+// The comment count of a game (ADR 0078), as plain text inside a card that is itself a link, and as a link for a row that is
 // not. The route is answered here, by invented games' keys; a game with no comments draws nothing at all, as on the site.
 export default { title: "Comment count" };
 

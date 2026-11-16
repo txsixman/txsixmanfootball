@@ -119,4 +119,4 @@ Not in an ADR:
   the listed finals, as kept values; earlier TAPPS rounds and TCAF stay blank (Nov 16, 2026).
 - **Withheld sites** (ADR 0076): `data/corrections/sites.csv` keeps a game's site and address blank when allowed pages
   contradict the read one; no robot merge fills it, the data check fails if one is added (Nov 16, 2026).
-- **Comment counts on score cards** (ADR 0077): a public read `comment_counts` (migration 0029, the same visibility as `list_comments`) behind a route cached for 30 seconds, drawn as "N comments" on each `/scores` card; nothing while posts are off (Nov 16, 2026).
+- **Comment counts on score cards** (ADR 0078): a public read `comment_counts` (migration 0029, the same visibility as `list_comments`) behind a route cached for 30 seconds, drawn as "N comments" on each `/scores` card; nothing while posts are off (Nov 16, 2026).

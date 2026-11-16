@@ -1,4 +1,4 @@
-# ADR 0077: Comment counts on the score cards
+# ADR 0078: Comment counts on the score cards
 
 **Status:** Proposed Nov 16, 2026; accepted when its pull request is merged. It adds one public read and one route under
 ADR 0018's game comments and ADR 0052's posts switch, and changes no rule of either.

@@ -1,4 +1,4 @@
--- Comment counts for the score cards (ADR 0077). One public read: how many comments each of up to 200 game keys has,
+-- Comment counts for the score cards (ADR 0078). One public read: how many comments each of up to 200 game keys has,
 -- so a score card can say a thread is active. A new read only: nothing in migrations 0013 to 0015 or ADR 0018 changes.
 --   - The visibility rule is list_comments' (migration 0013, never redefined since): a post under that game key, not
 --     hidden, by an author who is not banned. A muted author's comment still shows, so it still counts.

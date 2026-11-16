@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
 import { COUNT_KEY, MAX_COUNT_KEYS } from "@/lib/posts/comment-counts";
 
-// How many comments a game has, on its score card (ADR 0077). The pages are static, so the counts come from
+// How many comments a game has, on its score card (ADR 0078). The pages are static, so the counts come from
 // /api/games/comment-counts in the browser. Every instance on a page registers its game key; the keys are gathered in one
 // tick and asked for in one request (200 at most a request), whatever the number of cards. The route answers 404 while posts
 // are off and the request can fail: either way, and with no comments, nothing is drawn, so a page with posts off is as it was.
