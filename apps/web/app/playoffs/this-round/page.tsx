@@ -63,7 +63,7 @@ export default async function ThisRoundPage() {
                     {bracketLabel(b)} · {round.label}{" "}
                     <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">· {roundCount(round)}</span>
                   </h3>
-                  {round.games.length > 0 && <GameList games={round.games} league={b.league} alignments={alignments} identities={identities} today={clock.date} />}
+                  {round.games.length > 0 && <GameList games={round.games} league={b.league} alignments={alignments} identities={identities} today={clock.date} comments="always" />}
                   {round.built.length > 0 && <BuiltList games={round.built} league={b.league} alignments={alignments} identities={identities} />}
                   <Link href={bracketHref(b.name)} className="flex min-h-11 items-center justify-between border-b border-line px-3 text-[14px] font-semibold text-navy hover:bg-panel">
                     Full {bracketLabel(b)} bracket

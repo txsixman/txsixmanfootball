@@ -105,7 +105,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
                     · {roundCount(r)}
                   </span>
                 </h3>
-                {r.games.length > 0 && <GameList games={r.games} league={league} alignments={alignments} identities={identities} today={today} showStatus={!past} />}
+                {r.games.length > 0 && <GameList games={r.games} league={league} alignments={alignments} identities={identities} today={today} showStatus={!past} comments={past ? undefined : "count"} />}
                 {r.built.length > 0 && <BuiltList games={r.built} league={league} alignments={alignments} identities={identities} />}
               </section>
             ))}

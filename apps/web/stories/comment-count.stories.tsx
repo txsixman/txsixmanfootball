@@ -26,7 +26,18 @@ export const AsLink = () => (
   <div className="max-w-sm border border-line px-3">
     {Object.keys(COUNTS).map((key) => (
       <div key={key}>
-        <CommentCountLink gameKey={key} className="flex" />
+        <CommentCountLink gameKey={key} matchup="Gamma vs Delta" className="flex" />
+      </div>
+    ))}
+  </div>
+);
+
+// The this-round row: a game with no comments still says "Comments" once the route has answered.
+export const AlwaysWhenOpen = () => (
+  <div className="max-w-sm border border-line px-3">
+    {[...Object.keys(COUNTS), "2026-bi-district-eta-at-theta"].map((key) => (
+      <div key={key}>
+        <CommentCountLink gameKey={key} matchup="Eta vs Theta" alwaysWhenOpen className="flex" />
       </div>
     ))}
   </div>
