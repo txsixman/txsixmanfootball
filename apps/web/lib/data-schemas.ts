@@ -178,6 +178,17 @@ const fixScore = z.string().regex(/^\d{1,3}$/, "a score is a whole number").refi
 // nothing but zod, so it cannot import the lib one; scripts/corrections.test.mjs holds the three to one table).
 const forfeitShaped = (a: number, b: number) => Math.max(a, b) <= 2 && Math.min(a, b) === 0 && a !== b;
 
+/**
+ * data/corrections/sites.csv (ADR 0076): a game whose site is withheld because allowed pages contradict the one a robot
+ * read. Its facts row keeps no site or address, and no robot read fills them (mergeKickoffs). The kickoff is unaffected.
+ * Keyed by date and both teams, as the facts file spells them. The row is removed by hand once an allowed page names the
+ * site, and that site is then added by hand.
+ */
+export const WITHHELD_SITE_COLUMNS = ["date", "home", "away", "source_url", "reason", "corrected_on"];
+export const WithheldSiteRow = z
+  .object({ date: isoDate, home: csvSafe("a team"), away: csvSafe("a team"), source_url: httpsUrl, reason: csvSafe("a reason"), corrected_on: isoDate })
+  .refine((r) => r.home !== r.away, "a team cannot play itself");
+
 export const GAME_CORRECTION_COLUMNS = [
   "game_date", "home", "away", "action", "home_score", "away_score", "source_url", "reason", "corrected_on",
 ];

@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { bracketFields, clockFormats, DETAIL_COLUMNS, dueReport, gamesOnLines, kickoffRows, liveFields, mergeKickoffs, missingDetails, opponentRows, placeFields, positionProblems } from "./davecampbells.mjs";
+import { bracketFields, clockFormats, DETAIL_COLUMNS, dueReport, gamesOnLines, kickoffRows, liveFields, mergeKickoffs, missingDetails, readWithheld, withheldKeys, opponentRows, placeFields, positionProblems } from "./davecampbells.mjs";
 import { allFinishedGames, asOf, footballSeasons, HISTORY_COLUMNS, historyCsv, historyRows, knownPrograms, programByName, checkFinals, noAgreement, NO_AGREEMENT_MIN, raise, seasonIdOwed, createClient, daysBefore, finalOf, finalsSummary, gamesToCheck, isFinal, isForfeit, isLate, isLive, liveRowsFromItems, matchGames, mergeLive, periodByMinutes, periodLabel, readReport, REPORT_COLUMNS, reportCsv, sameSchool, TEAMS_PER_RUN, teamId, teamMaps, teamSlugOf, USER_AGENT, verdictOf } from "./davecampbells.mjs";
 
 const json = (status, body) => ({ status, json: async () => body });
@@ -789,4 +789,27 @@ test("a bracket-built pairing takes the date of the feed's next game between its
   assert.equal(datedBuilt([item("2026-11-21T01:00:00Z", side("HOME", "x-y", "Finch"), side("AWAY", "lark-owls"))], { built, ours: one, today: "2026-11-15" }).length, 1);
   assert.equal(datedBuilt([item("2026-11-21T01:00:00Z", side("HOME", "x-y", "Robin"), side("AWAY", "lark-owls"))], { built, ours: one, today: "2026-11-15" }).length, 0);
   assert.equal(datedBuilt([item("2026-12-20T01:00:00Z", side("HOME", "finch-falcons"), side("AWAY", "lark-owls"))], { built, ours, today: "2026-11-15" }).length, 0, "too far ahead");
+});
+
+test("a withheld site (ADR 0076) is written blank, kept or fresh, either way round; its kickoff and other games merge as usual", () => {
+  const kept = `${DETAIL_COLUMNS}\n2026-11-20,Lark,Wren,,Bird Field,Lark,1 Nest Rd,TX,79001\n2026-11-20,Owl Prep,Finch,,Perch Park,Finch,,,\n`;
+  const fresh = [
+    { date: "2026-11-20", home: "Lark", away: "Wren", kickoff_utc: "2026-11-21T01:30:00Z", site_name: "Bird Field", site_city: "Lark", site_street: "1 Nest Rd", site_state: "TX", site_zip: "79001" },
+    { date: "2026-11-21", home: "Kite", away: "Robin", kickoff_utc: "2026-11-21T18:00:00Z", site_name: "Sky Field", site_city: "Kite", site_street: "", site_state: "", site_zip: "" },
+  ];
+  // Listed the other way round in the correction: still the same game.
+  const withheld = withheldKeys([{ date: "2026-11-20", home: "Wren", away: "Lark" }]);
+  assert.equal(
+    mergeKickoffs(kept, fresh, withheld),
+    `${DETAIL_COLUMNS}\n2026-11-20,Owl Prep,Finch,,Perch Park,Finch,,,\n2026-11-20,Lark,Wren,2026-11-21T01:30:00Z,,,,,\n2026-11-21,Kite,Robin,2026-11-21T18:00:00Z,Sky Field,Kite,,,\n`,
+  );
+  assert.match(mergeKickoffs(kept, fresh), /Lark,Wren,2026-11-21T01:30:00Z,Bird Field/, "nothing withheld: unchanged behavior");
+});
+
+test("readWithheld: the corrections file's games, none when the file is missing", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "withheld-"));
+  assert.equal(readWithheld(path.join(dir, "none.csv")).size, 0);
+  const file = path.join(dir, "sites.csv");
+  writeFileSync(file, "date,home,away,source_url,reason,corrected_on\n2026-11-20,Lark,Wren,https://lark.example/,two calendars disagree,2026-11-16\n");
+  assert.deepEqual([...readWithheld(file)], [...withheldKeys([{ date: "2026-11-20", home: "Wren", away: "Lark" }])]);
 });

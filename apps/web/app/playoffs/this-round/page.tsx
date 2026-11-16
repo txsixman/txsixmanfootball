@@ -4,10 +4,11 @@ import Link from "next/link";
 import { loadAlignments } from "@/lib/alignments";
 import { bracketHref, bracketLabel, LEAGUES, loadBrackets } from "@/lib/brackets";
 import { loadIdentities } from "@/lib/identity";
-import { centralClock, currentRound } from "@/lib/playoff-status";
+import { centralClock } from "@/lib/playoff-status";
 import { CURRENT_SEASON } from "@/lib/season";
+import { roundCount, roundTotal, thisRound } from "@/lib/this-round";
 import { PageHeader, SectionBar } from "../../ui";
-import { GameList } from "../game-list";
+import { BuiltList, GameList } from "../game-list";
 
 export const dynamic = "force-static";
 
@@ -20,20 +21,16 @@ export const metadata: Metadata = {
 /**
  * The round being played in every bracket, on one page: organization, then division. Each bracket shows the round its
  * own page opens on (lib/playoff-status.ts currentRound), so a bracket a round ahead or behind shows its own round.
- * Built from the brackets and their kickoff times (ADR 0036): date, kickoff, site, status and projection. A
- * robot-read score is unconfirmed and names no winner (ADR 0004). The site is static: "as of" is the time of this build.
+ * Built from the brackets and their kickoff times (ADR 0036): date, kickoff, site, status and projection. The games are
+ * the ones /playoffs shows for that round, listed ones and ones the bracket sets (ADR 0047), through the same lists and the
+ * same count (lib/this-round.ts). A robot-read score is unconfirmed and names no winner (ADR 0004). The site is static:
+ * "as of" is the time of this build.
  */
 export default async function ThisRoundPage() {
   const [brackets, alignments, identities] = await Promise.all([loadBrackets(), loadAlignments(), loadIdentities()]);
   const clock = centralClock();
-  const groups = LEAGUES.map((league) => ({
-    league,
-    brackets: brackets.flatMap((b) => {
-      const round = b.league === league ? currentRound(b.rounds, clock.date) : undefined;
-      return round ? [{ bracket: b, round }] : [];
-    }),
-  })).filter((g) => g.brackets.length);
-  const games = groups.reduce((n, g) => n + g.brackets.reduce((m, b) => m + b.round.games.length, 0), 0);
+  const groups = thisRound(brackets, LEAGUES, clock.date);
+  const games = groups.reduce((n, g) => n + g.brackets.reduce((m, b) => m + roundTotal(b.round), 0), 0);
 
   return (
     <section aria-labelledby="this-round">
@@ -64,11 +61,10 @@ export default async function ThisRoundPage() {
                 <section key={b.name} aria-label={`${b.name}, ${round.label}`} className="mt-4">
                   <h3 className="border-b-2 border-navy px-3 pb-1 font-num text-[20px] font-bold uppercase tracking-wider text-navy">
                     {bracketLabel(b)} · {round.label}{" "}
-                    <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">
-                      · {round.games.length} {round.games.length === 1 ? "game" : "games"}
-                    </span>
+                    <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">· {roundCount(round)}</span>
                   </h3>
-                  <GameList games={round.games} league={b.league} alignments={alignments} identities={identities} today={clock.date} />
+                  {round.games.length > 0 && <GameList games={round.games} league={b.league} alignments={alignments} identities={identities} today={clock.date} />}
+                  {round.built.length > 0 && <BuiltList games={round.built} league={b.league} alignments={alignments} identities={identities} />}
                   <Link href={bracketHref(b.name)} className="flex min-h-11 items-center justify-between border-b border-line px-3 text-[14px] font-semibold text-navy hover:bg-panel">
                     Full {bracketLabel(b)} bracket
                     <ChevronRight aria-hidden="true" className="size-5 shrink-0" />

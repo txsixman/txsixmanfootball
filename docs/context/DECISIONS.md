@@ -119,3 +119,7 @@ Not in an ADR:
   sites, league bracket details only) runs while the brackets have a game left to play, started by the schedule or the
   game-day clock's 7 to 9 AM tick; game-day reads count bracket-built pairings the game details date; a playoff game
   within 72 hours with no kickoff or no site is named on the robot-alert issue (Nov 16, 2026).
+- **TAPPS State Championship kickoffs and sites by hand** (ADR 0075): from TAPPS's own football page on tapps.biz, on
+  the listed finals, as kept values; earlier TAPPS rounds and TCAF stay blank (Nov 16, 2026).
+- **Withheld sites** (ADR 0076): `data/corrections/sites.csv` keeps a game's site and address blank when allowed pages
+  contradict the read one; no robot merge fills it, the data check fails if one is added (Nov 16, 2026).

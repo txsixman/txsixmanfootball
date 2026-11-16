@@ -6,7 +6,7 @@ import * as s from "../lib/data-schemas.ts";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { checkAll, checkDisputed, checkLineage, checkMaxprepsFolders, checkRegistry } from "./check-data.mjs";
+import { checkAll, checkDisputed, checkLineage, checkMaxprepsFolders, checkRegistry, checkWithheld } from "./check-data.mjs";
 
 // Robot-read games as this repo holds them: the facts, no source column (data-schemas.ts RESULT_COLUMNS).
 const HEADER = s.RESULT_COLUMNS.join(",");
@@ -212,4 +212,14 @@ test("a lineage or names row without an https source, or with an unknown event o
   names("Cedar Gapp,Cedar Gap,former,2019,https://x.test/a,");
   assert.throws(() => names("Cedar Gapp,Cedar Gap,nickname,,https://x.test/a,"), /kind/);
   assert.throws(() => names("Cedar Gapp,Cedar Gap,former,19,https://x.test/a,"), /until/);
+});
+
+test("withheld sites (ADR 0076): the row's own schema, and the facts file must keep that game's site blank", () => {
+  const w = { date: "2030-11-20", home: "Alpha", away: "Beta", source_url: "https://alpha.example/", reason: "two calendars disagree", corrected_on: "2030-11-16" };
+  assert.equal(s.WithheldSiteRow.safeParse(w).success, true);
+  assert.equal(s.WithheldSiteRow.safeParse({ ...w, away: "Alpha" }).success, false, "a team cannot play itself");
+  assert.equal(s.WithheldSiteRow.safeParse({ ...w, source_url: "http://alpha.example/" }).success, false, "https only");
+  const details = (site_name) => ({ "data/seed/game-details/2030.csv": [{ date: "2030-11-20", home: "Beta", away: "Alpha", kickoff_utc: "2030-11-21T01:00:00Z", site_name, site_city: "", site_street: "" }] });
+  assert.equal(checkWithheld([w], details("")).ok, true);
+  assert.match(checkWithheld([w], details("Gamma Field")).note, /withheld but the facts file names one/);
 });
