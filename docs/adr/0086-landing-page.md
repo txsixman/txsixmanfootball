@@ -1,4 +1,4 @@
-# ADR 0084: A landing page at /welcome; home stays the scoreboard
+# ADR 0086: A landing page at /welcome; home stays the scoreboard
 
 **Status:** Proposed Nov 16, 2026; accepted when its pull request is merged. It adds a page and one small link on home;
 it changes nothing any other page says.

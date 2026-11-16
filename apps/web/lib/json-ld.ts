@@ -35,7 +35,7 @@ export const websiteJsonLd = () => ({
   url: `${SITE_URL}/`,
 });
 
-/** The landing page's (/welcome, ADR 0084): a page about the site, part of the site. */
+/** The landing page's (/welcome, ADR 0086): a page about the site, part of the site. */
 export const welcomeJsonLd = (description: string) => ({
   "@context": CONTEXT,
   "@type": "AboutPage",

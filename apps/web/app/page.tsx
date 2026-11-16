@@ -96,7 +96,7 @@ export default async function Home() {
         brackets.
       </p>
       <p className="mt-1 max-w-prose text-[14px] text-ink">{homeEdge({ firstSeason: FIRST_SEASON, firstFinal: Math.min(...finals.map((f) => f.season)) })}</p>
-      {/* A first visit only: the script hides the link before it paints for a browser that has been here (ADR 0084). */}
+      {/* A first visit only: the script hides the link before it paints for a browser that has been here (ADR 0086). */}
       <script dangerouslySetInnerHTML={{ __html: NEW_HERE_SCRIPT }} />
       <NewHere />
 

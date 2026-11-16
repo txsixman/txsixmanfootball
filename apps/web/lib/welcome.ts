@@ -1,4 +1,4 @@
-// The words on the landing page (/welcome, ADR 0084): what the site is, the round being played, and the numbers that show
+// The words on the landing page (/welcome, ADR 0086): what the site is, the round being played, and the numbers that show
 // how much is here, all from the data the site is built from, never typed in. Pure, no imports: the node tests run it as it
 // is. The rules every page keeps hold here too: no winner named (ADR 0004), no source named (ADR 0010), organizations named
 // one by one (ADR 0012), the rating words only (rating, projected margin, chance to win), and the last round is the State

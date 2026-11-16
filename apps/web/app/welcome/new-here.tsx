@@ -14,7 +14,7 @@ const remember = () => {
 };
 
 /**
- * The home page's "New here?" link to /welcome (ADR 0084), for a first visit only. It is drawn with the page, and the inline
+ * The home page's "New here?" link to /welcome (ADR 0086), for a first visit only. It is drawn with the page, and the inline
  * script before it (NEW_HERE_SCRIPT in lib/welcome.ts) hides it before it paints for a browser that has been here before, so
  * nothing moves. Dismissed, it is gone for good on this browser.
  */

@@ -1,4 +1,4 @@
-// The landing page's words (lib/welcome.ts, ADR 0084), its title and description, and the first-visit script for the home
+// The landing page's words (lib/welcome.ts, ADR 0086), its title and description, and the first-visit script for the home
 // page's "New here?" link: from the data, plain words, no winner, betting word or source.   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";

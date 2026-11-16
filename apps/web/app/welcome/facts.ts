@@ -16,7 +16,7 @@ import { resultSeasons } from "@/lib/weeks";
 export const WELCOME_ORGS = ORGS.map((o) => (o.league === "Independent" ? "independents" : o.label));
 
 /**
- * Everything the landing page and its share card say that comes from data, read when the site is built (ADR 0084): the
+ * Everything the landing page and its share card say that comes from data, read when the site is built (ADR 0086): the
  * counts, the round being played in every bracket (the same lists and count as /playoffs/this-round) and tonight's games
  * (the same as /scores/tonight).
  */

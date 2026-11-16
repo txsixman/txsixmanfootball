@@ -1,7 +1,7 @@
 import { pageCard, cardSize } from "../page-card";
 import { loadWelcome } from "./facts";
 
-// The landing page's own share card (ADR 0084): what the site is, and its numbers as of the build.
+// The landing page's own share card (ADR 0086): what the site is, and its numbers as of the build.
 export const size = cardSize;
 export const contentType = "image/png";
 export const alt = "Texas six-man football: every team and every game";

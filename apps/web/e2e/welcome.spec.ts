@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { noLiveScores } from "./live-route";
 
-// The landing page (/welcome, ADR 0084) and the home page's first-visit link to it. Fan accounts are answered by a stub of
+// The landing page (/welcome, ADR 0086) and the home page's first-visit link to it. Fan accounts are answered by a stub of
 // /api/me, so the page is checked with them off (the build) and on (the line that appears after load).
 
 noLiveScores(test);

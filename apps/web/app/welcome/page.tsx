@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: welcomeTitle(), description: welcomeDescription(f.programs, WELCOME_ORGS), alternates: { canonical: "/welcome" } };
 }
 
-// The landing page (ADR 0084): where a first-time visitor or a shared link lands. In under a minute it says what the site is
+// The landing page (ADR 0086): where a first-time visitor or a shared link lands. In under a minute it says what the site is
 // and sends them on: to their team, or to tonight's scores. Every number and the round line come from the data when the site
 // is built (./facts.ts); nothing here is typed in but the words. Home (/) stays the scoreboard. The words are rating,
 // projected margin and chance to win only, no source is named (ADR 0010), and the last round is the State Championship.

@@ -32,7 +32,7 @@ export const homeDescription = (season: number, orgs: string[]) =>
     "Every program and every State Championship.",
   ]);
 
-/** The landing page (/welcome, ADR 0084). */
+/** The landing page (/welcome, ADR 0086). */
 export const welcomeDescription = (programs: number, orgs: string[]) =>
   fit(`Every Texas six-man football team and game, free: ${programs} programs in ${list(orgs)}.`, [
     "Live scores, rankings with each team's chance to win, playoff brackets, program histories and every State Championship.",
