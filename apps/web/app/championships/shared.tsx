@@ -20,7 +20,7 @@ export function Team({ name, link, crest = true }: { name: string; link: Linker;
     </>
   );
   return href ? (
-    <Link href={href} className="inline-flex min-h-11 items-center text-ink hover:text-navy hover:underline">
+    <Link href={href} className="inline-flex min-h-11 min-w-11 items-center text-ink hover:text-navy hover:underline">
       {body}
     </Link>
   ) : (
@@ -55,7 +55,7 @@ export function Bracket({ id, title, finals, link, yearLinks = true }: { id: str
             <tr key={`${f.season}-${f.division}`} className="border-t border-line align-top">
               <th scope="row" className="pl-3 text-left font-num text-[17px] font-bold text-navy">
                 {yearLinks ? (
-                  <Link href={`/championships/${f.season}`} className="inline-flex min-h-11 items-center hover:underline">
+                  <Link href={`/championships/${f.season}`} className="inline-flex min-h-11 min-w-11 items-center hover:underline">
                     {f.season}
                   </Link>
                 ) : (
@@ -108,6 +108,9 @@ function Side({ side, link, crest = true }: { side: StateChampionship["sides"][n
   return side.team ? <Team name={side.team} link={link} crest={crest} /> : <span className="inline-flex min-h-11 items-center text-muted">{side.text}</span>;
 }
 
+/** What the score cell says before a final is recorded: a score not yet confirmed, else the day. */
+const dayOrNote = (c: StateChampionship) => (c.scores ? "Score not confirmed yet" : c.date ? gameDay(c.date) : null);
+
 /** One season's State Championship in every bracket it was set in (ADR 0083): the champion, runner-up and score once a final
  * is recorded, the two sides and the day before. Each bracket links to its State Championship page. */
 export function StateChampionshipTable({ id, title, aside, items, link }: { id: string; title: string; aside?: string; items: StateChampionship[]; link: Linker }) {
@@ -120,14 +123,18 @@ export function StateChampionshipTable({ id, title, aside, items, link }: { id: 
           <tr className="font-num text-[13px] uppercase tracking-wider text-muted">
             <th scope="col" className="w-28 py-1.5 pl-3 text-left font-semibold sm:w-48">Bracket</th>
             <th scope="col" className="py-1.5 text-left font-semibold">Teams</th>
-            <th scope="col" className="w-20 py-1.5 pr-3 text-right font-semibold sm:w-28">Score or day</th>
+            {/* On a phone the day (or "not confirmed") reads under the teams, so this column holds a score only and the
+                team names get the width; it wrapped "Wed, Dec 16" over three lines at 375 px (Nov 16, 2026). */}
+            <th scope="col" className="w-16 py-1.5 pr-3 text-right font-semibold sm:w-28">
+              Score<span className="hidden sm:inline"> or day</span>
+            </th>
           </tr>
         </thead>
         <tbody>
           {items.map((c) => (
             <tr key={c.slug} className="border-t border-line align-top">
-              <th scope="row" className="pl-3 text-left align-top text-[15px] font-bold leading-5 text-navy">
-                <Link href={c.href} className="inline-flex min-h-11 items-center hover:underline">
+              <th scope="row" className="pl-3 pr-2 text-left align-top text-[15px] font-bold leading-5 text-navy">
+                <Link href={c.href} className="inline-flex min-h-11 min-w-11 items-center text-balance hover:underline">
                   {c.bracket}
                   <span className="sr-only"> State Championship</span>
                 </Link>
@@ -157,14 +164,14 @@ export function StateChampionshipTable({ id, title, aside, items, link }: { id: 
                     </span>
                   </>
                 )}
+                {/* One of the two copies is always display:none, so it is read once. */}
+                {!c.final && dayOrNote(c) && <span className="block pb-2 pl-12 text-[13px] leading-tight text-muted sm:hidden">{dayOrNote(c)}</span>}
               </td>
               <td className={SCORE_CELL}>
                 {c.final ? (
                   c.final.forfeit ? "Forfeit" : `${c.final.championScore}-${c.final.runnerUpScore}`
-                ) : c.scores ? (
-                  <span className="font-sans text-[13px] leading-tight text-muted">Score not confirmed yet</span>
                 ) : (
-                  c.date && <span className="font-sans text-[14px] leading-tight text-muted">{gameDay(c.date)}</span>
+                  dayOrNote(c) && <span className="hidden font-sans text-[14px] leading-tight text-muted sm:inline">{dayOrNote(c)}</span>
                 )}
               </td>
             </tr>
@@ -207,7 +214,7 @@ export function LeagueFinals({ finals, link, yearLinks = true }: { finals: Leagu
                   <tr key={`${f.season}-${f.bracket}`} className="border-t border-line align-top">
                     <th scope="row" className="pl-3 text-left font-num text-[17px] font-bold text-navy">
                       {yearLinks ? (
-                        <Link href={`/championships/${f.season}`} className="inline-flex min-h-11 items-center hover:underline">
+                        <Link href={`/championships/${f.season}`} className="inline-flex min-h-11 min-w-11 items-center hover:underline">
                           {f.season}
                         </Link>
                       ) : (

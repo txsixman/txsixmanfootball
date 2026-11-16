@@ -9,7 +9,13 @@ import { noLiveScores } from "./live-route";
 
 noLiveScores(test);
 test.setTimeout(120_000); // nine pages a test
-test.beforeEach(({}, info) => test.skip(info.project.name !== "phone", "phone widths only"));
+test.beforeEach(async ({ page }, info) => {
+  test.skip(info.project.name !== "phone", "phone widths only");
+  // The header as the live site draws it: fan accounts on, nobody signed in, so "Sign in" ends the section strip. Without
+  // this the test server (no FAN_SIGNIN) draws no account link, and a "Sign in" squeezed to 16px wide on every phone page
+  // went unseen here (Nov 16, 2026).
+  await page.route("**/api/me", (route) => route.fulfill({ json: { enabled: true, me: null } }));
+});
 
 type Problems = { overflow: number; wide: string[]; small: string[] };
 
@@ -81,8 +87,33 @@ for (const width of [375, 390]) {
       }
       expect(found).toEqual({});
     });
+
+    test("playoff-week and history pages: no sideways scroll, every target 44px", async ({ page }) => {
+      // Added Nov 16, 2026: the round's games, State Championships (the list and one bracket's page), standings, records.
+      const pages = ["/playoffs/this-round", "/championships", "/standings", "/records"];
+      pages.push(await firstLink(page, "/playoffs", /^\/championships\/\d{4}\/[a-z]/));
+      const found: Record<string, Problems> = {};
+      for (const url of pages) {
+        await open(page, url);
+        const p = await problems(page);
+        if (p.overflow > 0 || p.wide.length || p.small.length) found[url] = p;
+      }
+      expect(found).toEqual({});
+    });
   });
 }
+
+test("the header's Sign in shows whole on a phone: the section strip scrolls rather than squeezing it", async ({ page }) => {
+  await open(page, "/");
+  const signIn = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Sign in" });
+  await expect(signIn).toBeAttached();
+  const box = await signIn.evaluate((el) => {
+    const label = el.querySelector("span")!;
+    return { width: el.getBoundingClientRect().width, cut: label.scrollWidth > label.clientWidth };
+  });
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  expect(box.cut).toBe(false);
+});
 
 test("the guard catches what it is for: a short name link, a narrow button and a page wider than the phone", async ({ page }) => {
   await open(page, "/");

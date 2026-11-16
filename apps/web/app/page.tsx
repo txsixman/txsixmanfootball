@@ -48,7 +48,7 @@ function Top({ title, href, teams, identities }: {
             <span className="w-6 text-right font-num text-[17px] font-semibold text-muted">{t.rank}</span>
             <Link href={`/programs/${t.school.slug}`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-ink hover:text-navy hover:underline">
               <Crest school={t.school.school} identity={identities.get(t.school.slug) ?? EMPTY} size={24} decorative />
-              <span className="truncate">{t.school.school}</span>
+              <span className="py-1 leading-tight">{t.school.school}</span>
             </Link>
             <span className="font-num text-[18px] font-bold tabular-nums text-navy">{ratingText(t)}</span>
           </li>
