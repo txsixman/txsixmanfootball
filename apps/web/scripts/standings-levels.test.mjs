@@ -19,8 +19,11 @@ test("a district's area is its bi-district crossover pair, as the 2026-28 PDFs p
 
 test("in the 2026-28 UIL alignment, both districts of every pair are in one region, four districts a region", () => {
   const rows = readFileSync(new URL("../../../data/seed/uil-2026-28/alignments.csv", import.meta.url), "utf8").trim().split("\n").slice(1).map((l) => l.split(","));
+  // A school UIL puts in no district (High Island, ADR 0074) is outside the pairs: no region, no number, no standings.
+  const placed = rows.filter((r) => /^\d+$/.test(r[3]));
+  for (const r of rows.filter((r) => !placed.includes(r))) assert.deepEqual([r[2], r[3]], ["", "Not in a district"], `${r[4]}: an unnumbered UIL district is "Not in a district", with no region`);
   for (const division of ["I", "II"]) {
-    const regionOf = new Map(rows.filter((r) => r[1] === division).map((r) => [Number(r[3]), r[2]]));
+    const regionOf = new Map(placed.filter((r) => r[1] === division).map((r) => [Number(r[3]), r[2]]));
     assert.deepEqual([...regionOf.keys()].sort((a, b) => a - b), PDF_PAIRS.flat(), `Division ${division}: districts 1 to 16`);
     for (const [a, b] of PDF_PAIRS) assert.equal(regionOf.get(a), regionOf.get(b), `Division ${division}: districts ${a} and ${b}`);
     for (const [d, region] of regionOf) assert.equal(region, String(Math.ceil(d / 4)), `Division ${division}: district ${d} is in Region ${Math.ceil(d / 4)}`);

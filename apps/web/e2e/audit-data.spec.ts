@@ -95,6 +95,22 @@ test("district records leave out playoff games; overall records and points keep 
   expect(standingsFrom(alignments, results, new Set())[0].rows.find((r) => r.school.school === "Cedar Gap")!.district).toEqual({ won: 1, lost: 1, tied: 0 });
 });
 
+test("a UIL school in no district (ADR 0074) has no standings place, and its division keeps district, area and region", async () => {
+  const { standingsFrom } = await import("../lib/standings");
+  const { levelsOf } = await import("../lib/standings-levels");
+  const school = (name: string, region: string, district: string): Alignment => ({
+    league: "UIL", division: "II", region, district, school: name, sourceUrl: "x", span: "2026-28", slug: slugify(name),
+  });
+  const alignments = [school("Cedar Gap", "1", "1"), school("Dry Wash", "1", "2"), school("Salt Marsh", "", "Not in a district")];
+  const results = [{ id: "g", href: "/scores/g", date: "2026-09-04", status: "2026-09-04", home: "Cedar Gap", away: "Salt Marsh", homeScore: 30, awayScore: 20, forfeit: false }] satisfies SeasonResult[];
+  const districts = standingsFrom(alignments, results, new Set());
+  expect(districts.map((d) => d.key)).toEqual(["UIL Division II|1", "UIL Division II|2"]);
+  expect(districts.flatMap((d) => d.rows.map((r) => r.school.school))).not.toContain("Salt Marsh");
+  // Its game still counts for the team it played.
+  expect(districts[0].rows[0].overall).toEqual({ won: 1, lost: 0, tied: 0 });
+  expect(levelsOf(districts)).toEqual(["district", "area", "region"]);
+});
+
 test("a winning streak is still going only in the latest season, and never runs across a season with no game of the team's", () => {
   type G = Parameters<typeof longestStreaks>[0][number];
   const g = (team: string, season: number, date: string, points: number, against: number): G =>

@@ -2322,6 +2322,16 @@
       },
       "notes": "Mascot and colors not found in an allowed source."
     },
+    "high-island": {
+      "school": "High Island",
+      "site": "https://www.highislandisd.com/",
+      "mascot": "Cardinals",
+      "mascotSource": "https://www.highislandisd.com/",
+      "colors": [],
+      "colorsSource": null,
+      "logo": null,
+      "notes": "High Island ISD. UIL's 2026-28 alphabetical alignment lists it 1A, football Division II, 6-Man; UIL's revised Division II alignment puts it in no district, so it is registered in UIL Division II with no district and no standings place (ADR 0074). Mascot from the district's own home page ('a GREAT day to be a CARDINAL', read Nov 15, 2026). Colors are not stated, so none are recorded. No logo fetched yet."
+    },
     "hill-country-christian-school-san-marcos": {
       "school": "Hill Country Christian School-San Marcos",
       "site": "https://hillcountryschool.net/",

@@ -22,13 +22,15 @@ before(async () => {
 
 test("the CSV matches UIL's current alignment counts", () => {
   assert.equal(rows.filter((r) => r.division === "I").length, 79);
-  assert.equal(rows.filter((r) => r.division === "II").length, 78); // the June 15 revision
+  assert.equal(rows.filter((r) => r.division === "II" && r.district !== "Not in a district").length, 78); // the June 15 revision
+  // High Island: six-man Division II on UIL's 2026-28 list, in no district on the June 15 revision (ADR 0074).
+  assert.deepEqual(rows.filter((r) => r.district === "Not in a district").map((r) => [r.division, r.region, r.school]), [["II", "", "High Island"]]);
 });
 
 test("each division has 16 districts of at least three schools", () => {
   for (const division of ["I", "II"]) {
     const sizes = {};
-    for (const r of rows.filter((x) => x.division === division)) sizes[r.district] = (sizes[r.district] ?? 0) + 1;
+    for (const r of rows.filter((x) => x.division === division && x.district !== "Not in a district")) sizes[r.district] = (sizes[r.district] ?? 0) + 1;
     assert.equal(Object.keys(sizes).length, 16);
     assert.ok(Object.values(sizes).every((n) => n >= 3));
   }
@@ -42,18 +44,18 @@ test("names become stable slugs", () => {
 
 test("the import creates a program and two team-seasons per school, with a source", async () => {
   const result = await seedAlignments(db, rows, opts);
-  assert.deepEqual(result, { rows: 157, programsAdded: 157 });
-  assert.equal(await count("from program"), 157);
-  assert.equal(await count("from team_season"), 314);
+  assert.deepEqual(result, { rows: 158, programsAdded: 158 });
+  assert.equal(await count("from program"), 158);
+  assert.equal(await count("from team_season"), 316);
   assert.equal(await count("from team_season where source_document_id is null"), 0);
-  assert.equal(await count("from source_document"), 2);
+  assert.equal(await count("from source_document"), 3);
 });
 
 test("running the import again adds nothing and is audited", async () => {
   const result = await seedAlignments(db, rows, opts);
-  assert.deepEqual(result, { rows: 157, programsAdded: 0 });
-  assert.equal(await count("from program"), 157);
-  assert.equal(await count("from team_season"), 314);
+  assert.deepEqual(result, { rows: 158, programsAdded: 0 });
+  assert.equal(await count("from program"), 158);
+  assert.equal(await count("from team_season"), 316);
   assert.equal(await count("from audit_log where entity = 'alignment_import'"), 2);
 });
 

@@ -103,7 +103,7 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
 - No page names or links a source (ADRs 0009, 0010). Words are rating, projected margin and chance to win only (ADR 0045)
 
 ## Data and pipeline
-- Alignments: UIL 2026-28 (157), TAPPS 2026-28 (68, weekly robot), TAIAO (46, weekly robot), TCAF (9, by hand), Independent (3: CenTex Chargers, CHANT, Covenant Prep, by hand); not yet listed (ADR 0073): TCAL, TCSAAL and 11 teams in `private-2026/not-listed.csv`
+- Alignments: UIL 2026-28 (158, with High Island in no district, ADR 0074), TAPPS 2026-28 (68, weekly robot), TAIAO (46, weekly robot), TCAF (9, by hand), Independent (3: CenTex Chargers, CHANT, Covenant Prep, by hand); not yet listed (ADR 0073): TCAL, TCSAAL and 10 teams in `private-2026/not-listed.csv`
 - Results: `tools/league-watch/maxpreps.mjs` (ADR 0008) via `results-watch.yml`, Fri to Sun Aug to Jan, and every 10 minutes noon to midnight Central on any November or December day with a bracket game of that night or the 3 game nights before still unscored, plus a 9 AM Central catch-up (`--tonight`: only those games, ADRs 0015, 0019 and 0030; it also sends the games under way to the hosted database's `live_score` table, ADR 0021, with no commit); rerates and
   commits the private repo `txsixman/data-private` first (full captures), then the facts to `main` here (ADR 0017,
   `publish.mjs`). 276 of 279 schools reached. Past seasons via `--season <year>` (season-segment pages): 2025 1,230
