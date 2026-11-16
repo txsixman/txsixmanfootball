@@ -41,10 +41,15 @@ test("the label moves with the clock, without a reload", async ({ page }) => {
   await page.clock.install({ time: new Date(kickoff - 60_000) });
   await page.goto("/playoffs/this-round", { waitUntil: "networkidle" });
   const inProgress = page.locator('[data-kickoff-status="in-progress"]');
-  const before = await inProgress.count();
-  test.skip((await page.locator('[data-kickoff-status="starts"]').count()) === 0, "that game is not in this round any more");
+  const starts = page.locator('[data-kickoff-status="starts"]');
+  const starting = await starts.count();
+  test.skip(starting === 0, "that game is not in this round any more");
+  // No kickoff on file is later, so every game reading "Starts" now kicks off at this one. Two minutes on, none still
+  // reads "Starts" and each of them reads "In progress". The total in progress need not rise: a game that kicked off
+  // exactly 4 hours earlier leaves "In progress" at the same minute (two TAPPS finals, 11 AM and 3 PM, Nov 21, 2026).
   await page.clock.runFor(2 * 60_000);
-  await expect.poll(() => inProgress.count()).toBeGreaterThan(before);
+  await expect.poll(() => starts.count()).toBe(0);
+  expect(await inProgress.count()).toBeGreaterThanOrEqual(starting);
 });
 
 // A game whose date has passed with no score reads "Score not reported yet", never "Later" (ADR 0046). Before the season
