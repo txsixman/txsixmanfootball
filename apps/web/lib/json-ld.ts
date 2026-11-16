@@ -35,6 +35,16 @@ export const websiteJsonLd = () => ({
   url: `${SITE_URL}/`,
 });
 
+/** The landing page's (/welcome, ADR 0086): a page about the site, part of the site. */
+export const welcomeJsonLd = (description: string) => ({
+  "@context": CONTEXT,
+  "@type": "AboutPage",
+  name: `About ${SITE_NAME}`,
+  url: abs("/welcome"),
+  description,
+  isPartOf: { "@type": "WebSite", name: SITE_NAME, url: `${SITE_URL}/` },
+});
+
 /** Pages in list order (ranked teams, a league's brackets): position, name and page. No ratings or numbers. */
 export const rankedList = (name: string, teams: { name: string; href: string }[]) => ({
   "@context": CONTEXT,

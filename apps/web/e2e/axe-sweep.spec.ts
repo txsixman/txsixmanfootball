@@ -12,6 +12,7 @@ test.use({ viewport: { width: 375, height: 812 } });
 
 const PAGES = [
   "/",
+  "/welcome",
   "/scores",
   "/scores/sample",
   "/scores/g1",

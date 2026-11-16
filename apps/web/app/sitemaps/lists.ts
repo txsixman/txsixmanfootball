@@ -38,7 +38,7 @@ import { generateStaticParams as weeks } from "../weeks/[[...path]]/page";
 export const KINDS = ["sections", "programs", "scores", "series", "results", "weeks"] as const;
 type Kind = (typeof KINDS)[number];
 
-const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "playoffs/this-round", "results", "rankings", "rankings/how", "about/ratings", "standings", "programs", "records", "championships", "matchup", "seasons"];
+const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "playoffs/this-round", "results", "rankings", "rankings/how", "about/ratings", "standings", "programs", "records", "championships", "matchup", "seasons", "welcome"];
 const SAMPLE_GAMES = new Set(demoGames.map((g) => g.id));
 
 const PATHS: Record<Kind, () => Promise<string[]>> = {

@@ -149,3 +149,6 @@ Not in an ADR:
   iPhone's Safari tab) follows on the browser only, for My teams; an unfollow never asks permission; the 25-team browser cap
   says so; `/admin/moderation` lists every post of the last 7 days (`admin_recent_posts`, migration 0032) so an unreported one
   can be hidden; every fan route's database failure logs its code (Nov 16, 2026).
+- **Landing page** (ADR 0086): `/welcome` says what the site is and sends a first-time visitor on (find your team, tonight's
+  scores), every number from the data; home stays the scoreboard and shows a dismissible "New here?" link on a first visit
+  only, hidden before it paints (Nov 16, 2026).

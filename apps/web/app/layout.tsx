@@ -111,6 +111,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               {/* Always public (not behind FAN_SIGNIN): the site counts page views and offers push alerts with or without accounts. */}
               <nav aria-label="About this site" className="flex gap-x-4">
                 {[
+                  { href: "/welcome", label: "New here?" },
                   { href: "/privacy", label: "Privacy" },
                   { href: "/terms", label: "Terms" },
                 ].map((s) => (
