@@ -48,7 +48,7 @@ export default async function ThisRoundPage() {
           {groups.length > 1 && (
             <nav aria-label="Organizations" className="mt-3 flex flex-wrap border-b border-line px-1">
               {groups.map((g) => (
-                <a key={g.league} href={`#org-${g.league.toLowerCase()}`} className="inline-flex min-h-11 items-center px-2 font-num text-[17px] font-bold uppercase tracking-wide text-navy underline-offset-4 hover:underline">
+                <a key={g.league} href={`#org-${g.league.toLowerCase()}`} className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 font-num text-[17px] font-bold uppercase tracking-wide text-navy underline-offset-4 hover:underline">
                   {g.league}
                 </a>
               ))}

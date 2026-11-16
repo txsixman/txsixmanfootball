@@ -47,7 +47,7 @@ export function AccountLink() {
     <Link
       href={adminLink ? "/admin" : me === null ? "/sign-in" : unfinished ? "/account/welcome" : "/account"}
       aria-current={here ? "page" : undefined}
-      className={`inline-flex min-h-11 max-w-36 items-center truncate px-2 hover:text-white ${here ? "text-white underline decoration-red decoration-4 underline-offset-[10px]" : "text-white/85"}`}
+      className={`inline-flex min-h-11 max-w-36 shrink-0 items-center truncate px-2 hover:text-white ${here ? "text-white underline decoration-red decoration-4 underline-offset-[10px]" : "text-white/85"}`}
     >
       {me !== null && !unfinished && !adminLink && <span className="sr-only">Your account: </span>}
       <span className="truncate">{label}</span>

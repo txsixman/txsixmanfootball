@@ -88,7 +88,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
               // Rounds run earliest first, so the latest is far down a phone: one tap gets to any of them.
               <nav aria-label={`${b.name} rounds`} className="flex flex-wrap border-b border-line px-1">
                 {b.rounds.map((r) => (
-                  <a key={r.round} href={`#${roundId(r.round)}`} className="inline-flex min-h-11 items-center px-2 font-num text-[16px] font-bold uppercase tracking-wide text-navy underline-offset-4 hover:underline">
+                  <a key={r.round} href={`#${roundId(r.round)}`} className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 font-num text-[16px] font-bold uppercase tracking-wide text-navy underline-offset-4 hover:underline">
                     {r.label}
                   </a>
                 ))}

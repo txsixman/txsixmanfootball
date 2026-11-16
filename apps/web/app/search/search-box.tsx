@@ -66,8 +66,11 @@ export function SearchBox({ programs }: { programs: SearchPrograms }) {
       : results === null ? "Type at least two letters."
       : `${results.length === 20 ? "20 or more" : results.length} ${results.length === 1 ? "page matches" : "pages match"}`;
 
+  // Results arrive after the page has drawn (a shared /search?q= link, or a search typed in), so the box keeps room for them:
+  // on a phone the footer starts below the screen and does not jump down when they land (layout shift 0.51 at 375 px
+  // before, Nov 16, 2026).
   return (
-    <>
+    <div className="min-h-[75vh]">
       <form role="search" onSubmit={(e) => e.preventDefault()} className="mt-3 max-w-md">
         <Label htmlFor="q">Search programs and games</Label>
         <div className="relative mt-1">
@@ -109,6 +112,6 @@ export function SearchBox({ programs }: { programs: SearchPrograms }) {
           })}
         </ul>
       )}
-    </>
+    </div>
   );
 }
