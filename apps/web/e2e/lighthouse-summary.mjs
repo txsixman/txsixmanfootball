@@ -58,6 +58,13 @@ const rows = [...byPage].map(([page, list]) => {
   ];
 });
 
+// --annotate: one GitHub annotation a page instead of the table, so the numbers can be read from the check run's API
+// (the run summary is not served by it). ci.yml runs it after the summary step, without tee.
+if (process.argv.includes("--annotate")) {
+  for (const r of rows) console.log(`::notice title=Lighthouse ${r[0]}::Perf ${r[1]} | A11y ${r[2]} | BP ${r[3]} | FCP ${r[4]} | LCP ${r[5]} | TBT ${r[6]} | CLS ${r[7]} | Weight ${r[8]} | JS ${r[9]} | HTML ${r[10]} | HTML raw ${r[11]} (median of ${runs})`);
+  process.exit(0);
+}
+
 console.log(`### Lighthouse, mobile settings (median of ${runs} runs, each number on its own; JS and HTML are bytes sent, HTML raw is after decompressing)\n`);
 console.log("| Page | Perf | A11y | Best pr. | FCP | LCP | TBT | CLS | Weight | JS | HTML | HTML raw |");
 console.log("|---|---|---|---|---|---|---|---|---|---|---|---|");

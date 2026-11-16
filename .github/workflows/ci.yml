@@ -385,6 +385,10 @@ jobs:
         if: always() && steps.wait.outputs.site == 'true'
         working-directory: apps/web
         run: node e2e/lighthouse-summary.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Lighthouse numbers as annotations
+        if: always() && steps.wait.outputs.site == 'true'
+        working-directory: apps/web
+        run: node e2e/lighthouse-summary.mjs --annotate
       - if: always() && steps.wait.outputs.site == 'true'
         uses: actions/upload-artifact@v7
         with:
