@@ -104,6 +104,7 @@ Do these in order, in one sitting. Each step names how to check it worked.
 | Home, My teams | The account's follows when signed in, else this browser's |
 | `/forums`, a board, a thread | Only while `FAN_POSTS` is on (otherwise 404). Anyone reads; a signed-in fan with a profile posts, replies, edits their own and flags others |
 | A game page | Only while `FAN_POSTS` is on: the comments block, and for a game with no score yet the fan score-report block. With it off the page is as it was |
+| `/scores` | Only while `FAN_POSTS` is on: a game with comments shows "1 comment" or "N comments" with a small icon at the bottom of its score card (plain text; the card is one link to the game page). Nothing for a game with none, while the number loads, and with posts off (ADR 0077) |
 
 No age, birth year, email or school is shown anywhere. The birth year is stored in `profile.birth_year` and no function returns it.
 
@@ -114,6 +115,16 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
   account, the slug's shape checked, a profile required), `unfollow_program`, `my_follows`, all `security definer` on `auth.uid()`'s
   own rows. `follow.user_id` references `profile` with `on delete cascade`, so deleting the account removes the follows.
   The three functions are in `SIGNED_IN_FUNCTIONS` (`packages/db/load.mjs`): CI checks anon cannot run them.
+- **Comment counts on the score cards (ADR 0077, migration 0029).** `comment_counts(p_game_keys text[])` is a public read (in
+  `ANON_FUNCTIONS`): per game key the number of comments `list_comments` would show (not hidden, author not banned), only keys
+  with at least one, only the first 200 keys given; a key and a number, nothing else. `GET /api/games/comment-counts?keys=k1,k2,...`
+  (404 while posts are off, before anything else) drops every key that is not a game page id, dedupes, takes at most 200 and
+  answers `{ counts: { <key>: <n> } }` (nonzero only) with `Cache-Control: public, s-maxage=30, stale-while-revalidate=60`: a
+  count can lag a new or hidden comment by about 30 seconds, and game night costs the database one read per distinct list of
+  keys, not one per visitor. A database error is a 502 and logs only its code. `app/scores/comment-count.tsx` gathers every
+  card's key on a page into one request (chunks of 200), asks again only for counts older than 30 seconds, and draws nothing on
+  a 404 or a failure. `CommentCountLink` is the same count as a link to `/scores/<id>#comments`, for a row that is not
+  already a link (a card that is a link holds the plain `CommentCount`: a link in a link is not valid HTML).
 - **Server checks, then the database checks again.** Server actions and `/api/follows` validate with Zod, check the session
   (`getUser()` asks Supabase; never `getSession()`), and the database re-checks age, name shape, uniqueness, slug shape and the cap.
 - `/api/me` (GET) answers `{ enabled, posts, me }`: `enabled` is `FAN_SIGNIN`, `posts` is `FAN_POSTS` (and `FAN_SIGNIN`); `me` is `null` when signed out, else

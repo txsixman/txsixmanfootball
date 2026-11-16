@@ -42,7 +42,7 @@ export default async function ScoresPage() {
     );
     return (
       <>
-        <Board games={games} eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" crests={crests} weekInReview={review && { href: weekHref(review.season, review.week), label: `Week in review: ${review.season} week ${review.week}` }} next={next} />
+        <Board games={games} eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" crests={crests} weekInReview={review && { href: weekHref(review.season, review.week), label: `Week in review: ${review.season} week ${review.week}` }} next={next} commentCounts />
         <p className="mx-auto max-w-prose px-3 py-4 text-[14px] leading-5 text-muted">{edge}</p>
       </>
     );

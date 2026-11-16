@@ -255,7 +255,7 @@ const SIGNED_IN_FUNCTIONS = [
 // Public reads, open to anon and authenticated alike: they return display names, text and counts, never a user id,
 // birth year or email (migrations 0013 to 0015, ADR 0018). The push sign-up pair (0008) is open to both as well.
 const ANON_FUNCTIONS = [
-  "public.list_comments(text, integer, integer)", "public.fan_score_status(text)", "public.forum_boards()",
+  "public.list_comments(text, integer, integer)", "public.comment_counts(text[])", "public.fan_score_status(text)", "public.forum_boards()",
   "public.forum_threads(text, integer, integer)", "public.forum_thread_info(uuid)", "public.forum_posts(uuid, integer, integer)",
   "public.push_follow(text, text, text, text[])", "public.push_unfollow(text)", "public.live_scores()", "public.results_read_at()",
   // One-click email unsubscribe (migration 0022): no session; the random token in the emailed link is the proof.
