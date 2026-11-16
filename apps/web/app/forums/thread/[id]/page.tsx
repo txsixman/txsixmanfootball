@@ -27,7 +27,7 @@ export default async function ThreadPage({ params, searchParams }: Props) {
       </nav>
       <h1 id="thread" className="break-words font-num text-[36px] font-bold uppercase leading-none tracking-wide text-navy">{info.title}</h1>
       <p className="mt-1 text-[13px] text-muted">{info.total} {info.total === 1 ? "post" : "posts"}</p>
-      <ThreadView key={`${page}-${info.total}`} threadId={id} initial={posts} replyPage={Math.ceil((info.total + 1) / POSTS_PER_PAGE)} next={`/forums/thread/${id}${page > 1 ? `?page=${page}` : ""}`} />
+      <ThreadView key={`${page}-${info.total}`} threadId={id} initial={posts} page={page} replyPage={Math.ceil((info.total + 1) / POSTS_PER_PAGE)} next={`/forums/thread/${id}${page > 1 ? `?page=${page}` : ""}`} />
       <Pager base={`/forums/thread/${id}`} page={page} total={info.total} per={POSTS_PER_PAGE} />
     </section>
   );

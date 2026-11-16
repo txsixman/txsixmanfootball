@@ -153,7 +153,8 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
   that file and keeps `displayNameProblem(name)`.
 - Nothing logs an email, a birth year, a token or a Supabase error.
 - **Posts launch (migration 0027, ADRs 0060 to 0062).** Every write is also limited per minute (`fan_rate_check`; new accounts:
-  posts 2, threads 1, reports of posts 3, score reports 2; established: 4, 2, 5, 3). Gambling talk is refused in posts and titles
+  posts 2, threads 1, reports of posts 3, score reports 2; established: 4, 2, 5, 3; the database raises one `rate_limited` for the
+  1 minute, 10 minute and 24 hour windows, so the site's sentence is true for all three: wait a minute, else try again tomorrow). Gambling talk is refused in posts and titles
   (`moderation_betting`, the `betting` list in `lib/moderation/wordlist.json`, the shared vectors). Report shows on every other
   fan's post for every viewer: signed out it links to sign-in and back. The owner's `/admin/moderation` lists every reported post
   that is not hidden (most reports first, how many count, never who reported) and can hide a post (`admin_hide_post`) or mute an

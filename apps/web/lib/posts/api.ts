@@ -17,7 +17,7 @@ const MESSAGES: Record<string, [number, string]> = {
   profile_required: [403, "Finish setting up your account first."],
   banned: [403, "This account cannot post."],
   muted: [403, "Your account is paused from posting for now."],
-  rate_limited: [429, "You are doing that too fast. Try again in a few minutes."],
+  rate_limited: [429, "You've done that a lot in a short time. Wait a minute and try again. If you still see this, you've reached today's limit; try again tomorrow."],
   blocked_text: [422, "That cannot be posted. Slurs and threats are not allowed."],
   betting_text: [422, "That cannot be posted. Gambling talk is not allowed."],
   links_not_allowed: [422, `Accounts under ${NEW_ACCOUNT_DAYS} days old cannot post links.`],

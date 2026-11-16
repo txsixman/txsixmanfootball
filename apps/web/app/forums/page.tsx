@@ -14,7 +14,8 @@ export const metadata: Metadata = { title: "Forums", robots: { index: false, fol
 
 export default async function ForumsPage() {
   if (!fanPosts()) notFound();
-  const counts = new Map((await loadBoards())?.map((b) => [b.slug, b]) ?? []);
+  const loaded = await loadBoards();
+  const counts = new Map(loaded?.map((b) => [b.slug, b]) ?? []);
   return (
     <section aria-labelledby="forums">
       <PageHeader
@@ -23,6 +24,7 @@ export default async function ForumsPage() {
         title="Forums"
         note="Talk Texas six-man football. Plain text only, no direct messages. Anyone can read; sign in to post."
       />
+      {!loaded && <p className="mt-4 text-[15px] text-muted">Post counts are not available right now. The boards below still work.</p>}
       <ul className="mt-6 border-t-2 border-navy">
         {BOARDS.map((b) => {
           const row = counts.get(b.slug);
@@ -31,10 +33,11 @@ export default async function ForumsPage() {
               <Link href={`/forums/${b.slug}`} className="flex min-h-14 flex-col justify-center px-3 py-2 hover:bg-panel">
                 <span className="text-[18px] font-bold text-navy">{b.name}</span>
                 <span className="text-[14px] text-muted">{b.description}</span>
-                {row && (
+                {loaded && (
                   <span className="text-[13px] text-muted">
-                    {row.threads} {row.threads === 1 ? "thread" : "threads"}
-                    {row.lastPostAt ? ` · last post ${when(row.lastPostAt)}` : ""}
+                    {row && row.threads > 0
+                      ? `${row.threads} ${row.threads === 1 ? "thread" : "threads"}${row.lastPostAt ? ` · last post ${when(row.lastPostAt)}` : ""}`
+                      : "No posts yet"}
                   </span>
                 )}
               </Link>

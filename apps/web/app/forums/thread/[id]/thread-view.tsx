@@ -7,7 +7,7 @@ import { send, useMe } from "../../../posts/client";
 import { Composer, PostItem, WhyNotForm, canPost } from "../../../posts/post-parts";
 
 /** A thread's posts for this page (edit own, report others) and the reply box. A reply sends the reader to the page it lands on. */
-export function ThreadView({ threadId, initial, replyPage, next }: { threadId: string; initial: ForumPost[]; replyPage: number; next: string }) {
+export function ThreadView({ threadId, initial, page, replyPage, next }: { threadId: string; initial: ForumPost[]; page: number; replyPage: number; next: string }) {
   const me = useMe();
   const router = useRouter();
   const [posts, setPosts] = useState(initial);
@@ -29,6 +29,7 @@ export function ThreadView({ threadId, initial, replyPage, next }: { threadId: s
       </ul>
       <div className="mt-4">
         {canPost(me) ? <Composer id="new-reply" label="Reply" button="Post reply" onSubmit={reply} /> : <WhyNotForm me={me} next={next} what="reply" />}
+        {canPost(me) && replyPage !== page && <p className="mt-1 text-[13px] text-muted">New replies go at the end of the thread, on page {replyPage}.</p>}
       </div>
     </>
   );
