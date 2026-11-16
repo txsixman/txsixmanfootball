@@ -14,6 +14,7 @@ import { projectedLine } from "@/lib/outcome";
 import { isForfeit, outcomeOf, winnerOf, type Side } from "@/lib/score-display";
 import { CrestSlot, EmptyState, PageHeader, UnconfirmedMark } from "../ui";
 import { KickoffStatus, useNow } from "../kickoff-status";
+import { CommentCount } from "./comment-count";
 import { SiteAddress } from "./directions";
 import { ScoresChecked } from "./freshness";
 import { useLiveScores } from "./live-score";
@@ -141,8 +142,9 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
   );
 }
 
-/** `live`: the live read of a game under way (asLive put its score in the score cells; this says where the game stands). */
-function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView }) {
+/** `live`: the live read of a game under way (asLive put its score in the score cells; this says where the game stands).
+ * `counts`: show how many fan comments the game has (real games only; plain text, as the whole card is a link). */
+function Row({ g, crests, live, counts }: { g: Game; crests?: Crests; live?: LiveView; counts?: boolean }) {
   const edge = g.verification === "disputed" ? "border-l-[6px] border-red" : "border-l-[6px] border-transparent";
   return (
     <li data-game={g.id} className="border-b border-line">
@@ -158,6 +160,7 @@ function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView })
                 {liveStatus(live)}
               </p>
             )}
+            {counts && <CommentCount gameKey={g.id} className="mt-0.5 flex" />}
           </div>
         </div>
         {g.verification === "disputed" && <VerifyBar g={g} />}
@@ -167,7 +170,7 @@ function Row({ g, crests, live }: { g: Game; crests?: Crests; live?: LiveView })
 }
 
 /** `newestFirst`: the round played last on top (finals), so this week's results are not under every earlier round's. */
-function Section({ id, title, live, games, crests, checked, newestFirst }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; checked: Map<string, LiveView>; newestFirst?: boolean }) {
+function Section({ id, title, live, games, crests, checked, counts, newestFirst }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; checked: Map<string, LiveView>; counts?: boolean; newestFirst?: boolean }) {
   if (!games.length) return null;
   const latest = (league: string) => games.reduce((d, g) => (g.league === league && (g.date ?? "") > d ? g.date! : d), "");
   const leagues = [...new Set(games.map((g) => g.league))];
@@ -185,7 +188,7 @@ function Section({ id, title, live, games, crests, checked, newestFirst }: { id:
           </h3>
           <ul>
             {games.filter((g) => g.league === league).map((g) => (
-              <Row key={g.id} g={g} crests={crests} live={checked.get(g.id)} />
+              <Row key={g.id} g={g} crests={crests} live={checked.get(g.id)} counts={counts} />
             ))}
           </ul>
         </div>
@@ -239,8 +242,9 @@ function NextSection({ games }: { games: NextGame[] }) {
   );
 }
 
-/** `weekInReview`: a link to the newest week in review, on the live page only (the sample page stays as it is). `next`: games the bracket sets (live page only). */
-export default function Board({ games, eyebrow, title, crests, weekInReview, next = [] }: { games: Game[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string }; next?: NextGame[] }) {
+/** `weekInReview`: a link to the newest week in review, on the live page only (the sample page stays as it is). `next`: games the bracket sets (live page only).
+ * `commentCounts`: each real game's fan comment count (ADR 0077), on the live page only; the invented sample games never ask. */
+export default function Board({ games, eyebrow, title, crests, weekInReview, next = [], commentCounts = false }: { games: Game[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string }; next?: NextGame[]; commentCounts?: boolean }) {
   const [query, setQuery] = useState("");
   // Only a game with a date and no final can be under way, and only inside its kickoff window; invented sample games or finals ask for nothing.
   const liveRows = useLiveScores(games.flatMap((g) => (g.date && g.state === "scheduled" ? [{ date: g.date, kickoff: g.kickoff }] : [])));
@@ -286,7 +290,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
   const jumps = [{ href: "#live", label: "Live", n: live.length }, ...(upcomingFirst ? [coming, ...results] : [...results, coming])];
   const upcoming = (
     <>
-      <Section id="later" title="Later" games={later} crests={crests} checked={checked} />
+      <Section id="later" title="Later" games={later} crests={crests} checked={checked} counts={commentCounts} />
       <NextSection games={nextShown} />
     </>
   );
@@ -351,11 +355,11 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
         )}
       </nav>
 
-      <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} />
+      <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} counts={commentCounts} />
       {upcomingFirst && upcoming}
-      <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} newestFirst />
-      <Section id="final" title="Final" games={final} crests={crests} checked={checked} newestFirst />
-      <Section id="not-reported" title="Score not reported yet" games={notReported} crests={crests} checked={checked} />
+      <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} counts={commentCounts} newestFirst />
+      <Section id="final" title="Final" games={final} crests={crests} checked={checked} counts={commentCounts} newestFirst />
+      <Section id="not-reported" title="Score not reported yet" games={notReported} crests={crests} checked={checked} counts={commentCounts} />
       {!upcomingFirst && upcoming}
       {!shown.length && (
         <div className="px-3 pb-6">

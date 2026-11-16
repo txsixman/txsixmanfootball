@@ -115,3 +115,4 @@ Not in an ADR:
   TCSAAL (11-man only) and 11 teams. No TCAL or TCSAAL tab until a 2026 alignment can be cited (Nov 15, 2026).
 - **High Island is a UIL program in no district** (ADR 0074): six-man Division II on UIL's 2026-28 list, in no district on
   the June 15 revision; registered as `Not in a district`, ranked with Division II, no standings place (Nov 15, 2026).
+- **Comment counts on score cards** (ADR 0077): a public read `comment_counts` (migration 0029, the same visibility as `list_comments`) behind a route cached for 30 seconds, drawn as "N comments" on each `/scores` card; nothing while posts are off (Nov 16, 2026).

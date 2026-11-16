@@ -62,6 +62,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "admin_unhide_post", anon: false },
     { proname: "admin_unmute", anon: false },
     { proname: "change_display_name", anon: false }, // migration 0026: the Account Center, signed-in fans only
+    { proname: "comment_counts", anon: false }, // migration 0029: a public read, granted to anon only where auth.uid() exists (Supabase)
     { proname: "create_profile", anon: false }, // migration 0011: signed-in fans only
     { proname: "create_thread", anon: false }, // migration 0015: signed-in fans only
     { proname: "delete_my_account", anon: false },
