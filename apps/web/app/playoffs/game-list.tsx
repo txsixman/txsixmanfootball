@@ -4,10 +4,13 @@ import type { Side } from "@/lib/bracket-fill";
 import { sideText } from "@/lib/bracket-fill";
 import type { BracketRow, BuiltRow } from "@/lib/brackets";
 import { gameDay } from "@/lib/game-day";
+import { bracketGames } from "@/lib/game-pages";
 import { EMPTY, type loadIdentities } from "@/lib/identity";
 import { gameStatus } from "@/lib/playoff-status";
 import { projectionParts } from "@/lib/projection";
+import { CURRENT_SEASON } from "@/lib/season";
 import { KickoffStatus } from "../kickoff-status";
+import { CommentCountLink } from "../scores/comment-count";
 import { SiteAddress } from "../scores/directions";
 import { CrestSlot } from "../ui";
 
@@ -21,10 +24,13 @@ export const DisputedMark = () => (
 /** The games of one round: away team first, a big score, the date and site, a status line and the projection for a game not yet played.
  * A final is confirmed (ADR 0040); `today` is a Central-time date (lib/playoff-status.ts).
  * `showStatus` is off for a past season, where every game is old and the page says once that its scores are unconfirmed
- * (a forfeit still says so). */
-export function GameList({ games, league, alignments, identities, today, showStatus = true }: {
-  games: BracketRow[]; league: string; alignments: Alignment[]; identities: Awaited<ReturnType<typeof loadIdentities>>; today: string; showStatus?: boolean;
+ * (a forfeit still says so). `comments` (a current season's lists only) links each game that has a page to its comments
+ * (ADR 0077): "count" only when the game has some, "always" also "Comments" for one with none while posts are open. */
+export async function GameList({ games, league, alignments, identities, today, showStatus = true, comments }: {
+  games: BracketRow[]; league: string; alignments: Alignment[]; identities: Awaited<ReturnType<typeof loadIdentities>>; today: string; showStatus?: boolean; comments?: "count" | "always";
 }) {
+  // The page id of each game that has one (a game the bracket only sets has none), by the same key the bracket page uses.
+  const pages = comments ? new Map((await bracketGames()).filter((g) => g.id.startsWith(`${CURRENT_SEASON}-`)).map((g) => [`${g.date}|${g.home.name}|${g.away.name}`, g.id])) : undefined;
   const team = (name: string, score: number | undefined) => {
     const slug = programFor(alignments, name, league)?.slug;
     // The crest and name are one tap target (the program page); a team missing from today's alignments is plain text.
@@ -52,6 +58,7 @@ export function GameList({ games, league, alignments, identities, today, showSta
       {games.map((g) => {
         const status = gameStatus(g, today);
         const proj = g.projection && !g.forfeit ? projectionParts(g.projection) : undefined;
+        const pageId = pages?.get(`${g.date}|${g.home}|${g.away}`);
         return (
           <li key={`${g.date}-${g.home}-${g.away}`} className="min-w-0 border-b border-line px-3 py-1 text-[16px] text-ink">
             {team(g.away, g.forfeit ? undefined : g.awayScore)}
@@ -80,6 +87,8 @@ export function GameList({ games, league, alignments, identities, today, showSta
                 </span>
               )}
             </p>
+            {/* A sibling of the team links, never inside one; draws nothing until the counts answer, and never with posts off. */}
+            {pageId && <CommentCountLink gameKey={pageId} matchup={`${g.away} vs ${g.home}`} alwaysWhenOpen={comments === "always"} className="flex pl-12" />}
           </li>
         );
       })}

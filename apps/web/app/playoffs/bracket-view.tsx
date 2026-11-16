@@ -141,7 +141,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
               {r === current ? " · current round" : ""}
             </span>
           </h2>
-          {r.games.length > 0 && <GameList games={r.games} league={b.league} alignments={alignments} identities={identities} today={clock.date} />}
+          {r.games.length > 0 && <GameList games={r.games} league={b.league} alignments={alignments} identities={identities} today={clock.date} comments="count" />}
           {r.built.length > 0 && <BuiltList games={r.built} league={b.league} alignments={alignments} identities={identities} />}
         </section>
       ))}
