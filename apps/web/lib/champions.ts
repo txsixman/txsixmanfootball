@@ -2,6 +2,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { slugify } from "./slug";
 import { FINAL_COLUMNS, FinalRow, NO_FINAL_COLUMNS, NoFinalRow, parseCsv } from "./data-schemas";
+import { memo } from "./memo";
+import { recordedFinals } from "./state-championships";
+import { withRecorded } from "./state-finals";
 
 // UIL six-man state finals, written by tools/history/uil-champions.mjs from UIL's own archive. Read at build time.
 // The CSV keeps each row's source URL; pages do not show it (ADR 0010).
@@ -21,7 +24,11 @@ export type Final = {
   notes: string;
 };
 
-export async function loadFinals(): Promise<Final[]> {
+/** UIL's archive, plus each UIL State Championship the results robot or a correction has recorded that the archive does
+ * not list yet (ADR 0082): a December final shows on every page on the next build, before the archive is rerun. */
+export const loadFinals = memo<void, Final[]>(async () => withRecorded(await loadArchive(), await recordedFinals()));
+
+async function loadArchive(): Promise<Final[]> {
   let text: string;
   try {
     text = await readFile(path.join(process.cwd(), "../../data/seed/uil-champions/six-man.csv"), "utf8");
