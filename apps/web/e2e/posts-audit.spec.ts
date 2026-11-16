@@ -1,7 +1,10 @@
 import { test, type Page } from "@playwright/test";
 import { createServer, type Server } from "node:http";
 import path from "node:path";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+const OUT = path.join(__dirname, ".results", "audit");
+mkdirSync(OUT, { recursive: true });
+writeFileSync(path.join(OUT, "loaded.txt"), `stub=${process.env.E2E_STUB_PORT ?? "unset"} posts=${process.env.FAN_POSTS ?? "unset"}`);
 
 // THROWAWAY (audit/posts-375 branch, never merged): full-page phone screenshots of every posting surface, signed out and
 // signed in against a stand-in for Supabase. The screenshots land in e2e/.results and the branch's ci.yml uploads them always.
@@ -112,7 +115,7 @@ test.describe("posts audit screenshots", () => {
   async function shot(page: Page, url: string, name: string) {
     await page.goto(url, { waitUntil: "networkidle" });
     await page.waitForTimeout(1500);
-    await page.screenshot({ path: test.info().outputPath(`${name}.png`), fullPage: true });
+    await page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage: true });
     // Focus order: the first 25 tab stops inside main.
     const order: string[] = [];
     await page.locator("body").click({ position: { x: 1, y: 1 } }).catch(() => {});
@@ -126,7 +129,7 @@ test.describe("posts audit screenshots", () => {
       if (order.length >= 25) break;
     }
     await test.info().attach(`${name}-focus.txt`, { body: order.join("\n") });
-    writeFileSync(test.info().outputPath(`${name}-focus.txt`), order.join("\n"));
+    writeFileSync(path.join(OUT, `${name}-focus.txt`), order.join("\n"));
   }
 
   test("signed out", async ({ page }) => {
@@ -155,7 +158,7 @@ test.describe("posts audit screenshots", () => {
     await page.getByLabel("Add a comment").fill("Great defense tonight");
     await page.getByRole("button", { name: "Post comment" }).click();
     await page.waitForTimeout(1200);
-    await page.screenshot({ path: test.info().outputPath("in-game-report-ratelimit.png"), fullPage: true });
+    await page.screenshot({ path: path.join(OUT, "in-game-report-ratelimit.png"), fullPage: true });
     stub.refuse = null;
   });
 });
