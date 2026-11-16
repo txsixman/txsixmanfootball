@@ -1019,7 +1019,7 @@ async function venueDetails() {
     console.log(`Regular-season sites: ${due.length} games since ${since} without a site, ${teams.length} teams read.`);
   }
   const { rows, skipped } = venueDetailRows(venues, { games, fields, season: year });
-  writeFileSync(out, mergeKickoffs(kept, rows));
+  writeFileSync(out, mergeKickoffs(kept, rows, readWithheld()));
   const bracket = rows.filter((r) => games.some((g) => g.bracket && kickoffKey(g.game_date, g.home, g.away) === kickoffKey(r.date, r.home, r.away))).length;
   console.log(`Venue details: ${venues.length} venue rows; ${rows.length} facts rows (${bracket} bracket, ${rows.length - bracket} regular season), ${rows.filter((r) => r.site_name).length} with a site; skipped ${skipped.homeField} at the home team's own field, ${skipped.nothing} with nothing to add, ${skipped.unplaced} on no game of the season's files.`);
 }
@@ -1053,6 +1053,14 @@ async function team() {
 export const DETAIL_COLUMNS = "date,home,away,kickoff_utc,site_name,site_city,site_street,site_state,site_zip";
 const ADDRESS = ["site_street", "site_state", "site_zip"];
 const kickoffKey = (date, home, away) => gameKey(date, slugify(home), slugify(away));
+const SITE_FIELDS = ["site_name", "site_city", ...ADDRESS];
+
+/** The withheld sites (ADR 0076, data/corrections/sites.csv): keys of games whose facts row keeps no site, whatever a read
+ * says. Missing file: none. */
+export const withheldKeys = (rows) => new Set(rows.map((r) => kickoffKey(r.date, r.home, r.away)));
+export function readWithheld(file = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../data/corrections/sites.csv")) {
+  return existsSync(file) ? withheldKeys(parseCsv(readFileSync(file, "utf8"), "sites.csv").rows) : new Set();
+}
 
 /** A street line as the facts file keeps it (ADR 0066): plain words plus "#" and ",", a comma read as " - " (the file has
  * no quoting), at most 100 characters; anything else is "" (not known), never a guess. */
@@ -1099,8 +1107,9 @@ export function kickoffRows(items, { due, ours }) {
 }
 
 /** The facts file with `fresh` rows laid over the kept ones, field by field: a filled value is never overwritten (ADR 0041),
- * so a fresh value only fills a blank; other kept rows stay. */
-export function mergeKickoffs(text, fresh) {
+ * so a fresh value only fills a blank; other kept rows stay. A withheld game's site and address (ADR 0076, `withheld`:
+ * readWithheld's keys) are written blank, kept or fresh; its kickoff merges as usual. */
+export function mergeKickoffs(text, fresh, withheld = new Set()) {
   const kept = text.trim() ? parseCsv(text, "game details").rows : [];
   // Every kept row gets every column, so a file from before addresses (ADR 0066) is written back whole.
   const out = new Map(kept.map((r) => [kickoffKey(r.date, r.home, r.away), Object.fromEntries(DETAIL_COLUMNS.split(",").map((c) => [c, r[c] ?? ""]))]));
@@ -1111,6 +1120,7 @@ export function mergeKickoffs(text, fresh) {
     const sameSite = !old.site_name || old.site_name === r.site_name;
     out.set(k, Object.fromEntries(DETAIL_COLUMNS.split(",").map((c) => [c, old[c] || (ADDRESS.includes(c) && !sameSite ? "" : r[c]) || ""])));
   }
+  for (const [k, r] of out) if (withheld.has(k)) for (const c of SITE_FIELDS) r[c] = "";
   const rows = [...out.values()].sort((a, b) => a.kickoff_utc.localeCompare(b.kickoff_utc) || a.home.localeCompare(b.home));
   const cols = DETAIL_COLUMNS.split(",");
   for (const r of rows) if (cols.some((c) => r[c].includes(","))) throw new Error(`a comma in a game detail: ${r.date} ${r.home} / ${r.away}`);
@@ -1195,7 +1205,7 @@ async function kickoffs() {
   const dated = datedBuilt(items, { built, ours, today });
   const due = [...listed, ...dated];
   const fresh = kickoffRows(items, { due, ours });
-  const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh);
+  const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh, readWithheld());
   writeFileSync(out, merged);
   const sites = fresh.filter((r) => r.site_name).length;
   const toPlay = due.filter((r) => r.home_score === "");
@@ -1284,7 +1294,7 @@ function mergeDetails() {
   const out = arg("--out");
   if (!from || !out) throw new Error("usage: davecampbells.mjs --merge-details <fresh.csv> --out <data/seed/game-details/YYYY.csv>");
   const fresh = readFileSync(from, "utf8");
-  writeFileSync(out, mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh.trim() ? parseCsv(fresh, "game details").rows : []));
+  writeFileSync(out, mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh.trim() ? parseCsv(fresh, "game details").rows : [], readWithheld()));
 }
 
 /** A mapped team's opponents in its games (`items`), one row a team slug (or a name, for one with no team page): the slug and the feed's school name, for finding a

@@ -13,7 +13,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { mergeKickoffs, missingDetails, siteText, streetText } from "./davecampbells.mjs";
+import { mergeKickoffs, missingDetails, readWithheld, siteText, streetText } from "./davecampbells.mjs";
 import { centralDate, slugify } from "./maxpreps.mjs";
 import { parseCsv } from "./store.mjs";
 import { robotsAllows, USER_AGENT } from "./tapps.mjs";
@@ -400,7 +400,7 @@ async function details() {
   const today = centralDate();
   const games = await readBrackets();
   const fresh = detailRows(games);
-  const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh);
+  const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh, readWithheld());
   writeFileSync(out, merged);
   const due = dueGames(games, today);
   console.log(`League bracket details: ${due.length} TAIAO bracket games still to play with both teams known; ${fresh.filter((r) => r.kickoff_utc).length} kickoffs and ${fresh.filter((r) => r.site_name).length} sites on the bracket.`);

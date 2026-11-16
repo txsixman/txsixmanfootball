@@ -117,3 +117,5 @@ Not in an ADR:
   the June 15 revision; registered as `Not in a district`, ranked with Division II, no standings place (Nov 15, 2026).
 - **TAPPS State Championship kickoffs and sites by hand** (ADR 0075): from TAPPS's own football page on tapps.biz, on
   the listed finals, as kept values; earlier TAPPS rounds and TCAF stay blank (Nov 16, 2026).
+- **Withheld sites** (ADR 0076): `data/corrections/sites.csv` keeps a game's site and address blank when allowed pages
+  contradict the read one; no robot merge fills it, the data check fails if one is added (Nov 16, 2026).

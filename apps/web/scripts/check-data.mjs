@@ -19,6 +19,8 @@ const seed = (...p) => path.join("data/seed", ...p);
 
 /** What the admin console writes (lib/admin); both files appear with the first correction. */
 const CORRECTIONS = { programs: "data/corrections/programs.csv", games: "data/corrections/games.csv" };
+/** Sites withheld by hand (ADR 0076). */
+const WITHHELD = "data/corrections/sites.csv";
 
 /** The programs the registry knows it is missing (ADR 0073). */
 const NOT_LISTED = "data/seed/private-2026/not-listed.csv";
@@ -65,6 +67,7 @@ function files() {
   list.push(
     { file: CORRECTIONS.programs, csv: [s.PROGRAM_MERGE_COLUMNS, s.ProgramMergeRow], optional: true },
     { file: CORRECTIONS.games, csv: [s.GAME_CORRECTION_COLUMNS, s.GameCorrectionRow], optional: true },
+    { file: WITHHELD, csv: [s.WITHHELD_SITE_COLUMNS, s.WithheldSiteRow], optional: true },
     { file: seed("lineage/programs.csv"), csv: [s.LINEAGE_COLUMNS, s.LineageRow], optional: true },
     { file: NOT_LISTED, csv: [s.NOT_LISTED_COLUMNS, s.NotListedRow], optional: true },
     { file: seed("lineage/names.csv"), csv: [s.NAME_COLUMNS, s.NameRow], optional: true },
@@ -121,6 +124,7 @@ export function checkAll() {
   }
   if (identity) results.push(checkLogoFiles(identity));
   results.push(checkRegistry(parsed));
+  if (parsed[WITHHELD]) results.push(checkWithheld(parsed[WITHHELD], parsed));
   results.push(checkFirstSeason());
   results.push(...checkMaxprepsFolders(path.join(root, "data/seed")));
   results.push(...checkDisputed(path.join(root, "data/seed")));
@@ -152,6 +156,23 @@ export function checkRegistry(parsed) {
   return problems.length
     ? { file: "registry", ok: false, note: problems.join("; ") }
     : { file: "registry", ok: true, note: `${programs.size} programs in ${leagues.size} organizations, every one with a source; not yet listed: ${(parsed[NOT_LISTED] ?? []).filter((r) => r.school).length} teams, ${(parsed[NOT_LISTED] ?? []).filter((r) => !r.school).length} leagues with no list` };
+}
+
+/**
+ * ADR 0076: a withheld site stays blank. Each withheld game's facts row (game-details of its year, teams either way
+ * round) has no site or address; a row added by hand over it fails here, since the robots' merge never writes one.
+ */
+export function checkWithheld(withheld, parsed) {
+  const key = (date, a, b) => [date, ...[slugify(a), slugify(b)].sort()].join("|");
+  const sited = new Set(
+    Object.entries(parsed)
+      .filter(([f]) => /game-details\/\d{4}\.csv$/.test(f))
+      .flatMap(([, rows]) => rows.filter((r) => r.site_name || r.site_city || r.site_street).map((r) => key(r.date, r.home, r.away))),
+  );
+  const problems = withheld.filter((w) => sited.has(key(w.date, w.home, w.away))).map((w) => `${w.date} ${w.away} at ${w.home}: its site is withheld but the facts file names one`);
+  return problems.length
+    ? { file: WITHHELD, ok: false, note: problems.join("; ") }
+    : { file: WITHHELD, ok: true, note: `${withheld.length} withheld site(s), each blank in the facts file` };
 }
 
 /**
