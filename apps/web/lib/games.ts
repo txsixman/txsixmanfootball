@@ -13,7 +13,8 @@ import { forfeitScore } from "./forfeit";
 import { applyToGame } from "./corrections";
 import { buildSeasonResults, type SeasonResult } from "./season-results";
 import { loadCorrections } from "./correction-files";
-import { kickoffOf, knownAddress, loadAddresses, loadKickoffs, loadSites, siteOf } from "./kickoffs";
+import { kickoffOf, knownAddress, knownSite, loadAddresses, loadKickoffs, loadSites, siteOf } from "./kickoffs";
+import type { Address } from "./address";
 import { isDisputed, loadDisputed } from "./disputed";
 
 // Hand-captured games (data/seed/*/playoffs-*.csv), read at build time. Same columns as packages/db/games.mjs, checked
@@ -162,10 +163,12 @@ export type PlayoffGame = Field & {
   confirmed: boolean;
   /** Kickoff in UTC, for a game not yet played, when known (lib/kickoffs.ts, ADR 0036). */
   kickoff?: string;
+  /** Site and street address, for a game not yet played, when the game details have them (ADR 0041, ADR 0066). */
+  site?: string; address?: Address;
 };
 
 export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT_SEASON): Promise<PlayoffGame[]> {
-  const [kickoffs, disputed] = await Promise.all([loadKickoffs(season), loadDisputed(season)]);
+  const [kickoffs, disputed, sites, addresses] = await Promise.all([loadKickoffs(season), loadDisputed(season), loadSites(season), loadAddresses(season)]);
   return (await playoffRows([season])).map(({ r, league }) => {
     const name = (n: string) => programFor(alignments, n, league)?.school ?? n;
     const played = r.home_score !== "" && r.away_score !== "" && !(r.home_score === "0" && r.away_score === "0");
@@ -183,6 +186,10 @@ export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT
       ...fieldOf(r.neutral, r.round),
       confirmed: played && !isDisputed(disputed, r.game_date, r.home, r.away), // a final is confirmed unless disputed (ADR 0040)
       ...(!played && { kickoff: kickoffOf(kickoffs, r.game_date, r.home, r.away) }),
+      ...(!played && knownSite(sites, r.game_date, r.home, r.away) && {
+        site: knownSite(sites, r.game_date, r.home, r.away),
+        address: knownAddress(addresses, r.game_date, r.home, r.away),
+      }),
     };
   });
 }

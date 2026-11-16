@@ -8,6 +8,7 @@ import { bracketIntro } from "@/lib/intros";
 import { bracketGamesList, breadcrumbList } from "@/lib/json-ld";
 import { previewOf } from "@/lib/playoff-path";
 import { centralClock, currentRound } from "@/lib/playoff-status";
+import { roundCount } from "@/lib/this-round";
 import { chanceText, projectionParts } from "@/lib/projection";
 import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
@@ -17,7 +18,7 @@ import { TabNav } from "../tab-nav";
 import { PageHeader } from "../ui";
 import { AdvanceTable } from "./advance-table";
 import { ChanceList } from "./chance-list";
-import { BuiltList, GameList, roundCount } from "./game-list";
+import { BuiltList, GameList } from "./game-list";
 import { BracketBoard } from "./tree/board";
 import { treeData } from "./tree/data";
 
