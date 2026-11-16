@@ -29,6 +29,18 @@ export async function moderationOverview(supabase: SupabaseClient): Promise<Over
   return { flagged_posts: list(o.flagged_posts), hidden_posts: list(o.hidden_posts), restricted: list(o.restricted) };
 }
 
+export type RecentPost = Omit<HiddenPost, "hidden_at"> & { created_at: string };
+
+/**
+ * The newest posts still showing, last 7 days, at most 100 (admin_recent_posts, migration 0032, ADR 0085), so the owner can hide
+ * one nobody reported. "missing" before the migration is on the database (the page then says so); null when refused.
+ */
+export async function recentPosts(supabase: SupabaseClient): Promise<RecentPost[] | "missing" | null> {
+  const { data, error } = await supabase.rpc("admin_recent_posts");
+  if (error) return error.code === "PGRST202" || error.code === "42883" ? "missing" : null;
+  return Array.isArray(data) ? (data as RecentPost[]) : null;
+}
+
 export type ModerateResult = "done" | "already" | "denied" | "failed";
 
 /** Run one override. "already": nothing to change (the post already hidden or shown, the account not muted or muted longer, the ban already set). */

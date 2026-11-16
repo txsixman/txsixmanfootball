@@ -71,12 +71,15 @@ test("an address that is not a browser's push service, or keys of the wrong shap
   }
 });
 
-test("a database failure is 503 with nothing of the error or the endpoint", async () => {
+test("a database failure is 503 with nothing of the error or the endpoint, and one log line with the SQL state only", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
   signIn(await fan(d, "Push Hiccup"), { fail: { code: "57014", message: `statement timeout ${ENDPOINT}` } });
   const r = await read(await post(SUB));
   assert.deepEqual([r.status, r.body], [503, { error: "unavailable" }]);
   noInternals(r);
   assert.doesNotMatch(r.text, /fcm|abc123/);
+  assert.deepEqual(logged.mock.calls.map((c) => c.arguments), [["push link: database call failed", "link_push_subscription", "57014"]]);
+  assert.doesNotMatch(JSON.stringify(logged.mock.calls.map((c) => c.arguments)), /fcm|abc123|timeout/);
 });
 
 test("sign-out sends this browser's endpoint to unlink_push_subscription before it ends the session, and logs nothing", () => {

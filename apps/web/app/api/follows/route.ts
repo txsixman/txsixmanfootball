@@ -3,12 +3,13 @@ import { z } from "zod";
 import { fanSignIn } from "@/lib/auth/config";
 import { getFollows } from "@/lib/auth/profile";
 import { getUser } from "@/lib/auth/server";
+import { logDbFailure } from "@/lib/log-db";
 import { checkSameOriginJson } from "@/lib/same-origin";
 
 // Change the signed-in fan's follows. Checked here (a same-site POST, a session, a slug's shape) and again by the
 // database (follow_program: own rows only, a profile, the shape, at most 100; migration 0012). The site cannot tell here
 // whether a slug is a real program (the program list is not in this function's files); an unknown one is harmless, shown
-// nowhere, and the 100 cap bounds it. Nothing is logged.
+// nowhere, and the 100 cap bounds it. A database failure is logged by its code only (lib/log-db.ts).
 export const dynamic = "force-dynamic";
 
 const Slug = z.string().max(80).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
@@ -46,12 +47,14 @@ export async function POST(request: NextRequest) {
       if (code === "53400") return reply({ error: "limit" }, 409);
       if (code === "42501") return reply({ error: "finish sign-up" }, 403);
       if (code === "22023") return reply({ error: "bad request" }, 400);
+      logDbFailure("follows", call, code);
       return reply({ error: "unavailable" }, 503);
     }
   }
   try {
     return reply({ follows: await getFollows(supabase) });
   } catch {
+    logDbFailure("follows", "my_follows");
     return reply({ error: "unavailable" }, 503);
   }
 }

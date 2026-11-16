@@ -76,7 +76,8 @@ Do these in order, in one sitting. Each step names how to check it worked.
 - `/admin/corrections`, Fan score reports: reports that differ from the final, marked "differs from the final". A real error is
   fixed with the game's correction form, as any correction; a report never changes a score by itself.
 - Errors: `vercel logs --environment production` (the CLI, outside the sandbox) and look for `posts: database call failed`,
-  `comments: read failed`, `forums: read failed` or `score report: read failed`. Each line carries only a database error code.
+  `comments: read failed`, `forums: read failed`, `score report: read failed`, or any `database call failed` line (follows, me,
+  push link, account). Each line carries only a database error code.
   More than a few a minute means the database is struggling: close posts (below) and look in the morning.
 - Volume, in the SQL editor: `select count(*) from post where created_at > now() - interval '1 hour';` and the same for
   `post_flag` and `fan_score_report`. Every account is limited per minute, per 10 minutes and per day (ADR 0060), so a flood means
@@ -102,7 +103,7 @@ Do these in order, in one sitting. Each step names how to check it worked.
 | `/privacy`, `/terms` | Plain language, linked from `/sign-in`, `/account/welcome` and `/account` (and the site footer, on every page, whichever way `FAN_SIGNIN` is set) |
 | Header | "Sign in", or the display name. Filled in by the page's own script from `/api/me`, so static pages stay static |
 | My teams (home page), `/account` | Only while `FAN_PUSH_ALERTS` is on: "Game alerts on this device", a switch for this browser's kickoff, final and next-game alerts (ADR 0082); permission is asked on the tap; on iPhone and iPad a note to add the site to the Home Screen first |
-| Program page | The Follow button: signed out, push alerts on this browser as before; signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) and links this browser's push alerts to the account, so a follow on any device alerts every linked browser (ADR 0054) |
+| Program page | The Follow button: signed out, push alerts on this browser as before (a browser that cannot show alerts, such as an iPhone's Safari tab, follows on this browser only, for My teams, and says how to get alerts; at most 25 teams a browser, and an unfollow never asks for permission, ADR 0085); signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) and links this browser's push alerts to the account, so a follow on any device alerts every linked browser (ADR 0054) |
 | Home, My teams | The account's follows when signed in, else this browser's |
 | `/forums`, a board, a thread | Only while `FAN_POSTS` is on (otherwise 404). Anyone reads; a signed-in fan with a profile posts, replies, edits their own and flags others |
 | A game page | Only while `FAN_POSTS` is on: the comments block (it checks for new comments once a minute while the tab is visible and offers "Show N new comments" rather than moving the list), and for a game with no score yet the fan score-report block. With it off the page is as it was |
@@ -161,14 +162,18 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
   - Both functions are in `SIGNED_IN_FUNCTIONS`. No endpoint, key or user id is logged anywhere.
 - A display name is checked by `lib/moderation/names.ts` (a small word list) before `create_profile`. The posts round replaces
   that file and keeps `displayNameProblem(name)`.
-- Nothing logs an email, a birth year, a token or a Supabase error.
+- Nothing logs an email, a birth year, a token or a Supabase error's text. A failed database call in a fan route (follows,
+  `/api/me`, `/api/push/link`, the Account Center, delete account) logs one line, `<area>: database call failed <function>
+  <SQLSTATE>` (`lib/log-db.ts`, ADR 0085); a refusal the fan is told about is not logged.
 - **Posts launch (migration 0027, ADRs 0060 to 0062).** Every write is also limited per minute (`fan_rate_check`; new accounts:
   posts 2, threads 1, reports of posts 3, score reports 2; established: 4, 2, 5, 3; the database raises one `rate_limited` for the
   1 minute, 10 minute and 24 hour windows, so the site's sentence is true for all three: wait a minute, else try again tomorrow). Gambling talk is refused in posts and titles
   (`moderation_betting`, the `betting` list in `lib/moderation/wordlist.json`, the shared vectors). Report shows on every other
   fan's post for every viewer: signed out it links to sign-in and back (from a game's comments, back to `#comments`); signed in it asks "Report this post to the moderators?" with Report and Cancel before it sends, because a report cannot be taken back. The owner's `/admin/moderation` lists every reported post
   that is not hidden (most reports first, how many count, never who reported) and can hide a post (`admin_hide_post`) or mute an
-  account for 1 to 90 days (`admin_mute`), each written to `audit_log` with his reason. `/admin/corrections` lists fan score
+  account for 1 to 90 days (`admin_mute`), each written to `audit_log` with his reason. It also lists every post still showing
+  from the last 7 days, reported or not (`admin_recent_posts`, migration 0032, ADR 0085), with the same Hide, Mute and Ban, so a
+  post nobody reported can be hidden; before 0032 is on the database that list says so. `/admin/corrections` lists fan score
   reports from the last 60 days (`admin_fan_score_reports`, read-only), marked where they differ from the final. All three
   functions are admin-only and in `SIGNED_IN_FUNCTIONS`.
 - **A deleted account** (`delete_my_account()`): its posts and every earlier version of them, its reports of posts and its

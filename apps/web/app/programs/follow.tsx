@@ -5,9 +5,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { changeAccountFollows, fetchMe, type Me } from "@/lib/account/follows";
-import { dropFromThisBrowser, followedHere, linkToAccount, pushSupported, setFollow } from "@/lib/push";
+import { BROWSER_FOLLOW_LIMIT, dropFromThisBrowser, followedHere, linkToAccount, pushSupported, setFollow, setFollowHere } from "@/lib/push";
 
-type State = "loading" | "unsupported" | "off" | "on" | "busy";
+type State = "loading" | "off" | "on" | "busy";
+
+const BAD = "That did not work. Check your connection and try again.";
+const FULL = `This browser follows ${BROWSER_FOLLOW_LIMIT} teams, the most it can. Unfollow one first, or sign in to follow up to 100.`;
 
 /** Whether this tab has already linked the browser to the account (linking again changes nothing, so once is enough). */
 function linkedThisVisit(set = false): boolean {
@@ -21,11 +24,12 @@ function linkedThisVisit(set = false): boolean {
 
 /**
  * Follow one program. Signed out: "Alert me to finals", a browser push alert when a new final score of theirs is read,
- * remembered on this browser (as it always was). Signed in: the same button also follows on the account (My teams on every
- * device), and where this browser cannot show alerts it still follows on the account. Signed in, this browser's push
- * subscription is also linked to the account (ADR 0054), so the account's follows on any device are what it alerts for.
- * `compact` is the button and its answer only, for a page that shows more than one (a game's two teams): the page gives the
- * heading and the stored-data note once, and a browser that cannot show alerts sees no button from a signed-out visitor.
+ * remembered on this browser (as it always was); a browser that cannot show alerts (an iPhone's Safari outside the Home
+ * Screen) still follows on this browser, so My teams shows the team, and says how to get alerts. Signed in: the same button
+ * also follows on the account (My teams on every device), and where this browser cannot show alerts it still follows on the
+ * account. Signed in, this browser's push subscription is also linked to the account (ADR 0054), so the account's follows on
+ * any device are what it alerts for. `compact` is the button and its answer only, for a page that shows more than one (a
+ * game's two teams): the page gives the heading and the stored-data note once.
  */
 export function Follow({ slug, school, compact = false }: { slug: string; school: string; compact?: boolean }) {
   const [state, setState] = useState<State>("loading");
@@ -39,9 +43,8 @@ export function Follow({ slug, school, compact = false }: { slug: string; school
   useEffect(() => {
     const supported = pushSupported();
     setCanPush(supported);
-    const here = supported && followedHere().includes(slug);
-    if (!supported) setState("unsupported");
-    else setState(here ? "on" : "off");
+    const here = followedHere().includes(slug);
+    setState(here ? "on" : "off");
     let live = true;
     void fetchMe().then((a) => {
       const answer = a?.me;
@@ -64,18 +67,20 @@ export function Follow({ slug, school, compact = false }: { slug: string; school
     setState("busy");
     setNote("");
     if (signedIn) return toggleSignedIn(turnOn, before);
-    if (!canPush) {
-      setState(turnOn ? "on" : "off");
-      setNote(turnOn ? `Following ${school}.` : `Unfollowed ${school}.`);
-      return;
-    }
     try {
+      if (!canPush) {
+        setFollowHere(slug, turnOn);
+        setState(turnOn ? "on" : "off");
+        setNote(turnOn ? `Following ${school} on this browser. It shows under My teams on the home page.` : `Unfollowed ${school}.`);
+        return;
+      }
       await setFollow(slug, turnOn);
       setState(turnOn ? "on" : "off");
       setNote(turnOn ? `Alerts on: you will get ${school}'s final scores.` : `Alerts off for ${school}.`);
     } catch (e) {
-      setState(turnOn ? "off" : "on");
-      setNote((e as Error).message === "permission" ? "Notifications are blocked for this site. Allow them in your browser's site settings, then try again." : "That did not work. Check your connection and try again.");
+      setState(before);
+      const why = (e as Error).message;
+      setNote(why === "permission" ? "Notifications are blocked for this site. Allow them in your browser's site settings, then try again." : why === "limit" ? FULL : BAD);
     }
   }
 
@@ -117,31 +122,34 @@ export function Follow({ slug, school, compact = false }: { slug: string; school
   // Rendered on the server too, with the button off until this browser is checked: a section that appeared only after
   // the page's script ran was its largest late paint (Lighthouse LCP 3.2 s on phone). Kept out of the search index.
   const on = state === "on";
-  if (compact && state === "unsupported" && !signedIn) return null;
+  // Signed out on a browser that cannot show alerts: a plain follow, kept on this browser (the star, as signed in).
+  const localOnly = !signedIn && !canPush;
   const Root = compact ? "div" : "section";
   return (
     <Root {...(compact ? {} : { "aria-labelledby": "alerts" })} data-pagefind-ignore className={compact ? "min-w-0" : "mt-6 px-3"}>
       {!compact && (
         <h2 id="alerts" className="font-num text-[20px] font-bold uppercase tracking-wide text-navy">
-          {signedIn ? "Follow" : "Score alerts"}
+          {signedIn || localOnly ? "Follow" : "Score alerts"}
         </h2>
       )}
-      {state === "unsupported" && !signedIn ? (
-        <p className="mt-1 text-[14px] text-muted">
-          This browser cannot show alerts. On an iPhone, add this site to your Home Screen first, then open it from there.
+      <Button type="button" variant="outline" onClick={toggle} disabled={state === "busy" || state === "loading"} aria-pressed={on} className="mt-2 max-w-full whitespace-normal py-1.5 text-left">
+        {signedIn || localOnly ? <Star aria-hidden="true" className={on ? "fill-current" : ""} /> : on ? <BellOff aria-hidden="true" /> : <Bell aria-hidden="true" />}
+        {signedIn || localOnly ? (on ? `Unfollow ${school}` : `Follow ${school}`) : on ? "Stop alerts" : `Alert me to ${school} finals`}
+      </Button>
+      <p role="status" className="mt-1 text-[14px] text-ink">
+        {note}
+      </p>
+      {compact ? null : localOnly ? (
+        <p data-testid="follow-no-push" className="mt-1 text-[13px] text-muted">
+          This browser cannot show alerts, so the teams you follow are kept on this browser only, for My teams. On an iPhone or iPad, add
+          this site to your Home Screen, open it from there and follow again to get alerts.{" "}
+          {enabled && (
+            <Link href={`/sign-in?next=${encodeURIComponent(`/programs/${slug}`)}`} className="inline-flex min-h-11 items-center text-navy underline hover:no-underline">
+              Sign in to follow on every device
+            </Link>
+          )}
         </p>
-      ) : (
-        <>
-          <Button type="button" variant="outline" onClick={toggle} disabled={state === "busy" || state === "loading"} aria-pressed={on} className="mt-2 max-w-full whitespace-normal py-1.5 text-left">
-            {signedIn ? <Star aria-hidden="true" className={on ? "fill-current" : ""} /> : on ? <BellOff aria-hidden="true" /> : <Bell aria-hidden="true" />}
-            {signedIn ? (on ? `Unfollow ${school}` : `Follow ${school}`) : on ? "Stop alerts" : `Alert me to ${school} finals`}
-          </Button>
-          <p role="status" className="mt-1 text-[14px] text-ink">
-            {note}
-          </p>
-        </>
-      )}
-      {compact ? null : signedIn ? (
+      ) : signedIn ? (
         <p className="mt-1 text-[13px] text-muted">
           Stored: the programs you follow, on your account, and, once you allow alerts, this browser&apos;s push address, kept with your account until you sign out or delete it.
         </p>

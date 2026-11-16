@@ -145,3 +145,7 @@ Not in an ADR:
   kickoff or site, unknown teams, duplicates, scores that disagree, empty seasons, no league, ratings that skip a game, no
   logo); a gap is known by a rule citing its ADR or by a reasoned entry in `data/gaps-allowed.json`; a new gap or a stale
   entry fails CI's web-checks job, never a robot commit (Nov 16, 2026).
+- **Follow without alerts, and recent posts for the owner** (ADR 0085): a signed-out browser that cannot show alerts (an
+  iPhone's Safari tab) follows on the browser only, for My teams; an unfollow never asks permission; the 25-team browser cap
+  says so; `/admin/moderation` lists every post of the last 7 days (`admin_recent_posts`, migration 0032) so an unreported one
+  can be hidden; every fan route's database failure logs its code (Nov 16, 2026).

@@ -288,6 +288,8 @@ const SIGNED_IN_FUNCTIONS = [
   "public.my_push_mutes(text)", "public.export_my_data()", "public.my_activity(integer)",
   // Posts launch (migration 0027, ADRs 0061 and 0062): the owner's hide, mute and fan score report list; each refuses anyone not is_admin().
   "public.admin_hide_post(uuid, text)", "public.admin_mute(uuid, integer, text)", "public.admin_fan_score_reports()",
+  // The owner's list of recent posts (migration 0032, ADR 0085), so one nobody reported can be hidden; admin-only.
+  "public.admin_recent_posts()",
 ];
 
 // Public reads, open to anon and authenticated alike: they return display names, text and counts, never a user id,

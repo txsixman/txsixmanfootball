@@ -312,6 +312,20 @@ test("the overview is empty lists on odd data and null when refused", async () =
   assert.deepEqual((await moderationOverview(answer({ flagged_posts: [{ id: "p" }] }))).flagged_posts, [{ id: "p" }]);
 });
 
+test("the recent posts list (ADR 0085): the rows, 'missing' before migration 0032, null when refused or odd", async () => {
+  const { recentPosts } = await import("../lib/admin/moderation.ts");
+  const calls = [];
+  const answer = (data, error = null) => ({ rpc: async (fn) => (calls.push(fn), { data, error }) });
+  const row = { id: "p", author_id: "u", author: "Fan", game_key: "k", thread_id: null, title: null, body: "hi", created_at: "2026-11-16T00:00:00Z", flags: 0 };
+  assert.deepEqual(await recentPosts(answer([row])), [row]);
+  assert.deepEqual(await recentPosts(answer([])), []);
+  assert.equal(await recentPosts(answer(null, { code: "PGRST202", message: "Could not find the function" })), "missing");
+  assert.equal(await recentPosts(answer(null, { code: "42883", message: "function does not exist" })), "missing");
+  assert.equal(await recentPosts(answer(null, { code: "42501", message: "admin_only" })), null);
+  assert.equal(await recentPosts(answer({ not: "a list" })), null);
+  assert.deepEqual([...new Set(calls)], ["admin_recent_posts"]);
+});
+
 test("the fan score report list is read-only, one call, and null when refused (ADR 0062)", async () => {
   const { fanScoreReports } = await import("../lib/admin/moderation.ts");
   const calls = [];

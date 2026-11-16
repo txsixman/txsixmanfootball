@@ -58,6 +58,7 @@ test("the API roles can call follow and unfollow, and nothing else: no table rig
     { proname: "admin_hide_post", anon: false },
     { proname: "admin_moderation_overview", anon: false },
     { proname: "admin_mute", anon: false },
+    { proname: "admin_recent_posts", anon: false }, // migration 0032: the owner's list of recent posts
     { proname: "admin_set_ban", anon: false },
     { proname: "admin_unhide_post", anon: false },
     { proname: "admin_unmute", anon: false },

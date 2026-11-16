@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { fanPosts } from "@/lib/auth/config";
 import { requireAdmin } from "@/lib/auth/admin";
-import { moderationOverview } from "@/lib/admin/moderation";
+import { moderationOverview, recentPosts } from "@/lib/admin/moderation";
 import { AdminNav } from "../nav";
 import { gate } from "../gate";
 import { ModerateForm } from "./forms";
@@ -18,7 +18,8 @@ function Where({ p, postsOn }: { p: { game_key: string | null; thread_id: string
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
 
 /**
- * The owner's overrides (ADRs 0018, 0061): reported posts to hide, hidden posts to show again, and accounts to mute, ban or
+ * The owner's overrides (ADRs 0018, 0061, 0085): reported posts to hide, every recent post (reported or not) to hide, hidden
+ * posts to show again, and accounts to mute, ban or
  * let back. Behind the admin gate, so not a
  * public page: it stays open while posts are off (FAN_POSTS, ADR 0052), because cleaning up and banning must work whichever way
  * the switch is set. It then says so, and shows a post's place as plain text, since the forum and game pages answer 404.
@@ -27,7 +28,7 @@ export default async function ModerationPage() {
   const g = await gate();
   if (!g.ok) return g.page;
   const { supabase } = await requireAdmin();
-  const overview = await moderationOverview(supabase);
+  const [overview, recent] = await Promise.all([moderationOverview(supabase), recentPosts(supabase)]);
   const postsOn = fanPosts();
   return (
     <section aria-labelledby="admin-title" className="max-w-prose">
@@ -57,6 +58,30 @@ export default async function ModerationPage() {
                   <ModerateForm op="hide" id={p.id} label="Hide" />
                   <ModerateForm op="mute" id={p.author_id} scope={p.id} label={`Mute ${p.author}`} />
                   <ModerateForm op="ban" id={p.author_id} scope={p.id} label={`Ban ${p.author}`} />
+                </li>
+              ))}
+            </ul>
+          )}
+          <h2 className="mt-8 font-num text-[26px] font-bold uppercase text-navy">Recent posts</h2>
+          <p className="mt-1 text-[13px] text-muted">Every post still showing from the last 7 days, newest first (at most 100), reported or not, so you can hide one nobody reported.</p>
+          {recent === "missing" ? (
+            <p data-testid="recent-missing" className="mt-2 text-[15px]">Not on the database yet: it needs migration 0032.</p>
+          ) : recent === null ? (
+            <p className="mt-2 text-[15px] font-semibold text-red">The database refused this list. Try again in a minute.</p>
+          ) : recent.length === 0 ? (
+            <p className="mt-2 text-[15px]">None.</p>
+          ) : (
+            <ul data-testid="recent-posts" className="mt-2 border-t border-line">
+              {recent.map((p) => (
+                <li key={p.id} className="border-b border-line py-3 text-[15px]">
+                  <p className="text-[13px] text-muted">
+                    {p.author} · {when(p.created_at)} · {p.flags} {p.flags === 1 ? "report" : "reports"} · <Where p={p} postsOn={postsOn} />
+                  </p>
+                  {p.title && <p className="font-semibold text-navy">{p.title}</p>}
+                  <p className="whitespace-pre-wrap break-words">{p.body}</p>
+                  <ModerateForm op="hide" id={p.id} scope="recent" label="Hide" />
+                  <ModerateForm op="mute" id={p.author_id} scope={`recent-${p.id}`} label={`Mute ${p.author}`} />
+                  <ModerateForm op="ban" id={p.author_id} scope={`recent-${p.id}`} label={`Ban ${p.author}`} />
                 </li>
               ))}
             </ul>

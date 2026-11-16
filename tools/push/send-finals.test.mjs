@@ -369,6 +369,29 @@ test("a gone browser (404 or 410) is deleted and gets nothing more; any other fa
   assert.deepEqual(db.log.confirmed, [FAKE_SUB("ok", []).endpoint, FAKE_SUB("ok", []).endpoint]);
 });
 
+test("a database error while deleting a gone browser or confirming a sent one is counted, and every later browser still gets its alerts", async () => {
+  const db = fakeDb({ on: true, subs: [FAKE_SUB("gone", ["jayton"]), FAKE_SUB("first", ["jayton"]), FAKE_SUB("after", ["jayton"])] });
+  const query = db.query.bind(db);
+  let confirms = 0;
+  db.query = async (sql, params) => {
+    if (sql.startsWith("delete from push_subscription")) throw code("08006"); // the connection dropped mid-run
+    if (sql.startsWith("update push_subscription") && (confirms += 1) === 1) throw code("57014");
+    return query(sql, params);
+  };
+  const { sent, send } = collect();
+  const failing = async (s, body, opts) => {
+    if (s.endpoint.endsWith("/gone")) throw Object.assign(new Error("gone"), { statusCode: 410 });
+    return send(s, body, opts);
+  };
+  const finals = newFinals("", csv(row("2026-11-13", "Jayton", "Whiteface", 12, 48)));
+  const r = await sendAll({ db, send: failing, finals });
+  assert.deepEqual(sent.map((x) => x.id), ["first", "after"]); // the run went on past both database errors
+  assert.equal(r.sent, 2);
+  assert.equal(r.removed, 0); // not deleted, so not counted as deleted
+  assert.deepEqual(r.failed, ["fcm.googleapis.com: gone, not deleted (database 08006)", "fcm.googleapis.com: sent, not marked confirmed (database 57014)"]);
+  assert.deepEqual(db.log.confirmed, [FAKE_SUB("after", []).endpoint]);
+});
+
 test("a kickoff skips a game the read saw finished; its name comes from the season's files, else the slug title-cased", () => {
   const ctx = buildContext({ season: "2026", playoffs: "", texts: [csv(row("2026-11-06", "Fort Bend Chargers", "Guthrie", 40, 6)), ALIGN] });
   const events = kickoffEvents([live("whiteface", "jayton"), live("fort-bend-chargers", "guthrie", { finished: true }), live("some-new-team", "jayton")], ctx);

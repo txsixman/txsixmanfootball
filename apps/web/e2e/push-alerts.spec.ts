@@ -174,6 +174,22 @@ test.describe("alerts on, signed out", () => {
     expect((await toggle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   });
 
+  test("nothing followed any more (the list emptied in another tab): the tap asks nothing and says to follow a team first", async ({ page }) => {
+    await fakePush(page);
+    await follow(page);
+    await statusIs(page, true);
+    const rpc = await stubRpc(page);
+    await openHome(page);
+    const toggle = page.getByRole("switch", { name: SWITCH });
+    await expect(toggle).toBeEnabled();
+    await page.evaluate(() => localStorage.setItem("followed-programs", "[]"));
+    await toggle.click();
+    await expect(page.getByText("Follow a team first, then turn on game alerts.")).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(await asked(page)).toBe(0); // no permission prompt for alerts that would alert nothing
+    expect(rpc).toEqual([]);
+  });
+
   test("notifications already blocked: the page says so", async ({ page }) => {
     await fakePush(page, { permission: "denied", answer: "denied" });
     await follow(page);
