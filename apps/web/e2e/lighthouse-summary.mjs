@@ -32,6 +32,11 @@ for (const r of JSON.parse(readFileSync(manifestPath, "utf8"))) {
   runs = Math.max(runs, byPage.get(page).length);
 }
 
+// Bytes over the network by kind of file, from the report's own request list (compressed as sent; raw is after decompressing).
+const bytes = (audits, type, key) =>
+  (audits["network-requests"]?.details?.items ?? []).filter((i) => i.resourceType === type).reduce((n, i) => n + (i[key] ?? 0), 0);
+const kbOf = (v) => (v == null ? "–" : `${Math.round(v / 1024)} KB`);
+
 const rows = [...byPage].map(([page, list]) => {
   const cat = (k) => median(list.map((x) => x.summary[k]));
   const num = (k) => median(list.map((x) => x.audits[k]?.numericValue));
@@ -47,10 +52,13 @@ const rows = [...byPage].map(([page, list]) => {
     ms(num("total-blocking-time")),
     cls == null ? "–" : cls.toFixed(3),
     kb == null ? "–" : `${Math.round(kb / 1024)} KB`,
+    kbOf(median(list.map((x) => bytes(x.audits, "Script", "transferSize")))),
+    kbOf(median(list.map((x) => bytes(x.audits, "Document", "transferSize")))),
+    kbOf(median(list.map((x) => bytes(x.audits, "Document", "resourceSize")))),
   ];
 });
 
-console.log(`### Lighthouse, mobile settings (median of ${runs} runs, each number on its own)\n`);
-console.log("| Page | Perf | A11y | Best pr. | FCP | LCP | TBT | CLS | Weight |");
-console.log("|---|---|---|---|---|---|---|---|---|");
+console.log(`### Lighthouse, mobile settings (median of ${runs} runs, each number on its own; JS and HTML are bytes sent, HTML raw is after decompressing)\n`);
+console.log("| Page | Perf | A11y | Best pr. | FCP | LCP | TBT | CLS | Weight | JS | HTML | HTML raw |");
+console.log("|---|---|---|---|---|---|---|---|---|---|---|---|");
 for (const r of rows) console.log(`| ${r.join(" | ")} |`);

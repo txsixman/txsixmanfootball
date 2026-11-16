@@ -320,7 +320,7 @@ jobs:
           path: apps/web/e2e/.results
           retention-days: 7
 
-  # Speed and accessibility scores on mobile settings, on the shared build (lighthouserc.cjs), two pages a job. Its own
+  # Speed and accessibility scores on mobile settings, on the shared build (lighthouserc.cjs), two pages a job (one kind of page a fan opens: home, scores, playoffs, a bracket, a game, a program, rankings, results). Its own
   # check, beside the shards, and not part of `web`. Run with npx, pinned, so its 300-odd packages stay out of the
   # site's own install (and Vercel's).
   lighthouse:
@@ -333,7 +333,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pages: ["/,/rankings", "/results,/programs/jayton"]
+        pages:
+          - "/,/rankings"
+          - "/results,/programs/jayton"
+          - "/scores,/playoffs"
+          - "/playoffs/this-round,/playoffs/bracket/uil-division-i"
+          - "/scores/2026-11-06-earth-springlake-at-whitharral"
     name: lighthouse (${{ matrix.pages }})
     steps:
       - uses: actions/checkout@v7
