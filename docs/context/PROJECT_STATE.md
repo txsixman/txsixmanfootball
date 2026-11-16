@@ -112,9 +112,12 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   twice, never follows a redirect, skips open dates, and drops games listed twice with different scores (coverage.txt).
   `run.py --season` writes ratings with `sd`, `rated`, `was` (Monday-to-Sunday weeks, as on `/results`), `trend` and `rated_trend` by week (from week 4), `home_field`, `sigma`, `playoff_edge`, `calibration`, `group_means` and a `report` of forfeits, duplicates, ties and outside games; seasons chain, so rate 2021 to 2026 in order
 - State Championships: `tools/history/uil-champions.mjs` from UIL's archive; names mapped in `uil-aliases.json`; lineage by
-  hand in `data/seed/lineage/programs.csv` (TEA's consolidation list): 49 of 52 finalists reach a current program
-  (O'Brien became Knox City, 1976; the other three, Jarrell, Marathon and Christoval, are still independent districts that no longer play
-  six-man, so no lineage)
+  hand in `data/seed/lineage/programs.csv` (TEA's consolidation list, then district sites; 18 rows) and other names in
+  `names.csv` (ADR 0072): 49 of 52 finalists reach a current program (O'Brien became Knox City, 1976; the other three,
+  Jarrell, Marathon and Christoval, are still independent districts that no longer play six-man, so no lineage). 16
+  program pages list other names (Formed from, Became, Also known as); a renamed or consolidated school's finals count
+  toward the program it became, an annexed or split one's do not. Left out for want of a school, TEA or UIL page: 15
+  current programs' older mergers (ADR 0072 lists them) and the 49 past private-league playoff teams not in a 2026 list
 - **Supabase** (`vhgnaihnyjdnaaergtcl`): migrations 0001 to 0016 (0009: `team_season_league`, every league that lists a team that season; 0016: `live_score` and `live_scores()`, ADR 0021), loaded after every push to `main` (`main.yml`) with live RLS and
   API-role checks (`.github/workflows/supabase.yml`, with `PRIVATE_DATA`); unchanged games are skipped, ~5 min. The site does not read the database yet
 - **CI** on every push: database, league readers, history, school identity, ratings, typecheck, 98 page tests (phone
