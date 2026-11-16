@@ -11,14 +11,6 @@ import { KickoffStatus } from "../kickoff-status";
 import { SiteAddress } from "../scores/directions";
 import { CrestSlot } from "../ui";
 
-/** A round's heading count: "16 games", "2 games · 6 more set by the bracket", or "1 game set by the bracket" when no
- * listing has any yet (never "0 games"). */
-export function roundCount(r: { games: unknown[]; built: unknown[] }): string {
-  const n = (k: number) => `${k} ${k === 1 ? "game" : "games"}`;
-  if (!r.games.length && r.built.length) return `${n(r.built.length)} set by the bracket`;
-  return `${n(r.games.length)}${r.built.length ? ` · ${r.built.length} more set by the bracket` : ""}`;
-}
-
 const day = gameDay;
 
 /** The mark on a final the sources give different winners (ADR 0040): bordered, so it reads on a phone in the sun. */
