@@ -416,6 +416,40 @@ test.describe("posts for a signed-in fan (a stand-in for Supabase)", () => {
     expect(errors).toEqual([]);
   });
 
+  test("/playoffs/this-round: every game with a page links to its comments, named for the matchup, from one request", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto("/playoffs/this-round", { waitUntil: "networkidle" });
+    // Rows the bracket only sets (data-built) have no game page and so no link.
+    const rows = page.locator("main section li:not([data-built])");
+    const n = await rows.count();
+    const links = page.locator("main a[data-comment-count]");
+    await expect(page.locator("main li[data-built] a[data-comment-count]")).toHaveCount(0);
+    if (n === 0) {
+      await expect(links).toHaveCount(0);
+      return;
+    }
+    await expect(links).toHaveCount(n, { timeout: 20_000 });
+    // The stub gave the first game it was asked about 3 comments and the second 1; the rest have none and say "Comments".
+    const [first, second] = stub.countKeys;
+    const link = (key: string) => page.locator(`main a[href="/scores/${key}#comments"]`);
+    await expect(link(first)).toHaveText("3 comments");
+    await expect(link(first)).toHaveAccessibleName(/^3 comments on .+ vs .+$/);
+    if (second) await expect(link(second)).toHaveText("1 comment");
+    for (const href of await links.evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""))) expect(href).toMatch(/^\/scores\/[a-z0-9-]+#comments$/);
+    if (n > 2) {
+      const plain = links.filter({ hasText: /^Comments$/ }).first();
+      await expect(plain).toHaveAttribute("data-comment-count", "0");
+      await expect(plain).toHaveAccessibleName(/^Comments on .+ vs .+$/);
+    }
+    await expect(page.locator("a a")).toHaveCount(0);
+    const calls = called("comment_counts");
+    expect(calls).toHaveLength(1);
+    expect(new Set(calls[0].args.p_game_keys as string[]).size).toBe((calls[0].args.p_game_keys as string[]).length);
+    await axeClean(page);
+    expect(errors).toEqual([]);
+  });
+
   test("the comment counts route: nonzero games only, valid keys only, 200 at most, cached 30 seconds", async ({ request }) => {
     const r = await request.get("/api/games/comment-counts?keys=aaaaaa-one,bbbbbb-two,cccccc-three,X,x,aaaaaa-one");
     expect(r.status()).toBe(200);
