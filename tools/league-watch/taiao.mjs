@@ -13,8 +13,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { mergeKickoffs, missingDetails, siteText, streetText } from "./davecampbells.mjs";
+import { mergeKickoffs, missingDetails, readWithheld, siteText, streetText } from "./davecampbells.mjs";
 import { centralDate, slugify } from "./maxpreps.mjs";
+import { parseCsv } from "./store.mjs";
 import { robotsAllows, USER_AGENT } from "./tapps.mjs";
 
 export const PAGE = "https://taiao.org/football/playoffs";
@@ -365,18 +366,55 @@ export const dueGames = (games, today) =>
     .filter((g) => g.teams.length === 2 && g.date && g.date >= today && g.teams.every((t) => t.score === null))
     .map((g) => ({ league: "TAIAO", game_date: g.date, home: g.teams[0].name, away: g.teams[1].name }));
 
-/** `--details --out <file>`: the bracket's kickoffs and sites merged into the facts file (never overwriting, ADR 0041). */
+/**
+ * Listed TAIAO games still to play that the league's own bracket contradicts: one of its teams' next bracket game (two
+ * teams known, no score yet, dated or not) is against someone else. Such a listing is voided by hand in
+ * data/corrections/games.csv (ADR 0040), so a listing already voided there (`voided`: keys "date|team|team", teams
+ * sorted) is not counted. Nov 2026: the second source listed all six semifinals as same-region pairings, while the
+ * bracket's semifinals are a crossover.
+ */
+export function contradictedListings(games, listed, voided, today) {
+  const next = new Map();
+  for (const g of games) {
+    if (g.teams.length !== 2 || g.teams.some((t) => t.score !== null)) continue;
+    next.set(g.teams[0].name, g.teams[1].name);
+    next.set(g.teams[1].name, g.teams[0].name);
+  }
+  return listed.filter((r) => {
+    if (r.league !== "TAIAO" || r.game_date < today || r.home_score !== "" || r.away_score !== "") return false;
+    if (voided.has([r.game_date, ...[r.home, r.away].sort()].join("|"))) return false;
+    const other = (a, b) => next.has(a) && next.get(a) !== b;
+    return other(r.home, r.away) || other(r.away, r.home);
+  });
+}
+
+/** Void keys ("date|team|team", teams sorted) of the corrections file's rows. */
+export const voidKeys = (rows) =>
+  new Set(rows.filter((r) => r.action === "void").map((r) => [r.game_date, ...[r.home, r.away].sort()].join("|")));
+
+/** `--details --out <file>`: the bracket's kickoffs and sites merged into the facts file (never overwriting, ADR 0041).
+ * It also counts the listed games the bracket contradicts and no correction voids yet (contradictedListings). */
 async function details() {
   const out = process.argv.includes("--out") ? process.argv[process.argv.indexOf("--out") + 1] : null;
   if (!out) throw new Error("usage: taiao.mjs --details --out <game details file>");
   const today = centralDate();
   const games = await readBrackets();
   const fresh = detailRows(games);
-  const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh);
+  const merged = mergeKickoffs(existsSync(out) ? readFileSync(out, "utf8") : "", fresh, readWithheld());
   writeFileSync(out, merged);
   const due = dueGames(games, today);
   console.log(`League bracket details: ${due.length} TAIAO bracket games still to play with both teams known; ${fresh.filter((r) => r.kickoff_utc).length} kickoffs and ${fresh.filter((r) => r.site_name).length} sites on the bracket.`);
   console.log(missingDetails(due, merged));
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+  const listedFile = path.join(root, `data/seed/maxpreps-${SEASON}/playoffs.csv`);
+  const fixesFile = path.join(root, "data/corrections/games.csv");
+  if (existsSync(listedFile)) {
+    const listed = parseCsv(readFileSync(listedFile, "utf8"), "playoffs.csv").rows;
+    const fixes = existsSync(fixesFile) ? parseCsv(readFileSync(fixesFile, "utf8"), "corrections").rows : [];
+    const wrong = contradictedListings(games, listed, voidKeys(fixes), today);
+    // Counts only (ADR 0067 item 4); a person finds the rows by hand and voids each with the bracket as its source.
+    console.log(`Listed TAIAO games the league's bracket contradicts, not yet voided: ${wrong.length}.`);
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await (process.argv.includes("--text") ? text() : process.argv.includes("--details") ? details() : main());

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { BRACKET_HEADER, bracketRows, checkTaiao, detailRows, dueGames, kickoffUtc, mergeBrackets, mergeInto, PAGE, parseBracket, parseBracketSlots, parseTaiao, venueOf } from "./taiao.mjs";
+import { BRACKET_HEADER, bracketRows, checkTaiao, contradictedListings, detailRows, dueGames, kickoffUtc, voidKeys, mergeBrackets, mergeInto, PAGE, parseBracket, parseBracketSlots, parseTaiao, venueOf } from "./taiao.mjs";
 
 // Invented teams, in the table shape taiao.org rendered on Nov 10, 2026 (ADR 0005).
 const regions = ["North", "South"];
@@ -214,4 +214,33 @@ test("details rows: the bracket's own games, played or not, home as marked, kick
     { date: "2026-11-13", home: "Finch Falcons", away: "Owl Prep", kickoff_utc: "2026-11-14T01:00:00Z", site_name: "Lark Field", site_city: "", site_street: "", site_state: "", site_zip: "" },
   ]);
   assert.deepEqual(dueGames(games, "2026-11-15").map((g) => g.home), ["Lark Owls", "Robin Prep", "Kite Prep"]);
+});
+
+test("contradicted listings: a listed game still to play whose teams the bracket pairs with others, unless voided", () => {
+  const team = (name, home = false, score = null) => ({ name, home, score });
+  // The bracket: a crossover semifinal with a date, one still TBD, and a played quarterfinal.
+  const games = [
+    { code: "SF1", teams: [team("Lark Owls", true), team("Wren Academy")], date: "2026-11-20", time: "19:30", site: null },
+    { code: "SF2", teams: [team("Robin Prep", true), team("Jay Home School")], date: null, time: null, site: null },
+    { code: "NQ1", teams: [team("Lark Owls", true, 40), team("Crane Christian", false, 6)], date: "2026-11-13", time: null, site: null },
+  ];
+  const row = (game_date, home, away, home_score = "", away_score = "") => ({ league: "TAIAO", division: "1", game_date, home, away, home_score, away_score });
+  const listed = [
+    row("2026-11-20", "Lark Owls", "Wren Academy"), // the bracket's own pairing: fine
+    row("2026-11-20", "Wren Academy", "Robin Prep"), // both teams play others next: contradicted
+    row("2026-11-20", "Jay Home School", "Kite Prep"), // Jay plays Robin Prep (TBD date): contradicted
+    row("2026-11-20", "Lark Owls", "Robin Prep"), // contradicted, but already voided
+    row("2026-11-13", "Lark Owls", "Crane Christian", "40", "6"), // played
+    row("2026-11-21", "Swift Academy", "Kite Prep"), // neither team in a bracket game still to play
+    { ...row("2026-11-20", "Wren Academy", "Jay Home School"), league: "TAPPS" }, // another league
+  ];
+  const voided = voidKeys([
+    { game_date: "2026-11-20", home: "Robin Prep", away: "Lark Owls", action: "void" },
+    { game_date: "2026-11-20", home: "Wren Academy", away: "Robin Prep", action: "score" },
+  ]);
+  assert.deepEqual(
+    contradictedListings(games, listed, voided, "2026-11-16").map((r) => `${r.home} v ${r.away}`),
+    ["Wren Academy v Robin Prep", "Jay Home School v Kite Prep"],
+  );
+  assert.deepEqual(contradictedListings(games, listed, voided, "2026-11-21"), [], "a game before today is not counted");
 });
