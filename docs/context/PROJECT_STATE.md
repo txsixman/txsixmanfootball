@@ -129,6 +129,10 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
 - **Tool checks** (Nov 11): Zod on every data file where it is loaded and before each robot commit; Lighthouse budgets
   on mobile settings (home, `/rankings`, `/results`, a program page); knip; ruff; Dependabot weekly. Licenses in
   `docs/licenses.md` (web-push is MPL-2.0, used unmodified and only in GitHub Actions)
+- **Data gaps** (ADR 0084, Nov 16): `scripts/data-gaps.mjs` in CI's web-checks counts eleven kinds of gap every season and
+  fails on a new one; 15 known gaps are in `data/gaps-allowed.json` with reasons. Three of them (CHANT, Covenant Prep,
+  High Island: no 2026 game yet) go stale after the next full results read, which moves their games out of the private
+  `outside.csv`: remove those entries then
 
 ## In progress
 - Program season pages (Round N) on their PR.
@@ -170,4 +174,4 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   appear on their own once a game is read (`lib/active-orgs.ts`), and Standings never lists it. Check the first run.
 - **Private leagues not yet listed (ADR 0073):** TCAL runs six-man (its own plan) but publishes no 2026 teams; TCSAAL is 11-man only. Both show under "Not yet listed" on `/programs`; re-check each season. Sherman Grayson
   Christian School is in TCAF and TAIAO at once: one program, ranked in each (`programsFor`, `team_season_league`).
-- **School logos** are an accepted trademark risk (ADRs 0006, 0016). 275 of 280 programs have one (Nov 11): edited where needed (padding trimmed, solid boxes stripped), the untouched originals in `data/seed/schools/logo-originals/`, many replaced by Dave Campbell's team-page logos. Missing, no allowed source found: Brazos Valley Lions, Community School of Mesquite, Grace (Perrin), New Braunfels Spartans, St. Mary's. Still weak: Founders Classical Conroe and Plainview share the Founders network mark; Immanuel (El Paso) and Vernon Northside are 100px. 34 logos still come from hosts (mostly ParentSquare's file host) whose robots.txt disallows a refetch, so their originals are the 320px copies kept from the first download.
+- **School logos** are an accepted trademark risk (ADRs 0006, 0016). 280 of 283 programs have one (Nov 16): edited where needed (padding trimmed, solid boxes stripped), the untouched originals in `data/seed/schools/logo-originals/`, many replaced by Dave Campbell's team-page logos. Missing, no allowed source found (searched again Nov 16, `data/gaps-allowed.json`): Brazos Valley Lions, Community School of Mesquite, New Braunfels Spartans. Added Nov 16 (ADR 0084): High Island, CHANT, St. Mary's and Grace (Perrin) from Dave Campbell's team pages, Covenant Prep from its own site. Still weak: Founders Classical Conroe and Plainview share the Founders network mark; Immanuel (El Paso) and Vernon Northside are 100px. 34 logos still come from hosts (mostly ParentSquare's file host) whose robots.txt disallows a refetch, so their originals are the 320px copies kept from the first download.

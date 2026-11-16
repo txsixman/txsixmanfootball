@@ -141,3 +141,7 @@ Not in an ADR:
   season under way (`/championships/<season>/<bracket>`); a final recorded by the robot or a correction names its
   champion on every page with no hand edit; UIL's archive stays the UIL record, a recorded UIL final fills its gap; the
   private leagues' recorded finals since 2018 are their record (Nov 16, 2026).
+- **Data gaps check** (ADR 0084): `scripts/data-gaps.mjs` counts eleven kinds of gap every season (no date or score, no
+  kickoff or site, unknown teams, duplicates, scores that disagree, empty seasons, no league, ratings that skip a game, no
+  logo); a gap is known by a rule citing its ADR or by a reasoned entry in `data/gaps-allowed.json`; a new gap or a stale
+  entry fails CI's web-checks job, never a robot commit (Nov 16, 2026).

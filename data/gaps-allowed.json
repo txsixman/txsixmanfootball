@@ -1,0 +1,92 @@
+[
+  {
+    "kind": "no-score",
+    "key": "no-score 2021 2021-11-12|bvchea|ume-preparatory-academy",
+    "reason": "The 2021 TAIAO semifinal UME Prep v BVCHEA is listed with no score. BVCHEA played San Antonio Patriots the next day (36-38), which suggests it was not played as listed, but no page in the data says so, so it is neither scored nor voided. Void it in data/corrections once a page says it was not played.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "score-mismatch",
+    "key": "score-mismatch 2024 2024-11-15|divine-savior-academy-missouri-city|the-covenant-preparatory-school",
+    "reason": "The Covenant Preparatory School joined the alignments on Nov 15, 2026 (Independent, ADR 0073). The 2024 season was read before that, so its games.csv holds none of Covenant Prep's games and this TAPPS round-1 game is only in playoffs.csv. A re-read of 2024 (maxpreps.mjs --season 2024, with the private data) adds it; games.csv is never edited by hand.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "empty-season",
+    "key": "empty-season 2026 christian-homeschool-athletes-of-north-texas-chant",
+    "reason": "Added to the alignments on Nov 15, 2026 at 8:24 PM Central, after that day's last full results read. Its 2026 games (2 found) are in the private outside.csv because its opponents were read before it was listed. The next full read (Results watch, Friday to Sunday) moves them into games.csv; remove this entry then.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "empty-season",
+    "key": "empty-season 2026 the-covenant-preparatory-school",
+    "reason": "Added to the alignments on Nov 15, 2026 at 8:24 PM Central, after that day's last full results read. Its one 2026 game found (at Baytown Christian Academy, Sep 4) is in the private outside.csv because it was read before Covenant Prep was listed. The next full read moves it into games.csv; remove this entry then.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "empty-season",
+    "key": "empty-season 2026 high-island",
+    "reason": "Added to the alignments on Nov 15, 2026 at 8:39 PM Central (ADR 0074), after that day's last full results read. Its 2026 games (8 found, including Burkeville, Apple Springs and Buckholts) are in the private outside.csv because they were read before High Island was listed. The next full read moves them into games.csv; remove this entry then.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "empty-season",
+    "key": "empty-season 2026 grace-christian-academy-houston",
+    "reason": "The results reader reaches its schedule page and finds no 2026 games (coverage, Nov 15, 2026). Whether it fields a team this season is not stated on any page read; it stays listed under TAPPS's 2026-28 alignment.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "empty-season",
+    "key": "empty-season 2026 hedley",
+    "reason": "The results reader reaches its schedule page and finds no 2026 games (coverage, Nov 15, 2026). Whether it fields a team this season is not stated on any page read; it stays listed under UIL's 2026-28 alignment.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "empty-season",
+    "key": "empty-season 2026 pawnee",
+    "reason": "The results reader reaches its schedule page and finds no 2026 games (coverage, Nov 15, 2026). Whether it fields a team this season is not stated on any page read; it stays listed under UIL's 2026-28 alignment.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "no-site",
+    "key": "no-site 2026 2026-11-06|fort-bend-chargers|valor-north-austin",
+    "reason": "TAIAO's own bracket gives this round-1 game a street address and kickoff but no venue name, and a site is shown by its name (ADR 0066), so none is added. Add it by hand if an allowed page names the field.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "no-site",
+    "key": "no-site 2026 2026-11-07|san-antonio-patriots|williamson-county-homeschool-wilco",
+    "reason": "TAIAO's own bracket gives this round-1 game a street address and kickoff but no venue name, and a site is shown by its name (ADR 0066), so none is added. Add it by hand if an allowed page names the field.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "no-kickoff",
+    "key": "no-kickoff 2026 2026-11-12|jonesboro|medina",
+    "reason": "UIL Division I bi-district, played Nov 12 (Medina 60-14). Neither school's own pages state the kickoff or site (Medina ISD's schedule pages render empty; Jonesboro ISD links outside documents), and UIL's bracket page embeds a source this project never reads. News items name a neutral field, but none is an allowed page, so nothing is added.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "no-site",
+    "key": "no-site 2026 2026-11-12|jonesboro|medina",
+    "reason": "UIL Division I bi-district, played Nov 12 (Medina 60-14). Neither school's own pages state the kickoff or site (Medina ISD's schedule pages render empty; Jonesboro ISD links outside documents), and UIL's bracket page embeds a source this project never reads. News items name a neutral field, but none is an allowed page, so nothing is added.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "no-logo",
+    "key": "no-logo brazos-valley-lions-athletics",
+    "reason": "No site of its own found, and Dave Campbell's team list has no page for this homeschool program (its Brazos Valley Lions pages are a public high school). Searched again Nov 16, 2026. Initials badge in its place.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "no-logo",
+    "key": "no-logo new-braunfels-spartans",
+    "reason": "No site of its own found (nbspartans.com is a different youth league). Dave Campbell's has a New Braunfels Spartans team page but no logo image for it. Searched again Nov 16, 2026. Initials badge in its place.",
+    "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "no-logo",
+    "key": "no-logo community-school-of-mesquite",
+    "reason": "No site of its own found, and Dave Campbell's team list has no page for it. Searched again Nov 16, 2026. Initials badge in its place.",
+    "reviewed": "2026-11-16"
+  }
+]

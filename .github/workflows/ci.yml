@@ -86,6 +86,10 @@ jobs:
       # The data as it is: every file, then the cross-file checks (hard ones fail; warnings go to the run summary).
       - name: Data checks, files and cross-file (scripts/check-data.mjs, scripts/data-integrity.mjs)
         run: node apps/web/scripts/check-data.mjs
+      # Gaps the site would show (no kickoff or site, unknown teams, empty seasons, ratings that skip a game, no logo),
+      # counted by kind in the run summary; a new one, or a stale data/gaps-allowed.json entry, fails.
+      - name: Data gaps (scripts/data-gaps.mjs, data/gaps-allowed.json)
+        run: node apps/web/scripts/data-gaps.mjs
       - name: Knip (unused files, exports and dependencies in apps/web; knip.json)
         working-directory: apps/web
         run: npx --yes knip@6.45.1 --no-progress

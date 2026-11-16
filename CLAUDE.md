@@ -127,6 +127,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   `data/` changed (the project's Ignored Build Step). Never `vercel env pull` or `vercel deploy` from a laptop:
   pushes to `main` deploy, branches get protected previews. `vercel link` writes a short-lived OIDC token to
   `.env.local`; delete it, the site uses none
+- `node apps/web/scripts/data-gaps.mjs`: counts each kind of data gap (ADR 0084) and fails on a new one or a stale
+  `data/gaps-allowed.json` entry (CI's web-checks job; not the robots)
 - `node apps/web/scripts/check-data.mjs`: Zod check of every seed and robot-read file (`lib/data-schemas.ts`), then
   the cross-file checks (`scripts/data-integrity.mjs`: hard ones fail, on the current season; soft ones warn in the
   run summary); the robots run it before they commit. Results watch runs the cross-file checks with

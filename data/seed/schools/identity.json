@@ -1040,8 +1040,18 @@
       "mascotSource": "https://ntxchant.org/",
       "colors": [],
       "colorsSource": null,
-      "logo": null,
-      "notes": "Christian Homeschool Athletes of North Texas (CHANT), a homeschool program in the North Texas area. Its own site says it offers a six-man football program and calls its teams the Chargers; it names no league, so it is Independent (read Nov 15, 2026). Colors are not stated, so none are recorded. No logo fetched yet."
+      "logo": {
+        "image": "https://images.davecampbells.com/HighSchool/logo/north-texas-chant-chargers.png",
+        "page": "https://www.davecampbells.com/team/melissa-chant",
+        "retrievedOn": "2026-11-16",
+        "sha256": "6fcfa4fa1795c2f7f19085bc5fc8eca096e99eb199baf73d0adb8f834007cbbc",
+        "file": "christian-homeschool-athletes-of-north-texas-chant.png",
+        "original": "christian-homeschool-athletes-of-north-texas-chant.png",
+        "aspect": 1.07,
+        "light": false,
+        "edit": "trimmed padding (the mark filled 65% of the canvas)."
+      },
+      "notes": "Christian Homeschool Athletes of North Texas (CHANT), a homeschool program in the North Texas area. Its own site says it offers a six-man football program and calls its teams the Chargers; it names no league, so it is Independent (read Nov 15, 2026). Colors are not stated, so none are recorded. Logo from its Dave Campbell's team page (ADR 0016), Nov 16, 2026."
     },
     "claude": {
       "school": "Claude",
@@ -1980,8 +1990,18 @@
         "white"
       ],
       "colorsSource": "https://www.tcafellowship.com/our-schools",
-      "logo": null,
-      "notes": "Grace Christian Academy, Perrin (TCAF). Mascot and colors from TCAF's schools page (\"Colts/Blue, Black & White\"); the school's own site gives the Perrin address but no colors. No logo from an allowed source: initials badge in its colors (the owner, Nov 11, 2026)."
+      "logo": {
+        "image": "https://images.davecampbells.com/HighSchool/logo/perrin-grace-christian-academy-colts.png",
+        "page": "https://www.davecampbells.com/team/weatherford-grace-christian-colts",
+        "retrievedOn": "2026-11-16",
+        "sha256": "858635d976ff3c9373da267fa5fe215c59f5b41712e6f0a19f9ec118aa955048",
+        "file": "grace-perrin.png",
+        "original": "grace-perrin.png",
+        "aspect": 2.62,
+        "light": false,
+        "edit": "trimmed padding (the mark filled 67% of the canvas)."
+      },
+      "notes": "Grace Christian Academy, Perrin (TCAF). Mascot and colors from TCAF's schools page (\"Colts/Blue, Black & White\"); the school's own site gives the Perrin address but no colors. Logo from its Dave Campbell's team page (ADR 0016), Nov 16, 2026; until then an initials badge, as no allowed source had one (the owner, Nov 11, 2026)."
     },
     "grandfalls-royalty": {
       "school": "Grandfalls-Royalty",
@@ -2329,8 +2349,18 @@
       "mascotSource": "https://www.highislandisd.com/",
       "colors": [],
       "colorsSource": null,
-      "logo": null,
-      "notes": "High Island ISD. UIL's 2026-28 alphabetical alignment lists it 1A, football Division II, 6-Man; UIL's revised Division II alignment puts it in no district, so it is registered in UIL Division II with no district and no standings place (ADR 0074). Mascot from the district's own home page ('a GREAT day to be a CARDINAL', read Nov 15, 2026). Colors are not stated, so none are recorded. No logo fetched yet."
+      "logo": {
+        "image": "https://images.davecampbells.com/HighSchool/logo/high-island-cardinals.png",
+        "page": "https://www.davecampbells.com/team/high-island-cardinals",
+        "retrievedOn": "2026-11-16",
+        "sha256": "1376c1e1f2934916fb37b29f732132fded6191921d6009455cd8ee09b96b2648",
+        "file": "high-island.png",
+        "original": "high-island.png",
+        "aspect": 1.61,
+        "light": false,
+        "edit": "trimmed padding (the mark filled 47% of the canvas)."
+      },
+      "notes": "High Island ISD. UIL's 2026-28 alphabetical alignment lists it 1A, football Division II, 6-Man; UIL's revised Division II alignment puts it in no district, so it is registered in UIL Division II with no district and no standings place (ADR 0074). Mascot from the district's own home page ('a GREAT day to be a CARDINAL', read Nov 15, 2026). Colors are not stated, so none are recorded. Logo from its Dave Campbell's team page (ADR 0016), Nov 16, 2026."
     },
     "hill-country-christian-school-san-marcos": {
       "school": "Hill Country Christian School-San Marcos",
@@ -4761,8 +4791,18 @@
         "gold"
       ],
       "colorsSource": "https://www.acaaathletics.org/schools",
-      "logo": null,
-      "notes": "St. Mary's Catholic School, Taylor (TAIAO South): the results robot reads the Taylor St. Mary's Rams schedule for this team. Mascot and colors from the ACAA schools page (\"Mascot - Rams\", \"Colors: Blue and Gold\"); the school's own site answers 403 to every request. No logo from an allowed source: initials badge in its colors (the owner, Nov 11, 2026)."
+      "logo": {
+        "image": "https://images.davecampbells.com/HighSchool/logo/taylor-st-mary-s-rams.png",
+        "page": "https://www.davecampbells.com/team/taylor-st-mary-s-rams",
+        "retrievedOn": "2026-11-16",
+        "sha256": "b7d5301cb5bb43c2c474d01b69a8a13d3a392a258dc71f8dc43ccaf5b2622e9f",
+        "file": "st-marys.png",
+        "original": "st-marys.png",
+        "aspect": 1.34,
+        "light": false,
+        "edit": "trimmed padding (the mark filled 56% of the canvas)."
+      },
+      "notes": "St. Mary's Catholic School, Taylor (TAIAO South): the results robot reads the Taylor St. Mary's Rams schedule for this team. Mascot and colors from the ACAA schools page (\"Mascot - Rams\", \"Colors: Blue and Gold\"); the school's own site answers 403 to every request. Logo from its Dave Campbell's team page (ADR 0016), Nov 16, 2026; until then an initials badge, as no allowed source had one (the owner, Nov 11, 2026)."
     },
     "st-pauls-prep": {
       "school": "St. Paul's Prep",
@@ -4996,8 +5036,18 @@
       "mascotSource": null,
       "colors": [],
       "colorsSource": null,
-      "logo": null,
-      "notes": "The Covenant Preparatory School, Kingwood. Its own football page lists a 6-Man schedule and roster and names no league for football (its athletic forms are TAPPS forms, but TAPPS's 2026-28 alignment does not list it), so it is Independent (read Nov 15, 2026). Mascot and colors are not stated in the page text, so none are recorded. No logo fetched yet."
+      "logo": {
+        "image": "https://www.covenantknights.org/wp-content/uploads/2022/03/logo.svg",
+        "page": "https://www.covenantknights.org/",
+        "retrievedOn": "2026-11-16",
+        "sha256": "f7a803ffa2aaf8f2140439c391e118e8a91dea69d399f83deeaecd15bc1e7d9d",
+        "file": "the-covenant-preparatory-school.svg",
+        "original": "the-covenant-preparatory-school.svg",
+        "aspect": 3.79,
+        "light": true,
+        "tile": "dark"
+      },
+      "notes": "The Covenant Preparatory School, Kingwood. Its own football page lists a 6-Man schedule and roster and names no league for football (its athletic forms are TAPPS forms, but TAPPS's 2026-28 alignment does not list it), so it is Independent (read Nov 15, 2026). Mascot and colors are not stated in the page text, so none are recorded. Logo from its own site's header (a white mark, shown on a dark tile), Nov 16, 2026."
     },
     "the-emery-weiner-school-houston": {
       "school": "The Emery/Weiner School-Houston",
