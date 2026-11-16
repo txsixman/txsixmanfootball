@@ -312,7 +312,7 @@ test("the overview is empty lists on odd data and null when refused", async () =
   assert.deepEqual((await moderationOverview(answer({ flagged_posts: [{ id: "p" }] }))).flagged_posts, [{ id: "p" }]);
 });
 
-test("the recent posts list (ADR 0084): the rows, 'missing' before migration 0032, null when refused or odd", async () => {
+test("the recent posts list (ADR 0085): the rows, 'missing' before migration 0032, null when refused or odd", async () => {
   const { recentPosts } = await import("../lib/admin/moderation.ts");
   const calls = [];
   const answer = (data, error = null) => ({ rpc: async (fn) => (calls.push(fn), { data, error }) });

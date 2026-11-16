@@ -32,7 +32,7 @@ export async function moderationOverview(supabase: SupabaseClient): Promise<Over
 export type RecentPost = Omit<HiddenPost, "hidden_at"> & { created_at: string };
 
 /**
- * The newest posts still showing, last 7 days, at most 100 (admin_recent_posts, migration 0032, ADR 0084), so the owner can hide
+ * The newest posts still showing, last 7 days, at most 100 (admin_recent_posts, migration 0032, ADR 0085), so the owner can hide
  * one nobody reported. "missing" before the migration is on the database (the page then says so); null when refused.
  */
 export async function recentPosts(supabase: SupabaseClient): Promise<RecentPost[] | "missing" | null> {

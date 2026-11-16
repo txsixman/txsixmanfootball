@@ -1,4 +1,4 @@
-# ADR 0084: Follow on a browser that cannot show alerts, and the owner's reach over posts nobody reported
+# ADR 0085: Follow on a browser that cannot show alerts, and the owner's reach over posts nobody reported
 
 **Status:** Proposed Nov 16, 2026; accepted when its pull request is merged. It adds to ADR 0054 (alerts tied to the account),
 ADR 0061 (the owner's moderation tools) and ADR 0082 (game-night alerts).

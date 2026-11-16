@@ -1,4 +1,4 @@
--- The owner's reach over posts nobody reported (ADR 0084). /admin/moderation listed only reported and hidden posts
+-- The owner's reach over posts nobody reported (ADR 0085). /admin/moderation listed only reported and hidden posts
 -- (admin_moderation_overview, migration 0027), so a post the owner saw, that no fan had reported, could not be hidden:
 -- the owner's account has no fan profile, so it cannot report. This adds one read: the newest posts still showing, from the last
 -- 7 days, each with its place and how many reports it has, so the page can offer Hide, Mute and Ban on any of them

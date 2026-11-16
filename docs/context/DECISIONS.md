@@ -141,7 +141,7 @@ Not in an ADR:
   season under way (`/championships/<season>/<bracket>`); a final recorded by the robot or a correction names its
   champion on every page with no hand edit; UIL's archive stays the UIL record, a recorded UIL final fills its gap; the
   private leagues' recorded finals since 2018 are their record (Nov 16, 2026).
-- **Follow without alerts, and recent posts for the owner** (ADR 0084): a signed-out browser that cannot show alerts (an
+- **Follow without alerts, and recent posts for the owner** (ADR 0085): a signed-out browser that cannot show alerts (an
   iPhone's Safari tab) follows on the browser only, for My teams; an unfollow never asks permission; the 25-team browser cap
   says so; `/admin/moderation` lists every post of the last 7 days (`admin_recent_posts`, migration 0032) so an unreported one
   can be hidden; every fan route's database failure logs its code (Nov 16, 2026).

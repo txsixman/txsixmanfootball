@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ADMIN, as, asFan, db, fan, KEYS, sudo } from "./posts-helpers.mjs";
 
-// The owner's list of recent posts (migration 0032, ADR 0084): every post still showing from the last 7 days, newest first, so
+// The owner's list of recent posts (migration 0032, ADR 0085): every post still showing from the last 7 days, newest first, so
 // one nobody reported can be hidden. Admin-only and read-only.
 const comment = (d, text, key = KEYS.playoff) => d.query("select add_comment($1, $2) as id", [key, text]).then((r) => r.rows[0].id);
 const recent = async (d) => (await d.query("select admin_recent_posts() as l")).rows[0].l;
