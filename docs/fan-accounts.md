@@ -101,6 +101,7 @@ Do these in order, in one sitting. Each step names how to check it worked.
 | `/account` | Display name, date joined, Sign out (it also stops the account's alerts on that browser, ADR 0054), Delete my account (a confirm step, then `delete_my_account()`, which also removes the account's push subscriptions), and an offer to copy this browser's follows into the account |
 | `/privacy`, `/terms` | Plain language, linked from `/sign-in`, `/account/welcome` and `/account` (and the site footer, on every page, whichever way `FAN_SIGNIN` is set) |
 | Header | "Sign in", or the display name. Filled in by the page's own script from `/api/me`, so static pages stay static |
+| My teams (home page), `/account` | Only while `FAN_PUSH_ALERTS` is on: "Game alerts on this device", a switch for this browser's kickoff, final and next-game alerts (ADR 0082); permission is asked on the tap; on iPhone and iPad a note to add the site to the Home Screen first |
 | Program page | The Follow button: signed out, push alerts on this browser as before; signed in, it also follows on the account (and still follows on the account where the browser cannot show alerts) and links this browser's push alerts to the account, so a follow on any device alerts every linked browser (ADR 0054) |
 | Home, My teams | The account's follows when signed in, else this browser's |
 | `/forums`, a board, a thread | Only while `FAN_POSTS` is on (otherwise 404). Anyone reads; a signed-in fan with a profile posts, replies, edits their own and flags others |
@@ -174,6 +175,39 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
   follows go; a thread it started goes with its replies; its score reports stay with no reporter (`reporter_id` set null), so a
   confirmed score does not change. `/privacy` says so.
 
+## Game-night push alerts (ADR 0082)
+
+Followers get three alerts per game on every device they turn alerts on for: the kickoff ("Whiteface v Jayton has started"),
+the final ("Final: Whiteface 48, Jayton 12") and, in the playoffs, the next game once the bracket sets it ("Next round: …").
+Each opens the game's page. Finals alerts were already live (migration 0008, ADR 0054); the other two, the new wording and the
+toggle are **built dark** behind two switches, both off.
+
+| Switch | Where | What it does |
+|---|---|---|
+| `push_alerts` | Supabase, table `site_switch` (migration 0031; every change in `audit_log`) | The sender (`tools/push/send-finals.mjs`) reads it. Off: finals go out as before, nothing else. On: kickoff and next-game alerts too, and the new final wording |
+| `FAN_PUSH_ALERTS` | Vercel, Production, server only, exactly `on` | Shows the "Game alerts on this device" toggle on the home page's My teams block and on `/account` (`GET /api/push/status` answers `{"alerts":true}`). Off: the site looks as before |
+
+- **Keys:** none to make. The VAPID pair in use since Nov 12 serves both (public half committed, private half in the owner's
+  Keychain and the `VAPID_PRIVATE_KEY` repo secret). The site never sends, so Vercel needs no key.
+- **Each event once:** `push_sent` (migration 0031) holds one row per kickoff, final (with its score) and pairing; the sender
+  claims the row before sending. Row-level security, no policy, no grant. Rows older than 90 days are deleted by the sender.
+- **Where they are sent:** Results watch. Kickoffs: the "Kickoff alerts" step right after each night read's live scores
+  (it can never fail the read). Finals and pairings: the `alerts` job after a results commit. No site route can send.
+- **The toggle:** permission is asked only on the tap. Signed in, on links this browser to the account; off removes this device.
+  Signed out, on alerts for the teams this browser follows; off stops alerts and keeps the list. iPhone and iPad: "add this site
+  to your Home Screen first", since Safari shows web alerts only from there. Blocked permission: says to change it in the browser.
+
+**To turn them on (about 10 minutes, most of it the redeploy):**
+1. Supabase SQL editor (project `vhgnaihnyjdnaaergtcl`): `update site_switch set is_on = true where name = 'push_alerts';`
+   Check: `select is_on from site_switch where name = 'push_alerts';` answers `true`. From the next night read on, followers get
+   kickoffs, and the next results commit sends each playoff pairing already set and not yet played, once.
+2. Vercel, project `txsixmanfootball.com`, Settings, Environment Variables, **Production**: add `FAN_PUSH_ALERTS` = `on`, then
+   redeploy production. Check: `/api/push/status` answers `{"alerts":true}` and the toggle shows under My teams.
+
+**To turn them off:** (1) seconds, no deploy: `update site_switch set is_on = false where name = 'push_alerts';` (kickoff and
+next-game alerts stop; finals go on as before). (2) To hide the toggle: delete `FAN_PUSH_ALERTS` and redeploy. A fan stops their
+own alerts with the toggle, a team's Follow button, a mute (Account Center) or the browser's notification setting.
+
 ## Environment variables (Vercel, project `txsixmanfootball.com`, Production)
 
 | Variable | Public? | What it is |
@@ -182,6 +216,7 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
 | `FAN_EMAIL_SIGNIN` | server only | `on` (and `FAN_SIGNIN` on) lets the emailed link make NEW fan accounts. Missing or anything else: the link works for existing accounts only (it is how the owner signs in to `/admin`) and new fans see only "Continue with Google". Google is never behind it, only behind `FAN_SIGNIN`. Custom SMTP through Resend is live (below), so this is unblocked: set it when you are ready for new fans to sign up by email. Redeploy after changing |
 
 | `FAN_POSTS` | server only | `on` (and `FAN_SIGNIN` on) turns on forums, game comments and score reports. Missing or anything else, or `FAN_SIGNIN` off: they do not exist and sign-in and follows work as before. **Open the database switch first** (`site_switch`, see "The second switch" above). Redeploy after changing |
+| `FAN_PUSH_ALERTS` | server only | `on` shows the "Game alerts on this device" toggle (ADR 0082). Missing or anything else: no toggle, the site as before. The sender has its own switch (`site_switch` `push_alerts`, see "Game-night push alerts"). Redeploy after changing |
 
 The Supabase variables are in `docs/admin-console.md`. Google needs no variable on the site: its client id and secret live in Supabase.
 

@@ -7,6 +7,7 @@ import { followedHere } from "@/lib/push";
 import type { MyGame, MyTeam } from "@/lib/my-teams";
 import { lead } from "@/lib/program-games";
 import { Crest } from "../programs/crest";
+import { AlertsToggle } from "./alerts-toggle";
 import { LiveRead, ProgramLiveScore } from "../scores/live-game";
 
 /** One game line: "Last" or "Next", date, opponent, and the score or the projection. A playoff game links to its page.
@@ -93,6 +94,8 @@ export function MyTeams() {
   return (
     <section aria-labelledby="my-teams" data-pagefind-ignore className="mt-6">
       <h2 id="my-teams" className="section-title">My teams</h2>
+      {/* Game alerts for the followed teams, only while the site switch is on (renders nothing otherwise). */}
+      <AlertsToggle />
       {/* One live read for the followed programs' next games, asked only while one may be under way (lib/kickoff.ts). */}
       <LiveRead games={teams.flatMap((t) => (t.next?.date && !t.next.score ? [{ date: t.next.date, kickoff: t.next.kickoff }] : []))}>
         <ul className="mt-3 grid gap-x-6 sm:grid-cols-2">

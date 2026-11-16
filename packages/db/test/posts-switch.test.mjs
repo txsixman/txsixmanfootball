@@ -15,7 +15,7 @@ async function closedDb() {
 
 test("a fresh database has the posts switch closed, and an old fan with a profile still cannot post", async () => {
   const d = await closedDb();
-  assert.deepEqual((await d.query("select name, is_on from site_switch")).rows, [{ name: "posts", is_on: false }]);
+  assert.deepEqual((await d.query("select name, is_on from site_switch where name = 'posts'")).rows, [{ name: "posts", is_on: false }]);
   const old = await fan(d, "Old Fan");
   const second = await fan(d, "Second Fan");
   await asFan(d, old);

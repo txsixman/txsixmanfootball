@@ -73,6 +73,38 @@ export async function unsubscribeThisBrowser(): Promise<boolean> {
   }
 }
 
+/** Whether this browser holds a push subscription now (permission still granted). False when it cannot be asked. */
+export async function thisBrowserSubscribed(): Promise<boolean> {
+  try {
+    return pushSupported() && Notification.permission === "granted" && (await existingSubscription()) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Signed out: turn on game alerts here, from a tap (the permission prompt needs one). Asks permission only when it is not already
+ * granted, subscribes, and tells the database this browser follows `list` (the programs it already follows; the list stays as it
+ * is). Throws "permission" when blocked, "nothing followed" when the list is empty (a subscription needs a program to be kept).
+ */
+export async function subscribeHere(list: string[]): Promise<void> {
+  if (!list.length) throw new Error("nothing followed");
+  if (Notification.permission !== "granted" && (await Notification.requestPermission()) !== "granted") throw new Error("permission");
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = (await registration.pushManager.getSubscription()) ?? (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) }));
+  const json = subscription.toJSON();
+  await rpc("push_follow", { p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_programs: list });
+  remember(list);
+}
+
+/** Signed out: stop every alert on this browser (the database forgets it, the subscription is dropped) but keep its list of followed programs, so alerts can come back on with one tap. */
+export async function stopHere(): Promise<void> {
+  const subscription = await existingSubscription();
+  if (!subscription) return;
+  await rpc("push_unfollow", { p_endpoint: subscription.endpoint });
+  await subscription.unsubscribe();
+}
+
 /**
  * Signed in: link this browser's push subscription to the account, so the account's follows drive its alerts. The browser's
  * own follows move onto the account, and what does not fit stays in this browser's list (the server answers with it).

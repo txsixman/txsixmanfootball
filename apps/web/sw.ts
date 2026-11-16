@@ -64,18 +64,23 @@ const serwist = new Serwist({
 
 serwist.addEventListeners();
 
-// Score alerts (tools/push/send-finals.mjs): show the final, and open its page when tapped. Only paths on this site.
+// Game alerts (tools/push/send-finals.mjs): a kickoff, a final and the next playoff pairing, each with its game page's path as the
+// url and a tag. Show it, and open the page when tapped. Only paths on this site. The tag is kept only when it is plain
+// (lowercase letters, digits and : | . _ -, up to 120), so a game's final replaces its kickoff on the device and nothing else is touched.
+const TAG = /^[a-z0-9:|._-]{1,120}$/;
+
 self.addEventListener("push", (event) => {
   const data = (() => {
     try {
-      return event.data?.json() as { title?: string; body?: string; url?: string };
+      return event.data?.json() as { title?: string; body?: string; url?: string; tag?: string };
     } catch {
       return undefined;
     }
   })();
   if (!data?.title) return;
   const url = typeof data.url === "string" && data.url.startsWith("/") && !data.url.startsWith("//") ? data.url : "/";
-  event.waitUntil(self.registration.showNotification(data.title, { body: data.body, icon: "/icon", badge: "/icon", data: { url } }));
+  const tag = typeof data.tag === "string" && TAG.test(data.tag) ? { tag: data.tag, renotify: false } : {};
+  event.waitUntil(self.registration.showNotification(data.title, { body: data.body, icon: "/icon", badge: "/icon", data: { url }, ...tag }));
 });
 
 self.addEventListener("notificationclick", (event) => {

@@ -133,3 +133,7 @@ Not in an ADR:
 - **Accessibility sweep** (ADR 0081): the full axe rule set runs in CI at 375 px, light and dark, on one page of each kind
   and fails on serious or critical findings; a link's accessible name holds the text it shows (results, week, series
   game links); the home page's two "TAPPS" sections are no longer one landmark name (Nov 16, 2026).
+- **Game-night push alerts** (ADR 0082): kickoff, final ("Final: Winner N, Loser N") and next playoff game alerts for the
+  teams a fan follows, each opening the game page; every event sent at most once (`push_sent`, migration 0031); built dark
+  behind the `push_alerts` database switch (the sender) and `FAN_PUSH_ALERTS` (the "Game alerts on this device" toggle on My
+  teams and `/account`); no route can send (Nov 16, 2026).

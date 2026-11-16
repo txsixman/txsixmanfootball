@@ -370,6 +370,29 @@ jobs:
           npm ci --omit=dev --prefix packages/db
           result=$(node packages/db/load.mjs --games "$YEAR")
           echo "Games to the database: $result" >> "$GITHUB_STEP_SUMMARY"
+      - name: Kickoff alerts
+        # ADR 0082: a game that first shows in the live file gets one push alert to the browsers following either team (once,
+        # by the sent-log, so every 10-minute run can offer it). Last before the cross-file
+        # check, so it never delays the finals' commit. Dark: tools/push/send-finals.mjs does nothing until the
+        # push_alerts switch is on. It must never hold back the finals, so a failure is reported and goes no further.
+        if: ${{ !cancelled() && vars.LIVE == 'true' && needs.due.outputs.mode != 'details' }}
+        continue-on-error: true
+        env:
+          PGHOST: aws-0-us-east-1.pooler.supabase.com
+          PGUSER: postgres.vhgnaihnyjdnaaergtcl
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PGSSLROOTCERT: packages/db/supabase-ca.crt
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          SEASON: ${{ steps.season.outputs.year }}
+        run: |
+          set -o pipefail
+          if [ ! -f "$RUNNER_TEMP/live.json" ]; then
+            echo "Kickoff alerts: not a night read, nothing to send." >> "$GITHUB_STEP_SUMMARY"
+          else
+            npm ci --prefix tools/push
+            result=$(node tools/push/send-finals.mjs --season "$SEASON" --live "$RUNNER_TEMP/live.json" | tail -n 1)
+            echo "Kickoff alerts: $result" >> "$GITHUB_STEP_SUMMARY"
+          fi
       # After the push: a cross-file failure the commit step reported (not blocking) fails the job, so the owner is emailed.
       # The jobs below run on the pushed commit all the same (their `if` reads the sha, not this job's result).
       - name: Cross-file data checks (reported above, after the push)
@@ -390,7 +413,9 @@ jobs:
           echo "list=$(sort -u "$f" | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
 
   # Push alerts (tools/push/send-finals.mjs, web-push) to everyone following a program with a new final in the commit
-  # just pushed. Without the VAPID_PRIVATE_KEY or SUPABASE_DB_PASSWORD secret it says so and sends nothing.
+  # just pushed. When the push_alerts switch is on (migration 0031, ADR 0082) it also sends the next-round pairings the
+  # brackets have set and nobody has played, and words the final with its game page; the kickoff alerts go from the maxpreps job.
+  # Without the VAPID_PRIVATE_KEY or SUPABASE_DB_PASSWORD secret it says so and sends nothing.
   alerts:
     needs: maxpreps
     if: ${{ !cancelled() && needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true' }}

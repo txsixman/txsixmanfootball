@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { Device } from "@/lib/account/center";
-import { unsubscribeThisBrowser } from "@/lib/push";
 import { removeLinkedDevice } from "./center-actions";
 import { longDate } from "./dates";
-import { refreshThisBrowser, turnOnHere, useThisBrowser } from "./this-browser";
+import { refreshThisBrowser, turnOffHere, turnOnHere, useThisBrowser } from "./this-browser";
 
 const BAD = "That did not work. Check your connection and try again.";
 
@@ -23,14 +22,8 @@ export function BrowserAlerts() {
     if (!browser.deviceId) return;
     setBusy(true);
     setNote("");
-    const removed = await removeLinkedDevice(browser.deviceId).catch(() => ({ ok: false }));
-    if (!removed.ok) {
-      setNote(BAD);
-      setBusy(false);
-      return;
-    }
-    await unsubscribeThisBrowser();
-    await refreshThisBrowser(); // the status line above now says off
+    // The account's row for this browser is removed, then the subscription is stopped; the status line above now says off.
+    if ((await turnOffHere()) !== "ok") setNote(BAD);
     setBusy(false);
   }
 

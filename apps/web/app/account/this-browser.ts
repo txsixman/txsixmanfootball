@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { linkToAccount, pushSupported, thisBrowserEndpoint } from "@/lib/push";
+import { linkToAccount, pushSupported, stopHere, thisBrowserEndpoint, unsubscribeThisBrowser } from "@/lib/push";
+import { removeLinkedDevice } from "./center-actions";
 
 // What the account page knows about THIS browser's push alerts (ADR 0058): whether it has a subscription linked to the account, its
 // device id (so the devices list can say "This browser"), and the teams muted on it. The page's script is the only holder of the
@@ -48,6 +49,35 @@ export function refreshThisBrowser(): Promise<void> {
     inFlight = undefined;
   });
   return inFlight;
+}
+
+/** Hear every change to this browser's push state, without asking for it (the game-alerts switch re-reads its own state on each). Returns the way to stop listening. */
+export function onThisBrowserChange(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+}
+
+/**
+ * Turn this browser's alerts off for a signed-in fan: the account's linked row for it is removed first, then the browser's own
+ * subscription is stopped. A browser the account never linked is stopped the way a signed-out one is. "failed" when it could not be done.
+ */
+export async function turnOffHere(): Promise<"ok" | "failed"> {
+  if (current.status === "loading" || current.status === "error") await refreshThisBrowser(); // not known yet (the home page): ask who this browser is
+  try {
+    if (current.status === "on" && current.deviceId) {
+      const removed = await removeLinkedDevice(current.deviceId);
+      if (!removed.ok) return "failed";
+      await unsubscribeThisBrowser();
+    } else if (current.status === "off") {
+      await stopHere();
+    } else {
+      return "failed"; // "error": could not even be asked who this browser is
+    }
+  } catch {
+    return "failed";
+  }
+  await refreshThisBrowser(); // every part of the page showing this browser now says off
+  return "ok";
 }
 
 /** This browser's push state, shared by every part of the page that shows it. Asks when the first of them appears. */

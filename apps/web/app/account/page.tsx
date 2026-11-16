@@ -8,6 +8,7 @@ import { adminUserId, fanEmailSignIn, fanPosts, fanSignIn, safeNext } from "@/li
 import { getFollows, getProfile } from "@/lib/auth/profile";
 import { getUser } from "@/lib/auth/server";
 import { LegalLinks } from "../legal-links";
+import { AlertsToggle } from "../my-teams/alerts-toggle";
 import { BrowserAlerts, DevicesList } from "./browsers";
 import { longDate } from "./dates";
 import { DeleteAccount } from "./delete-account";
@@ -143,6 +144,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           </Section>
 
           <Section id="alerts" title="Alerts and devices">
+            <AlertsToggle />
             <h3 className={H3}>This browser</h3>
             <BrowserAlerts />
             <h3 className={H3}>Linked browsers</h3>
