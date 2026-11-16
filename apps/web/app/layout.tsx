@@ -1,4 +1,3 @@
-import "@fontsource-variable/inter";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Link from "next/link";
@@ -10,6 +9,7 @@ import "./globals.css";
 import { MainNav } from "./main-nav";
 import { Offline } from "./offline-notice";
 import { THEME_SCRIPT, ThemeToggle } from "./theme-toggle";
+import { PREFETCHED_SECTIONS } from "../lib/prefetched-sections";
 import { SITE_NAME, SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
@@ -39,6 +39,17 @@ const barlow = localFont({
   display: "swap",
 });
 
+// The body font (Inter, OFL, the variable latin file @fontsource-variable ships), loaded the same way (ADR 0080). Through
+// @fontsource's CSS the browser asked for it only after the stylesheet arrived, a second step on a weak signal, and the
+// text drew in a fallback that did not match its size. Characters beyond the latin file (none in the site's data) take
+// the system font, as they did before.
+const inter = localFont({
+  src: "../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+  weight: "100 900",
+  variable: "--font-inter",
+  display: "swap",
+});
+
 const SECTIONS = [
   { href: "/scores", label: "Scores" },
   { href: "/playoffs", label: "Playoffs" },
@@ -54,7 +65,7 @@ const SECTIONS = [
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // suppressHydrationWarning: THEME_SCRIPT may set data-theme on <html> before React hydrates (theme-toggle.tsx).
-    <html lang="en" className={barlow.variable} suppressHydrationWarning>
+    <html lang="en" className={`${barlow.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
@@ -87,7 +98,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <p className="font-num text-[22px] font-bold tracking-wide">{SITE_NAME}</p>
               <nav aria-label="Site sections" className="mt-2 grid grid-cols-2 gap-x-4 sm:grid-cols-5">
                 {[...SECTIONS, { href: "/matchup", label: "Matchup" }, { href: "/seasons", label: "Seasons" }].map((s) => (
-                  <Link key={s.href} href={s.href} className="inline-flex min-h-11 items-center text-[15px] text-white/85 hover:text-white hover:underline">
+                  <Link
+                    key={s.href}
+                    href={s.href}
+                    prefetch={PREFETCHED_SECTIONS.includes(s.href) ? undefined : false}
+                    className="inline-flex min-h-11 items-center text-[15px] text-white/85 hover:text-white hover:underline"
+                  >
                     {s.label}
                   </Link>
                 ))}

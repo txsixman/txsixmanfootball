@@ -36,7 +36,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
       <span className="flex min-h-11 items-center">
         <CrestSlot school={name} identity={(slug && identities.get(slug)) || EMPTY} />
         {slug ? (
-          <Link href={`/programs/${slug}`} className="min-w-0 flex-1 truncate leading-[2.75rem] hover:text-navy hover:underline">
+          <Link href={`/programs/${slug}`} prefetch={false} className="min-w-0 flex-1 truncate leading-[2.75rem] hover:text-navy hover:underline">
             {name}
           </Link>
         ) : (

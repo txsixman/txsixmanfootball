@@ -71,7 +71,7 @@ export default async function SeriesPage({ params }: Props) {
   const matchup = `/matchup?a=${first}&b=${second}`;
 
   const Team = ({ school, slug, group }: { school: string; slug: string; group: string }) => (
-    <Link href={`/programs/${slug}`} className="flex min-h-11 flex-col items-start gap-1.5 text-navy hover:underline">
+    <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 flex-col items-start gap-1.5 text-navy hover:underline">
       <Crest school={school} identity={identities.get(slug) ?? EMPTY} size={56} decorative />
       <span className="font-num text-[24px] font-bold uppercase leading-[1.05] tracking-wide [overflow-wrap:anywhere]">{school}</span>
       <span className="text-[12px] font-bold uppercase leading-4 tracking-widest text-muted no-underline">{group}</span>

@@ -140,7 +140,7 @@ export default async function ProgramPage({ params }: Props) {
   const opponentLink = (name: string) => {
     const opponent = programFor(all, name, school.league);
     return opponent ? (
-      <Link href={`/programs/${opponent.slug}`} className="name-link relative z-10">
+      <Link href={`/programs/${opponent.slug}`} prefetch={false} className="name-link relative z-10">
         {name}
       </Link>
     ) : (
@@ -273,7 +273,7 @@ export default async function ProgramPage({ params }: Props) {
             {opponent ? (
               <>
                 {prefix}
-                <Link href={`/programs/${opponent.slug}`}>{r.opponent}</Link>
+                <Link href={`/programs/${opponent.slug}`} prefetch={false}>{r.opponent}</Link>
               </>
             ) : (
               `${prefix}${r.opponent}`
@@ -747,7 +747,7 @@ export default async function ProgramPage({ params }: Props) {
                     .map((n) => (
                       <li key={`${n.name}-${n.note}`} className="flex min-h-11 flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2 text-[15px] text-ink">
                         {n.slug ? (
-                          <Link href={`/programs/${n.slug}`} className="font-bold text-navy hover:underline">
+                          <Link href={`/programs/${n.slug}`} prefetch={false} className="font-bold text-navy hover:underline">
                             {n.name}
                           </Link>
                         ) : (
@@ -767,7 +767,7 @@ export default async function ProgramPage({ params }: Props) {
             <ul className="sm:grid sm:grid-cols-2">
               {mates.map((m) => (
                 <li key={m.slug} className="border-b border-line">
-                  <Link href={`/programs/${m.slug}`} className="flex min-h-11 items-center gap-2.5 px-3 text-[15px] text-ink hover:bg-panel hover:text-navy">
+                  <Link href={`/programs/${m.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2.5 px-3 text-[15px] text-ink hover:bg-panel hover:text-navy">
                     <Crest school={m.school} identity={identities.get(m.slug) ?? EMPTY} size={28} decorative />
                     {m.school}
                   </Link>

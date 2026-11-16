@@ -109,7 +109,7 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
               <ul aria-labelledby="forfeit-only" className="flex flex-wrap gap-x-4">
                 {forfeitOnly.map((a) => (
                   <li key={a.slug}>
-                    <Link href={`/programs/${a.slug}`} className="inline-flex min-h-11 items-center font-semibold text-navy underline">{a.school}</Link>
+                    <Link href={`/programs/${a.slug}`} prefetch={false} className="inline-flex min-h-11 items-center font-semibold text-navy underline">{a.school}</Link>
                   </li>
                 ))}
               </ul>

@@ -47,7 +47,7 @@ export async function GameList({ games, league, alignments, identities, today, s
     return (
       <span className="flex min-h-11 items-center">
         {slug ? (
-          <Link href={`/programs/${slug}`} className="flex min-h-11 min-w-0 flex-1 items-center hover:text-navy hover:underline">
+          <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center hover:text-navy hover:underline">
             {label}
           </Link>
         ) : (
@@ -121,7 +121,7 @@ export async function BuiltList({ games, league, alignments, identities, comment
       </>
     );
     return slug ? (
-      <Link href={`/programs/${slug}`} className="flex min-h-11 min-w-0 items-center hover:text-navy hover:underline">
+      <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 min-w-0 items-center hover:text-navy hover:underline">
         {label}
       </Link>
     ) : (

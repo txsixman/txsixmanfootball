@@ -41,7 +41,7 @@ export function AdvanceTable({ advancement: a, league, identities }: { advanceme
               return (
                 <tr key={r.team} className="border-b border-line">
                   <th scope="row" className="sticky left-0 max-w-[11rem] bg-page px-1 text-left font-normal">
-                    <Link href={`/programs/${slug}`} className="flex min-h-11 items-center text-ink hover:text-navy hover:underline">
+                    <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 items-center text-ink hover:text-navy hover:underline">
                       <CrestSlot school={r.team} identity={identities.get(slug) ?? EMPTY} />
                       <span className="line-clamp-2 min-w-0 leading-tight">{r.team}</span>
                     </Link>
