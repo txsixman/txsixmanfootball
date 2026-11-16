@@ -155,3 +155,29 @@ test("a private league's two confirmed semifinals give its two finalists, from t
   expect(out.state!.chances.map((c) => c.team).sort()).toEqual(["R1-1", "R1-4"]);
   expect(bracketTitleChances(table(), [], new Map(), "TAPPS Division I", [g("R1-1", "R1-2", 24, 23), g("R1-3", "R1-4", 45, 58, false)]).state).toBeUndefined();
 });
+
+test("games the bracket sets settle a region and the last four as listed games do (Nov 16, 2026: 6 of 8 UIL area games)", () => {
+  // Region 1: one listed area game, the other set by the bracket. Before the fix only listed games counted, so no region showed.
+  const alignments = [1, 2, 3, 4].map((n) => ({ league: "UIL", division: "I", region: "1", district: String(n), school: team(1, n), sourceUrl: "", span: "2026-28", slug: `r1-${n}` }));
+  const listed = { league: "UIL", bracket: BRACKET, division: "I", round: "area", date: "2026-11-20", home: team(1, 1), away: team(1, 2), forfeit: false, neutral: true, confirmed: false };
+  const set = [{ round: "area", home: team(1, 3), away: team(1, 4) }];
+  expect(bracketTitleChances(table(), alignments, new Map(), BRACKET, [listed]).regions).toEqual([]);
+  const { regions } = bracketTitleChances(table({ "R1-3": 20 }), alignments, new Map(), BRACKET, [listed], set);
+  expect(regions).toHaveLength(1);
+  expect(regions[0]).toMatchObject({ region: "1", round: "area" });
+  expect(regions[0].chances[0].team).toBe("R1-3");
+  expect(sum(regions[0].chances)).toBeCloseTo(1, 6);
+  // A set game is on a neutral field, as its row projects it: equal teams split it evenly, whichever side the slot lists first.
+  const even = bracketTitleChances(table(), alignments, new Map(), BRACKET, [listed], set).regions[0].chances;
+  expect(even.find((c) => c.team === "R1-3")!.chance).toBeCloseTo(even.find((c) => c.team === "R1-4")!.chance, 6);
+
+  // A private league whose two semifinals are both set by the bracket (TAIAO, Nov 16, 2026) gets its last four.
+  const quarter = (home: string, away: string, homeScore: number, awayScore: number) => ({ league: "TAIAO", bracket: "TAIAO Division 1", division: "1", round: "quarterfinal", date: "2026-11-13", home, away, homeScore, awayScore, forfeit: false, neutral: true, confirmed: true });
+  const played = [quarter("R1-1", "R1-5", 40, 0), quarter("R1-2", "R1-6", 40, 0), quarter("R1-3", "R1-7", 40, 0), quarter("R1-4", "R1-8", 40, 0)];
+  const semis = [{ round: "semifinal", home: "R1-1", away: "R1-2" }, { round: "semifinal", home: "R1-3", away: "R1-4" }];
+  expect(bracketTitleChances(table(), [], new Map(), "TAIAO Division 1", played).state).toBeUndefined();
+  const last4 = bracketTitleChances(table(), [], new Map(), "TAIAO Division 1", played, semis).state!;
+  expect(last4.round).toBe("semifinal");
+  expect(last4.chances.map((c) => c.team).sort()).toEqual(["R1-1", "R1-2", "R1-3", "R1-4"]);
+  for (const c of last4.chances) expect(c.chance).toBeCloseTo(0.25, 6);
+});

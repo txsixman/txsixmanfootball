@@ -146,7 +146,8 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
    owner's Mac (`gh workflow run results-watch.yml -f tonight=true` every 10 minutes) and the game-day clock
    (`gameday-clock.yml`, ADR 0024, started by hand each season). Check tonight's runs: finals commit (data-private
    first), live rows reach `live_score`, and the first in-progress summary sets `PERIOD_INDEX` in `maxpreps.mjs`
-3. Watch UIL region chances appear once area games are listed (around Nov 20) and round names as the playoffs advance
+3. Region chances now count the games the bracket sets (Nov 16: all 8 UIL regions per division, and the TAIAO last four,
+   show before any listing); watch them move to the regional round after Nov 21 and the round names as the playoffs advance
 
 ## Blockers and open items
 - **Remote:** public repo `txsixman/txsixmanfootball`; commits as `TX Six-Man Football <contact@txsixmanfootball.com>`.

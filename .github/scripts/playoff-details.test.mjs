@@ -77,13 +77,19 @@ test("a next-round pairing no listing holds is named when its round is dated wit
   const found = missingDetails({ playoffs, details: details("2026-11-18,Owl,Kite,2026-11-19T01:00:00Z,Pine Stadium,Dalton"), built, now: NOW });
   assert.deepEqual(lines(found), ["Lark v Finch — UIL Division I area, Wed Nov 18 (the round's date): no kickoff and no site"]);
   assert.equal(found[0].built, true);
-  // No game of the round is dated within the window: nothing to say yet.
-  assert.deepEqual(missingDetails({ playoffs: playoffs.slice(0, 4), details: details(), built, now: NOW }), []);
+  // No source dates the pairing or its round: it is taken to be a week after its teams' last game (Thu Nov 12 → Thu Nov 19)
+  // and named for its date too (four TAIAO semifinals on Nov 16, 2026 were dated nowhere and the alert was silent).
+  const undated = missingDetails({ playoffs: playoffs.slice(0, 4), details: details(), built, now: NOW });
+  assert.deepEqual(lines(undated), ["Lark v Finch — UIL Division I area, Thu Nov 19 (a week after their last game): no date, no kickoff and no site"]);
+  assert.deepEqual(undated[0].missing, ["date", "kickoff", "site"]);
+  assert.equal(undated[0].built, true);
+  // A week after their last game falls beyond the window: nothing to say yet.
+  assert.deepEqual(missingDetails({ playoffs: playoffs.slice(0, 4), details: details(), built, now: NOW - 2 * 24 * HOUR }), []);
   // The file already has the pairing's own row: its date decides, and a row with a site and no kickoff misses only the kickoff.
   const hasRow = missingDetails({ playoffs: playoffs.slice(0, 4), details: details("2026-11-19,Finch,Lark,,Elm Stadium,Dalton"), built, now: NOW });
   assert.deepEqual(lines(hasRow), ["Lark v Finch — UIL Division I area, Thu Nov 19: no kickoff"]);
-  // A row from before their last listed game is another game, not theirs.
-  assert.deepEqual(missingDetails({ playoffs: playoffs.slice(0, 4), details: details("2026-11-10,Finch,Lark,,Elm Stadium,Dalton"), built, now: NOW }), []);
+  // A row from before their last listed game is another game, not theirs: its site is not used and the pairing is still undated.
+  assert.deepEqual(lines(missingDetails({ playoffs: playoffs.slice(0, 4), details: details("2026-11-10,Finch,Lark,,Elm Stadium,Dalton"), built, now: NOW })), lines(undated));
 });
 
 test("the last round is always State Championship, whatever the league calls it", () => {

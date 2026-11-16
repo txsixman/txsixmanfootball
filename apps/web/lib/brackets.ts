@@ -10,7 +10,7 @@ import { loadPlayoffGames, playoffLeagueSet, ROUNDS, type PlayoffGame } from "./
 import { advancement, slotShares, type Advancement, type Projected } from "./advancement";
 import { project, projectAt, STATE_CHAMPIONSHIP_ROUNDS, type Projection } from "./projection";
 import { loadRatings, ratingSeasons } from "./ratings";
-import { bracketTitleChances, loadBracketTemplate, type Chance, type RegionChances } from "./title-chances";
+import { bracketTitleChances, loadBracketTemplate, type BracketChances, type Chance, type RegionChances } from "./title-chances";
 import { loadPairDetails, pairDetailAfter } from "./kickoffs";
 import { CURRENT_SEASON } from "./season";
 import { winChance } from "./win-chance";
@@ -36,6 +36,8 @@ type BracketRound = { round: string; label: string; games: BracketRow[]; built: 
 /** `chances`: state title chances (the last four, or a template plus every region settled). `regionChances`: UIL region titles.
  * `pairs`: games whose winners meet next, so the next pairing is known (lib/playoff-path.ts). */
 export type Bracket = { name: string; league: string; rounds: BracketRound[]; tree: TreeRow[]; pairs: Pair[]; chances?: Chance[]; regionChances?: RegionChances[];
+  /** Which round `chances` stand on: the State Championship, the last four, or every region settled. */
+  chanceRound?: BracketChances["round"];
   /** The page order of each game the bracket sets by winners, listed or not (bracket-fill.ts pageOrders, ADR 0079); this season only. */
   orders: PageOrder[];
   /** This season's chance to reach each round still to be set and to win the State Championship (ADR 0071). */
@@ -140,11 +142,13 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
         games: list.filter((g) => g.round === round).map((g) => (g.homeScore == null ? { ...g, projection: projectAt(ratings, g) } : g)),
         built: built.filter((g) => g.round === round),
       }));
-    const found = bracketTitleChances(ratings, alignments, template, name, list);
+    // The games the bracket sets count as listed ones do: they are what settles a region or the last four days before game night.
+    const set = built.flatMap(({ round, sides: [a, b] }) => ("team" in a && "team" in b ? [{ round, home: a.team, away: b.team }] : []));
+    const found = bracketTitleChances(ratings, alignments, template, name, list, set);
     const chances = found.state?.chances;
     return {
       name, league, rounds: ordered(rounds), tree, pairs: pairsOf(rounds, regionLookup(alignments, league, name)), orders,
-      ...(chances ? { chances } : {}),
+      ...(chances ? { chances, chanceRound: found.state!.round } : {}),
       ...(found.regions.length ? { regionChances: found.regions } : {}),
       ...(advance ? { advancement: advance } : {}),
     };
@@ -152,3 +156,12 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
   const order = (b: Bracket) => LEAGUES.indexOf(b.league as (typeof LEAGUES)[number]);
   return brackets.sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
 });
+
+/** Every bracket's state title chances and every UIL region's, as the bracket pages show them (the home page's lists). */
+export async function loadTitleChances(season = CURRENT_SEASON): Promise<{ state: BracketChances[]; regions: RegionChances[] }> {
+  const brackets = await loadBrackets(season);
+  return {
+    state: brackets.flatMap((b) => (b.chances && b.chanceRound ? [{ bracket: b.name, round: b.chanceRound, chances: b.chances }] : [])),
+    regions: brackets.flatMap((b) => b.regionChances ?? []),
+  };
+}

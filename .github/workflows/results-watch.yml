@@ -307,7 +307,8 @@ jobs:
           node tools/league-watch/taiao.mjs --details --out "$out" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Live scores to the hosted database
         # Before rating and committing, so a score reaches the site in seconds. A failure here is reported and never
-        # stops the finals from being committed below.
+        # stops the finals from being committed below: "Problems to post" names it on the robot-alert issue.
+        id: live_db
         if: ${{ vars.LIVE == 'true' && needs.due.outputs.mode != 'details' }}
         continue-on-error: true
         env:
@@ -354,6 +355,7 @@ jobs:
       # full load (supabase.yml) still runs on Mondays for alignments, lineage and migrations. A failure here is reported and
       # never undoes the commit.
       - name: Games to the hosted database
+        id: games_db
         if: ${{ vars.LIVE == 'true' && steps.commit.outcome == 'success' && needs.due.outputs.mode != 'details' }}
         continue-on-error: true
         env:
@@ -371,6 +373,7 @@ jobs:
           result=$(node packages/db/load.mjs --games "$YEAR")
           echo "Games to the database: $result" >> "$GITHUB_STEP_SUMMARY"
       - name: Kickoff alerts
+        id: kickoff_alerts
         # ADR 0082: a game that first shows in the live file gets one push alert to the browsers following either team (once,
         # by the sent-log, so every 10-minute run can offer it). Last before the cross-file
         # check, so it never delays the finals' commit. Dark: tools/push/send-finals.mjs does nothing until the
@@ -403,12 +406,20 @@ jobs:
           cat "$f"
           exit 1
       # Whatever happened above: the problems the second-source steps named (a refusal, no season id, no agreeing
-      # final), one word each, for the notify job to post (ADR 0028).
+      # final), one word each, for the notify job to post (ADR 0028), and each game-night step that may fail without
+      # failing the run (continue-on-error) and did: without this its failure showed only inside the run, and no one looks.
       - name: Problems to post
         id: reasons
         if: always()
+        env:
+          LIVE_DB: ${{ steps.live_db.outcome }}
+          GAMES_DB: ${{ steps.games_db.outcome }}
+          KICKOFF_ALERTS: ${{ steps.kickoff_alerts.outcome }}
         run: |
           f="$RUNNER_TEMP/ops-reasons.txt"
+          [ "$LIVE_DB" != failure ] || echo live-scores-failed >> "$f"
+          [ "$GAMES_DB" != failure ] || echo games-db-failed >> "$f"
+          [ "$KICKOFF_ALERTS" != failure ] || echo kickoff-alerts-failed >> "$f"
           [ -s "$f" ] || exit 0
           echo "list=$(sort -u "$f" | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
 
