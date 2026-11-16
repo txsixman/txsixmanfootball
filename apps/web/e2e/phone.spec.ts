@@ -115,6 +115,21 @@ test("the header's Sign in shows whole on a phone: the section strip scrolls rat
   expect(box.cut).toBe(false);
 });
 
+test("a shared search link does not jump when its results land", async ({ page }) => {
+  test.skip(!process.env.CI, "the search index exists only after a production build");
+  // Layout shift as Chrome scores it, from before the page draws; 0.51 before the results box kept room (Nov 16, 2026).
+  await page.addInitScript(() => {
+    (window as unknown as { shift: number }).shift = 0;
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) if (!e.hadRecentInput) (window as unknown as { shift: number }).shift += e.value;
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  await open(page, "/search?q=jayton");
+  await expect(page.getByRole("status")).toHaveText(/pages? match/);
+  await expect(page.locator('main a[href="/programs/jayton"]')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { shift: number }).shift)).toBeLessThan(0.1);
+});
+
 test("the guard catches what it is for: a short name link, a narrow button and a page wider than the phone", async ({ page }) => {
   await open(page, "/");
   await page.evaluate(() => {
