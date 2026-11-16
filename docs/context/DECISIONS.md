@@ -127,3 +127,6 @@ Not in an ADR:
 - **Pages for the games the bracket sets** (ADR 0079): each gets a page with comments once both teams are known, at the
   bracket's order (home the slot's first side), which the game keeps when a listing or final names the teams the other way
   round; a listing-order address redirects; migration 0030 lets comments post on them (Nov 16, 2026).
+- **Phone speed** (ADR 0080): only the Scores and Playoffs section links prefetch, program links in lists do not, the service
+  worker installs after the page loads, Inter loads from the head, the error boundary stays light, logos cache a week; CI's
+  Lighthouse covers nine kinds of page with tighter budgets and prints JS and HTML size (Nov 16, 2026).

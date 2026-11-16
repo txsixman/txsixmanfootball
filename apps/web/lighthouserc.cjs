@@ -10,9 +10,16 @@
 // simulated slow-phone estimate, which landed near time-to-interactive in 4 of 138 runs (/rankings and /results, CI
 // runs Nov 12 to 13). The median of each number drops one such run and still fails a page slow in two of three.
 //
-// Budgets: the first CI run (Nov 11, 2026, median of 3) measured, worst of the four pages: performance 85 (home 98),
-// accessibility 100, best practices 100, largest paint 930 ms, blocking time 599 ms, layout shift 0.034, weight 917 KB.
-// Each budget sits above that with headroom for a shared runner's noise, so a real regression fails and noise does not.
+// Budgets, set Nov 16, 2026 (ADR 0080) from CI's own runs of nine kinds of page (home, scores, playoffs, this round, a
+// bracket, a game, a program, rankings, results), median of 3, each budget above the worst page with headroom for a shared
+// runner's noise, so a real regression fails and noise does not. Worst page after the phone-speed pass (run 43926555439):
+// performance 98 (rankings), largest paint 1061 ms (rankings), blocking time 162 ms (rankings; it moved 53 to 112 ms on
+// the same page between two runs), layout shift 0.000, weight 640 KB (/scores), scripts 213 KB (a bracket), HTML 57 KB
+// sent (rankings). Before it (run 43923270389) the worst were 97, 1062 ms, 192 ms, 0.029, 710 KB, 203 KB and 57 KB.
+// Until Nov 16 the budgets were from the first run (Nov 11: 85, 930 ms, 599 ms, 0.034, 917 KB on four pages) and left
+// room for most of what the pass removed: 120 KB of background link loading on every page, and blocking time.
+// Weight is the one that holds the line on link prefetching: 700 KB fails if the section links go back to loading every
+// page they point at (about 85 KB), which the old 1200 KB would not have noticed.
 module.exports = {
   ci: {
     collect: {
@@ -31,13 +38,16 @@ module.exports = {
     },
     assert: {
       assertions: {
-        "categories:performance": ["error", { minScore: 0.75, aggregationMethod: "median" }],
+        "categories:performance": ["error", { minScore: 0.9, aggregationMethod: "median" }],
         "categories:accessibility": ["error", { minScore: 0.95, aggregationMethod: "median" }],
         "categories:best-practices": ["error", { minScore: 0.95, aggregationMethod: "median" }],
-        "largest-contentful-paint": ["error", { maxNumericValue: 2500, aggregationMethod: "median" }],
-        "total-blocking-time": ["error", { maxNumericValue: 900, aggregationMethod: "median" }],
-        "cumulative-layout-shift": ["error", { maxNumericValue: 0.1, aggregationMethod: "median" }],
-        "total-byte-weight": ["error", { maxNumericValue: 1200 * 1024, aggregationMethod: "median" }],
+        "largest-contentful-paint": ["error", { maxNumericValue: 1600, aggregationMethod: "median" }],
+        "total-blocking-time": ["error", { maxNumericValue: 350, aggregationMethod: "median" }],
+        "cumulative-layout-shift": ["error", { maxNumericValue: 0.03, aggregationMethod: "median" }],
+        "total-byte-weight": ["error", { maxNumericValue: 700 * 1024, aggregationMethod: "median" }],
+        // Bytes sent (compressed), by kind: the scripts a page loads, and its HTML (the largest, /rankings, is 57 KB).
+        "resource-summary:script:size": ["error", { maxNumericValue: 260 * 1024, aggregationMethod: "median" }],
+        "resource-summary:document:size": ["error", { maxNumericValue: 80 * 1024, aggregationMethod: "median" }],
       },
     },
     upload: { target: "filesystem", outputDir: "./e2e/.lighthouse" },
