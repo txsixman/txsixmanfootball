@@ -1033,6 +1033,16 @@
       },
       "notes": "Wikipedia says 'Its mascot is the Sentinel'; school site uses 'Lady Sentinels' and 'Portrait of a Sentinel'. Colors not stated in allowed sources read."
     },
+    "christian-homeschool-athletes-of-north-texas-chant": {
+      "school": "Christian Homeschool Athletes of North Texas (CHANT)",
+      "site": "https://ntxchant.org/",
+      "mascot": "Chargers",
+      "mascotSource": "https://ntxchant.org/",
+      "colors": [],
+      "colorsSource": null,
+      "logo": null,
+      "notes": "Christian Homeschool Athletes of North Texas (CHANT), a homeschool program in the North Texas area. Its own site says it offers a six-man football program and calls its teams the Chargers; it names no league, so it is Independent (read Nov 15, 2026). Colors are not stated, so none are recorded. No logo fetched yet."
+    },
     "claude": {
       "school": "Claude",
       "site": "https://claudeisd.net/",
@@ -4968,6 +4978,16 @@
         "sha256": "3f1e9fc2318f7dd592610b0437fc790a0d733557c65265fcbe21f95951c0bd46",
         "original": "the-christian-school-at-castle-hills-san-antonio.png"
       }
+    },
+    "the-covenant-preparatory-school": {
+      "school": "The Covenant Preparatory School",
+      "site": "https://www.covenantknights.org/",
+      "mascot": null,
+      "mascotSource": null,
+      "colors": [],
+      "colorsSource": null,
+      "logo": null,
+      "notes": "The Covenant Preparatory School, Kingwood. Its own football page lists a 6-Man schedule and roster and names no league for football (its athletic forms are TAPPS forms, but TAPPS's 2026-28 alignment does not list it), so it is Independent (read Nov 15, 2026). Mascot and colors are not stated in the page text, so none are recorded. No logo fetched yet."
     },
     "the-emery-weiner-school-houston": {
       "school": "The Emery/Weiner School-Houston",

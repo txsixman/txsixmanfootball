@@ -6,7 +6,7 @@ import * as s from "../lib/data-schemas.ts";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { checkAll, checkDisputed, checkMaxprepsFolders } from "./check-data.mjs";
+import { checkAll, checkDisputed, checkMaxprepsFolders, checkRegistry } from "./check-data.mjs";
 
 // Robot-read games as this repo holds them: the facts, no source column (data-schemas.ts RESULT_COLUMNS).
 const HEADER = s.RESULT_COLUMNS.join(",");
@@ -159,4 +159,23 @@ test("a voided playoff listing that later reads a score is named for review, nev
   const stored = { game_date: "2026-11-20", home: "Alpha", away: "Beta", home_score: "30", away_score: "28", end_reason: "" };
   assert.deepEqual(voidedButScored([row("Beta", "Alpha", "28", "30")], fixes, "f.csv", [stored]), []);
   assert.equal(voidedButScored([row("Beta", "Alpha", "28", "31")], fixes, "f.csv", [stored]).length, 1, "another score is new");
+});
+
+// Gate G2 (ADR 0073): every current program has a league and a source, and the not-yet-listed count never overlaps it.
+test("the registry: every program sourced once a league, and nothing both listed and not yet listed", () => {
+  const row = (league, school) => ({ league, division: "Six-Man", region: "", district: "1", school, source_url: "https://example.org/a" });
+  const aligned = { "data/seed/x/alignments.csv": [row("TCAF", "Faustina Academy"), row("TAIAO", "Faustina Academy")] };
+  const notListed = (league, school) => ({ league, school, reason: "no public page lists it", checked_on: "2026-11-15", source_url: "https://example.org/b" });
+  assert.equal(checkRegistry(aligned).ok, true, "one school in two leagues is one program in each (ADR 0012)");
+  assert.match(checkRegistry({ "data/seed/x/alignments.csv": [row("TCAF", "Faustina Academy"), row("TCAF", "Faustina academy")] }).note, /listed twice in TCAF/);
+  assert.match(checkRegistry({ ...aligned, "data/seed/private-2026/not-listed.csv": [notListed("TCAL", "Faustina Academy")] }).note, /also not yet listed/);
+  assert.match(checkRegistry({ ...aligned, "data/seed/private-2026/not-listed.csv": [notListed("TCAF", "")] }).note, /TCAF has programs/);
+  assert.equal(checkRegistry({ ...aligned, "data/seed/private-2026/not-listed.csv": [notListed("TCAL", ""), notListed("TCAL", "Some School")] }).ok, true);
+  assert.throws(() => s.parseCsv("n.csv", [s.NOT_LISTED_COLUMNS.join(","), "TCAL,,,2026-11-15,https://example.org/b"].join("\n"), s.NOT_LISTED_COLUMNS, s.NotListedRow), /reason/);
+  assert.throws(() => s.parseCsv("n.csv", [s.NOT_LISTED_COLUMNS.join(","), "TCAL,,no list,2026-11-15,"].join("\n"), s.NOT_LISTED_COLUMNS, s.NotListedRow), /source_url/);
+});
+
+test("the repo's registry passes: every current program has a league and a source", () => {
+  const registry = checkAll().find((r) => r.file === "registry");
+  assert.equal(registry?.ok, true, registry?.note);
 });

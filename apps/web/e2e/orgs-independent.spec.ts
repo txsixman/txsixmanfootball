@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { slugify } from "../lib/slug";
-import { CENTEX, COMMUNITY_CHRISTIAN, independentHasGames, STANDINGS_TABS } from "./independent";
+import { CENTEX, COMMUNITY_CHRISTIAN, INDEPENDENT_PROGRAMS, independentHasGames, STANDINGS_TABS } from "./independent";
 
 // The Independent organization (ADR 0012) and Community Christian (Mineral Wells) in TCAF, both from the schools' own
 // sites (the owner, Nov 11, 2026). Independent has no districts, so no standings tab; it shows on Rankings, Results and
@@ -17,7 +17,8 @@ test("Standings never lists Independent, and has no page for it", async ({ page 
 test("the Programs finder lists CenTex Chargers under Independent and Community Christian under TCAF", async ({ page }) => {
   await page.goto("/programs", { waitUntil: "networkidle" });
   const independent = page.locator("#org-independent");
-  await expect(independent).toContainText("1 program");
+  // Every Independent row in the alignments (CenTex, CHANT and Covenant Prep since ADR 0073), counted from the file.
+  await expect(independent).toContainText(`${INDEPENDENT_PROGRAMS} programs`);
   await expect(independent.getByRole("link", { name: CENTEX })).toHaveAttribute("href", `/programs/${slugify(CENTEX)}`);
   await expect(page.locator("#org-tcaf").getByRole("link", { name: COMMUNITY_CHRISTIAN, exact: true })).toHaveAttribute("href", "/programs/community-christian");
   // A school sits under its own organization only.

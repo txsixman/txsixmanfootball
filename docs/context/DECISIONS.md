@@ -108,3 +108,7 @@ Not in an ADR:
   chance, dashed and muted; a "Chance to reach each round" table under each bracket and one line on a program page,
   worked out slot by slot up the bracket from the game pages' own win chance. Finals stand; a team under four rated games
   is "Not enough games to project" (Nov 15, 2026).
+- **Program registry, all leagues** (ADR 0073): every program a public page lists is registered with a source (282:
+  UIL 157, TAPPS 68, TAIAO 46, TCAF 9, Independent 3 with CHANT and Covenant Prep added); what no page lists is "not yet
+  listed" on `/programs` (`data/seed/private-2026/not-listed.csv`): TCAL (six-man by its own plan, no published teams),
+  TCSAAL (11-man only) and 11 teams. No TCAL or TCSAAL tab until a 2026 alignment can be cited (Nov 15, 2026).

@@ -103,7 +103,7 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
 - No page names or links a source (ADRs 0009, 0010). Words are rating, projected margin and chance to win only (ADR 0045)
 
 ## Data and pipeline
-- Alignments: UIL 2026-28 (157), TAPPS 2026-28 (68, weekly robot), TAIAO (46, weekly robot), TCAF (9, by hand), Independent (1: CenTex Chargers, by hand)
+- Alignments: UIL 2026-28 (157), TAPPS 2026-28 (68, weekly robot), TAIAO (46, weekly robot), TCAF (9, by hand), Independent (3: CenTex Chargers, CHANT, Covenant Prep, by hand); not yet listed (ADR 0073): TCAL, TCSAAL and 11 teams in `private-2026/not-listed.csv`
 - Results: `tools/league-watch/maxpreps.mjs` (ADR 0008) via `results-watch.yml`, Fri to Sun Aug to Jan, and every 10 minutes noon to midnight Central on any November or December day with a bracket game of that night or the 3 game nights before still unscored, plus a 9 AM Central catch-up (`--tonight`: only those games, ADRs 0015, 0019 and 0030; it also sends the games under way to the hosted database's `live_score` table, ADR 0021, with no commit); rerates and
   commits the private repo `txsixman/data-private` first (full captures), then the facts to `main` here (ADR 0017,
   `publish.mjs`). 276 of 279 schools reached. Past seasons via `--season <year>` (season-segment pages): 2025 1,230
@@ -165,6 +165,6 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   reads them (the aliases in `tools/league-watch/maxpreps-aliases.json` and the new alignment rows make that run keep
   them). Until then Independent has program pages and a Programs block only; its Rankings, Results and Records tabs
   appear on their own once a game is read (`lib/active-orgs.ts`), and Standings never lists it. Check the first run.
-- **Private leagues still missing:** TCAL, TCSAAL (from public pages only; no outreach, ADR 0014). Sherman Grayson
+- **Private leagues not yet listed (ADR 0073):** TCAL runs six-man (its own plan) but publishes no 2026 teams; TCSAAL is 11-man only. Both show under "Not yet listed" on `/programs`; re-check each season. Sherman Grayson
   Christian School is in TCAF and TAIAO at once: one program, ranked in each (`programsFor`, `team_season_league`).
 - **School logos** are an accepted trademark risk (ADRs 0006, 0016). 275 of 280 programs have one (Nov 11): edited where needed (padding trimmed, solid boxes stripped), the untouched originals in `data/seed/schools/logo-originals/`, many replaced by Dave Campbell's team-page logos. Missing, no allowed source found: Brazos Valley Lions, Community School of Mesquite, Grace (Perrin), New Braunfels Spartans, St. Mary's. Still weak: Founders Classical Conroe and Plainview share the Founders network mark; Immanuel (El Paso) and Vernon Northside are 100px. 34 logos still come from hosts (mostly ParentSquare's file host) whose robots.txt disallows a refetch, so their originals are the 320px copies kept from the first download.

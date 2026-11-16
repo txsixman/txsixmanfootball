@@ -20,6 +20,9 @@ const seed = (...p) => path.join("data/seed", ...p);
 /** What the admin console writes (lib/admin); both files appear with the first correction. */
 const CORRECTIONS = { programs: "data/corrections/programs.csv", games: "data/corrections/games.csv" };
 
+/** The programs the registry knows it is missing (ADR 0073). */
+const NOT_LISTED = "data/seed/private-2026/not-listed.csv";
+
 /** Every file the site reads, with how to check it. */
 function files() {
   const list = [];
@@ -63,6 +66,7 @@ function files() {
     { file: CORRECTIONS.programs, csv: [s.PROGRAM_MERGE_COLUMNS, s.ProgramMergeRow], optional: true },
     { file: CORRECTIONS.games, csv: [s.GAME_CORRECTION_COLUMNS, s.GameCorrectionRow], optional: true },
     { file: seed("lineage/programs.csv"), csv: [s.LINEAGE_COLUMNS, s.LineageRow], optional: true },
+    { file: NOT_LISTED, csv: [s.NOT_LISTED_COLUMNS, s.NotListedRow], optional: true },
     { file: seed("uil-champions/six-man.csv"), csv: [s.FINAL_COLUMNS, s.FinalRow], optional: true },
     { file: seed("uil-champions/six-man-no-final.csv"), csv: [s.NO_FINAL_COLUMNS, s.NoFinalRow], optional: true },
     { file: seed("schools/identity.json"), json: s.IdentityFile, optional: true },
@@ -115,10 +119,35 @@ export function checkAll() {
     if (unknown.length) results.push({ file: seed("schools/identity.json"), ok: false, note: `colors not in colors.json: ${unknown.join(", ")}` });
   }
   if (identity) results.push(checkLogoFiles(identity));
+  results.push(checkRegistry(parsed));
   results.push(checkFirstSeason());
   results.push(...checkMaxprepsFolders(path.join(root, "data/seed")));
   results.push(...checkDisputed(path.join(root, "data/seed")));
   return results;
+}
+
+/**
+ * Gate G2 (ADR 0073): every current program has a league and a source, once. Every alignment row is a program with a
+ * league its organizations know and a public page that lists it (the schema checks both per row); a school is listed at
+ * most once per league; and a team on the not-yet-listed list is not also a program, so the count on /programs never
+ * double-counts. That every team in a current-season game is a program is checkIntegrity's unknown-team check.
+ */
+export function checkRegistry(parsed) {
+  const alignments = Object.entries(parsed).filter(([f]) => f.endsWith("/alignments.csv")).flatMap(([, rows]) => rows);
+  const problems = [];
+  const seen = new Set();
+  for (const a of alignments) {
+    const key = `${a.league}|${slugify(a.school)}`;
+    if (seen.has(key)) problems.push(`${a.school} is listed twice in ${a.league}`);
+    seen.add(key);
+  }
+  const programs = new Set(alignments.map((a) => slugify(a.school)));
+  for (const r of parsed[NOT_LISTED] ?? []) if (r.school && programs.has(slugify(r.school))) problems.push(`${r.school} is a program and also not yet listed`);
+  const leagues = new Set(alignments.map((a) => a.league));
+  for (const r of parsed[NOT_LISTED] ?? []) if (!r.school && leagues.has(r.league)) problems.push(`${r.league} has programs but a row says it publishes no list`);
+  return problems.length
+    ? { file: "registry", ok: false, note: problems.join("; ") }
+    : { file: "registry", ok: true, note: `${programs.size} programs in ${leagues.size} organizations, every one with a source; not yet listed: ${(parsed[NOT_LISTED] ?? []).filter((r) => r.school).length} teams, ${(parsed[NOT_LISTED] ?? []).filter((r) => !r.school).length} leagues with no list` };
 }
 
 /**

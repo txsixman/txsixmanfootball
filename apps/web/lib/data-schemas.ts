@@ -117,6 +117,19 @@ export const AlignmentRow = z.object({
   source_url: url,
 });
 
+// ---- Programs not yet listed (data/seed/private-2026/not-listed.csv, ADR 0073) ----------------------------------------
+// What the registry knows it is missing, from public pages only (ADR 0014): a league with no published six-man list
+// (`school` blank), or a team that plays six-man teams but that no public page yet places in a league. Counted on
+// /programs; never a program page, never ranked. `source_url` is the page checked; `checked_on` the day it was read.
+export const NOT_LISTED_COLUMNS = ["league", "school", "reason", "checked_on", "source_url"];
+export const NotListedRow = z.object({
+  league: z.union([AlignmentRow.shape.league, z.literal("League not known")]),
+  school: z.string().trim(),
+  reason: text,
+  checked_on: isoDate,
+  source_url: url,
+});
+
 export const LINEAGE_COLUMNS = ["predecessor", "successor", "event", "season", "source_url", "notes"];
 export const LineageRow = z.object({
   predecessor: text,
