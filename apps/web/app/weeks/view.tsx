@@ -39,7 +39,7 @@ function TeamName({ name, org, alignments }: { name: string; org: Org; alignment
 function GameLink({ g }: { g: Games }) {
   const line = (team: string, score: number) => (
     <span className="flex items-center justify-between gap-3">
-      <span className="min-w-0 truncate">{team}</span>
+      <span className="min-w-0 truncate">{team}</span>{" "}
       <span className="font-num text-[20px] font-bold tabular-nums">{g.forfeit ? "" : score}</span>
     </span>
   );
@@ -47,11 +47,12 @@ function GameLink({ g }: { g: Games }) {
     <Link
       href={g.href}
       prefetch={false}
-      aria-label={`${g.away} vs ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
+      // The name holds the visible text whole, in its order (WCAG 2.5.3, label in name): each team with its own score.
+      aria-label={g.forfeit ? `${g.away}, ${g.home}, forfeit, game page` : `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}, game page`}
       className="block min-h-11 py-0.5 text-ink hover:text-navy"
     >
-      {line(g.away, g.awayScore)}
-      {line(g.home, g.homeScore)}
+      {line(g.away, g.awayScore)}{" "}
+      {line(g.home, g.homeScore)}{" "}
       {g.forfeit && <span className="block text-[13px] font-semibold text-muted">Forfeit</span>}
     </Link>
   );

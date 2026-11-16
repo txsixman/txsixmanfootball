@@ -127,3 +127,6 @@ Not in an ADR:
 - **Pages for the games the bracket sets** (ADR 0079): each gets a page with comments once both teams are known, at the
   bracket's order (home the slot's first side), which the game keeps when a listing or final names the teams the other way
   round; a listing-order address redirects; migration 0030 lets comments post on them (Nov 16, 2026).
+- **Accessibility sweep** (ADR 0081): the full axe rule set runs in CI at 375 px, light and dark, on one page of each kind
+  and fails on serious or critical findings; a link's accessible name holds the text it shows (results, week, series
+  game links); the home page's two "TAPPS" sections are no longer one landmark name (Nov 16, 2026).

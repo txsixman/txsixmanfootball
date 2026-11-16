@@ -123,8 +123,8 @@ export default async function Home() {
           {/* Two organizations side by side from `lg`, so a wide screen is not one narrow list down its left side. */}
           <div className="lg:grid lg:grid-cols-2 lg:gap-x-8">
           {watch.map(({ org, games }) => (
-            <section key={org.slug} aria-labelledby={`watch-${org.slug}`} className="mt-3">
-              <h3 id={`watch-${org.slug}`} className="sub-title">{org.label}</h3>
+            <section key={org.slug} aria-label={`${org.label} games to watch`} className="mt-3">
+              <h3 className="sub-title">{org.label}</h3>
               <ul>
                 {games.map((g) => {
                   const [day, date] = g.status.split(" ");
