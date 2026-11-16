@@ -76,14 +76,18 @@ test.describe("posts off (FAN_POSTS not on, or FAN_SIGNIN not on)", () => {
     expect((await request.patch("/api/fan/posts/aaaaaaaa-0000-4000-8000-000000000001", { headers: json, data: { body: "x" } })).status()).toBe(404);
   });
 
-  test("the comment counts route is 404 and /scores shows no comment count", async ({ page, request }) => {
+  test("the comment counts route is 404, and /scores and the playoff lists never ask it", async ({ page, request }) => {
     expect((await request.get("/api/games/comment-counts?keys=x")).status()).toBe(404);
-    // The cards still ask once (the page was built without knowing the switch); the answer is a 404 and nothing is drawn.
-    const asked = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/games/comment-counts");
-    await page.goto("/scores", { waitUntil: "networkidle" });
-    await expect(page.locator("li[data-game]").first()).toBeVisible();
-    expect((await asked).status()).toBe(404);
-    await expect(page.locator("[data-comment-count]")).toHaveCount(0);
+    // Built with posts off, the pages carry no counts at all: no request (a 404 would log a browser error) and nothing drawn.
+    const asked: string[] = [];
+    page.on("request", (r) => {
+      if (new URL(r.url()).pathname === "/api/games/comment-counts") asked.push(r.url());
+    });
+    for (const url of ["/scores", "/playoffs", "/playoffs/this-round"]) {
+      await page.goto(url, { waitUntil: "networkidle" });
+      await expect(page.locator("[data-comment-count]")).toHaveCount(0);
+    }
+    expect(asked).toEqual([]);
   });
 
   test("/api/me says posts are off, and a posts route answers before it looks at any session", async ({ request }) => {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { loadAlignments, programFor, slugify } from "@/lib/alignments";
+import { fanPosts } from "@/lib/auth/config";
 import { sideText } from "@/lib/bracket-fill";
 import { loadFinals } from "@/lib/champions";
 import { loadBrackets } from "@/lib/brackets";
@@ -42,7 +43,7 @@ export default async function ScoresPage() {
     );
     return (
       <>
-        <Board games={games} eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" crests={crests} weekInReview={review && { href: weekHref(review.season, review.week), label: `Week in review: ${review.season} week ${review.week}` }} next={next} commentCounts />
+        <Board games={games} eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" crests={crests} weekInReview={review && { href: weekHref(review.season, review.week), label: `Week in review: ${review.season} week ${review.week}` }} next={next} commentCounts={fanPosts()} />
         <p className="mx-auto max-w-prose px-3 py-4 text-[14px] leading-5 text-muted">{edge}</p>
       </>
     );

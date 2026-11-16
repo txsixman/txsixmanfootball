@@ -34,6 +34,7 @@ Forums, game comments and score reports are behind `FAN_POSTS`, which must be ex
   comment and score-report blocks appear or vanish only with that deploy. CI's launch job builds with the switches set, as Vercel does.
   A page built with posts on and served after the flag goes off hides both blocks itself, because their routes then answer 404.
   The forums, every `/api/*` route and `/api/me` read the flag per request.
+- **`/scores` and the playoff lists are static too**: their comment counts and comments links (ADR 0077) are in a build made with posts on and absent from one made with posts off, so they never ask the counts route while posts are off. A page built with posts on and served after the flag goes off draws nothing, because the route then answers 404.
 - `/api/me` answers `{ enabled, posts, me }`: `posts` is `FAN_POSTS` for the page scripts, never true while `enabled` is false.
 - **`/admin/moderation` stays open to the owner** whichever way the switch is set, so he can ban an account or show a post again
   after turning posts off. With posts off it says so in one sentence and shows a post's place as text, not a link.

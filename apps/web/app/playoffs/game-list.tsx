@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { programFor, type Alignment } from "@/lib/alignments";
+import { fanPosts } from "@/lib/auth/config";
 import type { Side } from "@/lib/bracket-fill";
 import { sideText } from "@/lib/bracket-fill";
 import type { BracketRow, BuiltRow } from "@/lib/brackets";
@@ -26,10 +27,13 @@ export const DisputedMark = () => (
  * `showStatus` is off for a past season, where every game is old and the page says once that its scores are unconfirmed
  * (a forfeit still says so). `comments` (a current season's lists only) links each game that has a page to its comments
  * (ADR 0077): "count" only when the game has some, "always" also "Comments" for one with none while posts are open. */
-export async function GameList({ games, league, alignments, identities, today, showStatus = true, comments }: {
+export async function GameList({ games, league, alignments, identities, today, showStatus = true, comments: asked }: {
   games: BracketRow[]; league: string; alignments: Alignment[]; identities: Awaited<ReturnType<typeof loadIdentities>>; today: string; showStatus?: boolean; comments?: "count" | "always";
 }) {
   // The page id of each game that has one (a game the bracket only sets has none), by the same key the bracket page uses.
+  // Read when the page renders (at build for a static page, as the game page reads it for its comments block): with posts off
+  // nothing asks the counts route, which would answer 404 (ADR 0052) and log an error in the browser.
+  const comments = fanPosts() ? asked : undefined;
   const pages = comments ? new Map((await bracketGames()).filter((g) => g.id.startsWith(`${CURRENT_SEASON}-`)).map((g) => [`${g.date}|${g.home.name}|${g.away.name}`, g.id])) : undefined;
   const team = (name: string, score: number | undefined) => {
     const slug = programFor(alignments, name, league)?.slug;
