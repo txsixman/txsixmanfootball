@@ -224,13 +224,20 @@ test.describe("with a signed-in fan (a stand-in for Supabase)", () => {
     await page.goto("/account");
     await expect(page.getByRole("heading", { level: 1, name: "Your account" })).toBeVisible();
     await settled(page);
-    const titles = ["Profile", "My teams", "Alerts and devices", "Sign-in and security", "Privacy and data", ...(POSTS ? ["My activity"] : [])];
+    // My activity sits second while posts are on (right after Profile), and is absent while they are off.
+    const sections = [
+      ["profile", "Profile"],
+      ...(POSTS ? [["activity", "My activity"]] : []),
+      ["teams", "My teams"],
+      ["alerts", "Alerts and devices"],
+      ["security", "Sign-in and security"],
+      ["data", "Privacy and data"],
+    ];
+    const titles = sections.map(([, title]) => title);
     await expect(page.locator("main").getByRole("heading", { level: 2 })).toHaveText(titles);
     const nav = page.getByRole("navigation", { name: "Account sections" });
     await expect(nav.getByRole("link")).toHaveText(titles);
-    for (const [i, id] of ["profile", "teams", "alerts", "security", "data", "activity"].entries()) {
-      if (i < titles.length) await expect(nav.getByRole("link").nth(i)).toHaveAttribute("href", `#${id}`);
-    }
+    for (const [i, [id]] of sections.entries()) await expect(nav.getByRole("link").nth(i)).toHaveAttribute("href", `#${id}`);
     // No heading level is skipped: each heading is at most one level below the one before it.
     const levels = await page.locator("main h1, main h2, main h3, main h4").evaluateAll((hs) => hs.map((h) => Number(h.tagName[1])));
     expect(levels[0]).toBe(1);

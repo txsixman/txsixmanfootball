@@ -76,6 +76,16 @@ test.describe("posts off (FAN_POSTS not on, or FAN_SIGNIN not on)", () => {
     expect((await request.patch("/api/fan/posts/aaaaaaaa-0000-4000-8000-000000000001", { headers: json, data: { body: "x" } })).status()).toBe(404);
   });
 
+  test("the comment counts route is 404 and /scores shows no comment count", async ({ page, request }) => {
+    expect((await request.get("/api/games/comment-counts?keys=x")).status()).toBe(404);
+    // The cards still ask once (the page was built without knowing the switch); the answer is a 404 and nothing is drawn.
+    const asked = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/games/comment-counts");
+    await page.goto("/scores", { waitUntil: "networkidle" });
+    await expect(page.locator("li[data-game]").first()).toBeVisible();
+    expect((await asked).status()).toBe(404);
+    await expect(page.locator("[data-comment-count]")).toHaveCount(0);
+  });
+
   test("/api/me says posts are off, and a posts route answers before it looks at any session", async ({ request }) => {
     const answer = await request.get("/api/me");
     expect(await answer.json()).toEqual({ enabled: signIn, posts: false, me: null });
@@ -107,7 +117,8 @@ test.describe("posts on (FAN_SIGNIN=on and FAN_POSTS=on)", () => {
     await expect(comments.getByText("No comments yet.")).toBeVisible();
     const signIn = comments.getByRole("link", { name: "Sign in" });
     await expect(signIn).toBeVisible();
-    expect(await signIn.getAttribute("href")).toBe(`/sign-in?next=${encodeURIComponent(played)}`);
+    // Sign-in from the comments comes back to the comments, not the top of the page.
+    expect(await signIn.getAttribute("href")).toBe(`/sign-in?next=${encodeURIComponent(`${played}#comments`)}`);
     await expect(page.getByLabel("Add a comment")).toHaveCount(0);
     await expect(comments.getByRole("button", { name: /post|flag|edit/i })).toHaveCount(0);
     await expect(page.getByRole("region", { name: /report/i })).toHaveCount(0);
@@ -176,6 +187,42 @@ test.describe("posts on (FAN_SIGNIN=on and FAN_POSTS=on)", () => {
     expect((await page.request.get("/forums/no-such-board")).status()).toBe(404);
     expect((await page.request.get("/forums/thread/not-a-uuid")).status()).toBe(404);
     expect(errors).toEqual([]);
+  });
+
+  test("with no database, /scores shows no comment count and the counts route answers an empty list", async ({ page, request }) => {
+    const r = await request.get("/api/games/comment-counts?keys=2026-bi-district-beta-at-alpha");
+    expect(r.status()).toBe(200);
+    expect(await r.json()).toEqual({ counts: {} });
+    expect((await request.get("/api/games/comment-counts")).status()).toBe(200);
+    const asked = page.waitForResponse((r2) => new URL(r2.url()).pathname === "/api/games/comment-counts");
+    await page.goto("/scores", { waitUntil: "networkidle" });
+    await expect(page.locator("li[data-game]").first()).toBeVisible();
+    expect((await asked).status()).toBe(200);
+    await expect(page.locator("[data-comment-count]")).toHaveCount(0);
+    await axeClean(page);
+  });
+
+  test("with no database, the forums index says the counts are not available and the boards still work", async ({ page }) => {
+    await page.goto("/forums", { waitUntil: "networkidle" });
+    await expect(page.getByText("Post counts are not available right now. The boards below still work.")).toBeVisible();
+    // No count line on any board: neither "No posts yet" nor a thread count.
+    await expect(page.getByText("No posts yet")).toHaveCount(0);
+    await expect(page.getByText(/last post/)).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("link").filter({ hasText: /General|UIL Division I|UIL Division II|Private schools|Playoffs/ })).toHaveCount(5);
+    await axeClean(page);
+  });
+
+  test("with no database, a board says its threads could not be loaded and offers Try again to the same page", async ({ page }) => {
+    await page.goto("/forums/general", { waitUntil: "networkidle" });
+    await expect(page.getByText("Threads could not be loaded right now.")).toBeVisible();
+    const again = page.getByRole("main").getByRole("link", { name: "Try again" });
+    await expect(again).toBeVisible();
+    expect(await again.getAttribute("href")).toBe("/forums/general");
+    await expect(page.getByText("No posts yet")).toHaveCount(0);
+    await axeClean(page);
+    await again.click();
+    await expect(page).toHaveURL(/\/forums\/general$/);
+    await expect(page.getByText("Threads could not be loaded right now.")).toBeVisible();
   });
 
   test("the forum writes refuse a signed-out visitor", async ({ request, baseURL }) => {
