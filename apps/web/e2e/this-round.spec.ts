@@ -38,16 +38,22 @@ test("this round: every bracket's current round, a status for every game, no win
   const divisions = page.locator("main section[aria-label]");
   const count = await divisions.count();
   expect(count).toBeGreaterThan(0);
-  const checks: { href: string; round: string }[] = [];
+  const checks: { href: string; round: string; games: number }[] = [];
   for (let i = 0; i < count; i++) {
     const d = divisions.nth(i);
     const label = (await d.getAttribute("aria-label"))!;
     const href = (await d.getByRole("link", { name: /^Full .* bracket$/ }).getAttribute("href"))!;
-    checks.push({ href, round: label.slice(label.lastIndexOf(", ") + 2) });
-    // Every game has a status line, and every reported score is marked.
     const games = d.locator("li");
+    checks.push({ href, round: label.slice(label.lastIndexOf(", ") + 2), games: await games.count() });
+    // Every game has a status line, and every reported score is marked. A game the bracket sets (ADR 0047) has no status
+    // line until a listing has it, and its side "winner of X–Y" is not a winner named.
     for (let j = 0; j < (await games.count()); j++) {
-      const text = (await games.nth(j).innerText()).replace(/\s+/g, " ");
+      const built = (await games.nth(j).getAttribute("data-built")) !== null;
+      const text = (await games.nth(j).innerText()).replace(/\s+/g, " ").replace(/winner of/gi, "");
+      if (built) {
+        expect(text).not.toMatch(NAMES_A_WINNER);
+        continue;
+      }
       expect(text).toMatch(/(Starts \d|In progress|Time not listed|Score not reported yet|Reported tonight|Score reported|Final|Forfeit)/i);
       if (/Reported tonight|Score reported/i.test(text)) expect(text).toMatch(/Unconfirmed/i);
       expect(text).not.toMatch(NAMES_A_WINNER);
@@ -57,8 +63,10 @@ test("this round: every bracket's current round, a status for every game, no win
   expect(body).not.toMatch(BETTING);
   expect(errors).toEqual([]);
 
-  for (const { href, round } of checks) {
+  for (const { href, round, games } of checks) {
     await page.goto(href);
+    // The same games as the bracket page lists for that round: listed and set by the bracket, never fewer (Nov 16, 2026: 2 of 8).
+    expect(await page.locator("main section[aria-label]").first().locator("li").count(), `${href} ${round}`).toBe(games);
     // A one-round bracket has no round list to mark.
     if (await page.locator('nav[aria-label$="rounds"] a').count()) await expect(page.locator("nav a[aria-current=location]"), href).toHaveText(round);
   }

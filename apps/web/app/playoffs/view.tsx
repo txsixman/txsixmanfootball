@@ -7,11 +7,12 @@ import { loadIdentities } from "@/lib/identity";
 import { playoffsIntro } from "@/lib/intros";
 import { rankedList } from "@/lib/json-ld";
 import { centralClock } from "@/lib/playoff-status";
+import { roundCount } from "@/lib/this-round";
 import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { PageHeader, SectionBar } from "../ui";
 import { ChanceList } from "./chance-list";
-import { BuiltList, GameList, roundCount } from "./game-list";
+import { BuiltList, GameList } from "./game-list";
 
 export type League = (typeof LEAGUES)[number];
 /** The latest season lives at /playoffs; past seasons at /playoffs/season/<year> (UIL) and .../<league>. */
