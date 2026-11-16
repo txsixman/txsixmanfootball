@@ -46,7 +46,7 @@ function Top({ title, href, teams, identities }: {
         {teams.map((t) => (
           <li key={t.team} className="flex items-center gap-2 border-b border-line">
             <span className="w-6 text-right font-num text-[17px] font-semibold text-muted">{t.rank}</span>
-            <Link href={`/programs/${t.school.slug}`} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-ink hover:text-navy hover:underline">
+            <Link href={`/programs/${t.school.slug}`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-ink hover:text-navy hover:underline">
               <Crest school={t.school.school} identity={identities.get(t.school.slug) ?? EMPTY} size={24} decorative />
               <span className="truncate">{t.school.school}</span>
             </Link>
@@ -123,8 +123,8 @@ export default async function Home() {
           {/* Two organizations side by side from `lg`, so a wide screen is not one narrow list down its left side. */}
           <div className="lg:grid lg:grid-cols-2 lg:gap-x-8">
           {watch.map(({ org, games }) => (
-            <section key={org.slug} aria-labelledby={`watch-${org.slug}`} className="mt-3">
-              <h3 id={`watch-${org.slug}`} className="sub-title">{org.label}</h3>
+            <section key={org.slug} aria-label={`${org.label} games to watch`} className="mt-3">
+              <h3 className="sub-title">{org.label}</h3>
               <ul>
                 {games.map((g) => {
                   const [day, date] = g.status.split(" ");
@@ -217,7 +217,7 @@ export default async function Home() {
                     {f.division ? `Division ${f.division}` : "Six-man"}
                   </p>
                   {current.has(slug) ? (
-                    <Link href={`/programs/${slug}`} className="flex min-h-11 items-center gap-2 font-num text-[22px] font-bold uppercase text-navy hover:underline">
+                    <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 font-num text-[22px] font-bold uppercase text-navy hover:underline">
                       <Crest school={f.champion} identity={identities.get(slug) ?? EMPTY} size={32} decorative />
                       {f.champion}
                     </Link>

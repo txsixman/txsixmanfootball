@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AccountLink } from "./account-link";
+import { PREFETCHED_SECTIONS } from "../lib/prefetched-sections";
 
 export type NavSection = { href: string; label: string };
 
@@ -23,6 +24,7 @@ export function MainNav({ sections }: { sections: NavSection[] }) {
           <Link
             key={s.href}
             href={s.href}
+            prefetch={PREFETCHED_SECTIONS.includes(s.href) ? undefined : false}
             aria-current={here ? "page" : undefined}
             className={`inline-flex min-h-11 items-center px-2 hover:text-white ${here ? "text-white underline decoration-red decoration-4 underline-offset-[10px]" : "text-white/85"}`}
           >

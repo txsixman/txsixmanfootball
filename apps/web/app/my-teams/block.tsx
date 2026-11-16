@@ -18,7 +18,7 @@ function Line({ label, game, school }: { label: string; game: MyGame; school?: s
     <span className="block">
       {game.status} · {lead(game)}{" "}
       {game.opponentSlug && !game.href ? (
-        <Link href={`/programs/${game.opponentSlug}`} className="name-link">
+        <Link href={`/programs/${game.opponentSlug}`} prefetch={false} className="name-link">
           {game.opponent}
         </Link>
       ) : (
@@ -98,7 +98,7 @@ export function MyTeams() {
         <ul className="mt-3 grid gap-x-6 sm:grid-cols-2">
           {teams.map((t) => (
             <li key={t.slug} className="border-b border-line pb-1">
-              <Link href={`/programs/${t.slug}`} className="flex min-h-11 items-center gap-2 text-ink hover:text-navy hover:underline">
+              <Link href={`/programs/${t.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 text-ink hover:text-navy hover:underline">
                 <Crest school={t.school} identity={t.crest} size={28} decorative />
                 <span className="min-w-0 flex-1 truncate font-num text-[20px] font-bold uppercase tracking-wide">{t.school}</span>
                 {t.record && (

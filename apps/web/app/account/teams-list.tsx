@@ -130,7 +130,7 @@ export function TeamsList({ slugs, email }: { slugs: string[]; email: TeamsEmail
             <li key={slug} className="border-b border-line py-1">
               <div className="flex items-center gap-2">
                 {team && <Crest school={team.school} identity={team.crest} size={28} decorative />}
-                <Link href={`/programs/${slug}`} className="flex min-h-11 min-w-0 flex-1 items-center text-ink hover:text-navy hover:underline">
+                <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center text-ink hover:text-navy hover:underline">
                   <span className="truncate font-num text-[20px] font-bold uppercase tracking-wide">{label}</span>
                 </Link>
                 <Button type="button" variant="outline" onClick={() => unfollow(slug)} disabled={busy === slug}>

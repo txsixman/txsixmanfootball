@@ -36,7 +36,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
       <span className="flex min-h-11 items-center">
         <CrestSlot school={name} identity={(slug && identities.get(slug)) || EMPTY} />
         {slug ? (
-          <Link href={`/programs/${slug}`} className="min-w-0 flex-1 truncate leading-[2.75rem] hover:text-navy hover:underline">
+          <Link href={`/programs/${slug}`} prefetch={false} className="min-w-0 flex-1 truncate leading-[2.75rem] hover:text-navy hover:underline">
             {name}
           </Link>
         ) : (
@@ -53,7 +53,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
       className="flex shrink-0 items-center gap-1 pl-2 hover:bg-panel"
     >
       <span className="flex flex-col text-right font-num text-[20px] font-bold tabular-nums">
-        <span className="flex min-h-11 w-9 items-center justify-end">{g.forfeit ? "" : g.awayScore}</span>
+        <span className="flex min-h-11 w-9 items-center justify-end">{g.forfeit ? "" : g.awayScore}</span>{" "}
         <span className="flex min-h-11 w-9 items-center justify-end">{g.forfeit ? "" : g.homeScore}</span>
       </span>
       <ChevronRight aria-hidden="true" className="size-4 text-muted" />

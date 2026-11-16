@@ -92,7 +92,7 @@ export function Finder({ groups }: { groups: FinderGroup[] }) {
                           <ul>
                             {g.schools.map((s) => (
                               <li key={s.slug} className="border-b border-line last:border-b-0">
-                                <Link href={`/programs/${s.slug}`} className="flex min-h-12 items-center px-3 text-[16px] leading-tight text-ink hover:bg-page hover:text-navy hover:underline">
+                                <Link href={`/programs/${s.slug}`} prefetch={false} className="flex min-h-12 items-center px-3 text-[16px] leading-tight text-ink hover:bg-page hover:text-navy hover:underline">
                                   <CrestSlot school={s.school} identity={s.identity} size={28} />
                                   <span className="min-w-0">{s.school}</span>
                                 </Link>

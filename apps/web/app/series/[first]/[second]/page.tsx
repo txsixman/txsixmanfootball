@@ -71,7 +71,7 @@ export default async function SeriesPage({ params }: Props) {
   const matchup = `/matchup?a=${first}&b=${second}`;
 
   const Team = ({ school, slug, group }: { school: string; slug: string; group: string }) => (
-    <Link href={`/programs/${slug}`} className="flex min-h-11 flex-col items-start gap-1.5 text-navy hover:underline">
+    <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 flex-col items-start gap-1.5 text-navy hover:underline">
       <Crest school={school} identity={identities.get(slug) ?? EMPTY} size={56} decorative />
       <span className="font-num text-[24px] font-bold uppercase leading-[1.05] tracking-wide [overflow-wrap:anywhere]">{school}</span>
       <span className="text-[12px] font-bold uppercase leading-4 tracking-widest text-muted no-underline">{group}</span>
@@ -103,18 +103,20 @@ export default async function SeriesPage({ params }: Props) {
         <ul>
           {meetings.map(({ season, result: r }) => {
             const round = label(season, r);
+            const where = round ? `${season} playoffs · ${round}` : `${season} season`;
             return (
               <li key={r.id} className="border-b border-line">
                 <Link
                   href={r.href}
-                  aria-label={`${mediumDate(r.date)}, ${r.away} vs ${r.home}${r.forfeit ? ", forfeit" : `, ${r.awayScore}-${r.homeScore}`}, game page`}
+                  // The name holds the visible text whole, in its order (WCAG 2.5.3, label in name).
+                  aria-label={`${mediumDate(r.date)}, ${r.away} vs ${r.home}, ${where}, ${r.forfeit ? "forfeit" : `${r.awayScore}-${r.homeScore}`}, game page`}
                   className="grid min-h-14 grid-cols-[6.75rem_1fr_auto_auto] items-center gap-x-3 px-3 py-1 hover:bg-panel"
                 >
-                  <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(r.date)}</span>
+                  <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(r.date)}</span>{" "}
                   <span className="min-w-0 text-[15px] leading-5 text-ink">
-                    {r.away} vs {r.home}
-                    <span className="block text-[13px] leading-4 text-muted">{round ? `${season} playoffs · ${round}` : `${season} season`}</span>
-                  </span>
+                    {r.away} vs {r.home}{" "}
+                    <span className="block text-[13px] leading-4 text-muted">{where}</span>
+                  </span>{" "}
                   <span className="font-num text-[19px] font-bold tabular-nums text-ink">{r.forfeit ? "Forfeit" : `${r.awayScore}-${r.homeScore}`}</span>
                   <ChevronRight aria-hidden="true" className="size-4 text-muted" />
                 </Link>

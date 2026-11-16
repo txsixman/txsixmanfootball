@@ -17,7 +17,7 @@ export function ChanceList({ id, title, chances, identities }: {
           const pct = Math.round(c.chance * 100);
           return (
             <li key={c.team} className="flex items-center gap-2 border-b border-line">
-              <Link href={`/programs/${slug}`} className="flex min-h-11 min-w-0 flex-1 items-center text-ink hover:text-navy hover:underline">
+              <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center text-ink hover:text-navy hover:underline">
                 <CrestSlot school={c.team} identity={identities.get(slug) ?? EMPTY} />
                 <span className="line-clamp-2 min-w-0 leading-tight">{c.team}</span>
               </Link>

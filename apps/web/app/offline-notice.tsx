@@ -7,7 +7,14 @@ export function Offline({ children }: { children: ReactNode }) {
   const [offline, setOffline] = useState(false);
   useEffect(() => {
     if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((e) => console.warn("service worker not registered:", e));
+      // Registering starts the worker's install, which fetches every script and style the site has (about 320 KB). Done
+      // while the page is still loading, that fought the page's own images for a weak signal; so it waits until the page
+      // has loaded and the phone is idle (ADR 0080).
+      const register = () => navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((e) => console.warn("service worker not registered:", e));
+      const whenIdle = () => ("requestIdleCallback" in window ? window.requestIdleCallback(register, { timeout: 4000 }) : setTimeout(register, 2000));
+      if (document.readyState === "complete") whenIdle();
+      else window.addEventListener("load", whenIdle, { once: true });
+      return () => window.removeEventListener("load", whenIdle);
     }
   }, []);
   useEffect(() => {

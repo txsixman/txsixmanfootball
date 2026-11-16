@@ -17,7 +17,7 @@ function Name({ name, programs, className = "" }: { name: string; programs: Prog
   const slug = programs.get(name);
   const base = `flex min-h-11 items-center break-words text-[15px] font-semibold leading-5 ${className}`;
   return slug ? (
-    <Link href={`/programs/${slug}`} className={`${base} text-navy hover:underline`}>
+    <Link href={`/programs/${slug}`} prefetch={false} className={`${base} text-navy hover:underline`}>
       {name}
     </Link>
   ) : (

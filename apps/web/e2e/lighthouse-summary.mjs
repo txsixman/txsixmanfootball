@@ -32,6 +32,11 @@ for (const r of JSON.parse(readFileSync(manifestPath, "utf8"))) {
   runs = Math.max(runs, byPage.get(page).length);
 }
 
+// Bytes over the network by kind of file, from the report's own request list (compressed as sent; raw is after decompressing).
+const bytes = (audits, type, key) =>
+  (audits["network-requests"]?.details?.items ?? []).filter((i) => i.resourceType === type).reduce((n, i) => n + (i[key] ?? 0), 0);
+const kbOf = (v) => (v == null ? "–" : `${Math.round(v / 1024)} KB`);
+
 const rows = [...byPage].map(([page, list]) => {
   const cat = (k) => median(list.map((x) => x.summary[k]));
   const num = (k) => median(list.map((x) => x.audits[k]?.numericValue));
@@ -47,10 +52,20 @@ const rows = [...byPage].map(([page, list]) => {
     ms(num("total-blocking-time")),
     cls == null ? "–" : cls.toFixed(3),
     kb == null ? "–" : `${Math.round(kb / 1024)} KB`,
+    kbOf(median(list.map((x) => bytes(x.audits, "Script", "transferSize")))),
+    kbOf(median(list.map((x) => bytes(x.audits, "Document", "transferSize")))),
+    kbOf(median(list.map((x) => bytes(x.audits, "Document", "resourceSize")))),
   ];
 });
 
-console.log(`### Lighthouse, mobile settings (median of ${runs} runs, each number on its own)\n`);
-console.log("| Page | Perf | A11y | Best pr. | FCP | LCP | TBT | CLS | Weight |");
-console.log("|---|---|---|---|---|---|---|---|---|");
+// --annotate: one GitHub annotation a page instead of the table, so the numbers can be read from the check run's API
+// (the run summary is not served by it). ci.yml runs it after the summary step, without tee.
+if (process.argv.includes("--annotate")) {
+  for (const r of rows) console.log(`::notice title=Lighthouse ${r[0]}::Perf ${r[1]} | A11y ${r[2]} | BP ${r[3]} | FCP ${r[4]} | LCP ${r[5]} | TBT ${r[6]} | CLS ${r[7]} | Weight ${r[8]} | JS ${r[9]} | HTML ${r[10]} | HTML raw ${r[11]} (median of ${runs})`);
+  process.exit(0);
+}
+
+console.log(`### Lighthouse, mobile settings (median of ${runs} runs, each number on its own; JS and HTML are bytes sent, HTML raw is after decompressing)\n`);
+console.log("| Page | Perf | A11y | Best pr. | FCP | LCP | TBT | CLS | Weight | JS | HTML | HTML raw |");
+console.log("|---|---|---|---|---|---|---|---|---|---|---|---|");
 for (const r of rows) console.log(`| ${r.join(" | ")} |`);

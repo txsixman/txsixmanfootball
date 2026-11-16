@@ -85,7 +85,9 @@ const config: NextConfig = {
         source: "/logos/:file*",
         headers: [
           { key: "Content-Security-Policy", value: "default-src 'none'; style-src 'unsafe-inline'; sandbox" },
-          { key: "Cache-Control", value: "public, max-age=86400" },
+          // A week, then a day more shown while a fresh copy loads (ADR 0080): the files are not hashed, so a changed logo
+          // reaches a phone within a week; a day's lifetime made every fan who comes back after a day re-fetch each crest.
+          { key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" },
         ],
       },
     ];

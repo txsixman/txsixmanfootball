@@ -61,7 +61,7 @@ export async function RecordsView({ org }: { org: Org }) {
     const slug = programFor(alignments, name, org.league)?.slug;
     const crest = <CrestSlot school={name} identity={(slug && identities.get(slug)) || EMPTY} />;
     return slug ? (
-      <Link href={`/programs/${slug}`} className="flex min-h-11 items-center font-semibold leading-tight hover:text-navy hover:underline">
+      <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 items-center font-semibold leading-tight hover:text-navy hover:underline">
         {crest}
         {name}
       </Link>

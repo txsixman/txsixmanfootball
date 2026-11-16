@@ -101,7 +101,7 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
               {[ta!, tb!].map((t, i) => (
                 <div key={t.slug} className={`min-w-0 px-3 py-3 ${i ? "border-l border-line" : ""}`}>
                   <dt>
-                    <Link href={`/programs/${t.slug}`} className="flex min-h-11 items-center gap-2 font-num text-[20px] font-bold uppercase leading-tight text-navy hover:underline">
+                    <Link href={`/programs/${t.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 font-num text-[20px] font-bold uppercase leading-tight text-navy hover:underline">
                       <Crest school={t.name} identity={t.identity} size={36} decorative />
                       <span className="min-w-0 [overflow-wrap:anywhere]">{t.name}</span>
                     </Link>

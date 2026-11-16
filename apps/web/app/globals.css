@@ -15,8 +15,8 @@
   --color-muted: light-dark(#55617a, #a9b4ca);
   --color-band: light-dark(#0a2a5e, #1c3a72);
   --color-alert: light-dark(#bf1e2e, #b51f2c);
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-  /* --font-barlow is set by layout.tsx (next/font); Ladle, outside Next, loads @fontsource's "Barlow Condensed". */
+  --font-sans: var(--font-inter, "Inter Variable"), ui-sans-serif, system-ui, sans-serif;
+  /* --font-inter and --font-barlow are set by layout.tsx (next/font); Ladle, outside Next, loads @fontsource's "Inter Variable" and "Barlow Condensed". */
   --font-num: var(--font-barlow, "Barlow Condensed"), "Arial Narrow", sans-serif;
 
   /* shadcn/ui's token names (components/ui), mapped onto the colors above. New names only: `muted` stays the site's
