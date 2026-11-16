@@ -7,6 +7,7 @@ import { loadThreads, pageOf, THREADS_PER_PAGE } from "@/lib/forums";
 import { PageHeader } from "../../ui";
 import { Pager } from "../pager";
 import { when } from "../when";
+import { EmptyBoard } from "./empty-board";
 import { NewThread } from "./new-thread";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,8 @@ export default async function BoardPage({ params, searchParams }: Props) {
   if (!fanPosts() || !board) notFound();
   const page = pageOf((await searchParams).page);
   const found = await loadThreads(board.slug, page);
+  const here = `/forums/${board.slug}${page > 1 ? `?page=${page}` : ""}`;
+  const noThreads = found !== null && found.threads.length === 0;
   return (
     <section aria-labelledby="board">
       <nav aria-label="Back" className="-mt-2 mb-2">
@@ -30,11 +33,17 @@ export default async function BoardPage({ params, searchParams }: Props) {
       </nav>
       <PageHeader id="board" eyebrow="Forums" title={board.name} size="md" note={board.description} />
       <div className="mt-5">
-        <NewThread board={board.slug} next={`/forums/${board.slug}`} />
+        <NewThread board={board.slug} next={`/forums/${board.slug}`} empty={noThreads && page === 1} />
       </div>
       <h2 className="mt-6 border-b-2 border-navy pb-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">Threads</h2>
-      {!found && <p className="py-3 text-[15px] text-muted">Threads could not be loaded right now.</p>}
-      {found && found.threads.length === 0 && <p className="py-3 text-[15px] text-muted">{page > 1 ? "No more threads." : "No threads yet. Start the first one."}</p>}
+      {!found && (
+        <p className="flex flex-wrap items-center gap-x-1 py-1 text-[15px] text-muted">
+          Threads could not be loaded right now.{" "}
+          {/* A plain link, not next/link: a full reload is the retry. */}
+          <a href={here} className="inline-flex min-h-11 items-center font-semibold text-navy underline underline-offset-2">Try again</a>
+        </p>
+      )}
+      {noThreads && (page > 1 ? <p className="py-3 text-[15px] text-muted">No more threads.</p> : <EmptyBoard board={board.slug} />)}
       {found && found.threads.length > 0 && (
         <ul>
           {found.threads.map((t) => (
