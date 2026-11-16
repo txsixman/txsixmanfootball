@@ -64,13 +64,14 @@ test("a malformed row is refused", () => {
 test("private leagues load beside UIL, and regions and missing districts are stored", async () => {
   const text = readFileSync(new URL("../../../data/seed/private-2026/alignments.csv", import.meta.url), "utf8");
   const result = await seedAlignments(db, parseAlignments(text), { ...opts, seasons: [2026] });
-  // 56 rows, 55 programs: Sherman Grayson Christian School is on TAIAO's list and TCAF's (ADR 0012).
-  assert.deepEqual(result, { rows: 56, programsAdded: 55 });
+  // 58 rows, 57 programs: Sherman Grayson Christian School is on TAIAO's list and TCAF's (ADR 0012).
+  assert.deepEqual(result, { rows: 58, programsAdded: 57 });
   assert.equal(await count("from team_season where league = 'TAIAO' and district is null and region in ('North', 'South')"), 46);
   assert.equal(await count("from team_season_league where league = 'TCAF' and region is null"), 9);
-  // Community Christian (Mineral Wells) is in TCAF by its own site with no district known; CenTex Chargers name no league.
+  // Community Christian (Mineral Wells) is in TCAF by its own site with no district known; CenTex Chargers, CHANT and
+  // Covenant Prep name no league (ADR 0073).
   assert.equal(await count("from team_season where league = 'TCAF' and district = 'District not listed'"), 1);
-  assert.equal(await count("from team_season where league = 'Independent' and district = 'Independent'"), 1);
+  assert.equal(await count("from team_season where league = 'Independent' and district = 'Independent'"), 3);
   assert.equal(await count("from team_season where league = 'UIL' and division = 'I' and district = '5' and region <> '2'"), 0);
   assert.equal(await count("from team_season where league = 'UIL' and division = 'II' and district = '16' and region = '4'") > 0, true);
 });

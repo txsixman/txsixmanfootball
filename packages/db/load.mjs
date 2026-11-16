@@ -65,9 +65,17 @@ async function pastTeamSeasons(db) {
     const games = new URL(`${dir}/games.csv`, RESULTS);
     if (season >= Math.min(...ALIGNMENTS.flatMap((a) => a.seasons)) || !(existsSync(file) || existsSync(games))) continue;
     // teams.csv (private) lists every team page read; a facts-only copy has none, so the teams in its games stand in.
-    const slugs = existsSync(file)
-      ? readFileSync(file, "utf8").trim().split("\n").slice(1).map((l) => l.split(",")[0])
-      : [...new Set(readFileSync(games, "utf8").trim().split("\n").slice(1).flatMap((l) => l.split(",").slice(3, 5).map(slugify)))];
+    // Either way the teams of its playoff games are added: a school registered later (ADR 0073) may appear in a past
+    // season only in a bracket game, which withoutUnlisted now keeps, so it needs that season's team-season too.
+    const teamsOf = (url, home) =>
+      existsSync(url) ? readFileSync(url, "utf8").trim().split("\n").slice(1).flatMap((l) => l.split(",").slice(home, home + 2).map(slugify)) : [];
+    const playoffs = new URL(`${dir}/playoffs.csv`, RESULTS);
+    const slugs = [
+      ...new Set([
+        ...(existsSync(file) ? readFileSync(file, "utf8").trim().split("\n").slice(1).map((l) => l.split(",")[0]) : teamsOf(games, 3)),
+        ...teamsOf(playoffs, 4),
+      ]),
+    ];
     const { rows } = await db.query(
       `insert into team_season (program_id, season, league, format)
        select distinct on (p.id) p.id, $1::int, t.league, 6 from program p
