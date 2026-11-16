@@ -11,8 +11,7 @@ export const COMMUNITY_CHRISTIAN = "Community Christian";
 const SEED = path.join(__dirname, "../../../data/seed");
 /** How many programs the Independent organization lists (its rows in the private alignments). */
 export const INDEPENDENT_PROGRAMS = readFileSync(path.join(SEED, "private-2026/alignments.csv"), "utf8")
-  .split("
-")
+  .split("\n")
   .filter((l) => l.startsWith("Independent,")).length;
 export const independentHasGames = readdirSync(SEED)
   .filter((d) => /^maxpreps-\d{4}$/.test(d))
