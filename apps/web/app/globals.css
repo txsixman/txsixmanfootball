@@ -139,6 +139,29 @@ body {
   }
 }
 
+/* Printing a results week (ADR 0102): the week's plain text alone, one column, portrait, with no header, tabs, buttons or footer.
+   The page's own list is marked data-print-hide; the text (view.tsx) is the block that is hidden on screen. The named page keeps
+   the portrait sheet from the bracket's landscape one above, which is every other page's default. */
+@media print {
+  @page results-sheet {
+    size: portrait;
+    margin: 18mm;
+  }
+  /* Black on white whatever the theme: a dark theme's light text would vanish on paper. */
+  [data-results-print] {
+    page: results-sheet;
+    color: #000;
+    background: #fff;
+  }
+  body:has([data-results-print]) header,
+  body:has([data-results-print]) footer {
+    display: none !important;
+  }
+  body:has([data-results-print]) main {
+    padding: 0 !important;
+  }
+}
+
 /* The past seasons' game lists on a program page (page.tsx): the row's look set once, on the list, so each of the ~100 rows is
    only its date, its opponent and its score. The score link is stretched over the row; the opponent's name stays above it. */
 .pg {
