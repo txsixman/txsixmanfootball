@@ -35,7 +35,8 @@ async function build() {
   const { CURRENT_SEASON } = await import("../lib/season");
   const seasons = await hubSeasons();
   const hubs = new Map(await Promise.all(seasons.map(async (s) => [s, await loadSeasonHub(s)] as const)));
-  const reviews = async (season: number) => Promise.all(hubs.get(season)!.orgs.map(async (o) => ({ org: o.org, review: await loadSeasonReview(season, o.org) })));
+  // The loaders read ../../data from the working directory, which a test body runs outside of (the repo root): wrap each call.
+  const reviews = (season: number) => inWeb(() => Promise.all(hubs.get(season)!.orgs.map(async (o) => ({ org: o.org, review: await loadSeasonReview(season, o.org) }))));
   return { seasons, hubs, CURRENT_SEASON, reviews };
 }
 

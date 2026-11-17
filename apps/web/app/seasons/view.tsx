@@ -152,7 +152,7 @@ function OrgSection({ hub, o, identities, alignments, review }: { hub: SeasonHub
         identities={identities}
       />
 
-      <SeasonInReview review={review} alignments={alignments} latest={latest} />
+      <SeasonInReview review={review} alignments={alignments} identities={identities} latest={latest} />
 
       <nav aria-label={`More ${o.org.label} ${season}`} className="mt-3 flex flex-wrap gap-x-5 px-3">
         <Link href={resultsHref(season, hub.current, o.org)} className={LINK}>

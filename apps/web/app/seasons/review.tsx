@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Alignment } from "@/lib/alignments";
 import { programFor } from "@/lib/alignments";
+import { EMPTY, type Identity } from "@/lib/identity";
 import { chanceText } from "@/lib/projection";
 import { signed, ratingText } from "@/lib/ratings";
 import type { Org } from "@/lib/orgs";
@@ -9,24 +10,33 @@ import { roundName, RECORD_MIN_GAMES, STREAK_MIN } from "@/lib/season-review";
 import type { SeasonReview } from "@/lib/season-review-load";
 import type { SeasonResult } from "@/lib/season-results";
 import { marginOf } from "@/lib/week-review";
-import { BoardRow } from "../ui";
+import { BoardRow, CrestSlot } from "../ui";
 
 // One organization's season in review (ADR 0099): every line is counted from the data (lib/season-review.ts), none is
 // written, and a fact the data cannot support is left out. A final score is confirmed (ADR 0040), so a result may name its
 // winner, but no row says "winner" or "leading" (the words of a game under way). Each line links to its game or program.
 // "Upset" is allowed here as it is on the week's recap (ADR 0092, extended by ADR 0099). Pure server rendering.
 
-const LINK = "inline-flex min-h-11 min-w-11 items-center hover:text-navy hover:underline";
+// A team link is a block (flex), never an inline link inside a line of text: axe's link-in-text-block rule would ask for an
+// underline on a link that sits beside other text of its own colour. Its crest is inside the link (e2e/crests.spec.ts).
+const LINK = "flex min-h-11 min-w-11 items-center hover:text-navy hover:underline";
 
-function TeamLink({ name, org, alignments, bold = true }: { name: string; org: Org; alignments: Alignment[]; bold?: boolean }) {
+type Identities = ReadonlyMap<string, Identity>;
+
+function TeamLink({ name, org, alignments, identities, bold = true }: { name: string; org: Org; alignments: Alignment[]; identities: Identities; bold?: boolean }) {
   const slug = programFor(alignments, name, org.league)?.slug;
   const cls = bold ? "font-semibold" : "";
+  const crest = <CrestSlot school={name} identity={(slug && identities.get(slug)) || EMPTY} />;
   return slug ? (
     <Link href={`/programs/${slug}`} prefetch={false} className={`${LINK} ${cls} text-ink`}>
+      {crest}
       {name}
     </Link>
   ) : (
-    <span className={`inline-flex min-h-11 items-center ${cls}`}>{name}</span>
+    <span className={`flex min-h-11 items-center ${cls}`}>
+      {crest}
+      {name}
+    </span>
   );
 }
 
@@ -75,10 +85,10 @@ const FIRSTS: Record<string, string> = {
   "playoff-win": "First playoff win in the results held here",
 };
 
-export function SeasonInReview({ review, alignments, latest }: { review: SeasonReview; alignments: Alignment[]; latest: boolean }) {
+export function SeasonInReview({ review, alignments, identities, latest }: { review: SeasonReview; alignments: Alignment[]; identities: Identities; latest: boolean }) {
   const { org, season, totals } = review;
   const id = `org-${org.slug}-review`;
-  const team = (name: string, bold = true) => <TeamLink name={name} org={org} alignments={alignments} bold={bold} />;
+  const team = (name: string, bold = true) => <TeamLink name={name} org={org} alignments={alignments} identities={identities} bold={bold} />;
   const so = latest ? " so far" : "";
 
   return (
