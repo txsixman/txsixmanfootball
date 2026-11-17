@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { anyInProgress } from "@/lib/kickoff";
+import { useLiveBlocked } from "@/lib/saved-copy-state";
 import { checkedAt, fetchLiveRows, type LiveRow, type LiveView } from "@/lib/live-scores";
 import { useNow } from "../kickoff-status";
 
@@ -17,7 +18,9 @@ const REFRESH_MS = 60_000;
  * when none is. */
 export function useLiveScores(games: { date: string; kickoff?: string }[]): LiveRow[] {
   const now = useNow();
-  const enabled = now !== null && anyInProgress(games, now);
+  // A saved copy, or a phone with no signal, asks for nothing (ADR 0096); polling starts again when the page is a fresh one.
+  const blocked = useLiveBlocked();
+  const enabled = !blocked && now !== null && anyInProgress(games, now);
   const [rows, setRows] = useState<LiveRow[]>([]);
   useEffect(() => {
     if (!enabled) return;

@@ -1,6 +1,7 @@
 // Builds the service worker (sw.ts, Serwist) into public/sw.js after `next build` (package.json "build"), the same
 // way the search index is written: a static file, no server code. esbuild (MIT) bundles it; the precache list is the
-// build's own scripts and styles (hashed names, so no revisions) plus the offline page, versioned by the commit.
+// build's own scripts and styles (hashed names, so no revisions) plus the offline page, versioned by the commit. The commit
+// also names the cache of other static files, so a new deploy starts a new one (ADR 0096).
 // On Vercel it is copied into .next/output/static as well (scripts/vercel-static.mjs says why).
 //   node scripts/build-sw.mjs   (from apps/web, after next build)
 import { build } from "esbuild";
@@ -33,7 +34,7 @@ export async function buildWorker({ staticDir, outfile, revision }) {
     format: "iife",
     minify: true,
     target: "es2020",
-    define: { "self.__SW_MANIFEST": JSON.stringify(manifest) },
+    define: { "self.__SW_MANIFEST": JSON.stringify(manifest), "self.__SW_REVISION": JSON.stringify(revision) },
     logLevel: "warning",
   });
   return manifest.length;
