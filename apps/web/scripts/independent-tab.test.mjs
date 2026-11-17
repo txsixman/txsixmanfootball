@@ -12,6 +12,12 @@ import { build } from "esbuild";
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DATA = path.resolve(WEB, "../../data");
 const CENTEX = "CenTex Chargers Homeschool Sports Association";
+// Every Independent program in the alignments (ADR 0073): the tab waits for the first game of any of them, so the
+// "before" copy leaves out all of their games (CHANT and Covenant Prep joined Nov 15, 2026, and have games now).
+const INDEPENDENT = readFileSync(path.join(DATA, "seed/private-2026/alignments.csv"), "utf8").trimEnd().split("\n").slice(1)
+  .map((l) => l.split(",")).filter((c) => c[0] === "Independent").map((c) => c[4]);
+assert.ok(INDEPENDENT.includes(CENTEX), "CenTex is an Independent program");
+const notIndependent = (l) => !INDEPENDENT.some((name) => l.includes(name));
 // The row the results robot writes for such a game (tools/league-watch/maxpreps.test.mjs checks it writes exactly this).
 const CENTEX_GAME =
   "Six-Man,season,2026-10-30,CenTex Chargers Homeschool Sports Association,Community Christian,false,40,20,unknown,";
@@ -30,7 +36,7 @@ function fixture(root, games) {
   for (const dir of readdirSync(path.join(DATA, "seed")).filter(season)) {
     link(path.join(DATA, "seed", dir), path.join(root, "data/seed", dir), (name) => name === "games.csv");
     const real = readFileSync(path.join(DATA, "seed", dir, "games.csv"), "utf8").trimEnd().split("\n");
-    writeFileSync(path.join(root, "data/seed", dir, "games.csv"), dir === "maxpreps-2026" ? games : real.filter((l) => !l.includes(CENTEX)).join("\n") + "\n");
+    writeFileSync(path.join(root, "data/seed", dir, "games.csv"), dir === "maxpreps-2026" ? games : real.filter(notIndependent).join("\n") + "\n");
   }
   return path.join(root, "apps/web");
 }
@@ -47,15 +53,15 @@ async function tabs(bundle, cwd) {
   }
 }
 
-test("the Independent tab appears with the first CenTex game the robot writes, and not before", async (t) => {
+test("the Independent tab appears with the first Independent game the robot writes, and not before", async (t) => {
   const tmp = mkdtempSync(path.join(tmpdir(), "independent-tab-"));
   t.after(() => rmSync(tmp, { recursive: true, force: true }));
   const bundle = path.join(tmp, "active-orgs.mjs");
   await build({ entryPoints: [path.join(WEB, "lib/active-orgs.ts")], bundle: true, platform: "node", format: "esm", outfile: bundle, logLevel: "error" });
 
   const lines = readFileSync(path.join(DATA, "seed/maxpreps-2026/games.csv"), "utf8").trimEnd().split("\n");
-  const without = lines.filter((l) => !l.includes(CENTEX)).join("\n") + "\n";
-  const withGame = [...lines.filter((l) => !l.includes(CENTEX)), CENTEX_GAME].join("\n") + "\n";
+  const without = lines.filter(notIndependent).join("\n") + "\n";
+  const withGame = [...lines.filter(notIndependent), CENTEX_GAME].join("\n") + "\n";
 
   assert.deepEqual(await tabs(bundle, fixture(path.join(tmp, "before"), without)), ["uil", "tapps", "taiao", "tcaf"]);
   assert.deepEqual(await tabs(bundle, fixture(path.join(tmp, "after"), withGame)), ["uil", "tapps", "taiao", "tcaf", "independent"]);

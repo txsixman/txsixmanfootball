@@ -85,7 +85,8 @@ test("the committed season: every game the bracket sets keeps its id when a list
     .map((r) => ({ ...r, date: r.game_date, confirmed: r.home_score !== "", ...(r.home_score !== "" && { homeScore: +r.home_score, awayScore: +r.away_score }) }));
   let checked = 0;
   for (const division of ["I", "II"]) {
-    const list = games.filter((g) => g.division === division);
+    // Played games only: a listing not yet played is exactly what this test adds, so the bracket sets every pairing still to come.
+    const list = games.filter((g) => g.division === division && g.confirmed);
     const slots = bracketSlots(slotRows, list, { league: "UIL", division });
     const orders = orderMap(pageOrders(slots, fill(slots, list, ROUND_ORDER)));
     for (const { sides: [a, b], round } of builtGames(fill(slots, list, ROUND_ORDER))) {
