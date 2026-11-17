@@ -147,7 +147,7 @@ test("before kickoff the page says not started, past its window it says no score
   expect(await note.innerText()).not.toMatch(WINNER_OR_BETTING);
 });
 
-test("the scoreboard lists a game under way with no score yet under Live now, saying so, and not under Later", async ({ page }) => {
+test("the scoreboard lists a game under way with no score yet under In progress, saying so, and not under Later or Live now", async ({ page }) => {
   const f = await fixture();
   await page.clock.install({ time: inWindow(f) });
   await serveLive(page, { rows: [] });
@@ -159,8 +159,9 @@ test("the scoreboard lists a game under way with no score yet under Live now, sa
       await expect(tab).toHaveAttribute("aria-pressed", "true", { timeout: 1000 });
     }).toPass();
   }
-  const row = page.locator("#live").locator(`li[data-game="${f.id}"]`);
+  const row = page.locator("#in-progress").locator(`li[data-game="${f.id}"]`);
   await expect(row).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator("#live").locator(`li[data-game="${f.id}"]`)).toHaveCount(0);
   await expect(row).toContainText("In progress");
   await expect(row.locator("[data-no-score]")).toHaveText("No live score yet. Checked every few minutes.");
   await expect(page.locator("#later").locator(`li[data-game="${f.id}"]`)).toHaveCount(0);

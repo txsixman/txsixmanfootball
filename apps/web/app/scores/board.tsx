@@ -189,7 +189,7 @@ function Section({ id, title, live, games, crests, checked, counts, newestFirst 
           </h3>
           <ul>
             {games.filter((g) => g.league === league).map((g) => (
-              <Row key={g.id} g={g} crests={crests} live={checked.get(g.id)} counts={counts} noScore={id === "live" && g.state === "scheduled"} />
+              <Row key={g.id} g={g} crests={crests} live={checked.get(g.id)} counts={counts} noScore={id === "in-progress"} />
             ))}
           </ul>
         </div>
@@ -273,10 +273,11 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
   const now = useNow();
   const awaiting = (g: Game) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "awaiting";
   const notReported = shown.filter(awaiting);
-  // A game inside its window with no live score yet is on now, so it sits under Live now, its row saying "In progress" and
-  // that no score is in, not under Later (ADR 0087). A game the clock cannot place (the server, the first render) is Later.
+  // A game inside its window with no live score yet is on now, so it sits under "In progress" (just after Live now), its row
+  // saying that no score is in, not under Later (ADR 0087). A game the clock cannot place (the server, the first render) is
+  // Later. Live now keeps only games with a live score, so the Live jump counts exactly those.
   const noScoreYet = (g: Game) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "in-progress";
-  const onNow = [...live, ...shown.filter(noScoreYet)];
+  const underWay = shown.filter(noScoreYet);
   const later = shown.filter((g) => (g.state === "scheduled" || g.state === "postponed") && !awaiting(g) && !noScoreYet(g));
   const nextShown = next.filter((g) => org && g.org === org.league && (!q || g.sides.some((s) => s.name.toLowerCase().includes(q))));
   // Between game nights, this week's games come before last week's finals once the next game day is nearer than the last
@@ -292,7 +293,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
     { href: "#reported", label: "Reported", n: reported.length },
     { href: "#final", label: "Final", n: final.length },
   ];
-  const jumps = [{ href: "#live", label: "Live", n: onNow.length }, ...(upcomingFirst ? [coming, ...results] : [...results, coming])];
+  const jumps = [{ href: live.length || !underWay.length ? "#live" : "#in-progress", label: "Live", n: live.length || underWay.length }, ...(upcomingFirst ? [coming, ...results] : [...results, coming])];
   const upcoming = (
     <>
       <Section id="later" title="Later" games={later} crests={crests} checked={checked} counts={commentCounts} />
@@ -360,7 +361,8 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
         )}
       </nav>
 
-      <Section id="live" title="Live now" live games={onNow} crests={crests} checked={checked} counts={commentCounts} />
+      <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} counts={commentCounts} />
+      <Section id="in-progress" title="In progress, no score yet" games={underWay} crests={crests} checked={checked} counts={commentCounts} />
       {upcomingFirst && upcoming}
       <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} counts={commentCounts} newestFirst />
       <Section id="final" title="Final" games={final} crests={crests} checked={checked} counts={commentCounts} newestFirst />
