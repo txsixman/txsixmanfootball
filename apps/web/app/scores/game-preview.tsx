@@ -168,7 +168,7 @@ function History({ history }: { history: NonNullable<GamePreview["history"]> }) 
 }
 
 /** `projected` is the game's own projection text ("Jayton by 12 · 74% chance to win"), undefined when a team is unrated. */
-export function GamePreviewSection({ preview, detail, projected, programs, noEdge }: { preview: GamePreview; detail: GameDetail; projected?: string; programs: Programs; noEdge?: boolean }) {
+export function GamePreviewSection({ preview, detail, projected, programs, noEdge, series }: { preview: GamePreview; detail: GameDetail; projected?: string; programs: Programs; noEdge?: boolean; series?: string }) {
   const { away, home, common, next, history } = preview;
   const { total, list } = detail.meetings;
   const last = [away, home].filter((s) => s.last.length > 0);
@@ -219,6 +219,16 @@ export function GamePreviewSection({ preview, detail, projected, programs, noEdg
           </>
         )}
       </Part>
+      {/* The pair's head-to-head page (ADR 0097): every meeting, the series in words, the streak and the biggest wins. Beside the
+          region, not in it: the region holds the meetings listed above. */}
+      {series && total > 0 && (
+        <p>
+          <Link href={series} prefetch={false} className="inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-red">
+            All {total} meetings
+            <span className="sr-only"> of {away.team} and {home.team}</span>
+          </Link>
+        </p>
+      )}
 
       <Part id="common-opponents" title="Common opponents this season">
         {common.shown.length === 0 ? (

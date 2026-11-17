@@ -25,7 +25,7 @@ import { generateStaticParams as recordOrgs } from "../records/[org]/page";
 import { generateStaticParams as results } from "../results/[[...path]]/page";
 import { generateStaticParams as games } from "../scores/[id]/page";
 import { generateStaticParams as seasonHubs } from "../seasons/[year]/page";
-import { generateStaticParams as series } from "../series/[first]/[second]/page";
+import { loadSeries } from "@/lib/series-data";
 import { generateStaticParams as districts } from "../standings/district/[id]/page";
 import { generateStaticParams as standings } from "../standings/[group]/page";
 import { generateStaticParams as weeks } from "../weeks/[[...path]]/page";
@@ -69,7 +69,7 @@ const PATHS: Record<Kind, () => Promise<string[]>> = {
     const aliases = await playoffAliases(CURRENT_SEASON);
     return (await games()).filter((p) => !SAMPLE_GAMES.has(p.id) && !aliases.has(p.id)).map((p) => `scores/${p.id}`);
   },
-  series: async () => (await series()).map((p) => `series/${p.first}/${p.second}`),
+  series: async () => (await loadSeries()).map((p) => `series/${p.first}/${p.second}`),
   results: async () => (await results()).filter((p) => p.path.length).map((p) => `results/${p.path.join("/")}`),
   weeks: async () => (await weeks()).map((p) => ["weeks", ...(p.path ?? [])].join("/")),
 };
