@@ -25,8 +25,8 @@ changes what a program page says, not the data behind it.
   counts as a win or a loss in a run, as everywhere (ADR 0013), but has no margin, so it is never the biggest win or loss
   (ADR 0004: no page shows its recorded 1-0 or 2-0). A run cannot be joined across a season the data holds with none of the
   program's games, as `/records` counts runs.
-- **Season by season** gains, on each row: the playoff record beside the round reached ("reached the regional round, 1-1 in
-  playoff games"), a linked "State Champion" or "State Championship runner-up" line (to `/championships/<year>`) for a
+- **Season by season** gains, on each row: the playoff record beside the round reached ("reached the regional round, won 1, lost 1 in
+  playoff games"; written out because the game lists must show no "1-0" or "0-1", which would read as a forfeit score), a linked "State Champion" or "State Championship runner-up" line (to `/championships/<year>`) for a
   season that ended in one, and, for the season under way, the district place linked to the district's page. A past season
   shows no district place: the data holds only today's alignments, and a district's members change every realignment, so a
   past place would be a guess.

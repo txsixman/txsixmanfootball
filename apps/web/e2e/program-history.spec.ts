@@ -113,11 +113,11 @@ test("season rows say which State Championships were played and won, the playoff
     const link = season(page, year).getByRole("link", { name: "State Champion", exact: true });
     await expect(link).toHaveAttribute("href", `/championships/${year}`);
     expect(await link.evaluate((a) => a.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
-    await expect(season(page, year)).toContainText(/Playoffs: reached the State Championship, \d+-\d+(-\d+)? in playoff games/);
+    await expect(season(page, year)).toContainText(/Playoffs: reached the State Championship, won \d+, lost \d+(, tied \d+)? in playoff games/);
   }
   // A season that went no further than the area round has no State Championship line.
   await expect(season(page, 2022).getByRole("link", { name: /^State Champ/ })).toHaveCount(0);
-  await expect(season(page, 2022)).toContainText(/Playoffs: reached the area round, \d+-\d+(-\d+)? in playoff games/);
+  await expect(season(page, 2022)).toContainText(/Playoffs: reached the area round, won \d+, lost \d+(, tied \d+)? in playoff games/);
   // The season under way shows its district place, linked to the district's page; a past season never does (its districts are not today's).
   const district = season(page, CURRENT_SEASON).getByRole("link", { name: /^\d+(st|nd|rd|th) of \d+ in district, \d+-\d+(-\d+)?$/ });
   await expect(district).toHaveAttribute("href", /^\/standings\/district\//);

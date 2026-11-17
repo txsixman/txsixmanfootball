@@ -675,7 +675,7 @@ export default async function ProgramPage({ params }: Props) {
                         href={`/programs/${slug}/${best.season}`}
                         prefetch={false}
                         aria-label={`${best.season} season, ${record(best.record!)}, season page`}
-                        className="flex min-h-11 items-center font-num text-[22px] font-bold tabular-nums text-ink after:absolute after:inset-0"
+                        className="flex min-h-11 min-w-11 items-center justify-end font-num text-[22px] font-bold tabular-nums text-ink after:absolute after:inset-0"
                       >
                         {record(best.record!)}
                       </Link>
@@ -705,7 +705,7 @@ export default async function ProgramPage({ params }: Props) {
                           href={g.href}
                           prefetch={false}
                           aria-label={`${mediumDate(g.date)} ${g.opponent}, ${g.us}-${g.them}, game page`}
-                          className="flex min-h-11 items-center font-num text-[22px] font-bold tabular-nums text-ink after:absolute after:inset-0"
+                          className="flex min-h-11 min-w-11 items-center justify-end font-num text-[22px] font-bold tabular-nums text-ink after:absolute after:inset-0"
                         >
                           {g.us}-{g.them}
                         </Link>
@@ -786,7 +786,7 @@ export default async function ProgramPage({ params }: Props) {
                     {line.playoff && (
                       <span className="block text-[14px] font-semibold text-navy">
                         Playoffs: reached {roundPhrase(line.playoff.round, line.playoff.league)}
-                        {line.playoffRecord && `, ${record(line.playoffRecord)} in playoff games`}
+                        {line.playoffRecord && `, won ${line.playoffRecord.won}, lost ${line.playoffRecord.lost}${line.playoffRecord.tied ? `, tied ${line.playoffRecord.tied}` : ""} in playoff games`}
                       </span>
                     )}
                     {stateOf.has(line.season) && (
