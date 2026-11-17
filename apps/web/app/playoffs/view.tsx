@@ -6,7 +6,8 @@ import { bracketHref, bracketLabel, latestRound, LEAGUES, loadBrackets, playoffL
 import { loadIdentities } from "@/lib/identity";
 import { playoffsIntro } from "@/lib/intros";
 import { rankedList } from "@/lib/json-ld";
-import { centralClock } from "@/lib/playoff-status";
+import { centralClock, currentRound } from "@/lib/playoff-status";
+import { whosLeft } from "@/lib/whos-left";
 import { stateChampionships } from "@/lib/state-championships";
 import { roundCount } from "@/lib/this-round";
 import { JsonLd } from "../json-ld";
@@ -15,6 +16,7 @@ import { TabNav } from "../tab-nav";
 import { PageHeader, SectionBar } from "../ui";
 import { ChanceList } from "./chance-list";
 import { BuiltList, GameList } from "./game-list";
+import { treeData } from "./tree/data";
 
 export type League = (typeof LEAGUES)[number];
 /** The latest season lives at /playoffs; past seasons at /playoffs/season/<year> (UIL) and .../<league>. */
@@ -46,6 +48,17 @@ export async function PlayoffsView({ league, season }: { league: League; season?
   ]);
   const brackets = all.filter((b) => b.league === league);
   const { date: today } = centralClock();
+  // Where each bracket stands (ADR 0094), the latest season only: the round being played and how many teams are still in. The
+  // same two facts its own page opens on, from the same code (currentRound, whosLeft over the tree's boxes).
+  const standing = past
+    ? []
+    : await Promise.all(
+        brackets.map(async (b) => {
+          const round = currentRound(b.rounds, today);
+          const left = whosLeft(await treeData(b)).length;
+          return { b, round, left };
+        }),
+      );
   // A season tab keeps the league you are on when that season has it, else opens on UIL.
   const seasonTabs = seasons.map((s, i) => ({
     href: leagueHref(perSeason[i].includes(league) ? league : "UIL", s === seasons[0] ? undefined : s),
@@ -70,9 +83,49 @@ export async function PlayoffsView({ league, season }: { league: League; season?
           <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
         </Link>
       )}
+      {standing.length > 0 && (
+        // The round being played in every bracket of this league, before anything else (ADR 0094): a fan should not have to
+        // work it out from a list that starts at the first round. Each line jumps to that round below.
+        <section aria-labelledby="current-round" data-current-rounds className="mt-4 border-2 border-navy bg-panel">
+          <h3 id="current-round" className="px-3 pt-2 font-num text-[20px] font-bold uppercase leading-tight tracking-wider text-navy">
+            Current round
+          </h3>
+          <ul>
+            {standing.map(({ b, round, left }) => {
+              const id = `bracket-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+              return (
+                <li key={b.name} data-bracket={b.name} className="border-t border-line first:border-t-0">
+                  {round && (
+                    <a href={`#${id}-${round.round}`} className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 px-3 py-1 text-ink hover:bg-page">
+                      <span className="font-bold">{bracketLabel(b)}</span>
+                      <span className="font-num text-[18px] font-bold uppercase tracking-wide text-navy">
+                        {round.label}
+                        <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted"> · {roundCount(round)}</span>
+                      </span>
+                    </a>
+                  )}
+                  {/* The bracket's own page first (a bare link to each bracket leads the page, for the markup that lists them), then its list of who is left. */}
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 px-3 text-[14px] font-semibold text-navy">
+                    <Link href={bracketHref(b.name)} className="inline-flex min-h-11 items-center hover:underline">
+                      Full {bracketLabel(b)} bracket
+                    </Link>
+                    {left > 0 && (
+                      <Link href={`${bracketHref(b.name)}#whos-left`} className="inline-flex min-h-11 items-center hover:underline">
+                        Who&rsquo;s left: {left} {left === 1 ? "team" : "teams"}
+                        <ChevronRight aria-hidden="true" className="size-4" />
+                      </Link>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
       {brackets.map((b) => {
         const id = `bracket-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
         const roundId = (round: string) => `${id}-${round}`;
+        const current = past ? undefined : currentRound(b.rounds, today);
         const championship = championships.find((c) => c.bracket === b.name);
         return (
           <section key={b.name} aria-labelledby={id} className="mt-8">
@@ -88,7 +141,12 @@ export async function PlayoffsView({ league, season }: { league: League; season?
               // Rounds run earliest first, so the latest is far down a phone: one tap gets to any of them.
               <nav aria-label={`${b.name} rounds`} className="flex flex-wrap border-b border-line px-1">
                 {b.rounds.map((r) => (
-                  <a key={r.round} href={`#${roundId(r.round)}`} className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 font-num text-[16px] font-bold uppercase tracking-wide text-navy underline-offset-4 hover:underline">
+                  <a
+                    key={r.round}
+                    href={`#${roundId(r.round)}`}
+                    aria-current={r === current ? "location" : undefined}
+                    className={`inline-flex min-h-11 min-w-11 items-center justify-center px-2 font-num text-[16px] font-bold uppercase tracking-wide underline-offset-4 hover:underline ${r === current ? "bg-band text-white" : "text-navy"}`}
+                  >
                     {r.label}
                   </a>
                 ))}
@@ -108,6 +166,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
                   {r.label}{" "}
                   <span className="font-sans text-[13px] font-normal normal-case tracking-normal text-muted">
                     · {roundCount(r)}
+                    {r === current ? " · current round" : ""}
                   </span>
                 </h3>
                 {r.games.length > 0 && <GameList games={r.games} league={league} alignments={alignments} identities={identities} today={today} showStatus={!past} comments={past ? undefined : "count"} />}

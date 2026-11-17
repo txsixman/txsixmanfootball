@@ -4,75 +4,24 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { geometry } from "@/lib/bracket-layout";
 import { liveView, type LiveView } from "@/lib/live-scores";
+import { openRound, pathSteps, whosLeft } from "@/lib/whos-left";
 import { useLiveScores } from "../../scores/live-score";
 import { ShareButton } from "../../share-button";
 import type { Box, BoxSide, TreeData } from "./data";
-import { boxLines } from "./lines";
+import { footer, SideRow } from "./parts";
+import { RoundTabs } from "./rounds";
+import { WhosLeft } from "./whos-left";
 
 // The bracket drawn (ADR 0049). Two views of the same boxes: the whole tree (rounds as columns, both halves meeting at the
-// final, connectors from each pair of games to the one they feed) and one round at a time (columns that snap, with the
-// round names held at the top). Wide screens open on the tree, phones on the rounds; either can switch. Tapping a team
-// lights its path, games played and the route ahead; tapping a game opens its page. A game under way shows its live
+// final, connectors from each pair of games to the one they feed) and one round at a time (round tabs and the round's games
+// as cards, rounds.tsx, ADR 0094). Wide screens open on the tree, phones on the rounds; either can switch. Tapping a team
+// lights its path, games played and the route ahead, and lists that road; tapping a game opens its page. "Who's left" (whos-left.tsx)
+// lists the teams still in. A game under way shows its live
 // score in place, unconfirmed (ADR 0021). Every box is real text and every control a button or link, so it reads with a
 // keyboard and a screen reader; the round-by-round list below the drawing holds the same games.
 
 type View = "auto" | "tree" | "rounds";
-
-/** The two lines under the teams: a game under way says so, unconfirmed (ADR 0021). */
-function footer(b: Box, live: LiveView | null, max: number): [string, string] {
-  if (live) return live.finished ? ["Final · Unconfirmed", ""] : [["Live", live.period].filter(Boolean).join(" · "), "Unconfirmed"];
-  return boxLines(b, max);
-}
-
-function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; other: BoxSide; live?: number; lit: boolean; onTeam: (key: string) => void }) {
-  const right = live ?? side.score ?? side.chance;
-  const lost = other.won && !side.won;
-  const text = (
-    <>
-      <span className={`min-w-0 flex-1 break-words leading-[15px] ${side.won ? "font-bold text-ink" : lost ? "text-muted" : "text-ink"}`}>{side.text}</span>
-      {right != null && (
-        <span className={`shrink-0 font-num tabular-nums ${typeof right === "string" ? "text-[13px] font-semibold text-navy" : `text-[19px] font-bold ${live != null ? "text-red" : ""}`}`}>
-          {right}
-        </span>
-      )}
-    </>
-  );
-  if (side.projected) return <ProjectedRow side={side} projected={side.projected} />;
-  if (!side.key) {
-    return <span title={side.title ?? side.text} className={`relative flex h-11 items-center gap-1 px-1.5 text-[13px] ${side.bye ? "text-muted" : "italic text-muted"}`}>{text}</span>;
-  }
-  return (
-    <button
-      type="button"
-      title={side.text}
-      aria-pressed={lit}
-      onClick={() => onTeam(side.key!)}
-      className={`relative z-10 flex h-11 w-full items-center gap-1 px-1.5 text-left text-[13px] hover:bg-panel focus-visible:outline-2 focus-visible:outline-navy ${lit ? "bg-panel" : ""}`}
-    >
-      {text}
-    </button>
-  );
-}
-
-/** A side no game sets yet (ADR 0071): its most likely team, muted and marked "Projected", inside a dashed outline, so it
- * never reads as a pairing. The game it waits on ("Winner of G17") is in its title. */
-function ProjectedRow({ side, projected }: { side: BoxSide; projected: NonNullable<BoxSide["projected"]> }) {
-  const said = "team" in projected ? `Projected: ${projected.team} · ${projected.chance}` : "Not enough games to project";
-  return (
-    <span data-projected title={`${side.title ?? side.text}. ${said}. A projection, not a result.`} className="relative mx-0.5 flex h-11 flex-col justify-center border border-dashed border-line px-1 text-[13px] text-muted">
-      {"team" in projected ? (
-        <>
-          <span className="flex items-center justify-between gap-1 text-[11px] font-semibold uppercase leading-[12px] tracking-wider">
-            Projected{" "}<span className="font-num tabular-nums">{projected.chance}</span>
-          </span>
-          <span className="min-w-0 break-words italic leading-[15px]">{projected.team}</span>
-        </>
-      ) : (
-        <span className="min-w-0 break-words italic leading-[15px]">Not enough games to project</span>
-      )}
-    </span>
-  );
-}
+const NO_TITLES: Record<string, { text: string; chance: number }> = {};
 
 /** `max`: the characters of 13px semibold text that fit on a line of the box. */
 function BoxView({ box, live, team, dim, onTeam, max, style }: { box: Box; live: LiveView | null; team: string | null; dim: boolean; onTeam: (key: string) => void; max: number; style?: CSSProperties }) {
@@ -120,22 +69,25 @@ function pathOf(boxes: Box[], team: string | null) {
 
 /** `imageBase`: where the downloadable images are, or null for a page that has none (the sample). `list`: the page has the
  * games as a list below (#games-by-round). */
-export function BracketBoard({ data, imageBase, list = true }: { data: TreeData; imageBase: string | null; list?: boolean }) {
+export function BracketBoard({ data, imageBase, list = true, current: named, titles = NO_TITLES }: {
+  data: TreeData; imageBase: string | null; list?: boolean;
+  /** The round the page calls current (lib/playoff-status.ts currentRound), by its key: the tab the rounds view opens on. */
+  current?: string;
+  /** Each team's chance to win the State Championship as the page words it, and as a number to order by, by program slug. */
+  titles?: Record<string, { text: string; chance: number }>;
+}) {
   const [view, setView] = useState<View>(data.whole ? "auto" : "rounds");
   const [team, setTeam] = useState<string | null>(null);
   const [fit, setFit] = useState(false);
   const [scale, setScale] = useState(1);
-  // The round being played: the first with a game still to play (all played: the last). The rounds strip opens on it, so a
-  // phone on game night lands on this week's games, not the first round's finals.
-  const playing = useMemo(() => {
-    const i = data.rounds.findIndex((r) => r.ids.some((id) => ["upcoming", "open"].includes(data.boxes.find((b) => b.id === id)!.state)));
-    return i < 0 ? data.rounds.length - 1 : i;
-  }, [data]);
+  // The round being played: the page's own pick (by date), else the first with a game still to play, else the last. The rounds
+  // view opens on it, so a phone on game night lands on this week's games, not the first round's finals.
+  const playing = useMemo(() => openRound(data, named), [data, named]);
   const [current, setCurrent] = useState(playing);
   const [wide, setWide] = useState<boolean | null>(null); // null until the browser says, so the server's page matches
   const [copied, setCopied] = useState(false);
   const treeBox = useRef<HTMLDivElement>(null);
-  const strip = useRef<HTMLDivElement>(null);
+  const status = useRef<HTMLParagraphElement>(null);
   const geo = useMemo(() => geometry(data), [data]);
   const max = Math.floor((geo.boxW - 12) / 7); // the tree's boxes; the rounds' are wider
   const byId = useMemo(() => new Map(data.boxes.map((b) => [b.id, b])), [data]);
@@ -163,30 +115,6 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
     return () => ro.disconnect();
   }, [geo.width]);
 
-  // Open the strip on the round being played, at once (no smooth scroll on load), with its bar button in view.
-  useEffect(() => {
-    const el = strip.current;
-    const col = el?.children[playing] as HTMLElement | undefined;
-    if (!el || !col || !playing) return;
-    el.scrollLeft = col.offsetLeft - el.offsetLeft;
-    const bar = el.previousElementSibling?.children[playing] as HTMLElement | undefined;
-    bar?.parentElement?.scrollTo({ left: bar.offsetLeft - 16 });
-  }, [playing, shown]);
-
-  // The round in view in the rounds strip, for the bar held over it.
-  const onStrip = () => {
-    const el = strip.current;
-    const col = el?.firstElementChild as HTMLElement | null;
-    if (!el || !col) return;
-    setCurrent(Math.min(data.rounds.length - 1, Math.round(el.scrollLeft / col.offsetWidth)));
-  };
-  const goRound = (i: number) => {
-    const el = strip.current;
-    const col = el?.children[i] as HTMLElement | undefined;
-    if (el && col) el.scrollTo({ left: col.offsetLeft - el.offsetLeft, behavior: "smooth" });
-    setCurrent(i);
-  };
-
   const pick = (v: View) => {
     setView(v);
     if (v === "tree" && window.matchMedia("(max-width: 767px)").matches) setFit(true); // the phone's whole bracket opens fitted
@@ -195,7 +123,18 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
   const roundsShown = view === "rounds" ? "block" : view === "tree" ? "hidden" : "md:hidden";
   const btn = (on: boolean) => `inline-flex min-h-11 items-center px-3 text-[14px] font-bold ${on ? "bg-band text-white" : "text-navy hover:bg-panel"}`;
   const printZoom = geo.width ? Math.min(1, 995 / geo.width, 700 / geo.height) : 1;
-  const teamName = team && data.boxes.flatMap((b) => b.sides).find((s) => s.key === team)?.text;
+  const teamSide = team ? data.boxes.flatMap((b) => b.sides).find((s) => s.key === team) : undefined;
+  const [teamName, teamProgram] = [teamSide?.text, teamSide?.program];
+  const steps = useMemo(() => (team ? pathSteps(data, team) : []), [data, team]);
+  const left = useMemo(
+    () => whosLeft(data, Object.fromEntries(Object.entries(titles).map(([k, v]) => [k, v.text])), Object.fromEntries(Object.entries(titles).map(([k, v]) => [k, v.chance]))),
+    [data, titles],
+  );
+  // "Light its path" in the list: light it, then go up to the line that says so (the drawing is above the list).
+  const follow = (key: string) => {
+    setTeam(key);
+    status.current?.scrollIntoView({ block: "start" });
+  };
 
   return (
     <section aria-labelledby="bracket-drawing" data-tree-print className="mt-4" style={{ "--print-zoom": printZoom } as CSSProperties}>
@@ -250,13 +189,18 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
           </div>
         </details>
       </div>
-      <p data-print-hide className="mt-1 flex flex-wrap items-center gap-x-3 text-[13px] text-muted" aria-live="polite">
+      <p ref={status} data-print-hide className="mt-1 flex scroll-mt-14 flex-wrap items-center gap-x-3 text-[13px] text-muted" aria-live="polite">
         {teamName ? (
           <>
             <span>{teamName}&rsquo;s path is lit.</span>
             <button type="button" onClick={() => setTeam(null)} className="inline-flex min-h-11 items-center font-semibold text-navy underline">
               Clear
             </button>
+            {teamProgram && (
+              <Link href={`/programs/${teamProgram}#path`} prefetch={false} className="inline-flex min-h-11 items-center font-semibold text-navy underline">
+                Playoff path on its page
+              </Link>
+            )}
           </>
         ) : (
           <span>Tap a team to light its path. Tap a game for its page.</span>
@@ -271,6 +215,31 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
           </a>
         )}
       </p>
+      {team && steps.length > 0 && (
+        // The road of the lit team, one line a game: the games played, the one next, and what its wins would lead to. In the
+        // rounds view a line opens that round.
+        <details data-path-road className="mt-1 print:hidden">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center text-[14px] font-semibold text-navy">
+            Its road, game by game ({steps.length})
+          </summary>
+          <ol className="border-t border-line">
+            {steps.map((st) => {
+              const i = data.rounds.findIndex((r) => r.round === st.round);
+              return (
+                <li key={st.id} data-step={st.kind} className="border-b border-line text-[14px] leading-5 text-ink">
+                  {shown === "rounds" ? (
+                    <button type="button" onClick={() => setCurrent(i)} className="flex min-h-11 w-full items-center px-2 text-left hover:bg-panel focus-visible:outline-2 focus-visible:outline-navy">
+                      {st.text}
+                    </button>
+                  ) : (
+                    <p className="flex min-h-11 items-center px-2">{st.text}</p>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </details>
+      )}
 
       {data.whole && (
         <div
@@ -309,29 +278,12 @@ export function BracketBoard({ data, imageBase, list = true }: { data: TreeData;
         </div>
       )}
 
-      <div data-rounds className={`${roundsShown} mt-2 print:hidden`}>
-        <nav aria-label="Rounds of the drawing" className="sticky top-0 z-20 -mx-4 flex overflow-x-auto border-b-2 border-navy bg-page px-4">
-          {data.rounds.map((r, i) => (
-            <button key={r.round} type="button" aria-current={i === current ? "true" : undefined} onClick={() => goRound(i)} className={`${btn(i === current)} shrink-0 font-num text-[16px] uppercase tracking-wide`}>
-              {r.label}
-            </button>
-          ))}
-        </nav>
-        <div ref={strip} onScroll={onStrip} className="relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-3">
-          {data.rounds.map((r) => (
-            <div key={r.round} role="group" aria-label={r.label} className="w-[85%] max-w-[360px] shrink-0 snap-start">
-              <h3 className="sr-only">{r.label}</h3>
-              <ul className="grid gap-3">
-                {r.ids.map((id) => (
-                  <li key={id}>
-                    <BoxView box={byId.get(id)!} live={liveOf(byId.get(id)!)} team={team} dim={!onPath(id)} onTeam={onTeam} max={max} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+      <div className={roundsShown}>
+        <RoundTabs data={data} current={current} now={playing} onSelect={setCurrent} team={team} onPath={onPath} onTeam={onTeam} liveOf={liveOf} />
       </div>
+
+      {/* The teams still in, below the drawing (ADR 0094): "Light its path" lights a team's road above, so the page goes back up to it. */}
+      <WhosLeft rows={left} team={team} onFollow={follow} titled={Object.keys(titles).length > 0} />
     </section>
   );
 }
