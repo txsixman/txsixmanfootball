@@ -395,7 +395,7 @@ test("the site can be added to a phone's home screen", async ({ request }) => {
 test("a shared program link previews a card in the school's colors", async ({ page, request }) => {
   await page.goto("/programs/jayton");
   const image = await page.locator('meta[property="og:image"]').getAttribute("content");
-  expect(image).toContain("/programs/jayton/opengraph-image");
+  expect(image).toContain("/programs/jayton/card");
   const res = await request.get(new URL(image!).pathname + new URL(image!).search);
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toBe("image/png");

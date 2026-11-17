@@ -32,6 +32,7 @@ import { GameBand, GameLiveRead, GameScore } from "../live-game";
 import { Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 import { SiteAddress } from "../directions";
+import { cardOf } from "./card/game-card";
 import { hasCard } from "./card/ids";
 import { WhatsNext } from "./whats-next";
 import { stateChampionshipOf } from "./card/state-championship";
@@ -59,8 +60,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const date = found?.result.date ?? g?.date;
   // The round, by the label the page itself shows: the bracket game's, or a past season's playoff file.
   const playoff = sample ? undefined : (g?.league ?? (found && found.season !== CURRENT_SEASON ? (await playoffLabels(found.season)).get(gameKey(found.result.date, found.result.home, found.result.away)) : undefined));
-  // This season's games share their own card (card/route.tsx); a past season's game shares the site's card.
-  const card = (await hasCard(id)) && { openGraph: { images: [{ url: `/scores/${id}/card`, width: 1200, height: 630, alt: "Game card" }] } };
+  // This season's games share their own card (card/route.tsx), with the words it says as its alt text; a past season's game
+  // shares the site's card (ADR 0093).
+  const images = (await hasCard(id)) && [{ url: `/scores/${id}/card`, width: 1200, height: 630, alt: (await cardOf(id)).text.alt }];
+  const card = images && { openGraph: { images }, twitter: { card: "summary_large_image" as const, images } };
   // An invented sample game stays out of search (its schools are not real).
   return {
     // The date, or a playoff game's round and season, keeps each meeting's title its own: the same two teams meet again in

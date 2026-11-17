@@ -178,6 +178,11 @@ Not in an ADR:
   two teams as a game, a year with a team as its season), exact and prefix names first, league and place on every result,
   keyboard and screen-reader paths, what to try when nothing matches; weeks of results stay Pagefind's; "Find your team" on
   /welcome opens it (Nov 16, 2026).
+- **Share images show the score** (ADR 0093): a game page's card shows the final score, or for a game ahead the matchup, day,
+  kickoff, site and each team's record; a program card has the logo, rank, record and latest score (`/programs/<slug>/card`); each
+  State Championship page has a card with the matchup or the champion and score. 1200x630, `twitter:card` large, alt text that
+  says what the card shows, records and scores in words. Drawn at build time, so the last deploy's data and never a live score;
+  game cards stay at this season's games (+2 to 3 s of drawing, +14 MB) (Nov 16, 2026).
 - **Brackets on a phone** (ADR 0094): the rounds view is a real tab set (tablist, tabs, panels, arrow keys) opening on the round
   the page calls current, each game a card (both teams, day and kickoff, site, result or projection, a Game page link); a "Who's
   left" list per bracket with each team's next game and State title chance, a button that lights its path, and its program page's

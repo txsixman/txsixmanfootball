@@ -19,6 +19,7 @@ import { Breadcrumbs } from "../../../breadcrumbs";
 import { Fact } from "../../../scores/game-parts";
 import { PageHeader, SectionBar } from "../../../ui";
 import { loadLinker, Team } from "../../shared";
+import { championshipCardTags } from "./card/championship-card";
 
 // One league bracket's State Championship this season, /championships/<season>/<bracket>: the game before it is played (teams,
 // kickoff, site, projected margin and chance to win), the result after (champion, score, runner-up), and for each team its
@@ -52,6 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       played: Boolean(c.final || c.scores),
     }),
     alternates: { canonical: c.href },
+    ...(await championshipCardTags(String(c.season), c.slug)),
   };
 }
 

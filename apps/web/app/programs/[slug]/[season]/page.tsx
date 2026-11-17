@@ -22,11 +22,12 @@ import { seasonHref as resultsHref } from "../../../results/paths";
 import { CrestSlot, EdgeToEdge, SectionBar } from "../../../ui";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../../crest";
 import { programSeasonTitle } from "@/lib/titles";
+import { programCardTags } from "../card/program-card";
 
 // One program's season, FIRST_SEASON on (ADR 0013: records, ranks and scores may rest on unconfirmed robot-read results, so the page
 // says so and no game row names a winner, ADR 0004). The record, rank and last playoff round are the program page's own
 // season row (lib/program-seasons.ts); only a season with a game read has a page, and any other address is a 404. The share
-// card is the program's (app/programs/[slug]/opengraph-image.tsx): this route adds no image of its own.
+// card is the program's (app/programs/[slug]/card/route.tsx): this route adds no image of its own.
 type Props = { params: Promise<{ slug: string; season: string }> };
 
 export const dynamicParams = false;
@@ -58,6 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       playoff: line.playoff ? roundPhrase(line.playoff.round, line.playoff.league) : undefined,
     }),
     alternates: { canonical: `/programs/${school.slug}/${season}` },
+    ...(await programCardTags(school.slug)),
   };
 }
 
