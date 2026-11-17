@@ -13,7 +13,7 @@ import { roundCount } from "@/lib/this-round";
 import { JsonLd } from "../json-ld";
 import { StateChampionshipLink } from "../championships/shared";
 import { TabNav } from "../tab-nav";
-import { PageHeader, SectionBar } from "../ui";
+import { EmptyState, PageHeader, SectionBar } from "../ui";
 import { ChanceList } from "./chance-list";
 import { BuiltList, GameList } from "./game-list";
 import { treeData } from "./tree/data";
@@ -121,6 +121,11 @@ export async function PlayoffsView({ league, season }: { league: League; season?
             })}
           </ul>
         </section>
+      )}
+      {brackets.length === 0 && (
+        <EmptyState action={{ href: "/scores", label: "See this season's scores" }}>
+          {past ? `No ${league} playoff games are on record for ${year}.` : `No ${league} bracket has been drawn for ${year} yet. It appears here once the league sets it.`}
+        </EmptyState>
       )}
       {brackets.map((b) => {
         const id = `bracket-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
