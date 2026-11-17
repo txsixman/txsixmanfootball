@@ -305,7 +305,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
     <>
       <header className="border-b-2 border-navy px-3 pb-3 pt-4">
         <PageHeader eyebrow={eyebrow} title={title} />
-        <label className="mt-3 flex h-11 items-center gap-2 border border-line bg-panel px-3 focus-within:outline-2 focus-within:outline-navy">
+        <label className="mt-3 flex h-11 items-center gap-2 border border-field bg-panel px-3 focus-within:outline-2 focus-within:outline-navy">
           <Search aria-hidden="true" className="size-4 shrink-0 text-muted" />
           <span className="sr-only">Find a team</span>
           <input

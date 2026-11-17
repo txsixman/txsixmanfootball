@@ -196,3 +196,4 @@ Not in an ADR:
   week of results showed "OOakwoodJayton. 8 54". Each results row now leaves the index (`data-pagefind-ignore`) and a hidden
   sentence says the game once ("Oakwood vs Jayton, 8 to 54."); the crest and monogram letters are ignored everywhere. Nothing
   visible changes; a node test pins Pagefind's behaviour and a CI test reads the real excerpts (Nov 16, 2026).
+- 0098 Quality sweep (Nov 16, 2026): a results week with no game is noindex, out of the sitemap and the site search, and points to the nearest week with games; a text field's edge is a 3:1 `field` token; reduced motion switches off transitions; the 404 page searches for the address's words; typed internal links are checked against the route list in CI.

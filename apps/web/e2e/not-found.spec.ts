@@ -36,3 +36,17 @@ test("the 404 page passes axe, fits a phone and its targets are 44px", async ({ 
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   }
 });
+
+test("a school's address that has no page offers the search with its words typed, and every program by name", async ({ page }) => {
+  await page.goto("/programs/white-face");
+  const hint = page.getByTestId("lost-hint");
+  await expect(hint).toContainText("white face");
+  await expect(hint.getByRole("link", { name: "Every program by name" })).toHaveAttribute("href", "/programs");
+  await hint.getByRole("link", { name: /^Search for/ }).click();
+  await expect(page).toHaveURL(/\/search\?q=white%20face$/);
+  // A game's address gives its two teams; an address with no words gives no hint.
+  await page.goto("/scores/2025-08-28-no-such-team-at-no-such-school");
+  await expect(page.getByTestId("lost-hint")).toContainText("no such team no such school");
+  await page.goto("/results/2025/99");
+  await expect(page.getByTestId("lost-hint")).toHaveCount(0);
+});
