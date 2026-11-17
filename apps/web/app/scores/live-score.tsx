@@ -59,6 +59,7 @@ export function LiveLine({ live, className = "" }: { live: LiveView; className?:
       </p>
       <p className="font-sans text-[13px] leading-4 text-muted">
         {live.away.name} {live.away.score}, {live.home.name} {live.home.score} &middot; checked {checkedAt(live.readAt)}
+        {live.stale && " \u00b7 may be behind"}
       </p>
     </div>
   );

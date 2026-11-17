@@ -152,3 +152,9 @@ Not in an ADR:
 - **Landing page** (ADR 0086): `/welcome` says what the site is and sends a first-time visitor on (find your team, tonight's
   scores), every number from the data; home stays the scoreboard and shows a dismissible "New here?" link on a first visit
   only, hidden before it paints (Nov 16, 2026).
+- **Following a game live** (ADR 0087): the game page holds a place for the live line (never blank: not started, in progress
+  with no score yet, no score reported) so a score arriving moves nothing; the top band reads Live with "Updated 3 min ago";
+  a read over 25 minutes old says "may be behind"; a confirmed final shows "What's next for <winner>" with the next round's
+  opponent, day, kickoff and site and a link; the scoreboard lists a game under way with no score under Live now; Tonight
+  keeps one list per organization but orders them live first and adds a strip counting Live, Up next and Final; no new
+  request or interval (Nov 16, 2026).

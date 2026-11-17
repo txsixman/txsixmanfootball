@@ -88,3 +88,22 @@ export function groupTonight<T extends NightGame>(games: T[], now: Date | null):
     return { key, label, games: sorted };
   }).filter((group) => group.games.length);
 }
+
+/**
+ * What a game page says in the place its live score goes, while it has no live score (ADR 0087). Never blank, never a guess:
+ * before kickoff it is not started, inside the window it is in progress with no score yet, past the window the score has not
+ * come in, and a game with no listed time says so. `now` null (the server, the first render) reads as before kickoff.
+ */
+export function pendingNote(game: { date: string; kickoff?: string }, now: Date | null): { title: string; detail: string } {
+  const time = game.kickoff && !Number.isNaN(Date.parse(game.kickoff)) ? kickoffTime(game.kickoff) : null;
+  const state = now ? kickoffState(game, now) : null;
+  if (state?.kind === "in-progress") return { title: "In progress", detail: "No live score yet. This page checks every minute." };
+  if (state?.kind === "awaiting") return { title: "Score not reported yet", detail: `${time ? `Kickoff was ${time}. ` : ""}No score has come in. Reload later to check.` };
+  if (!time) return { title: "Kickoff time not listed", detail: "A live score shows here once the game is under way." };
+  return { title: "Not started", detail: `Kickoff ${time}. Score shows here once it starts.` };
+}
+
+/** The rank of a night group, so organizations with a game in progress come first, then those with games still to come,
+ * then those with only finals (ADR 0087). Lower is first; ties keep the site's own order. */
+const GROUP_RANK: Record<NightGroupKey, number> = { "in-progress": 0, "up-next": 1, awaiting: 2, final: 3 };
+export const orgRank = (groups: { key: NightGroupKey }[]) => Math.min(...groups.map((g) => GROUP_RANK[g.key]), 9);

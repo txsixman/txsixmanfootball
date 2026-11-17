@@ -144,7 +144,7 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
 
 /** `live`: the live read of a game under way (asLive put its score in the score cells; this says where the game stands).
  * `counts`: show how many fan comments the game has (real games only; plain text, as the whole card is a link). */
-function Row({ g, crests, live, counts }: { g: Game; crests?: Crests; live?: LiveView; counts?: boolean }) {
+function Row({ g, crests, live, counts, noScore }: { g: Game; crests?: Crests; live?: LiveView; counts?: boolean; noScore?: boolean }) {
   const edge = g.verification === "disputed" ? "border-l-[6px] border-red" : "border-l-[6px] border-transparent";
   return (
     <li data-game={g.id} className="border-b border-line">
@@ -160,6 +160,7 @@ function Row({ g, crests, live, counts }: { g: Game; crests?: Crests; live?: Liv
                 {liveStatus(live)}
               </p>
             )}
+            {noScore && <p data-no-score className="mt-0.5 text-[13px] leading-4 text-muted">No live score yet. Checked every few minutes.</p>}
             {counts && <CommentCount gameKey={g.id} className="mt-0.5 flex" />}
           </div>
         </div>
@@ -188,7 +189,7 @@ function Section({ id, title, live, games, crests, checked, counts, newestFirst 
           </h3>
           <ul>
             {games.filter((g) => g.league === league).map((g) => (
-              <Row key={g.id} g={g} crests={crests} live={checked.get(g.id)} counts={counts} />
+              <Row key={g.id} g={g} crests={crests} live={checked.get(g.id)} counts={counts} noScore={id === "live" && g.state === "scheduled"} />
             ))}
           </ul>
         </div>
@@ -272,7 +273,11 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
   const now = useNow();
   const awaiting = (g: Game) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "awaiting";
   const notReported = shown.filter(awaiting);
-  const later = shown.filter((g) => (g.state === "scheduled" || g.state === "postponed") && !awaiting(g));
+  // A game inside its window with no live score yet is on now, so it sits under Live now, its row saying "In progress" and
+  // that no score is in, not under Later (ADR 0087). A game the clock cannot place (the server, the first render) is Later.
+  const noScoreYet = (g: Game) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "in-progress";
+  const onNow = [...live, ...shown.filter(noScoreYet)];
+  const later = shown.filter((g) => (g.state === "scheduled" || g.state === "postponed") && !awaiting(g) && !noScoreYet(g));
   const nextShown = next.filter((g) => org && g.org === org.league && (!q || g.sides.some((s) => s.name.toLowerCase().includes(q))));
   // Between game nights, this week's games come before last week's finals once the next game day is nearer than the last
   // one (worked out at the moment of viewing; before that, and on the server, finals first). Saturday reads last night's
@@ -287,7 +292,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
     { href: "#reported", label: "Reported", n: reported.length },
     { href: "#final", label: "Final", n: final.length },
   ];
-  const jumps = [{ href: "#live", label: "Live", n: live.length }, ...(upcomingFirst ? [coming, ...results] : [...results, coming])];
+  const jumps = [{ href: "#live", label: "Live", n: onNow.length }, ...(upcomingFirst ? [coming, ...results] : [...results, coming])];
   const upcoming = (
     <>
       <Section id="later" title="Later" games={later} crests={crests} checked={checked} counts={commentCounts} />
@@ -355,7 +360,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
         )}
       </nav>
 
-      <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} counts={commentCounts} />
+      <Section id="live" title="Live now" live games={onNow} crests={crests} checked={checked} counts={commentCounts} />
       {upcomingFirst && upcoming}
       <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} counts={commentCounts} newestFirst />
       <Section id="final" title="Final" games={final} crests={crests} checked={checked} counts={commentCounts} newestFirst />
