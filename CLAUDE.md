@@ -83,6 +83,7 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `apps/web/app/playoffs/tree/`: the bracket drawing on each bracket page (ADR 0049): `board.tsx` (tree and by-round views), `rounds.tsx` (ARIA round tabs and game cards, ADR 0094), `whos-left.tsx`
   (the teams still in; logic in `lib/whos-left.ts`), `parts.tsx`, `data.ts`, `image.tsx` (the share and full-size PNGs); layout math in `lib/bracket-layout.ts`, box content in
   `lib/bracket-tree.ts`; `/playoffs/bracket/sample` is invented schools only (`lib/demo-bracket.ts`)
+- `apps/web/lib/results-text.ts`, `results-text-load.ts`, `app/results/text/`, `app/results/copy-results.tsx`: a results week as plain text for a paper or radio station (ADR 0102): the file at `/results/text/<season>/<week>/<org>`, "Copy results", and the print block `app/results/view.tsx` shows only when printed (`globals.css`)
 - `apps/web/app/embed/`: the embeddable scoreboard, `/embed/programs/<slug>` (ADR 0023): the only route that may be framed; its page and CSP are built in `lib/embed-html.ts`
 - `apps/web/lib/find.ts`, `find-index.ts`, `app/search/`: search (ADR 0090). `find-index.ts` makes the index at build time (programs, mascots, other
   names, series-page bits, season and State Championship years); `find.ts` is the pure matcher the browser, the build and

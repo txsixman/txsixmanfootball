@@ -8,10 +8,13 @@ import { projectedLine, resultOutcome } from "@/lib/outcome";
 import { pregameShown } from "@/lib/pregame";
 import { projectionText } from "@/lib/projection";
 import { weekNeighbours } from "@/lib/neighbours";
+import { loadResultsText } from "@/lib/results-text-load";
 import { loadWeeks, resultSeasons, weekLabel, type Week } from "@/lib/weeks";
+import { Button } from "@/components/ui/button";
 import { TabNav } from "../tab-nav";
 import { WeekStrip } from "../week-strip";
 import { CrestSlot, EmptyState, PageHeader, SectionBar } from "../ui";
+import { CopyResults } from "./copy-results";
 import { seasonHref, weekHref } from "./paths";
 
 /** A game as one sentence for the site search's excerpts: "Oakwood vs Jayton, 8 to 54." (away team first, as the rows are; "vs",
@@ -35,6 +38,8 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
   const { review, rankings } = await weekNeighbours({ season, week, org });
   const days = Map.groupBy(shown.games, (g) => g.status);
   // A week with no game points to the nearest week that has some, so it is never a dead end (the later week wins a tie).
+  // The week as plain text (ADR 0102): copied by the button, held in the print-only block, and the file's body.
+  const text = await loadResultsText(org, season, week);
   const nearest = shown.games.length ? undefined : weeks.filter((w) => w.games.length).sort((a, b) => Math.abs(a.number - week) - Math.abs(b.number - week) || b.number - a.number)[0];
 
   const team = (name: string) => {
@@ -68,7 +73,9 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
   );
 
   return (
-    <section aria-labelledby="results">
+    <>
+    {/* Printing (globals.css): only the text block below, so the page's own list, tabs, header and footer stay off the paper. */}
+    <section aria-labelledby="results" {...(text ? { "data-print-hide": "" } : {})}>
       <PageHeader id="results" eyebrow={`${org.label} · ${season} season · Week ${week} · ${shown.games.length} games`} title="Results" />
       {/* Switching organization keeps the week; an organization with no game that season opens on its latest. */}
       <TabNav
@@ -85,6 +92,16 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
         />
       )}
       <WeekStrip weeks={weeks.map((w) => ({ number: w.number, href: weekHref(season, w.number, org), label: `Week ${w.number}, from ${weekLabel(w.monday)}`, current: w.number === week }))} />
+      {text && (
+        <div data-pagefind-ignore className="mt-4 flex flex-wrap items-start gap-x-3">
+          <CopyResults from="results-text" />
+          <Button asChild variant="outline">
+            <Link href={`/results/text/${season}/${week}/${org.slug}`} prefetch={false}>
+              View as text
+            </Link>
+          </Button>
+        </div>
+      )}
       {!shown.games.length && (
         <EmptyState action={nearest && { href: weekHref(season, nearest.number, org), label: `See week ${nearest.number}, ${nearest.games.length} ${nearest.games.length === 1 ? "game" : "games"}` }}>
           No {org.label} games this week.
@@ -127,5 +144,11 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
         before, once each has played four games.
       </p>
     </section>
+    {text && (
+      <div data-results-print data-pagefind-ignore className="hidden print:block">
+        <pre id="results-text" className="m-0 whitespace-pre-wrap font-sans text-[11pt] leading-snug">{text}</pre>
+      </div>
+    )}
+    </>
   );
 }
