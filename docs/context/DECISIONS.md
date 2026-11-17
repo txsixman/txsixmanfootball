@@ -208,3 +208,4 @@ Not in an ADR:
   (`/scores/<id>/calendar.ics`); "Add to calendar" (webcal:// for an iPhone or Mac, plus a https file) on program and bracket pages and
   on a game page. Events are "Away vs Home", timed in UTC at the kickoff or all-day, with the site as the location, a UID from the game's
   page id, and a confirmed final (or "Score reported", or "Forfeit") in the description; a game with no date is left out (Nov 16, 2026).
+- 0098 Quality sweep (Nov 16, 2026): a results week with no game is noindex, out of the sitemap and the site search, and points to the nearest week with games; a text field's edge is a 3:1 `field` token; reduced motion switches off transitions; the 404 page searches for the address's words; typed internal links are checked against the route list in CI.

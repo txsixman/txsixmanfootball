@@ -15,6 +15,9 @@
   --color-muted: light-dark(#55617a, #a9b4ca);
   --color-band: light-dark(#0a2a5e, #1c3a72);
   --color-alert: light-dark(#bf1e2e, #b51f2c);
+  /* The edge of a text field: at least 3:1 against the page and panel in both themes (WCAG 1.4.11), where `line` (a hairline
+     rule, 1.5:1) is too faint to find a box by. scripts/theme-tokens.test.mjs checks the ratios. */
+  --color-field: light-dark(#6b7790, #7a8aae);
   --font-sans: var(--font-inter, "Inter Variable"), ui-sans-serif, system-ui, sans-serif;
   /* --font-inter and --font-barlow are set by layout.tsx (next/font); Ladle, outside Next, loads @fontsource's "Inter Variable" and "Barlow Condensed". */
   --font-num: var(--font-barlow, "Barlow Condensed"), "Arial Narrow", sans-serif;
@@ -29,7 +32,7 @@
   --color-accent-foreground: var(--color-navy);
   --color-destructive: var(--color-alert);
   --color-border: var(--color-line);
-  --color-input: var(--color-line);
+  --color-input: var(--color-field);
   --color-ring: var(--color-navy);
 }
 
@@ -64,6 +67,19 @@ body {
   }
   header nav :focus-visible {
     outline-offset: -3px;
+  }
+}
+
+/* Someone who asked their device for less motion gets none: the few fades and slides (the alerts switch, a dimmed bracket box)
+   finish at once, and nothing scrolls smoothly. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
