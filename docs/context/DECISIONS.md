@@ -152,3 +152,8 @@ Not in an ADR:
 - **Landing page** (ADR 0086): `/welcome` says what the site is and sends a first-time visitor on (find your team, tonight's
   scores), every number from the data; home stays the scoreboard and shows a dismissible "New here?" link on a first visit
   only, hidden before it paints (Nov 16, 2026).
+- **Search finds what fans type** (ADR 0090): /search is an instant, forgiving search from a 53 KB index made at build time
+  (program, mascot, other names, abbreviations, town, league lines; misspellings, "White Face", "ISD"/"Academy"/"Christian",
+  two teams as a game, a year with a team as its season), exact and prefix names first, league and place on every result,
+  keyboard and screen-reader paths, what to try when nothing matches; weeks of results stay Pagefind's; "Find your team" on
+  /welcome opens it (Nov 16, 2026).

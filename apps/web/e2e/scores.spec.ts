@@ -644,7 +644,7 @@ test("search: a labelled box that passes axe, and (on a production build) finds 
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations.map((v) => v.id)).toEqual([]);
   await page.goto("/search?q=jayton");
-  await expect(page.getByRole("status")).toHaveText(/pages? match/);
+  await expect(page.getByRole("status")).toHaveText(/\d+ matches?/);
 });
 
 test("search engines: only the public address is indexed, from robots.txt and a sitemap; logos keep their lockdown", async ({ page, request }) => {

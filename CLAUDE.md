@@ -84,6 +84,9 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   `data.ts`, `image.tsx` (the share and full-size PNGs); layout math in `lib/bracket-layout.ts`, box content in
   `lib/bracket-tree.ts`; `/playoffs/bracket/sample` is invented schools only (`lib/demo-bracket.ts`)
 - `apps/web/app/embed/`: the embeddable scoreboard, `/embed/programs/<slug>` (ADR 0023): the only route that may be framed; its page and CSP are built in `lib/embed-html.ts`
+- `apps/web/lib/find.ts`, `find-index.ts`, `app/search/`: search (ADR 0090). `find-index.ts` makes the index at build time (programs, mascots, other
+  names, series-page bits, season and State Championship years); `find.ts` is the pure matcher the browser, the build and
+  `scripts/find.test.mjs` (a table of queries and the first result each opens) share; Pagefind adds only weeks of results
 - `tools/push/`: score alerts (web-push), sent by `results-watch.yml` after it pushes new finals (and, with the
   `push_alerts` switch on, next playoff games, plus kickoffs after each night read's live scores, ADR 0082); subscriptions in
   Supabase `push_subscription` (migration 0008), each event sent once (`push_sent`, migration 0031)
