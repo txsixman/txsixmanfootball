@@ -35,6 +35,7 @@ import { SiteAddress } from "../directions";
 import { hasCard } from "./card/ids";
 import { stateChampionshipOf } from "./card/state-championship";
 import { gameTitle } from "@/lib/titles";
+import { STATE_ROUNDS } from "@/lib/state-finals";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -142,9 +143,12 @@ export default async function GamePage({ params }: Props) {
   const { g, found, own, sample, built, detail, neutral } = resolved;
   // A bracket game not yet played gets a preview in place of "Going in" and "Earlier meetings" (it holds both).
   const preview =
-    detail && g.date && !own && !sample && g.state === "scheduled"
-      ? await gamePreview({ season: found?.season ?? CURRENT_SEASON, date: g.date, home: g.home.name, away: g.away.name, org: orgOfLabel(g.league), detail })
+    detail && (g.date || built) && !own && !sample && g.state === "scheduled"
+      ? // A game the bracket sets with no day yet counts every game read so far, as its detail does (resolveGame).
+        await gamePreview({ season: found?.season ?? CURRENT_SEASON, date: g.date ?? "9999-12-31", home: g.home.name, away: g.away.name, org: orgOfLabel(g.league), detail, round: g.round })
       : undefined;
+  // The projection gives neither team a home edge at a State Championship and in a game the bracket sets (ADR 0057, ADR 0079).
+  const noEdge = built || STATE_ROUNDS.has(g.round ?? "");
   const [alignments, identities] = await Promise.all([loadAlignments(), loadIdentities()]);
   const programOf = (team: Team): Program | undefined => {
     const known = alignments.find((a) => a.school === team.name);
@@ -281,7 +285,7 @@ export default async function GamePage({ params }: Props) {
         <div className="pb-6">
           {found && <ProjectionSection result={found.result} detail={detail} outcome={outcomeOf(g)} />}
           {preview ? (
-            <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} />
+            <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} noEdge={noEdge} />
           ) : (
             <>
               <GoingInSection away={g.away.name} home={g.home.name} detail={detail} />

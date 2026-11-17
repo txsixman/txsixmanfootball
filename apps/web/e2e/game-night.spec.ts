@@ -144,7 +144,14 @@ test("a game not yet played has a preview: both teams, the projection, head-to-h
   if (preview.common.rest) await expect(common).toContainText(`${preview.common.shown.length} of ${preview.common.shown.length + preview.common.rest}`);
 
   // The page names no winner and no betting word, and no source.
-  const text = plain(await page.locator("main").innerText());
+  // The bracket's own words for the next round ("the winner plays ...", ADR 0088) are checked in game-preview.spec.ts.
+  const text = plain(
+    await page.evaluate(() => {
+      const main = document.querySelector("main")!.cloneNode(true) as HTMLElement;
+      main.querySelector('[aria-labelledby="path"]')?.remove();
+      return main.innerText ?? main.textContent ?? "";
+    }),
+  );
   expect(text).not.toMatch(WINNER_WORDS);
   expect(text).not.toMatch(BETTING_OR_SOURCE);
   // Records and meetings are not listed twice: the preview holds them.

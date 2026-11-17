@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { addressLine } from "@/lib/address";
 import { loadBrackets } from "@/lib/brackets";
-import { loadFinals } from "@/lib/champions";
 import { stateChampionshipDescription } from "@/lib/descriptions";
 import { kickoffTime } from "@/lib/kickoff";
 import { gamesOf } from "@/lib/playoff-path";
@@ -11,8 +10,9 @@ import { chanceText, projectionParts } from "@/lib/projection";
 import { loadRatings, record } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
 import { slugify } from "@/lib/slug";
-import { recordedFinals, stateChampionships, type StateChampionship } from "@/lib/state-championships";
-import { appearancesOf, STATE_ROUNDS } from "@/lib/state-finals";
+import { stateChampionships, type StateChampionship } from "@/lib/state-championships";
+import { STATE_ROUNDS } from "@/lib/state-finals";
+import { titleHistory } from "@/lib/title-history";
 import { stateChampionshipTitle } from "@/lib/titles";
 import { longDate, mediumDate } from "@/lib/game-pages";
 import { Breadcrumbs } from "../../../breadcrumbs";
@@ -80,7 +80,7 @@ export default async function StateChampionshipPage({ params }: Props) {
   const c = await find(await params);
   if (!c) notFound();
   const teams = knownTeams(c);
-  const { link, successors } = await loadLinker();
+  const { link } = await loadLinker();
   const title = `${c.season} ${c.bracket} State Championship`;
   const unresolved = !c.final && c.scores !== undefined;
 
@@ -99,14 +99,7 @@ export default async function StateChampionshipPage({ params }: Props) {
   });
 
   // Past State Championships: UIL's archive (with recorded finals), or the private leagues' recorded finals. This game is left out.
-  const finals =
-    c.league === "UIL"
-      ? (await loadFinals()).map((f) => ({ ...f, league: "UIL", bracket: f.division ? `UIL Division ${f.division}` : "UIL" }))
-      : (await recordedFinals()).filter((f) => f.league !== "UIL");
-  const history = teams.map((team) => {
-    const past = appearancesOf(team, finals, successors).filter((a) => a.season !== c.season);
-    return { team, past, titles: past.filter((a) => a.won).length };
-  });
+  const history = await titleHistory(c.league, teams, c.season);
 
   const matchup = (
     <ul className="mt-3 divide-y divide-line border-y border-line">

@@ -1,9 +1,12 @@
 import { heading, loadAlignments, placeLabel, programFor, programsFor, slugify } from "./alignments";
-import { loadBrackets, roundLabel } from "./brackets";
+import { bracketHref, loadBrackets, roundLabel } from "./brackets";
 import { demoGames, type Game, type Team } from "./demo-games";
 import { initials, loadGames, loadPlayoffGames, loadSeasonResults, gameKey, playoffAliases, shortDate, type SeasonResult } from "./games";
 import { orderId } from "./page-id";
 import { commonOpponents, type CommonOpponent } from "./game-preview";
+import { boxOf, lastGames, nextGame, type LastGame, type NextGame } from "./preview-parts";
+import { STATE_ROUNDS } from "./state-finals";
+import { titleHistory, type TeamHistory } from "./title-history";
 import { pairKey } from "./meetings";
 import { memo } from "./memo";
 import type { Org } from "./orgs";
@@ -131,25 +134,44 @@ export async function gameDetail({ season, date, home, away, id }: { season: num
   };
 }
 
-/** One team of a game not yet played: its record this season, and its current rating and rank where it has one. */
-export type PreviewSide = { team: string; record: string; rating?: number; rank?: { text: string; sub?: string } };
-/** `common`: the opponents both met this season, each team's scores against it (away team's first), see lib/game-preview.ts. */
-export type GamePreview = { away: PreviewSide; home: PreviewSide; common: { shown: CommonOpponent[]; rest: number } };
+/** One team of a game not yet played: its record this season, its current rating and rank where it has one, and its last five games. */
+export type PreviewSide = { team: string; record: string; rating?: number; rank?: { text: string; sub?: string }; last: LastGame[] };
+/**
+ * `common`: the opponents both met this season, each team's scores against it (away team's first), see lib/game-preview.ts.
+ * `next`: where the winner goes in the bracket, when the league's bracket says (lib/preview-parts.ts); `bracket`: that bracket's
+ * page. `history`: a State Championship's two teams' earlier State Championships (ADR 0083), only for a State Championship.
+ */
+export type GamePreview = {
+  away: PreviewSide; home: PreviewSide; common: { shown: CommonOpponent[]; rest: number };
+  next?: NextGame & { label: string }; bracket?: string; history?: TeamHistory[];
+};
 
 /**
  * The preview of a game not yet played, from data already loaded: each team's record (`detail.going`), its rating and rank
- * within the game's organization (`org`: ranks never cross organizations, ADR 0012), and the opponents both met this season.
- * Head-to-head is `detail.meetings`.
+ * within the game's organization (`org`: ranks never cross organizations, ADR 0012), its last five games, and the opponents both
+ * met this season. Head-to-head is `detail.meetings`. `round`, for a bracket game: where its winner goes next, and for a State
+ * Championship each team's earlier ones (ADR 0088). `date` is the game's day, or a day after every game for one not dated yet.
  */
-export async function gamePreview({ season, date, home, away, org, detail }: { season: number; date: string; home: string; away: string; org?: Org; detail: GameDetail }): Promise<GamePreview> {
-  const [{ teams }, ranked] = await Promise.all([index(), loadRanked()]);
+export async function gamePreview({ season, date, home, away, org, detail, round }: { season: number; date: string; home: string; away: string; org?: Org; detail: GameDetail; round?: string }): Promise<GamePreview> {
+  const [{ teams }, ranked, disputed] = await Promise.all([index(), loadRanked(), loadDisputed(season)]);
+  const games = (team: string) => teams.get(`${season}|${slugify(team)}`) ?? [];
   const side = (team: string, going: Going): PreviewSide => {
     const row = ranked.teams.find((r) => r.school.school === team && (!org || r.org.league === org.league));
     const rank = row && rankLabel(row);
-    return { team, record: going.record, ...(row && rank ? { rating: row.rating, rank: { text: rank.text, ...(rank.sub ? { sub: rank.sub } : {}) } } : {}) };
+    const last = lastGames(team, games(team), date, (g) => isDisputed(disputed, g.date, g.home, g.away));
+    return { team, record: going.record, ...(row && rank ? { rating: row.rating, rank: { text: rank.text, ...(rank.sub ? { sub: rank.sub } : {}) } } : {}), last };
   };
-  const games = (team: string) => teams.get(`${season}|${slugify(team)}`) ?? [];
-  return { away: side(away, detail.going.away), home: side(home, detail.going.home), common: commonOpponents(away, home, games(away), games(home), date) };
+  const preview: GamePreview = { away: side(away, detail.going.away), home: side(home, detail.going.home), common: commonOpponents(away, home, games(away), games(home), date) };
+  // The bracket the game is in, for the season under way only: a past season has no game still to play.
+  const bracket = round && season === CURRENT_SEASON ? (await loadBrackets()).find((b) => boxOf(b.tree, round, away, home)) : undefined;
+  if (!round || !bracket) return preview;
+  const next = nextGame(bracket.tree, round, away, home);
+  return {
+    ...preview,
+    bracket: bracketHref(bracket.name),
+    ...(next ? { next: { ...next, label: roundLabel(next.round, bracket.league) } } : {}),
+    ...(STATE_ROUNDS.has(round) ? { history: await titleHistory(bracket.league, [away, home], season) } : {}),
+  };
 }
 
 /** "Friday, October 24, 2025". */
