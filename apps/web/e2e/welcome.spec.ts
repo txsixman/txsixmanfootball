@@ -18,7 +18,7 @@ test("the landing page says what the site is and sends a visitor on, at phone wi
   const main = page.locator("main");
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Every team\. Every game\./i);
-  await expect(main.getByRole("link", { name: "Find your team" }).first()).toHaveAttribute("href", "/programs");
+  await expect(main.getByRole("link", { name: "Find your team" }).first()).toHaveAttribute("href", "/search");
   await expect(main.getByRole("link", { name: "Tonight’s scores" })).toHaveAttribute("href", "/scores/tonight");
   // The live line is the round being played, tonight's games, or the season's count, from the data.
   await expect(main.locator("section").first()).toContainText(/playoffs this round: [\d,]+ games?|Tonight, .*: [\d,]+ games?|season: [\d,]+ games? on record/);
@@ -66,6 +66,17 @@ test("the landing page says what the site is and sends a visitor on, at phone wi
 
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations.map((v) => v.id)).toEqual([]);
+});
+
+test("Find your team opens a search with the cursor already in the box", async ({ page }) => {
+  await me(page, false);
+  await page.goto("/welcome", { waitUntil: "networkidle" });
+  await page.getByRole("main").getByRole("link", { name: "Find your team" }).first().click();
+  await expect(page).toHaveURL(/\/search$/);
+  const box = page.getByRole("searchbox", { name: "Search programs and games" });
+  await expect(box).toBeFocused();
+  await page.keyboard.type("white face");
+  await expect(page.getByRole("main").getByRole("link", { name: /^Whiteface/ })).toHaveAttribute("href", "/programs/whiteface");
 });
 
 test("with fan accounts on, the follow card says what an account adds", async ({ page }) => {

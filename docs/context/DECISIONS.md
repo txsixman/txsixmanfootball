@@ -171,3 +171,8 @@ Not in an ADR:
   NEW, a dash for steady), `/rankings` and the week pages open with the biggest movers (up to three up and three down), and a
   program page and every program-season page draw one static SVG of rank and rating by week with a text alternative; read from
   the table's stored week-by-week ratings, no new field, no chart library (Nov 16, 2026).
+- **Search finds what fans type** (ADR 0090): /search is an instant, forgiving search from a 53 KB index made at build time
+  (program, mascot, other names, abbreviations, town, league lines; misspellings, "White Face", "ISD"/"Academy"/"Christian",
+  two teams as a game, a year with a team as its season), exact and prefix names first, league and place on every result,
+  keyboard and screen-reader paths, what to try when nothing matches; weeks of results stay Pagefind's; "Find your team" on
+  /welcome opens it (Nov 16, 2026).
