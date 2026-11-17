@@ -4,7 +4,7 @@ Backlog item 6 (data half). The owner, signed in, can **correct a game** and **m
 audit row, and shows on the site after the next build. Nothing else: no score entry, no game-night queues (Phase 3).
 
 Sign-in is a shared foundation (`apps/web/lib/auth/`, the `/sign-in` page, the `/auth/callback` route). The console sits
-on top of it; fan accounts will too (ADR 0018), in a later round.
+on top of it; fan accounts use it too (ADR 0018, live).
 
 ## What it does
 
@@ -14,7 +14,7 @@ on top of it; fan accounts will too (ADR 0018), in a later round.
 | `/admin/games/<game id>` | Fix the score, mark a forfeit (and who won it), or void a game listed in error. Needs a public `https://` page that shows the right fact, and a reason |
 | `/admin/merge` | Say that a spelling the results use (no league lists it) is a listed program. Both names then show as one program |
 | `/admin/corrections` | Every past correction, newest first, live from `main` |
-| `/admin/moderation` | Fan posts hidden by flags (with their text) and muted or banned accounts: show a post again, lift a mute, ban or unban, each with a reason. Live from the database (migration 0013's `admin_*` functions, which check `is_admin()` and write the audit row themselves) |
+| `/admin/moderation` | Reported posts, every post still showing from the last 7 days (reported or not, ADR 0085), fan posts hidden by flags (with their text) and muted or banned accounts: hide a post, show one again, mute, lift a mute, ban or unban, each with a reason. Live from the database (migration 0013's `admin_*` functions, which check `is_admin()` and write the audit row themselves) |
 
 There is no link to `/admin` from any public page. Every admin page is rendered per request (`force-dynamic`), carries
 `Cache-Control: no-store` (`proxy.ts`, and Next's own `private, no-cache, no-store` on dynamic pages) and is `noindex`.
@@ -59,7 +59,7 @@ of them closes the console: `/admin` says "Admin is not configured" and shows no
 | `NEXT_PUBLIC_SUPABASE_URL` | public by design | The Supabase project's API URL, `https://vhgnaihnyjdnaaergtcl.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public by design | The project's `anon` (publishable) key. It only opens what row-level security allows |
 | `ADMIN_USER_ID` | **server only** | The owner's Supabase Auth user id (a UUID). The one id the console lets in |
-| `GITHUB_CORRECTIONS_TOKEN` | **secret, server only** | A fine-grained GitHub token, contents read and write on `txsixman/txsixmanfootball` only |
+| `GITHUB_CORRECTIONS_TOKEN` | **secret, server only** | A fine-grained GitHub token, contents read and write on `txsixman/txsixmanfootball` only. **The owner plans to delete it (Nov 16, 2026), but as the code stands `app/admin/gate.tsx` shows "Admin is not configured" on every admin page, `/admin/moderation` included, without it: change the gate first** |
 
 Never use the Supabase `service_role` key anywhere in this: the console acts as the signed-in person, with their own session.
 `NEXT_PUBLIC_*` values are fixed into a build, so redeploy after setting them.
@@ -90,11 +90,11 @@ Never use the Supabase `service_role` key anywhere in this: the console acts as 
    can be saved: that is the fail-closed state.
 6. Go to `https://txsixmanfootball.com/sign-in?next=/admin`, ask for the link, open it on the same device.
 
-**You do not need to turn public sign-ups off.** Fan accounts will open sign-ups later, and the console is safe either way:
+**You do not need to turn public sign-ups off.** Fan accounts are open (`docs/fan-accounts.md`), and the console is safe either way:
 a stranger who signs in is not `ADMIN_USER_ID` (the server turns them away before any data loads), and is not in
 `admin_user` (the database refuses their audit call, and an edit writes its audit row before anything else). Both checks
-must pass; neither depends on who may sign up. The sign-in page does not create accounts today anyway
-(`shouldCreateUser: false`): only a user that already exists gets a link.
+must pass; neither depends on who may sign up. The emailed link creates no account unless `FAN_EMAIL_SIGNIN` is on
+(`shouldCreateUser`); Google sign-up creates fan accounts, which are never the admin.
 
 ## Security notes
 
@@ -130,11 +130,7 @@ must pass; neither depends on who may sign up. The sign-in page does not create 
 
 ## Not built yet (on purpose)
 
-- Fan sign-up, profiles and pages (`/account`): the foundation is ready, the pages are a later round (ADR 0018).
-- A Google button. Slot: `OTHER_METHODS` in `app/sign-in/page.tsx`. When the owner has made the Google OAuth client (Supabase,
-  Authentication, Providers, Google), add a server action that calls `signInWithOAuth({ provider: "google", redirectTo:
-  <origin>/auth/callback })`; the callback already handles the code Google brings back.
-- The Supabase loader (`packages/db/load.mjs`) does not read `data/corrections/`. The site does not read the database yet;
-  when it does, apply the same corrections there.
+- The Supabase loader (`packages/db/load.mjs`) does not read `data/corrections/`. The site's pages are built from the data files, not the
+  database; if pages ever read games from it, apply the same corrections there.
 - Un-merging: a later `programs.csv` row for the same name can point it somewhere else, but cannot remove it; delete the row
   by hand in a normal PR.
