@@ -44,6 +44,8 @@ export type SeasonLine = {
   /** Teams ranked in the organization that season. */
   of: number;
   playoff: { round: string; league: string } | null;
+  /** The record in that season's playoff games (null when none is on record); a page shows it beside the round reached. */
+  playoffRecord: Tally | null;
 };
 
 /**
@@ -57,8 +59,10 @@ export function seasonLine(input: {
   rank?: number | undefined;
   of: number;
   playoff?: { round: string; league: string } | undefined;
+  /** The season's playoff games, from the school's side. */
+  playoffGames?: Pick<Meeting, "us" | "them">[];
 }): SeasonLine {
-  const { season, row, meetings, rank, of, playoff } = input;
+  const { season, row, meetings, rank, of, playoff, playoffGames } = input;
   return {
     season,
     games: meetings.length,
@@ -68,6 +72,7 @@ export function seasonLine(input: {
     rank: row && rank != null ? rank : null,
     of,
     playoff: playoff ?? null,
+    playoffRecord: playoffGames?.length ? tally(playoffGames) : null,
   };
 }
 

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { EMBED_HEIGHT } from "../lib/embed-html";
 import { CURRENT_SEASON, FIRST_SEASON } from "../lib/season";
@@ -28,6 +28,18 @@ async function open(page: Page, slug: string) {
   return errors;
 }
 
+/** Seasons of games a program has in the robot-read files, and how many games: the little-data tests follow the data (a program that gains games leaves them). */
+const SEED = path.join(__dirname, "../../../data/seed");
+function gamesOf(school: string) {
+  const bySeason = readdirSync(SEED)
+    .filter((d) => /^maxpreps-\d{4}$/.test(d))
+    .map((d) => [Number(d.slice(-4)), readFileSync(path.join(SEED, d, "games.csv"), "utf8").split("\n").filter((l) => l.includes(`,${school},`)).length] as const)
+    .filter(([, n]) => n > 0);
+  return { seasons: bySeason.length, games: bySeason.reduce((n, [, g]) => n + g, 0), latest: bySeason.map(([y]) => y).sort().at(-1) };
+}
+const CHANT = "Christian Homeschool Athletes of North Texas (CHANT)";
+const COVENANT = "The Covenant Preparatory School";
+
 const seasons = (page: Page) => page.getByRole("region", { name: "Season by season" });
 const season = (page: Page, year: number) => seasons(page).getByRole("listitem").filter({ has: page.getByText(String(year), { exact: true }).first() }).first();
 
@@ -49,6 +61,101 @@ test(`every season ${FIRST_SEASON} to ${CURRENT_SEASON} has a row: record, place
   // The season's rankings are one link in each row.
   await expect(season(page, 2023).getByRole("link", { name: "2023 rankings" })).toHaveAttribute("href", "/rankings/season/2023");
 });
+
+// ADR 0089: all-time numbers, records, and State Championships on the season rows. Jayton's UIL finals are in UIL's own list (1984 and
+// 1985 titles, 1989 and 2006 runner-up, 2024 and 2025 titles); Bracken Christian's are the private leagues' recorded finals (the 2018 title,
+// the 2021 and 2022 runner-up finishes).
+test("all-time numbers: the record, playoff seasons and games, and State Championship titles from every league's list", async ({ page }) => {
+  await open(page, "jayton");
+  const all = page.getByRole("region", { name: "All-time" });
+  const value = (label: string) => all.locator("dt", { hasText: label }).locator("xpath=following-sibling::dd[1]");
+  await expect(value(`Record since ${FIRST_SEASON}`)).toHaveText(/^\d+-\d+(-\d+)?$/);
+  await expect(all.locator("dt", { hasText: `Record since ${FIRST_SEASON}` }).locator("xpath=following-sibling::dd[2]")).toHaveText(/^\d+% of \d+ games won$/);
+  await expect(value("Playoff seasons")).toHaveText(/^\d+$/);
+  await expect(value("Playoff games")).toHaveText(/^\d+-\d+(-\d+)?$/);
+  expect(Number(await value("State titles").textContent())).toBeGreaterThanOrEqual(4);
+  await expect(all.locator("dt", { hasText: "State titles" }).locator("xpath=following-sibling::dd[2]")).toHaveText(/^in \d+ State Championship games$/);
+  // The one sentence under the figures says what counts; nothing in it names a source.
+  await expect(all).toContainText("State Championship games count UIL’s since 1972 and the private leagues’ since 2018");
+  expect(await all.innerText()).not.toMatch(SOURCE);
+});
+
+test("records: the best season, the biggest win and loss and the longest winning streak, each linked to its page", async ({ page }) => {
+  await open(page, "jayton");
+  const records = page.getByRole("region", { name: "Records" });
+  const best = records.getByRole("link", { name: /^20\d\d season, \d+-\d+(-\d+)?, season page$/ });
+  await expect(best).toHaveAttribute("href", /^\/programs\/jayton\/20\d\d$/);
+  // A completed season: the one under way is never the best.
+  await expect(best).not.toHaveAttribute("href", `/programs/jayton/${CURRENT_SEASON}`);
+  for (const label of ["Biggest win", "Biggest loss"]) {
+    const row = records.getByRole("listitem").filter({ hasText: label });
+    await expect(row).toHaveCount(1);
+    const link = row.getByRole("link", { name: /game page$/ });
+    await expect(link).toHaveAttribute("href", /^\/scores\//);
+    await expect(link).toHaveText(/^\d+-\d+$/);
+  }
+  // The win is a win and the loss a loss.
+  const score = async (label: string) => (await records.getByRole("listitem").filter({ hasText: label }).getByRole("link", { name: /game page$/ }).textContent())!.split("-").map(Number);
+  const [wu, wt] = await score("Biggest win");
+  const [lu, lt] = await score("Biggest loss");
+  expect(wu).toBeGreaterThan(wt);
+  expect(lu).toBeLessThan(lt);
+  const streak = records.getByRole("listitem").filter({ hasText: "Win streak" });
+  await expect(streak).toContainText("Wins in a row");
+  expect(Number(await streak.locator("span").last().textContent())).toBeGreaterThanOrEqual(2);
+  await expect(records).toContainText("A forfeit counts as a win or a loss in a streak but has no margin");
+  expect(await records.innerText()).not.toMatch(BETTING);
+});
+
+test("season rows say which State Championships were played and won, the playoff record, and this season's district place", async ({ page }) => {
+  await open(page, "jayton");
+  for (const year of [2024, 2025]) {
+    const link = season(page, year).getByRole("link", { name: "State Champion", exact: true });
+    await expect(link).toHaveAttribute("href", `/championships/${year}`);
+    expect(await link.evaluate((a) => a.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+    await expect(season(page, year)).toContainText(/Playoffs: reached the State Championship, won \d+, lost \d+(, tied \d+)? in playoff games/);
+  }
+  // A season that went no further than the area round has no State Championship line.
+  await expect(season(page, 2022).getByRole("link", { name: /^State Champ/ })).toHaveCount(0);
+  await expect(season(page, 2022)).toContainText(/Playoffs: reached the area round, won \d+, lost \d+(, tied \d+)? in playoff games/);
+  // The season under way shows its district place, linked to the district's page; a past season never does (its districts are not today's).
+  const district = season(page, CURRENT_SEASON).getByRole("link", { name: /^\d+(st|nd|rd|th) of \d+ in district, \d+-\d+(-\d+)?$/ });
+  await expect(district).toHaveAttribute("href", /^\/standings\/district\//);
+  await expect(season(page, 2025).getByRole("link", { name: /in district/ })).toHaveCount(0);
+});
+
+test("a private school's State Championships count in its all-time numbers and mark their seasons", async ({ page }) => {
+  await open(page, "bracken-christian-school-bulverde");
+  const all = page.getByRole("region", { name: "All-time" });
+  await expect(all.locator("dt", { hasText: "State titles" }).locator("xpath=following-sibling::dd[1]")).toHaveText("1");
+  await expect(all).toContainText("in 3 State Championship games");
+  await expect(season(page, 2018).getByRole("link", { name: "State Champion", exact: true })).toHaveAttribute("href", "/championships/2018");
+  for (const year of [2021, 2022]) await expect(season(page, year).getByRole("link", { name: "State Championship runner-up" })).toHaveAttribute("href", `/championships/${year}`);
+  // The same finals, listed in their own section.
+  await expect(page.getByRole("region", { name: "Private league State Championships" })).toContainText("1 private league state title, 2 runner-up finishes");
+});
+
+for (const [name, school] of [["CHANT", CHANT], ["Covenant Prep", COVENANT]] as const) {
+  test(`${name}: with little on record the page says so, lists only the seasons it has and shows no all-time numbers or records`, async ({ page }, info) => {
+    const have = gamesOf(school);
+    test.skip(have.games >= 5 || have.games === 0, "follows the data: the page has enough games, or none, for this case");
+    const errors = await open(page, school === CHANT ? "christian-homeschool-athletes-of-north-texas-chant" : "the-covenant-preparatory-school");
+    await expect(page.getByRole("region", { name: "All-time" })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Records" })).toHaveCount(0);
+    const section = seasons(page);
+    await expect(section).toContainText(new RegExp(`Only ${have.games} games? (is|are) on record so far`));
+    // One row a season it has, and one line for the rest: no row of dashes each.
+    await expect(section.getByRole("listitem")).toHaveCount(have.seasons);
+    await expect(section).toContainText(/No games on record for /);
+    await expect(page.locator("main")).not.toContainText(/undefined|NaN/);
+    // No game is listed ahead, so the next-game box says so instead of leaving one box alone.
+    await expect(page.getByRole("region", { name: "Next and latest game" })).toContainText("No game is listed ahead");
+    const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+    expect((await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth))).toBeLessThanOrEqual(0);
+    expect(errors, info.project.name).toEqual([]);
+  });
+}
 
 test("a season with no games and no rating shows a dash, not a guess, and the rating line breaks there", async ({ page }) => {
   await open(page, "dell-city"); // no 2023, 2024 or 2025 games read
@@ -174,7 +281,7 @@ test("no betting or source words in the history", async ({ page }) => {
   expect(((await page.locator("main").textContent()) ?? "").replaceAll("txsixmanfootball.com", "")).not.toMatch(SOURCE);
 });
 
-for (const slug of ["jayton", "dell-city", "calvert"]) {
+for (const slug of ["jayton", "dell-city", "calvert", "bracken-christian-school-bulverde"]) {
   test(`${slug}: axe clean, no sideways scroll, 44px targets in the history`, async ({ page }, info) => {
     const errors = await open(page, slug);
     // Open every details so what is inside is checked too.

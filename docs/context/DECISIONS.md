@@ -162,3 +162,8 @@ Not in an ADR:
   opponent, day, kickoff and site and a link; the scoreboard lists a game under way with no score under Live now; Tonight
   keeps one list per organization but orders them live first and adds a strip counting Live, Up next and Final; no new
   request or interval (Nov 16, 2026).
+- **Program pages hold the whole history** (ADR 0089): an All-time section (record, playoff seasons and games, State titles
+  across every league), Records (best season, biggest win and loss, longest winning streak, each linked), a playoff record, a
+  linked State Championship line and this season's district place on the season rows, and a plain page for a program with
+  under five games (its seasons only, no rows of dashes, no all-time numbers); a past season shows no district place because
+  only today's alignments are held (Nov 16, 2026).

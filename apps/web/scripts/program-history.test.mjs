@@ -36,7 +36,11 @@ test("opponentRecords: the record against each, most played first, then latest, 
 test("seasonLine: the ratings table's record and rating, else the games' record with no rating, else nothing", () => {
   const playoff = { round: "regional", league: "UIL" };
   const full = seasonLine({ season: 2025, row: { won: 10, lost: 2, tied: 0, rating: 31.4 }, meetings: [{ us: 1, them: 0 }], rank: 3, of: 40, playoff });
-  assert.deepEqual(full, { season: 2025, games: 1, record: { won: 10, lost: 2, tied: 0 }, rating: 31.4, outsideOnly: false, rank: 3, of: 40, playoff });
+  assert.deepEqual(full, { season: 2025, games: 1, record: { won: 10, lost: 2, tied: 0 }, rating: 31.4, outsideOnly: false, rank: 3, of: 40, playoff, playoffRecord: null });
+  // The season's playoff games make its playoff record; none on record is null, never 0-0.
+  const run = seasonLine({ season: 2025, meetings: [], of: 40, playoff, playoffGames: [{ us: 40, them: 6 }, { us: 21, them: 24 }] });
+  assert.deepEqual(run.playoffRecord, { won: 1, lost: 1, tied: 0 });
+  assert.equal(seasonLine({ season: 2025, meetings: [], of: 40, playoffGames: [] }).playoffRecord, null);
   // A team with too few games has a rating and a record but no rank.
   assert.equal(seasonLine({ season: 2024, row: { won: 1, lost: 1, tied: 0, rating: -2 }, meetings: [], of: 40 }).rank, null);
   // No table row: the record comes from the games, and there is no rating or rank to guess.

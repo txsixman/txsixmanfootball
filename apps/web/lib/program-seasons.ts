@@ -5,6 +5,7 @@ import { memo } from "./memo";
 import { shownBefore } from "./pregame";
 import { fromResult, type Row } from "./program-games";
 import { opponentRecords, seasonLine, seasonsWithGames, type Meeting, type Rivalry, type SeasonLine } from "./program-history";
+import type { GameLine } from "./program-records";
 import { placeRows, rankedOrder } from "./rank-range";
 import { placeTeams } from "./rankings";
 import { loadRatings, ratingSeasons, type RatingRow } from "./ratings";
@@ -30,14 +31,15 @@ export type SeasonEntry = {
   played: Row[];
 };
 
-/** One season of one school: its table line and its games (oldest first), and the meetings behind the line. `labelled`: tag each
- * playoff game with its bracket and round (reads that season's playoff file); the season under way is listed above on the program page, so it skips them. */
-export async function programSeason(school: Alignment, season: number, labelled: boolean): Promise<{ entry: SeasonEntry; meetings: Meeting[] }> {
+/** One season of one school: its table line and its games (oldest first), and the games behind the line (`lines`, each with its
+ * page and whether it was a playoff game, which the season's playoff file says). `labelled`: tag each playoff game with its bracket
+ * and round in `played`; the season under way is listed above on the program page, so it skips them. */
+export async function programSeason(school: Alignment, season: number, labelled: boolean): Promise<{ entry: SeasonEntry; meetings: Meeting[]; lines: GameLine[] }> {
   const [org, reach, results, labels, shown] = await Promise.all([
     orgSeason(`${season}|${school.league}`),
     playoffReach(season),
     loadSeasonResults(season),
-    labelled ? playoffLabels(season) : undefined,
+    playoffLabels(season),
     labelled ? shownBefore(season) : undefined,
   ]);
   const mine = results.filter((r) => r.home === school.school || r.away === school.school).sort((a, b) => a.date.localeCompare(b.date));
@@ -45,6 +47,7 @@ export async function programSeason(school: Alignment, season: number, labelled:
     const home = r.home === school.school;
     return { opponent: home ? r.away : r.home, date: r.date, us: home ? r.homeScore : r.awayScore, them: home ? r.awayScore : r.homeScore, forfeit: r.forfeit };
   });
+  const lines = mine.map((r, i): GameLine => ({ ...meetings[i], season, href: r.href, playoff: labels.has(gameKey(r.date, r.home, r.away)) }));
   const found = org.teams.get(school.slug);
   const entry: SeasonEntry = {
     line: seasonLine({
@@ -54,10 +57,11 @@ export async function programSeason(school: Alignment, season: number, labelled:
       rank: found?.rank,
       of: org.of,
       playoff: [...reach].find(([team]) => slugify(team) === school.slug)?.[1],
+      playoffGames: lines.filter((g) => g.playoff),
     }),
-    played: labels ? mine.map((r) => fromResult(school.school, r, labels.get(gameKey(r.date, r.home, r.away)), shown?.before.get(r.id), shown?.disputed.has(r.id))) : [],
+    played: labelled ? mine.map((r) => fromResult(school.school, r, labels.get(gameKey(r.date, r.home, r.away)), shown?.before.get(r.id), shown?.disputed.has(r.id))) : [],
   };
-  return { entry, meetings };
+  return { entry, meetings, lines };
 }
 
 /**
@@ -65,9 +69,9 @@ export async function programSeason(school: Alignment, season: number, labelled:
  * line where the data has nothing, and its record against every opponent met (ADR 0013: from unconfirmed scores, as
  * everything on the page). A playoff game's row says which bracket and round it was and names no winner (ADR 0004).
  */
-export async function programHistory(school: Alignment, seasons: number[]): Promise<{ entries: SeasonEntry[]; opponents: Rivalry[] }> {
+export async function programHistory(school: Alignment, seasons: number[]): Promise<{ entries: SeasonEntry[]; opponents: Rivalry[]; games: GameLine[] }> {
   const perSeason = await Promise.all(seasons.map((season, i) => programSeason(school, season, i !== 0)));
-  return { entries: perSeason.map((s) => s.entry), opponents: opponentRecords(perSeason.flatMap((s) => s.meetings)) };
+  return { entries: perSeason.map((s) => s.entry), opponents: opponentRecords(perSeason.flatMap((s) => s.meetings)), games: perSeason.flatMap((s) => s.lines) };
 }
 
 /** The programs with a season page, by slug, each with its seasons newest first (a season page needs a game read that season). One page each
