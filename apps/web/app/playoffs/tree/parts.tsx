@@ -51,6 +51,8 @@ function ProjectedRow({ side, projected }: { side: BoxSide; projected: NonNullab
           <span className="flex items-center justify-between gap-1 text-[11px] font-semibold uppercase leading-[12px] tracking-wider">
             Projected{" "}<span className="font-num tabular-nums">{projected.chance}</span>
           </span>
+          {/* A space between the lines, for the text of a hidden round (a panel not open reads as one run of text). */}
+          {" "}
           <span className="min-w-0 break-words italic leading-[15px]">{projected.team}</span>
         </>
       ) : (

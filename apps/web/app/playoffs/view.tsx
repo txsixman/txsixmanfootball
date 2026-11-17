@@ -87,9 +87,9 @@ export async function PlayoffsView({ league, season }: { league: League; season?
         // The round being played in every bracket of this league, before anything else (ADR 0094): a fan should not have to
         // work it out from a list that starts at the first round. Each line jumps to that round below.
         <section aria-labelledby="current-round" data-current-rounds className="mt-4 border-2 border-navy bg-panel">
-          <h2 id="current-round" className="px-3 pt-2 font-num text-[20px] font-bold uppercase leading-tight tracking-wider text-navy">
+          <h3 id="current-round" className="px-3 pt-2 font-num text-[20px] font-bold uppercase leading-tight tracking-wider text-navy">
             Current round
-          </h2>
+          </h3>
           <ul>
             {standing.map(({ b, round, left }) => {
               const id = `bracket-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
@@ -104,12 +104,18 @@ export async function PlayoffsView({ league, season }: { league: League; season?
                       </span>
                     </a>
                   )}
-                  {left > 0 && (
-                    <Link href={`${bracketHref(b.name)}#whos-left`} className="flex min-h-11 items-center justify-between px-3 text-[14px] font-semibold text-navy hover:bg-page">
-                      Who&rsquo;s left: {left} {left === 1 ? "team" : "teams"}
-                      <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+                  {/* The bracket's own page first (a bare link to each bracket leads the page, for the markup that lists them), then its list of who is left. */}
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 px-3 text-[14px] font-semibold text-navy">
+                    <Link href={bracketHref(b.name)} className="inline-flex min-h-11 items-center hover:underline">
+                      Full {bracketLabel(b)} bracket
                     </Link>
-                  )}
+                    {left > 0 && (
+                      <Link href={`${bracketHref(b.name)}#whos-left`} className="inline-flex min-h-11 items-center hover:underline">
+                        Who&rsquo;s left: {left} {left === 1 ? "team" : "teams"}
+                        <ChevronRight aria-hidden="true" className="size-4" />
+                      </Link>
+                    )}
+                  </div>
                 </li>
               );
             })}

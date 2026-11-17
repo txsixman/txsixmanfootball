@@ -110,7 +110,7 @@ test.describe("round tabs", () => {
     const cards = open(page).locator("[data-card]");
     const count = await cards.count();
     expect(count).toBeGreaterThan(0);
-    const DAY = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun), [A-Z][a-z]{2} \d{1,2}\b|Date not listed yet/;
+    const DAY = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun), [A-Z][a-z]{2} \d{1,2}\b|Date not listed yet/i; // the card's head is drawn in capitals, and innerText follows the drawing
     for (let i = 0; i < count; i++) {
       const card = cards.nth(i);
       const text = (await card.innerText()).replace(/\s+/g, " ");
