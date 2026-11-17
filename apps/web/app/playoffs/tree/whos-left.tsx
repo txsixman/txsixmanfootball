@@ -63,7 +63,7 @@ export function WhosLeft({ rows, team, onFollow, titled }: { rows: Left[]; team:
                 <span className="sr-only"> for {l.name}</span>
               </button>
               {l.program && (
-                <Link href={`/programs/${l.program}#road`} prefetch={false} className="inline-flex min-h-11 items-center text-[14px] font-semibold text-navy hover:underline">
+                <Link href={`/programs/${l.program}#road`} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center pr-2 text-[14px] font-semibold text-navy hover:underline">
                   Path
                   <ChevronRight aria-hidden="true" className="size-4" />
                   <span className="sr-only"> to the State Championship for {l.name}</span>
