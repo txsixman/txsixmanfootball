@@ -8,6 +8,7 @@ import { scoresDescription } from "@/lib/descriptions";
 import { loadGames } from "@/lib/games";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { scoresEdge } from "@/lib/intros";
+import { boardCrests, boardGame } from "@/lib/board-wire";
 import { projectionText } from "@/lib/projection";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { weekHref } from "@/lib/week-review-hrefs";
@@ -43,7 +44,7 @@ export default async function ScoresPage() {
     );
     return (
       <>
-        <Board games={games} eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" crests={crests} weekInReview={review && { href: weekHref(review.season, review.week), label: `Week in review: ${review.season} week ${review.week}` }} next={next} commentCounts={fanPosts()} />
+        <Board games={games.map(boardGame)} eyebrow={`${CURRENT_SEASON} playoffs`} title="Scores" crests={boardCrests(crests)} weekInReview={review && { href: weekHref(review.season, review.week), label: `Week in review: ${review.season} week ${review.week}` }} next={next} commentCounts={fanPosts()} />
         <p className="mx-auto max-w-prose px-3 py-4 text-[14px] leading-5 text-muted">{edge}</p>
       </>
     );

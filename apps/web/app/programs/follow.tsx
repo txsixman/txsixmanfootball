@@ -132,7 +132,7 @@ export function Follow({ slug, school, compact = false }: { slug: string; school
           {signedIn || localOnly ? "Follow" : "Score alerts"}
         </h2>
       )}
-      <Button type="button" variant="outline" onClick={toggle} disabled={state === "busy" || state === "loading"} aria-pressed={on} className="mt-2 max-w-full whitespace-normal py-1.5 text-left">
+      <Button type="button" variant="outline" onClick={toggle} disabled={state === "busy" || state === "loading"} aria-pressed={on} wrap className="mt-2 max-w-full py-1.5 text-left">
         {signedIn || localOnly ? <Star aria-hidden="true" className={on ? "fill-current" : ""} /> : on ? <BellOff aria-hidden="true" /> : <Bell aria-hidden="true" />}
         {signedIn || localOnly ? (on ? `Unfollow ${school}` : `Follow ${school}`) : on ? "Stop alerts" : `Alert me to ${school} finals`}
       </Button>

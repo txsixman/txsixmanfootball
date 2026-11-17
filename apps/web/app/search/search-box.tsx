@@ -165,7 +165,8 @@ export function SearchBox({ index }: { index: WireIndex }) {
             spellCheck={false}
             enterKeyHint="go"
             aria-describedby="q-help"
-            className="bg-accent pl-9"
+            accent
+            className="pl-9"
           />
         </div>
         <p id="q-help" className="sr-only">

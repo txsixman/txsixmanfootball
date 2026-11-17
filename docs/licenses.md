@@ -18,7 +18,7 @@ ISC or OFL (the fonts) and are listed in `apps/web/package.json`.
 | Vercel Speed Insights (`@vercel/speed-insights`) | 2.0.0 | Apache-2.0 | Real visitors' load times (Core Web Vitals) | Browsers, on Vercel only |
 | shadcn/ui (copied into `apps/web/components/ui`) | 2026-11 copy | MIT | Button, Input and Label on the site's colors (`globals.css` maps its tokens); used by search and Follow | Browsers |
 | Radix UI (`@radix-ui/react-slot`, `@radix-ui/react-label`) | 1.5.0, 2.1.17 | MIT | The accessible primitives under shadcn/ui | Browsers |
-| class-variance-authority, clsx, tailwind-merge | 0.7.1, 2.1.1, 3.7.0 | Apache-2.0, MIT, MIT | shadcn/ui's class helpers (`lib/utils.ts`) | Browsers |
+| class-variance-authority, clsx | 0.7.1, 2.1.1 | Apache-2.0, MIT | shadcn/ui's class helpers (`lib/utils.ts`; tailwind-merge was dropped, ADR 0100) | Browsers |
 | Observable Plot (`@observablehq/plot`) | 0.6.17 | ISC | The scorecard chart on `/rankings/how` (`app/rankings/how/scorecard-chart.tsx`), drawn at build time | Site build (no chart code shipped) |
 | linkedom (`linkedom`) | 0.18.14 | ISC | The DOM Plot draws into on the server | Site build |
 | Ladle (`@ladle/react`) | 5.1.1 | MIT | Stories of the scores board and crests in every state, invented schools only (`apps/web/stories`) | Local and CI build only; never deployed |

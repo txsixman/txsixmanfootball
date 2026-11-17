@@ -56,6 +56,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
   const scores = (g: (typeof shown.games)[number]) => (
     <Link
       href={g.href}
+      prefetch={false}
       aria-label={`${g.away} vs ${g.home}${g.forfeit ? ", forfeit" : `, ${g.awayScore}-${g.homeScore}`}, game page`}
       className="flex shrink-0 items-center gap-1 pl-2 hover:bg-panel"
     >

@@ -38,7 +38,7 @@ function BoxView({ box, live, team, dim, onTeam, max, style }: { box: Box; live:
       className={`relative border bg-page transition-opacity ${box.state === "open" ? "border-dashed" : ""} ${mine ? "border-navy shadow-[0_0_0_1px_var(--color-navy)]" : "border-line"} ${dim ? "opacity-40" : ""}`}
     >
       {box.href && (
-        <Link href={box.href} className="absolute inset-0 hover:bg-panel/60" aria-label={`${box.code ? `${box.code}, ` : ""}${box.label}: ${box.sides.map((s) => s.text).join(" vs ")}. Game page`} />
+        <Link href={box.href} prefetch={false} className="absolute inset-0 hover:bg-panel/60" aria-label={`${box.code ? `${box.code}, ` : ""}${box.label}: ${box.sides.map((s) => s.text).join(" vs ")}. Game page`} />
       )}
       <p className="pointer-events-none relative flex h-[18px] items-center justify-between gap-1 whitespace-nowrap border-b border-line px-1.5 leading-none text-muted">
         <span className="text-[12px] font-bold uppercase tracking-wider">{box.code}</span>

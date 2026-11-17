@@ -20,7 +20,7 @@ export function Team({ name, link, crest = true }: { name: string; link: Linker;
     </>
   );
   return href ? (
-    <Link href={href} className="inline-flex min-h-11 min-w-11 items-center text-ink hover:text-navy hover:underline">
+    <Link href={href} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center text-ink hover:text-navy hover:underline">
       {body}
     </Link>
   ) : (
@@ -55,7 +55,7 @@ export function Bracket({ id, title, finals, link, yearLinks = true }: { id: str
             <tr key={`${f.season}-${f.division}`} className="border-t border-line align-top">
               <th scope="row" className="pl-3 text-left font-num text-[17px] font-bold text-navy">
                 {yearLinks ? (
-                  <Link href={`/championships/${f.season}`} className="inline-flex min-h-11 min-w-11 items-center hover:underline">
+                  <Link href={`/championships/${f.season}`} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center hover:underline">
                     {f.season}
                   </Link>
                 ) : (
@@ -134,7 +134,7 @@ export function StateChampionshipTable({ id, title, aside, items, link }: { id: 
           {items.map((c) => (
             <tr key={c.slug} className="border-t border-line align-top">
               <th scope="row" className="pl-3 pr-2 text-left align-top text-[15px] font-bold leading-5 text-navy">
-                <Link href={c.href} className="inline-flex min-h-11 min-w-11 items-center text-balance hover:underline">
+                <Link href={c.href} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center text-balance hover:underline">
                   {c.bracket}
                   <span className="sr-only"> State Championship</span>
                 </Link>
@@ -214,7 +214,7 @@ export function LeagueFinals({ finals, link, yearLinks = true }: { finals: Leagu
                   <tr key={`${f.season}-${f.bracket}`} className="border-t border-line align-top">
                     <th scope="row" className="pl-3 text-left font-num text-[17px] font-bold text-navy">
                       {yearLinks ? (
-                        <Link href={`/championships/${f.season}`} className="inline-flex min-h-11 min-w-11 items-center hover:underline">
+                        <Link href={`/championships/${f.season}`} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center hover:underline">
                           {f.season}
                         </Link>
                       ) : (
@@ -250,7 +250,7 @@ export function StateChampionshipLink({ c, className = "" }: { c: StateChampions
   const f = c.final;
   const score = f && !f.forfeit ? `${f.championScore}-${f.runnerUpScore}` : undefined;
   return (
-    <Link href={c.href} className={`flex min-h-11 items-center justify-between gap-2 px-3 py-1 hover:bg-panel ${className}`}>
+    <Link href={c.href} prefetch={false} className={`flex min-h-11 items-center justify-between gap-2 px-3 py-1 hover:bg-panel ${className}`}>
       <span className="min-w-0">
         {f ? (
           <>

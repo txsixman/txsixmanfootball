@@ -108,6 +108,7 @@ export default async function SeriesPage({ params }: Props) {
               <li key={r.id} className="border-b border-line">
                 <Link
                   href={r.href}
+                  prefetch={false}
                   // The name holds the visible text whole, in its order (WCAG 2.5.3, label in name).
                   aria-label={`${mediumDate(r.date)}, ${r.away} vs ${r.home}, ${where}, ${r.forfeit ? "forfeit" : `${r.awayScore}-${r.homeScore}`}, game page`}
                   className="grid min-h-14 grid-cols-[6.75rem_1fr_auto_auto] items-center gap-x-3 px-3 py-1 hover:bg-panel"
