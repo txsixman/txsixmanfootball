@@ -379,7 +379,9 @@ test("school colors, a logo, a white logo and a colored badge all pass", async (
 
 test("the site can be added to a phone's home screen", async ({ request }) => {
   const manifest = await (await request.get("/manifest.webmanifest")).json();
-  expect(manifest).toMatchObject({ display: "standalone", start_url: "/", theme_color: "#0a2a5e" });
+  expect(manifest).toMatchObject({ display: "standalone", start_url: "/scores", theme_color: "#0a2a5e" });
+  // An installable app needs a 192 and a 512 icon, and a maskable one fills the shape a phone cuts (ADR 0096).
+  expect(manifest.icons.map((i: { sizes: string; purpose?: string }) => `${i.sizes} ${i.purpose ?? ""}`.trim())).toEqual(expect.arrayContaining(["192x192 any", "512x512 any", "512x512 maskable"]));
   for (const icon of manifest.icons) {
     const res = await request.get(icon.src);
     expect(res.status(), icon.src).toBe(200);
@@ -696,7 +698,7 @@ test("PWA: installable, and a visited page opens offline while an unvisited one 
   // The service worker registers only in a production build (app/offline-notice.tsx).
   test.skip(!process.env.CI, "the service worker runs only in a production build");
   const manifest = await (await page.request.get("/manifest.webmanifest")).json();
-  expect(manifest).toMatchObject({ display: "standalone", start_url: "/" });
+  expect(manifest).toMatchObject({ display: "standalone", start_url: "/scores" });
   await page.goto("/championships");
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload(); // now through the service worker, which keeps a copy
@@ -704,7 +706,7 @@ test("PWA: installable, and a visited page opens offline while an unvisited one 
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/championships/i);
-  await expect(page.getByRole("status").filter({ hasText: "You are offline" })).toBeVisible();
+  await expect(page.locator('[data-saved-notice="saved"]')).toContainText("Saved copy from");
   // A page never visited, opened in a new tab: the worker answers with the offline page.
   const fresh = await context.newPage();
   await fresh.goto("/records");
