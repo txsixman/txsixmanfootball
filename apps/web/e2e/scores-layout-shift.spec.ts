@@ -28,6 +28,9 @@ async function gameDays() {
 
 const noon = (day: string) => Date.parse(`${day}T12:00:00-06:00`);
 
+// The site's layout-shift budget (lighthouserc.cjs, ADR 0080). The order flip this guards against measured 0.55.
+const MAX_SHIFT = 0.03;
+
 async function shift(page: Page) {
   await page.waitForLoadState("networkidle");
   await page.waitForTimeout(1500); // the page's own script, the clock's first tick and any late relabelling
@@ -35,9 +38,6 @@ async function shift(page: Page) {
 }
 
 for (const [label, where] of [["finals first (the morning after the last game night)", 0.1], ["this week's games first (past the halfway point)", 0.9]] as const) {
-  // The site's layout-shift budget (lighthouserc.cjs, ADR 0080). The order flip this guards against measured 0.55.
-const MAX_SHIFT = 0.03;
-
 test(`/scores moves nothing after it loads, with the worker active: ${label}`, async ({ page }) => {
     const { last, next } = await gameDays();
     test.skip(!last || !next || noon(next) - noon(last) < 3 * 86_400_000, "no later game day far enough off");
