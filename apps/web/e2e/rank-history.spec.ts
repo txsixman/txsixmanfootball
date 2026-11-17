@@ -11,7 +11,7 @@ import { FEW_GAMES, type RatingsTable } from "../lib/ratings";
 // program's rank and rating by week are drawn with a text alternative. No live-score request reaches the network.
 noLiveScores(test);
 
-const table = (season: number): RatingsTable => JSON.parse(readFileSync(path.join(process.cwd(), "../../data/ratings", `${season}.json`), "utf8"));
+const table = (season: number): RatingsTable => JSON.parse(readFileSync(path.join(__dirname, "../../../data/ratings", `${season}.json`), "utf8"));
 const BETTING = /\b(odds|spread|lock|bets?|picks?)\b/i;
 
 test("the last week's rank in the history is the rankings table's own rank, for every team of two real seasons", () => {
