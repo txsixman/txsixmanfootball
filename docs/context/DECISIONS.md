@@ -154,5 +154,5 @@ Not in an ADR:
   only, hidden before it paints (Nov 16, 2026).
 - **Previews on upcoming playoff games** (ADR 0088): every game not yet played with both teams known (dated or not) shows each
   team's last five games with links, the projection with what is in it, how often and when they last met, the common opponents,
-  where the winner goes next from the bracket (day and site only when the league lists them), and at a State Championship each
+  the next round from the bracket (day and site only when the league lists them), and at a State Championship each
   team's earlier ones; static, no client JavaScript (Nov 16, 2026).

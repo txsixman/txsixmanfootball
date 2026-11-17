@@ -1,4 +1,4 @@
-// The parts of a game preview (ADR 0088) that need no file read: a team's last five results, and where the winner goes next in
+// The parts of a game preview (ADR 0088) that need no file read: a team's last five results, and what comes next in
 // its bracket. Pure, one local import: the node tests run it as it is (scripts/game-preview.test.mjs). Scores only, from the
 // team's own side; a forfeit is the word, never its 1-0 or 2-0 (ADR 0004); a disputed final names no winner (ADR 0040).
 import { slugify } from "./slug.ts";
@@ -33,8 +33,8 @@ type Side = { text: string; team?: string; bye?: true };
  * date, kickoff (UTC) and site the league's own bracket lists for it. */
 export type PathNode = { id: string; round: string; feeds: [string | null, string | null]; sides: [Side, Side]; kickoff_utc?: string; site?: string };
 
-/** What a game's winner goes on to: the next round's game. `other` is the opponent's side as the bracket words it: a team, or
- * the winner of two known teams. Nothing here is guessed: the date, kickoff and site are the league's own, when it lists them. */
+/** What comes after a game: the next round's game. `other` is the opponent's side: a team, or "A or B" when the game that
+ * feeds it has its two teams known (a game still open is left out, never described by the league's slot code). Nothing here is guessed: the date, kickoff and site are the league's own, when it lists them. */
 export type NextGame = {
   round: string;
   other?: { text: string; team?: string };
@@ -68,13 +68,12 @@ export function nextGame(tree: PathNode[], round: string, a: string, b: string):
   const at = next.feeds.indexOf(mine.id);
   const side = next.sides[at === 0 ? 1 : 0];
   if (next.sides.some((s) => s.bye)) return undefined;
-  // The opponent's side: a team, or the winner of the box that feeds it, by its two teams when both are known.
+  // The opponent's side: a team, or the two teams of the box that feeds it when both are known.
   const feeder = tree.find((n) => n.id === next.feeds[at === 0 ? 1 : 0]);
   const [x, y] = feeder?.sides ?? [];
   const other: NextGame["other"] =
     side.team ? { text: side.team, team: side.team }
-    : x?.team && y?.team ? { text: `winner of ${x.team} and ${y.team}` }
-    : /^Winner of /.test(side.text) ? { text: side.text.replace(/^Winner of /, "winner of ") }
+    : x?.team && y?.team ? { text: `${x.team} or ${y.team}` }
     : undefined;
   return {
     round: next.round,

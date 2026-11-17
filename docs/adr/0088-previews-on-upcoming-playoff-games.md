@@ -26,12 +26,14 @@ State Championship), ADR 0040 (a final names a winner unless disputed) and ADR 0
 - **Head-to-head** says how many times the two have met since 2018 and the date of the last meeting, above the list that was
   already there; the link to the series page stays below the preview where it was.
 - **Common opponents** are unchanged.
-- **Where the winner goes next** (`nextGame`): found in the bracket's own tree (`lib/bracket-tree.ts`): the box fed by this game's box.
-  It shows the round, the opponent's side as the bracket words it (a team, or "winner of A and B" when the other feeder's two
-  teams are known, or the league's own "Winner of G17"), and the day, kickoff and site only when the league's bracket lists
-  them. It is left out where nothing is fed by the game (a State Championship, a bracket whose later rounds no data closes) or the
-  winner has a bye. Today UIL lists a few later-round days and sites, the other leagues none, so most show round and opponent only.
-  A kickoff's day is its Central day (a 7 PM Friday kickoff is already Saturday in UTC).
+- **Next round** (`nextGame`): found in the bracket's own tree (`lib/bracket-tree.ts`): the box fed by this game's box. It
+  shows the round, the opponent (a team, or "A or B" when the other feeding game's two teams are known; a side the league names
+  only by a slot code such as "G17" is left out) and the day, kickoff and site only when the league's bracket lists them. The
+  block never uses the word "winner": a live game's page must not (`live-score-in-place.spec.ts`), and "Next round" with
+  "A or B" says the same. It is left out where nothing is fed by the game (a State Championship, a bracket whose later rounds
+  no data closes) or the game's winner has a bye (no opponent to name). Today UIL lists a few later-round days and sites, the
+  other leagues none, so most show round and opponent only. A kickoff's day is its Central day (a 7 PM Friday kickoff is
+  already Saturday in UTC).
 - **State Championship history** at a State Championship only: each team's earlier ones in its league's list, its titles and
   appearances "on record", its latest five with the score. UIL's list is its archive since 1972 (plus a recorded final the archive
   lacks, ADR 0083); a private league's is its recorded finals since 2018. A team with none is "No earlier State Championship on
@@ -47,8 +49,8 @@ State Championship), ADR 0040 (a final names a winner unless disputed) and ADR 0
 ## Consequences
 - On Nov 16, 2026, 27 upcoming playoff games had a preview and all 27 had last-five blocks for both teams; 22 had a next game; 5
   were State Championships with history (TAPPS and TCAF; UIL's are in December).
-- The game-night e2e no longer reads the next-game block as part of "the preview names no winner": that block says "the winner
-  plays ..." by design, and has its own tests (`e2e/game-preview.spec.ts`, `scripts/game-preview.test.mjs`).
+- The next-round block has its own tests (`e2e/game-preview.spec.ts`, `scripts/game-preview.test.mjs`); the game-night e2e's
+  "names no winner" check reads the whole preview, this block included.
 - `state-championships.ts` took a bracket slot's day by cutting its UTC kickoff string (`slice(0, 10)`), right for a State
   Championship's afternoon kickoff and wrong for an evening one (2026-11-21T00:00:00Z is Friday, Nov 20). It now reads the
   Central day through the same helper the preview uses (`centralDate`, `lib/preview-parts.ts`), with a unit test.

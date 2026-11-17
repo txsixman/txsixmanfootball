@@ -8,7 +8,7 @@ import { MeetingsList } from "./game-extras";
 import { FIRST_SEASON } from "@/lib/season";
 
 // The preview on a game not yet played (/scores/<id>): both teams side by side, each team's last five games, their games against
-// each other since FIRST_SEASON, the opponents both met this season, where the winner goes next and, at a State Championship,
+// each other since FIRST_SEASON, the opponents both met this season, what comes next and, at a State Championship,
 // each team's earlier ones (ADR 0088). Words are rating, projected margin and chance to win, and nothing here
 // names a winner or says how a game went: robot-read scores are unconfirmed (ADR 0004, ADR 0013), shown as scores only,
 // and a forfeit is the word. `programs` maps a school's name to its program page, for the schools our alignments list.
@@ -105,15 +105,15 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** Where the winner goes: the next round's game as the league's bracket sets it. Day, kickoff and site only when it lists them. */
+/** The next round: the game after this one, as the league's bracket sets it. Day, kickoff and site only when it lists them. */
 function Next({ next, bracket, programs }: { next: NonNullable<GamePreview["next"]>; bracket?: string; programs: Programs }) {
   const [day, site] = [when(next), next.site];
   const label = next.label === "State Championship" ? next.label : `${next.label} round`;
   return (
-    <Part id="path" title="Where the winner goes next">
+    <Part id="path" title="Next round">
       <div className="pt-2 text-[15px] leading-5">
         <Row label="Next game">{label}</Row>
-        {next.other && <Row label="Plays">{next.other.team ? <Name name={next.other.team} programs={programs} /> : <span className="block py-1">{next.other.text[0].toUpperCase() + next.other.text.slice(1)}</span>}</Row>}
+        {next.other && <Row label="Against">{next.other.team ? <Name name={next.other.team} programs={programs} /> : <span className="block py-1">{next.other.text[0].toUpperCase() + next.other.text.slice(1)}</span>}</Row>}
         {day && <Row label="When">{day}</Row>}
         {site && <Row label="Where">{site}</Row>}
       </div>

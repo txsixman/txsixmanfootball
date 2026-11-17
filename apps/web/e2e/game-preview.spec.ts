@@ -5,7 +5,7 @@ import { FIRST_SEASON } from "../lib/season";
 import { noLiveScores } from "./live-route";
 
 // The preview on a game not yet played (/scores/<id>, ADR 0088): each team's last five games with links, the projection and how it
-// is made, head-to-head and the last meeting, the opponents both met, where the winner goes next, and at a State Championship
+// is made, head-to-head and the last meeting, the opponents both met, the next round, and at a State Championship
 // each team's earlier ones. Every expectation comes from the same lib the site is built from, on the games the bracket sets
 // this season; no request reaches Supabase.
 noLiveScores(test);
@@ -108,22 +108,22 @@ test("an upcoming playoff game lists each team's last five games, each linking t
   expect(text).not.toMatch(BETTING_OR_SOURCE);
 });
 
-test("the winner's next game: the round, the opponent as the bracket words it, the day and site only when the league lists them", async ({ page }) => {
+test("the next round: the round, the opponent as one of two teams, the day and site only when the league lists them", async ({ page }) => {
   const { path: s, nextWithDay } = await fixtures();
   test.skip(!s, "no upcoming playoff game with a next round");
   await page.goto(`/scores/${s!.game.id}`);
   const next = s!.preview.next!;
-  const box = previewOf(page).getByRole("region", { name: "Where the winner goes next" });
+  const box = previewOf(page).getByRole("region", { name: "Next round" });
   await expect(box).toBeVisible();
   await expect(box).toContainText(next.label);
-  if (next.other) await expect(box).toContainText(new RegExp(next.other.text, "i"));
+  if (next.other) await expect(box).toContainText(next.other.text);
   if (s!.preview.bracket) await expect(box.getByRole("link", { name: "Full bracket" })).toHaveAttribute("href", s!.preview.bracket);
   // Nothing is invented: no day, no "When" row.
   if (!next.date) await expect(box.getByText("When", { exact: true })).toHaveCount(0);
   if (!next.site) await expect(box.getByText("Where", { exact: true })).toHaveCount(0);
   if (nextWithDay) {
     await page.goto(`/scores/${nextWithDay.game.id}`);
-    await expect(previewOf(page).getByRole("region", { name: "Where the winner goes next" }).getByText("When", { exact: true })).toBeVisible();
+    await expect(previewOf(page).getByRole("region", { name: "Next round" }).getByText("When", { exact: true })).toBeVisible();
   }
 });
 
@@ -156,7 +156,7 @@ test("a State Championship previews each team's earlier State Championships, and
   const first = state!.preview.history![0];
   if (first.past.length) await expect(box).toContainText(`${first.past.length === 1 ? "1 State Championship appearance" : `${first.past.length} State Championship appearances`} on record`);
   else await expect(box).toContainText("No earlier State Championship on record.");
-  await expect(previewOf(page).getByRole("region", { name: "Where the winner goes next" })).toHaveCount(0);
+  await expect(previewOf(page).getByRole("region", { name: "Next round" })).toHaveCount(0);
   // A game that is not a State Championship has no history section.
   const { path: other } = await fixtures();
   if (other && !other.state) {

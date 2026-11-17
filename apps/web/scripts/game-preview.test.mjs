@@ -1,4 +1,4 @@
-// The game preview's pure parts (lib/preview-parts.ts, ADR 0088): a team's last five results and where the winner goes next.
+// The game preview's pure parts (lib/preview-parts.ts, ADR 0088): a team's last five results and what comes next.
 // Invented teams only.   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -76,25 +76,25 @@ const tree = [
 test("next game: the box this game feeds, the other side as the bracket words it, and the league's own date, kickoff and site", () => {
   const step = nextGame(tree, "area", "Aldan", "Bexar");
   assert.equal(step.round, "regional");
-  assert.equal(step.other.text, "winner of Corvus and Dunn");
+  assert.equal(step.other.text, "Corvus or Dunn");
   assert.equal(step.other.team, undefined);
   // 7:00 PM Central on Friday, Nov 27 is Saturday in UTC: the day is the Central one.
   assert.equal(step.date, "2026-11-27");
   assert.equal(step.kickoff, "2026-11-28T01:00:00Z");
   assert.equal(step.site, "Sterling City High School");
-  // The other side is read from either side of the game: the second feeder's winner meets the first's.
-  assert.equal(nextGame(tree, "area", "Dunn", "Corvus").other.text, "winner of Aldan and Bexar");
+  // The other side is read from either side of the game: the other feeder's two teams are the opponent.
+  assert.equal(nextGame(tree, "area", "Dunn", "Corvus").other.text, "Aldan or Bexar");
 });
 
-test("next game: a side no game sets yet is the bracket's own words, and a missing date or site is left out, not guessed", () => {
+test("next game: a side no game has set yet is left out, never described by a slot code, and a missing date or site is left out, not guessed", () => {
   // G3's winner goes to G6, whose other side (G4) has no teams in the data.
   const step = nextGame([...tree, box("G4", "area", [null, null], undefined, undefined)], "area", "Eagle Pass", "Fenn");
   assert.equal(step.round, "regional");
   assert.equal(step.other, undefined);
   assert.deepEqual(Object.keys(step).sort(), ["round"]);
-  // A named source for a side is kept as the bracket says it.
+  // A side the league names only by its slot code ("Winner of G2") is left out: the code means nothing to a fan.
   const coded = [box("G1", "area", [null, null], "Aldan", "Bexar"), { id: "G5", round: "regional", feeds: ["G1", "G2"], sides: [{ text: "To be decided" }, { text: "Winner of G2" }] }];
-  assert.equal(nextGame(coded, "area", "Aldan", "Bexar").other.text, "winner of G2");
+  assert.equal(nextGame(coded, "area", "Aldan", "Bexar").other, undefined);
 });
 
 test("next game: none for a State Championship, a game in no box, an unnamed pair or a winner with a bye", () => {
