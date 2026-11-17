@@ -42,6 +42,14 @@ const gameCases = (): Promise<Case[]> =>
     return cases;
   });
 
+/** How a card's alt text names a side: a known team by name; an open side ("Winner of G29" on the bracket) as "the team that
+ * wins game 29", never "winner" (ADR 0093). */
+const sideAlt = (side: { team?: string; text: string }) => {
+  if (side.team !== undefined) return side.text;
+  const token = /^Winner of (.+)$/.exec(side.text)?.[1];
+  return token ? `the team that wins ${token.replace(/^G(\d+)$/, "game $1").replace(/^SF(\d+)$/, "semifinal $1")}` : "a team to be decided";
+};
+
 /** A State Championship with a recorded champion, and one still to play. */
 const championshipCases = (): Promise<Case[]> =>
   inWeb(async () => {
@@ -51,7 +59,7 @@ const championshipCases = (): Promise<Case[]> =>
     const done = all.find((c) => c.final && !c.final.forfeit);
     if (done) cases.push({ name: "a recorded State Championship", url: done.href, card: `${done.href}/card`, alt: new RegExp(`^2026 ${esc(done.bracket)} State Championship: ${esc(done.final!.champion)}, State Champion\\. Final score \\d+ to \\d+ over ${esc(done.final!.runnerUp)}`) });
     const ahead = all.find((c) => !c.final && !c.scores);
-    if (ahead) cases.push({ name: "a State Championship still to play", url: ahead.href, card: `${ahead.href}/card`, alt: new RegExp(`^2026 ${esc(ahead.bracket)} State Championship: ${esc(ahead.sides[0].text)} versus ${esc(ahead.sides[1].text)}, `) });
+    if (ahead) cases.push({ name: "a State Championship still to play", url: ahead.href, card: `${ahead.href}/card`, alt: new RegExp(`^2026 ${esc(ahead.bracket)} State Championship: ${esc(sideAlt(ahead.sides[0]))} versus ${esc(sideAlt(ahead.sides[1]))}, `) });
     else console.warn("skipped: no State Championship is still to play");
     return cases;
   });
