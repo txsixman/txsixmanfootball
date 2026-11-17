@@ -3,6 +3,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
 import { pendingNote } from "@/lib/kickoff";
+import { useSavedCopy } from "@/lib/saved-copy-state";
 import { asLive, liveStatus, liveView, updatedAgo, type LiveRow, type LiveView } from "@/lib/live-scores";
 import { projectedLine } from "@/lib/outcome";
 import { outcomeOf } from "@/lib/score-display";
@@ -43,13 +44,15 @@ function GameKickoffStatus({ g }: { g: Game & { date: string } }) {
 export function GameBand({ g, sample }: { g: Game; sample: boolean }) {
   const now = useNow();
   const rows = useContext(GameLiveRows);
+  const saved = useSavedCopy() !== null;
   const watched = !sample && g.state === "scheduled" && !!g.date;
   const live = watched ? liveView(rows, { date: g.date, home: g.home.name, away: g.away.name }, now?.getTime()) : null;
-  const underWay = g.state === "live" || (live !== null && !live.finished);
+  // A saved copy (ADR 0096) never turns the band red and says "Live": the band keeps its place and says what was true when saved.
+  const underWay = !saved && (g.state === "live" || (live !== null && !live.finished));
   return (
     <div className={`flex items-center justify-between gap-3 px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${underWay ? "bg-alert" : "bg-band"}`}>
       <span>
-        {underWay ? "Live" : g.status}
+        {underWay ? "Live" : saved && g.state === "live" ? "Saved copy" : g.status}
         {/* A real game not yet played: its kickoff status at the moment of viewing (ADR 0036). */}
         {!underWay && watched && (
           <>
@@ -58,7 +61,7 @@ export function GameBand({ g, sample }: { g: Game; sample: boolean }) {
           </>
         )}
       </span>
-      {g.state === "live" && <span>{g.status}</span>}
+      {g.state === "live" && !saved && <span>{g.status}</span>}
       {live && !live.finished && (
         <span data-live-updated className="whitespace-nowrap text-[14px]">
           Updated {updatedAgo(live.readAt, now?.getTime() ?? Date.now())}
@@ -78,7 +81,9 @@ export function GameScore({ g, away, home, neutral, watch }: { g: Game; away?: P
   const now = useNow();
   const live = watch ? liveView(rows, { date: g.date, home: g.home.name, away: g.away.name }, now?.getTime()) : null;
   const shown = live ? asLive(g, live) : g;
-  const note = watch && g.date && !live ? pendingNote({ date: g.date, kickoff: g.kickoff }, now) : null;
+  const saved = useSavedCopy() !== null;
+  // A saved copy says nothing about the game being on now (ADR 0096); the line holds its place.
+  const note = watch && g.date && !live && !saved ? pendingNote({ date: g.date, kickoff: g.kickoff }, now) : null;
   return (
     <>
       {watch && (

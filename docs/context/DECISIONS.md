@@ -196,3 +196,10 @@ Not in an ADR:
   week of results showed "OOakwoodJayton. 8 54". Each results row now leaves the index (`data-pagefind-ignore`) and a hidden
   sentence says the game once ("Oakwood vs Jayton, 8 to 54."); the crest and monogram letters are ignored everywhere. Nothing
   visible changes; a node test pins Pagefind's behaviour and a CI test reads the real excerpts (Nov 16, 2026).
+- **Offline game night** (ADR 0096): the one service worker now keeps pages a fan opened for 12 hours (was 30 minutes), 60 per
+  cache, stamped with when they were saved; offline or on a weak signal the page opens as a saved copy under a fixed 56 px bar,
+  "Saved copy from 7:42 PM. You're offline; scores may have changed." (Central time), with no live badge, no live read and a clock
+  frozen at the save time. The signal's return (or "Try again") reloads the page and says "Back online — updated". A followed team's
+  game day saves the board, Tonight, this round's bracket and tonight's game pages ahead (about 0.6 to 0.9 MB stored, 70 to 100 KB
+  downloaded; a button on Tonight does it for anyone); old caches are deleted on each new build; the manifest opens on `/scores` with
+  192, 512 and maskable icons (Nov 16, 2026).
