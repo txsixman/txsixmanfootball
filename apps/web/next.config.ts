@@ -57,6 +57,8 @@ const config: NextConfig = {
       { source: "/ratings", destination: "/rankings", permanent: true },
       { source: "/ratings/:path*", destination: "/rankings/:path*", permanent: true },
       { source: "/champions", destination: "/championships", permanent: true },
+      // A pair's head-to-head page is /series/<a>/<b>; the address a reader guesses from Matchup lands there (ADR 0097).
+      { source: "/matchup/:first/:second", destination: "/series/:first/:second", permanent: true },
       // The "Private" standings tab held three organizations; each stands alone now (ADR 0012).
       { source: "/standings/private", destination: "/standings/tapps", permanent: true },
       // The latest season lives at the bare address (/results, /rankings), so a link carrying its year lands there. It

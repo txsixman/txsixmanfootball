@@ -196,3 +196,8 @@ Not in an ADR:
   week of results showed "OOakwoodJayton. 8 54". Each results row now leaves the index (`data-pagefind-ignore`) and a hidden
   sentence says the game once ("Oakwood vs Jayton, 8 to 54."); the crest and monogram letters are ignored everywhere. Nothing
   visible changes; a node test pins Pagefind's behaviour and a CI test reads the real excerpts (Nov 16, 2026).
+- **Head-to-head is a first-class page** (ADR 0097): `/series/<a>/<b>` (also reached at `/matchup/<a>/<b>`; the reversed order now
+  redirects instead of 404) for every pair that has met twice (2,213 pages, was 1,336 at three): the series in words ("Jayton won 6,
+  Guthrie won 3, 1 tie"), next meeting, last meeting, longest streak, each side's biggest win, playoff meetings and every meeting;
+  a forfeit counts but has no margin, a disputed final is listed and not counted, merged schools count under the program they
+  became; linked from a game preview ("All N meetings"), Matchup and the five most-played opponents on a program page (Nov 17, 2026).

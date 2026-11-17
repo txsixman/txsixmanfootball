@@ -34,7 +34,7 @@ import { mediumDate } from "@/lib/game-pages";
 import { recordedFinals } from "@/lib/state-championships";
 import { appearancesOf } from "@/lib/state-finals";
 import { programHistory, programSeasonPages } from "@/lib/program-seasons";
-import { seriesHref } from "@/lib/series";
+import { MIN_MEETINGS, recordAgainst, seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../crest";
@@ -217,8 +217,9 @@ export default async function ProgramPage({ params }: Props) {
   const withRecord = entries.filter((e) => e.line.record);
   const sum = (k: "won" | "lost" | "tied") => withRecord.reduce((n, e) => n + e.line.record![k], 0);
   const allTime = { won: sum("won"), lost: sum("lost"), tied: sum("tied"), playoffs: entries.filter((e) => e.line.playoff).length };
-  // Rivalries: the opponents met most often across every season read, with this school's record against each; every other opponent is under "All opponents".
-  const rivals = opponents.filter((o) => o.games >= 3).slice(0, 6);
+  // Rivalries: the five opponents met most often across every season read (a pair with a head-to-head page, lib/series.ts), with
+  // the series in words; every other opponent is under "All opponents" (ADR 0097).
+  const rivals = opponents.filter((o) => o.games >= MIN_MEETINGS).slice(0, 5);
   const ratingLine = ratingSeries(entries.map((e) => e.line));
   const group = school.district === "0" ? "Division" : /^\d+$/.test(school.district) ? "District" : school.district;
 
@@ -325,7 +326,7 @@ export default async function ProgramPage({ params }: Props) {
     );
   };
 
-  /** "7 games", a link to the pair's series page when it has one (three or more games, lib/series.ts). Not prefetched: a reader
+  /** "7 games", a link to the pair's series page when it has one (two or more games, lib/series.ts). Not prefetched: a reader
    * scanning the list may open none of them. `lean`: the "All opponents" list styles its links once, on the list, and names
    * each by its row, so a link there is only its address (about 40 rows a page). */
   const gamesLink = (r: Rivalry, lean = false) => {
@@ -361,7 +362,8 @@ export default async function ProgramPage({ params }: Props) {
           {` · last ${r.last.date.slice(0, 4)}, ${r.last.forfeit ? "forfeit" : `${r.last.us}-${r.last.them}`}`}
         </span>
       </span>
-      <span className="font-num text-[22px] font-bold tabular-nums text-ink">{record(r)}</span>
+      {/* In words, never "2-0": a bare 1-0 or 2-0 reads as a forfeit score (ADR 0004, ADR 0097). */}
+      <span className="max-w-[9rem] text-right text-[15px] font-semibold leading-5 text-ink">{recordAgainst(r)}</span>
     </li>
   );
 

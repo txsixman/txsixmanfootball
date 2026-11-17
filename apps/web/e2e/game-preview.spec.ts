@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 import { FIRST_SEASON } from "../lib/season";
+import { MIN_MEETINGS, seriesHref } from "../lib/series";
 import { noLiveScores } from "./live-route";
 
 // The preview on a game not yet played (/scores/<id>, ADR 0088): each team's last five games with links, the projection and how it
@@ -50,6 +51,7 @@ async function build() {
     path: all.find((s) => s.preview.next && s.preview.away.last.length && s.preview.home.last.length),
     nextWithDay: all.find((s) => s.preview.next?.date),
     meeting: all.find((s) => s.detail.meetings.total > 0),
+    series: all.find((s) => s.detail.meetings.total >= MIN_MEETINGS),
     state: all.find((s) => s.state && s.preview.history),
     undated: all.find((s) => s.built && !s.game.date),
     noEdge: all.find((s) => s.built || s.state),
@@ -142,6 +144,25 @@ test("head-to-head says how often and when they last met, and the projection say
     await expect(previewOf(page)).toContainText(words);
     await expect(previewOf(page).getByRole("link", { name: "How ratings work" })).toHaveAttribute("href", "/rankings/how");
   }
+});
+
+test("a preview whose teams have met twice links to all their meetings", async ({ page }) => {
+  const { series } = await fixtures();
+  test.skip(!series, "no upcoming playoff game whose teams have met twice");
+  const { game: g, detail } = series!;
+  await page.goto(`/scores/${g.id}`);
+  const link = previewOf(page).getByRole("link", { name: /^All \d+ meetings/ });
+  await expect(link).toHaveText(`All ${detail.meetings.total} meetings of ${g.away.name} and ${g.home.name}`);
+  const { slugOf } = await inWeb(async () => ({ slugOf: (await import("../lib/slug")).slugify }));
+  await expect(link).toHaveAttribute("href", seriesHref(slugOf(g.away.name), slugOf(g.home.name)));
+  expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  // The link sits beside the head-to-head list, which still holds the meetings themselves.
+  await expect(previewOf(page).getByRole("region", { name: `Head-to-head since ${FIRST_SEASON}` }).getByRole("link", { name: /^All \d+ meetings/ })).toHaveCount(0);
+  // One link to the page, not two: the preview's replaces the line a game with no preview has below it.
+  await expect(page.getByRole("link", { name: new RegExp(`game since ${FIRST_SEASON}$`) })).toHaveCount(0);
+  await link.click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/ vs /);
+  expect(detail.meetings.total).toBe(await page.locator("section[aria-labelledby=meetings] > ul > li").count());
 });
 
 test("a State Championship previews each team's earlier State Championships, and no path past it", async ({ page }) => {

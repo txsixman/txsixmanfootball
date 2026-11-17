@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Identity } from "@/lib/identity";
@@ -7,6 +8,7 @@ import { project, projectionParts } from "@/lib/projection";
 import { ratingText } from "@/lib/signed";
 import { type Meeting, pairKey } from "@/lib/meetings";
 import type { RatingsTable } from "@/lib/ratings";
+import { MIN_MEETINGS, seriesHref } from "@/lib/series";
 import { Crest } from "../programs/crest";
 
 export type MatchupTeam = { slug: string; name: string; group: string; rating: number; mercy_only?: true; record: string; identity: Identity };
@@ -141,6 +143,13 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
                       );
                     })}
                   </ul>
+                  {/* A pair with a head-to-head page (lib/series.ts): the page lists every meeting, the series in words, the streak and the biggest wins. */}
+                  {met.length >= MIN_MEETINGS && (
+                    <Link href={seriesHref(ta!.slug, tb!.slug)} prefetch={false} className="mt-1 flex min-h-11 items-center gap-1 text-[15px] font-semibold text-navy underline underline-offset-2">
+                      All {met.length} meetings
+                      <ChevronRight aria-hidden="true" className="size-4" strokeWidth={2.5} />
+                    </Link>
+                  )}
                 </>
               ) : (
                 <p className="mt-1 text-[15px] text-muted">No games between them in the seasons on this site.</p>

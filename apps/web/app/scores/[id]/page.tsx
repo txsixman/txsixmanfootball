@@ -279,14 +279,14 @@ export default async function GamePage({ params }: Props) {
         <div className="pb-6">
           {found && <ProjectionSection result={found.result} detail={detail} outcome={outcomeOf(g)} />}
           {preview ? (
-            <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} noEdge={noEdge} />
+            <GamePreviewSection preview={preview} detail={detail} projected={g.projected} programs={new Map(alignments.map((a) => [a.school, a.slug]))} noEdge={noEdge} series={series} />
           ) : (
             <>
               <GoingInSection away={g.away.name} home={g.home.name} detail={detail} />
               <MeetingsSection detail={detail} />
             </>
           )}
-          {series && (
+          {series && !preview && (
             <p className="px-3 pt-2">
               <Link href={series} prefetch={false} className="inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-red">
                 Every {g.away.name} and {g.home.name} game since {FIRST_SEASON}
