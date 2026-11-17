@@ -139,7 +139,7 @@ test("a week of results is found with a sentence, not words run together (produc
   for (const e of excerpts) {
     // A letter touching a highlighted word is a name joined to the one beside it ("OakwoodJayton") or a crest's initials before it ("OJayton").
     expect(e).not.toMatch(/[A-Za-z]<mark>|<\/mark>[A-Za-z]/);
-    // The game, said once in words: "Oakwood vs Jayton, 8 to 54."
-    expect(e).toMatch(/[A-Za-z.'&-]+(?: [A-Za-z.'&-]+)* vs (?:[A-Za-z.'&-]+ )*[A-Za-z.'&-]+, (?:\d+ to \d+|forfeit|no score)\./);
+    // The game, said once in words: "Oakwood vs Jayton, 8 to 54." (read without the highlight's <mark> tags).
+    expect(e.replace(/<\/?mark>/g, "")).toMatch(/[A-Za-z.'&-]+(?: [A-Za-z.'&-]+)* vs (?:[A-Za-z.'&-]+ )*[A-Za-z.'&-]+, (?:\d+ to \d+|forfeit|no score)\./);
   }
 });
