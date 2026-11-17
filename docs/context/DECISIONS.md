@@ -201,8 +201,16 @@ Not in an ADR:
   Guthrie won 3, 1 tie"), next meeting, last meeting, longest streak, each side's biggest win, playoff meetings and every meeting;
   a forfeit counts but has no margin, a disputed final is listed and not counted, merged schools count under the program they
   became; linked from a game preview ("All N meetings"), Matchup and the five most-played opponents on a program page (Nov 17, 2026).
+- **Offline game night** (ADR 0096): the one service worker now keeps pages a fan opened for 12 hours (was 30 minutes), 60 per
+  cache, stamped with when they were saved; offline or on a weak signal the page opens as a saved copy under a fixed 56 px bar,
+  "Saved copy from 7:42 PM. You're offline; scores may have changed." (Central time), with no live badge, no live read and a clock
+  frozen at the save time. The signal's return (or "Try again") reloads the page and says "Back online — updated". A followed team's
+  game day saves the board, Tonight, this round's bracket and tonight's game pages ahead (about 0.6 to 0.9 MB stored, 70 to 100 KB
+  downloaded; a button on Tonight does it for anyone); old caches are deleted on each new build; the manifest opens on `/scores` with
+  192, 512 and maskable icons (Nov 16, 2026).
 - **Games on a phone calendar** (ADR 0095): a static calendar feed for each program (`/programs/<slug>/calendar.ics`: this season's games
   still to play and played) and each bracket (`/playoffs/bracket/<slug>/calendar.ics`), and a one-game file for each game still to play
   (`/scores/<id>/calendar.ics`); "Add to calendar" (webcal:// for an iPhone or Mac, plus a https file) on program and bracket pages and
   on a game page. Events are "Away vs Home", timed in UTC at the kickoff or all-day, with the site as the location, a UID from the game's
   page id, and a confirmed final (or "Score reported", or "Forfeit") in the description; a game with no date is left out (Nov 16, 2026).
+- 0098 Quality sweep (Nov 16, 2026): a results week with no game is noindex, out of the sitemap and the site search, and points to the nearest week with games; a text field's edge is a 3:1 `field` token; reduced motion switches off transitions; the 404 page searches for the address's words; typed internal links are checked against the route list in CI.

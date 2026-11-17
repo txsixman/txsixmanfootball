@@ -25,14 +25,19 @@ test("precaches the build's scripts and styles, and the offline page under the c
   ]);
 });
 
-test("the bundled worker carries the list and the 30-minute page limit, and refuses an empty build", async () => {
+test("the bundled worker carries the list, the build's revision and the saved-page stamp, and refuses an empty build", async () => {
   const dir = fakeBuild();
   const outfile = path.join(dir, "sw.js");
   assert.equal(await buildWorker({ staticDir: dir, outfile, revision: "c0ffee" }), 3);
   const sw = readFileSync(outfile, "utf8");
   assert.match(sw, /\/_next\/static\/chunks\/app-abc123\.js/);
   assert.match(sw, /~offline/);
-  assert.match(sw, /1800/);
+  assert.match(sw, /x-saved-at/);
+  assert.match(sw, /saved-pages/);
+  assert.match(sw, /saved-copy\?/);
+  assert.match(sw, /static-/);
+  assert.match(sw, /c0ffee/);
+  assert.doesNotMatch(sw, /__SW_REVISION/);
   assert.doesNotMatch(sw, /__SW_MANIFEST/);
   await assert.rejects(buildWorker({ staticDir: mkdtempSync(path.join(tmpdir(), "sw-")), outfile, revision: "x" }), /run next build first/);
 });

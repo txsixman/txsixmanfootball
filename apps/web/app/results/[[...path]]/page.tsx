@@ -25,11 +25,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = resultsTitle({ label: org.label, season, week, scope: dated === 2 ? "week" : dated === 1 ? "season" : "latest" });
   const canonical = `/results${(path ?? []).map((p) => `/${p}`).join("")}`;
   const description = resultsDescription({ org: org.label, season, week, games, scope: dated === 2 ? "week" : dated === 1 ? "season" : "latest" });
+  // A week with no game stays a page (the week tabs lead to it) but has nothing to index: out of search results, links followed.
+  const robots = dated === 2 && games === 0 ? { index: false, follow: true } : undefined;
   // UIL's card is the section's own (opengraph-image.tsx beside this folder); each other organization has its own, so
   // its pages never preview with UIL's numbers.
-  if (org === ORGS[0]) return { title, description, alternates: { canonical } };
+  if (org === ORGS[0]) return { title, description, alternates: { canonical }, robots };
   const card = [{ url: `/results/card/${org.slug}/opengraph-image`, ...cardSize, alt: `${org.label} six-man results, week by week` }];
-  return { title, description, alternates: { canonical }, openGraph: { images: card }, twitter: { card: "summary_large_image", images: card } };
+  return { title, description, alternates: { canonical }, robots, openGraph: { images: card }, twitter: { card: "summary_large_image", images: card } };
 }
 
 export default async function ResultsPage({ params }: Props) {
@@ -38,7 +40,8 @@ export default async function ResultsPage({ params }: Props) {
   if (!where) notFound();
   // A dated week is in the site search (app/search) under its organization, season and week. The undated pages
   // (/results, /results/<season>) repeat a week that is already indexed, so they are left out.
-  if ((path ?? []).filter((p) => /^\d+$/.test(p)).length < 2) return <ResultsWeek {...where} />;
+  // (A week with no game says so and is left out of the index too.)
+  if ((path ?? []).filter((p) => /^\d+$/.test(p)).length < 2 || !where.games) return <ResultsWeek {...where} />;
   const name = `${where.org === ORGS[0] ? "" : `${where.org.label} `}${where.season} week ${where.week} results`;
   return (
     <div data-pagefind-body data-pagefind-meta={`title:${name}`}>

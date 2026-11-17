@@ -55,13 +55,15 @@ test("the service worker never keeps the admin, auth, sign-in or account pages",
   assert.deepEqual(NEVER_CACHED, ["/admin", "/auth", "/sign-in", "/account", "/forums"]);
 });
 
-test("sw.ts sends those pages to the network first of all its rules, from the same list the proxy matches", async () => {
+test("the worker sends those pages to the network only, first of all its rules, from the same list the proxy matches", async () => {
   const { readFileSync } = await import("node:fs");
   const sw = readFileSync(new URL("../sw.ts", import.meta.url), "utf8");
-  const rules = sw.slice(sw.indexOf("const runtimeCaching"));
-  const firstRule = rules.split("\n").find((l) => l.includes("matcher:"));
-  assert.match(firstRule, /isNeverCached\(url\.pathname\).*NetworkOnly/);
-  assert.ok(rules.indexOf("isNeverCached") < rules.indexOf("NetworkFirst") && rules.indexOf("isNeverCached") < rules.indexOf("CacheFirst"));
+  const handlers = sw.slice(sw.indexOf("const handlers = {"));
+  const firstRule = handlers.split("\n").slice(1).find((l) => l.trim() && !l.trim().startsWith("//"));
+  assert.match(firstRule, /"network-only": new NetworkOnly\(\)/);
+  // lib/sw-rules.ts decides by the same list (and sw-rules.test.mjs runs every one of those paths through it).
+  const rules = readFileSync(new URL("../lib/sw-rules.ts", import.meta.url), "utf8");
+  assert.match(rules, /isNeverCached\(r\.pathname\).*network-only/);
   // proxy.ts matches the same paths (it adds no-store and refreshes the session there).
   const proxy = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8");
   for (const p of NEVER_CACHED) assert.ok(proxy.includes(`"${p}"`) || proxy.includes(`"${p}/:path*"`), `proxy.ts matcher lacks ${p}`);
@@ -126,6 +128,6 @@ test("the pages' own scripts' routes are matched by the proxy (a session is refr
   const { readFileSync } = await import("node:fs");
   const proxy = readFileSync(new URL("../proxy.ts", import.meta.url), "utf8");
   for (const p of ["/api/me", "/api/follows", "/api/push/:path*", "/account/:path*", "/auth/:path*", "/sign-in"]) assert.ok(proxy.includes(`"${p}"`), `proxy.ts matcher lacks ${p}`);
-  const sw = readFileSync(new URL("../sw.ts", import.meta.url), "utf8");
-  assert.match(sw, /\/\^\\\/\(api\|_vercel\)\\\//); // /api/ goes to the network only
+  const rules = readFileSync(new URL("../lib/sw-rules.ts", import.meta.url), "utf8");
+  assert.match(rules, /\/\^\\\/\(api\|_vercel\)\\\//); // /api/ goes to the network only
 });

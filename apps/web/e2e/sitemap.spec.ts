@@ -59,3 +59,23 @@ test("one page of each kind in the sitemap answers 200 and is not noindex", asyn
     expect(await res.text(), p).not.toMatch(/<meta name="robots" content="[^"]*noindex/);
   }
 });
+
+test("a results week with no game is noindex and unlisted, and one with games is neither", async ({ request }) => {
+  const paths = new Set(await sitemapPaths(request));
+  const checked = { empty: 0, played: 0 };
+  for (const org of ["", "/tapps", "/taiao", "/tcaf"]) {
+    for (let week = 1; week <= 16; week++) {
+      const path = `/results/2026/${week}${org}`;
+      const res = await request.get(path, { headers: { host: "txsixmanfootball.com" }, maxRedirects: 0 });
+      if (res.status() === 404) continue; // a week the season has no page for
+      expect(res.status(), path).toBe(200);
+      const html = await res.text();
+      const noindex = /<meta name="robots" content="[^"]*noindex/.test(html);
+      const empty = /games this week\./.test(html);
+      expect(noindex, `${path}: noindex exactly when it has no game`).toBe(empty);
+      expect(paths.has(path), `${path}: listed exactly when it has games`).toBe(!empty);
+      checked[empty ? "empty" : "played"]++;
+    }
+  }
+  expect(checked.played, "some week with games").toBeGreaterThan(0);
+});

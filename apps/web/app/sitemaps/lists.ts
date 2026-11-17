@@ -74,6 +74,8 @@ const PATHS: Record<Kind, () => Promise<string[]>> = {
   weeks: async () => (await weeks()).map((p) => ["weeks", ...(p.path ?? [])].join("/")),
 };
 
+const EMPTY_WEEK = /^results\/\d{4}\/\d+(\/[a-z]+)?$/;
+
 const later = <K>(map: Map<K, string>, key: K, date: string) => {
   const was = map.get(key);
   if (was === undefined || date > was) map.set(key, date);
@@ -111,5 +113,8 @@ const dates = memo<void, SitemapDates>(async () => {
 /** One kind's addresses, each with its lastmod when its data has a date. */
 export const sitemapEntries = memo<Kind, SitemapEntry[]>(async (kind) => {
   const d = await dates();
-  return [...new Set(await PATHS[kind]())].map((p) => ({ url: p ? `${SITE_URL}/${p}` : SITE_URL, lastmod: lastmodFor(p, d) }));
+  return [...new Set(await PATHS[kind]())]
+    .map((p) => ({ path: p, url: p ? `${SITE_URL}/${p}` : SITE_URL, lastmod: lastmodFor(p, d) }))
+    .filter((e) => !(kind === "results" && EMPTY_WEEK.test(e.path) && !e.lastmod)) // a week with no game is noindex (app/results), so it is not listed
+    .map(({ url, lastmod }) => ({ url, lastmod }));
 });

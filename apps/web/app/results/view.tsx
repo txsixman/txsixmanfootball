@@ -34,6 +34,8 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
   const shown = weeks.find((w) => w.number === week) as Week;
   const { review, rankings } = await weekNeighbours({ season, week, org });
   const days = Map.groupBy(shown.games, (g) => g.status);
+  // A week with no game points to the nearest week that has some, so it is never a dead end (the later week wins a tie).
+  const nearest = shown.games.length ? undefined : weeks.filter((w) => w.games.length).sort((a, b) => Math.abs(a.number - week) - Math.abs(b.number - week) || b.number - a.number)[0];
 
   const team = (name: string) => {
     const slug = programFor(alignments, name, org.league)?.slug;
@@ -83,7 +85,11 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
         />
       )}
       <WeekStrip weeks={weeks.map((w) => ({ number: w.number, href: weekHref(season, w.number, org), label: `Week ${w.number}, from ${weekLabel(w.monday)}`, current: w.number === week }))} />
-      {!shown.games.length && <EmptyState>No {org.label} games this week.</EmptyState>}
+      {!shown.games.length && (
+        <EmptyState action={nearest && { href: weekHref(season, nearest.number, org), label: `See week ${nearest.number}, ${nearest.games.length} ${nearest.games.length === 1 ? "game" : "games"}` }}>
+          No {org.label} games this week.
+        </EmptyState>
+      )}
       {[...days].map(([day, games]) => (
         <section key={day} aria-labelledby={`day-${day.replace(/\W+/g, "-")}`} className="mt-6">
           <SectionBar id={`day-${day.replace(/\W+/g, "-")}`} title={day} className="" />

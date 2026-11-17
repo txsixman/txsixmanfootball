@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NotFoundHint } from "./not-found-hint";
 import { PageHeader } from "./ui";
 
 // Any address with no page: answers 404 (Next adds noindex), offers a search and the main sections. A plain form, so it
@@ -29,6 +30,7 @@ export default function NotFound() {
           Search
         </Button>
       </form>
+      <NotFoundHint />
       <h2 className="mt-8 font-num text-[18px] font-bold uppercase tracking-wider text-navy">Sections</h2>
       <ul className="mt-2 flex flex-wrap gap-2">
         {PLACES.map((p) => (
