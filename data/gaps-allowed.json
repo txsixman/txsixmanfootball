@@ -13,24 +13,6 @@
   },
   {
     "kind": "empty-season",
-    "key": "empty-season 2026 christian-homeschool-athletes-of-north-texas-chant",
-    "reason": "Added to the alignments on Nov 15, 2026 at 8:24 PM Central, after that day's last full results read. Its 2026 games (2 found) are in the private outside.csv because its opponents were read before it was listed. The next full read (Results watch, Friday to Sunday) moves them into games.csv; remove this entry then.",
-    "reviewed": "2026-11-16"
-  },
-  {
-    "kind": "empty-season",
-    "key": "empty-season 2026 the-covenant-preparatory-school",
-    "reason": "Added to the alignments on Nov 15, 2026 at 8:24 PM Central, after that day's last full results read. Its one 2026 game found (at Baytown Christian Academy, Sep 4) is in the private outside.csv because it was read before Covenant Prep was listed. The next full read moves it into games.csv; remove this entry then.",
-    "reviewed": "2026-11-16"
-  },
-  {
-    "kind": "empty-season",
-    "key": "empty-season 2026 high-island",
-    "reason": "Added to the alignments on Nov 15, 2026 at 8:39 PM Central (ADR 0074), after that day's last full results read. Its 2026 games (8 found, including Burkeville, Apple Springs and Buckholts) are in the private outside.csv because they were read before High Island was listed. The next full read moves them into games.csv; remove this entry then.",
-    "reviewed": "2026-11-16"
-  },
-  {
-    "kind": "empty-season",
     "key": "empty-season 2026 grace-christian-academy-houston",
     "reason": "The results reader reaches its schedule page and finds no 2026 games (coverage, Nov 15, 2026). Whether it fields a team this season is not stated on any page read; it stays listed under TAPPS's 2026-28 alignment.",
     "reviewed": "2026-11-16"
