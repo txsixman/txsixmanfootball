@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLiveBlocked } from "@/lib/saved-copy-state";
 import { checkedLine, fetchReadAt, gameDay, type DayGame } from "@/lib/scores-checked";
 
 // "Scores checked 4 min ago" (ADR 0038). Asks the public function results_read_at() on load and every minute while the tab is
@@ -14,7 +15,10 @@ export function ScoresChecked({ games, className = "" }: { games: DayGame[]; cla
     latest.current = games;
   });
   const [view, setView] = useState<{ now: number; readAt: number | null } | null>(null);
+  // Nothing is asked of a saved copy or an offline phone (ADR 0096), and a read from before is not shown as current.
+  const blocked = useLiveBlocked();
   useEffect(() => {
+    if (blocked) return;
     let stopped = false;
     let pending: AbortController | undefined;
     const load = async () => {
@@ -41,8 +45,8 @@ export function ScoresChecked({ games, className = "" }: { games: DayGame[]; cla
       clearInterval(timer);
       document.removeEventListener("visibilitychange", load);
     };
-  }, []);
-  const day = view && gameDay(games, view.now);
+  }, [blocked]);
+  const day = !blocked && view && gameDay(games, view.now);
   const text = view && day ? checkedLine(day, view.readAt, view.now) : null;
   return text ? (
     <p data-scores-checked className={`text-[13px] leading-4 text-muted ${className}`}>

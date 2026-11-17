@@ -4,7 +4,9 @@ import Link from "next/link";
 import type { MyGame, MyTeam } from "@/lib/my-teams";
 import { lead } from "@/lib/program-games";
 import { Crest } from "../programs/crest";
+import { planTonight } from "@/lib/save-tonight";
 import { AlertsToggle } from "./alerts-toggle";
+import { SavedTonight } from "./saved-tonight";
 import { LiveRead, ProgramLiveScore } from "../scores/live-game";
 
 /** One game line: "Last" or "Next", date, opponent, and the score or the projection. A playoff game links to its page.
@@ -54,11 +56,14 @@ function Line({ label, game, school }: { label: string; game: MyGame; school?: s
 
 /** The "My teams" section for the programs found (see block.tsx, which asks which and loads this only when there are some, ADR 0100). */
 export default function MyTeamsView({ teams }: { teams: MyTeam[] }) {
+  // On a followed team's game day, tonight's pages are saved on this phone for no signal (ADR 0096).
+  const tonight = planTonight(teams.flatMap((t) => (t.next ? [t.next] : [])));
   return (
     <section aria-labelledby="my-teams" data-pagefind-ignore className="mt-6">
       <h2 id="my-teams" className="section-title">My teams</h2>
       {/* Game alerts for the followed teams, only while the site switch is on (renders nothing otherwise). */}
       <AlertsToggle />
+      {tonight.onTonight && <SavedTonight urls={tonight.urls} />}
       {/* One live read for the followed programs' next games, asked only while one may be under way (lib/kickoff.ts). */}
       <LiveRead games={teams.flatMap((t) => (t.next?.date && !t.next.score ? [{ date: t.next.date, kickoff: t.next.kickoff }] : []))}>
         <ul className="mt-3 grid gap-x-6 sm:grid-cols-2">

@@ -16,15 +16,18 @@ import { KickoffStatus, useNow } from "../kickoff-status";
 import { CommentCount } from "./comment-count";
 import { SiteAddress } from "./directions";
 import { ScoresChecked } from "./freshness";
+import { useSavedCopy } from "@/lib/saved-copy-state";
 import { useLiveScores } from "./live-score";
 import { ForfeitMark, VerifyBar, scoreClass } from "./parts";
 
 function StatusCell({ g }: { g: BoardGame }) {
   const base = "flex w-[68px] shrink-0 flex-col justify-center self-stretch px-2 font-num text-[14px] font-bold uppercase leading-4 tracking-wide";
+  const saved = useSavedCopy();
   if (g.state === "live") {
+    // A saved copy (the service worker's, ADR 0096) never carries the red Live badge: it was live when saved.
     return (
-      <div className={`${base} bg-alert text-white`}>
-        <span>Live</span>
+      <div className={`${base} ${saved ? "bg-band" : "bg-alert"} text-white`}>
+        <span>{saved ? "Saved" : "Live"}</span>
         <span>{/half/i.test(g.status) ? "Half" : g.status}</span>
       </div>
     );
@@ -171,6 +174,7 @@ function Row({ g, crests, live, counts, noScore }: { g: BoardGame; crests?: Cres
 
 /** `newestFirst`: the round played last on top (finals), so this week's results are not under every earlier round's. */
 function Section({ id, title, live, games, crests, checked, counts, newestFirst }: { id: string; title: string; live?: boolean; games: BoardGame[]; crests?: Crests; checked: Map<string, LiveView>; counts?: boolean; newestFirst?: boolean }) {
+  const saved = useSavedCopy();
   if (!games.length) return null;
   const latest = (league: string) => games.reduce((d, g) => (g.league === league && (g.date ?? "") > d ? g.date! : d), "");
   const leagues = [...new Set(games.map((g) => g.league))];
@@ -178,8 +182,8 @@ function Section({ id, title, live, games, crests, checked, counts, newestFirst 
   if (newestFirst) leagues.sort((a, b) => latest(b).localeCompare(latest(a)));
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-[45px]">
-      <h2 id={`${id}-h`} className={`px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white ${live ? "bg-alert" : "bg-band"}`}>
-        {title}
+      <h2 id={`${id}-h`} className={`px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white ${live && !saved ? "bg-alert" : "bg-band"}`}>
+        {live && saved ? "Under way when saved" : title}
       </h2>
       {leagues.map((league) => (
         <div key={league}>
@@ -270,6 +274,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
   // A game past its window with no score is not "Later" (ADR 0046): it is listed as "Score not reported yet", as its row's
   // status cell says. Worked out at the moment of viewing (ADR 0036); before that (the server, the first render) it is Later.
   const now = useNow();
+  const saved = useSavedCopy();
   const awaiting = (g: BoardGame) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "awaiting";
   const notReported = shown.filter(awaiting);
   // A game inside its window with no live score yet is on now, so it sits under "In progress" (just after Live now), its row
@@ -292,7 +297,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
     { href: "#reported", label: "Reported", n: reported.length },
     { href: "#final", label: "Final", n: final.length },
   ];
-  const jumps = [{ href: live.length || !underWay.length ? "#live" : "#in-progress", label: "Live", n: live.length || underWay.length }, ...(upcomingFirst ? [coming, ...results] : [...results, coming])];
+  const jumps = [{ href: live.length || !underWay.length ? "#live" : "#in-progress", label: saved ? "Under way" : "Live", n: live.length || underWay.length }, ...(upcomingFirst ? [coming, ...results] : [...results, coming])];
   const upcoming = (
     <>
       <Section id="later" title="Later" games={later} crests={crests} checked={checked} counts={commentCounts} />

@@ -6,6 +6,7 @@ import { checkedAt, liveView, type LiveRow, type LiveView } from "@/lib/live-sco
 import { projectedLine, type Outcome } from "@/lib/outcome";
 import type { Night, NightGame } from "@/lib/tonight";
 import { KickoffStatus, useNow } from "../../kickoff-status";
+import { useSavedCopy } from "@/lib/saved-copy-state";
 import { ScoresChecked } from "../freshness";
 import { LiveLine, useLiveScores } from "../live-score";
 
@@ -45,6 +46,7 @@ function Projected({ g, live }: { g: TonightGame; live: LiveView | null }) {
 }
 
 function Status({ g, liveRows, now }: { g: TonightGame; liveRows: LiveRow[]; now: Date | null }) {
+  const saved = useSavedCopy() !== null;
   if (g.state === "forfeit") {
     return (
       <>
@@ -83,8 +85,9 @@ function Status({ g, liveRows, now }: { g: TonightGame; liveRows: LiveRow[]; now
       <p className="text-[14px] font-bold uppercase leading-5 tracking-wide text-navy">
         <KickoffStatus date={g.date} kickoff={g.kickoff} />
       </p>
-      {kind === "in-progress" && <p data-no-score className="text-[13px] leading-4 text-muted">No live score yet. Checked every few minutes.</p>}
-      {kind === "awaiting" && <p data-no-score className="text-[13px] leading-4 text-muted">No score has come in for this game yet.</p>}
+      {/* A saved copy checks nothing (ADR 0096): it says only what it knew. */}
+      {kind === "in-progress" && <p data-no-score className="text-[13px] leading-4 text-muted">{saved ? "No score when this copy was saved." : "No live score yet. Checked every few minutes."}</p>}
+      {kind === "awaiting" && <p data-no-score className="text-[13px] leading-4 text-muted">{saved ? "No score when this copy was saved." : "No score has come in for this game yet."}</p>}
       <Projected g={g} live={null} />
     </>
   );
@@ -99,6 +102,7 @@ const KINDS: { key: NightGroupKey; label: string }[] = [
 ];
 
 export default function TonightBoard({ night }: { night: Night }) {
+  const saved = useSavedCopy() !== null;
   // Only a game with no final can be under way, and only inside its window (lib/kickoff.ts anyInProgress): a night of
   // finals, or the hours before the first kickoff, ask for nothing.
   const liveRows = useLiveScores(night.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games.filter((g) => g.state === "later"))));
@@ -113,7 +117,8 @@ export default function TonightBoard({ night }: { night: Night }) {
   // before one with games still to come, and that before one with only finals. Organizations still never share a list
   // (ADR 0012); ties keep the site's order. The strip counts games and jumps to the first organization that has each kind.
   const ordered = [...orgs].sort((a, b) => orgRank(a.groups) - orgRank(b.groups));
-  const strip = KINDS.map((k) => {
+  const strip = KINDS.map((k0) => {
+    const k = saved && k0.key === "in-progress" ? { ...k0, label: "Under way" } : k0;
     const holding = ordered.filter((o) => o.groups.some((g) => g.key === k.key));
     return { ...k, n: new Set(holding.flatMap((o) => o.groups.filter((g) => g.key === k.key).flatMap((g) => g.games.map((x) => x.id)))).size, first: holding[0]?.org.slug };
   }).filter((k) => k.key !== "awaiting" || k.n);
