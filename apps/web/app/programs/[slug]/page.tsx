@@ -50,6 +50,7 @@ import { SeasonRatings } from "../season-ratings";
 import { RankTrend, rankTrend } from "../trend";
 import { CrestSlot, EdgeToEdge } from "../../ui";
 import { programTitle } from "@/lib/titles";
+import { programCardTags } from "./card/program-card";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -76,6 +77,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       }),
     }),
     alternates: { canonical: `/programs/${slug}` },
+    ...(school && (await programCardTags(slug))),
   };
 }
 

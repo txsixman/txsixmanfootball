@@ -141,10 +141,10 @@ test("a season with no game on record, a year out of range and a malformed year 
 test("the share card is the program's own: no image route of its own, the same card in the preview tags", async ({ page, request }) => {
   await open(page, "/programs/jayton");
   const card = await page.locator('meta[property="og:image"]').getAttribute("content");
-  expect(card).toMatch(/\/programs\/jayton\/opengraph-image/);
+  expect(card).toMatch(/\/programs\/jayton\/card/);
   await open(page, "/programs/jayton/2025");
   expect(await page.locator('meta[property="og:image"]').getAttribute("content")).toBe(card);
-  expect((await request.get("/programs/jayton/2025/opengraph-image")).status()).toBe(404);
+  expect((await request.get("/programs/jayton/2025/card")).status()).toBe(404);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://txsixmanfootball.com/programs/jayton/2025");
   const description = (await page.locator('meta[name="description"]').getAttribute("content"))!;
   expect(description.length).toBeLessThanOrEqual(160);

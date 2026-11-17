@@ -118,7 +118,7 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   then one plain link to the program page under it (an iframe passes no link; the plain one does; offered, never sent)
 - **Share** button on program and game pages: the phone's share sheet, else copies the link (`app/share-button.tsx`)
 - Installable to a phone's home screen (manifest, generated icon), and works offline for visited pages (Serwist:
-  pages network first, cached ones served for 30 minutes at most); share cards per program (`opengraph-image.tsx`)
+  pages network first, cached ones served for 30 minutes at most); share cards for games, programs and State Championships (`app/share-card.tsx`, ADR 0093)
 - **Crests** beside team names on scores, results, playoffs, records, search and program schedule and most-played lines
   (logo, else initials; a logo wider than 1.6 shows initials except in the program header, up to 4.8). A logo's `tile`
   (`dark` or `white`) overrides the measured `light` guess for mixed logos

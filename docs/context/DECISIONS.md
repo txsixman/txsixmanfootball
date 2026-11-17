@@ -167,3 +167,8 @@ Not in an ADR:
   linked State Championship line and this season's district place on the season rows, and a plain page for a program with
   under five games (its seasons only, no rows of dashes, no all-time numbers); a past season shows no district place because
   only today's alignments are held (Nov 16, 2026).
+- **Share images show the score** (ADR 0093): a game page's card shows the final score, or for a game ahead the matchup, day,
+  kickoff, site and each team's record; a program card has the logo, rank, record and latest score (`/programs/<slug>/card`); each
+  State Championship page has a card with the matchup or the champion and score. 1200x630, `twitter:card` large, alt text that
+  says what the card shows, records and scores in words. Drawn at build time, so the last deploy's data and never a live score;
+  game cards stay at this season's games (+2 to 3 s of drawing, +14 MB) (Nov 16, 2026).

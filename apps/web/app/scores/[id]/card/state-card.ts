@@ -7,8 +7,5 @@
 /** The card's title: "2026 TAPPS Division I State Championship". */
 export const stateCardTitle = (season: number, bracket: string) => `${season} ${bracket} State Championship`;
 
-/** The title's size in px: it shares its line with the date, so a long bracket name steps down. */
-export const stateCardTitleSize = (title: string) => (title.length > 46 ? 24 : title.length > 36 ? 28 : 34);
-
 /** The champion line, or undefined while the game has no champion. */
 export const championBanner = (final: { champion: string } | undefined) => (final ? `${final.champion} · State Champion` : undefined);
