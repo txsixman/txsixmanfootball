@@ -35,7 +35,10 @@ async function shift(page: Page) {
 }
 
 for (const [label, where] of [["finals first (the morning after the last game night)", 0.1], ["this week's games first (past the halfway point)", 0.9]] as const) {
-  test(`/scores moves nothing after it loads, with the worker active: ${label}`, async ({ page }) => {
+  // The site's layout-shift budget (lighthouserc.cjs, ADR 0080). The order flip this guards against measured 0.55.
+const MAX_SHIFT = 0.03;
+
+test(`/scores moves nothing after it loads, with the worker active: ${label}`, async ({ page }) => {
     const { last, next } = await gameDays();
     test.skip(!last || !next || noon(next) - noon(last) < 3 * 86_400_000, "no later game day far enough off");
     // `where` of the way from the last game day to the next (the board flips at one half).
@@ -48,12 +51,12 @@ for (const [label, where] of [["finals first (the morning after the last game ni
     });
     await page.goto("/scores");
     await page.evaluate(() => navigator.serviceWorker.ready);
-    expect(await shift(page), "first load").toBeLessThan(0.01);
+    expect(await shift(page), "first load").toBeLessThan(MAX_SHIFT);
     await page.reload(); // through the worker now
     await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-    expect(await shift(page), "second load, through the worker").toBeLessThan(0.01);
+    expect(await shift(page), "second load, through the worker").toBeLessThan(MAX_SHIFT);
     await page.goto("/scores"); // a third, as Lighthouse's third run is
-    expect(await shift(page), "third load").toBeLessThan(0.01);
+    expect(await shift(page), "third load").toBeLessThan(MAX_SHIFT);
     // And the order really is the one for that side of the halfway point.
     const sections = await page.locator("main section[id]").evaluateAll((els) => els.map((e) => ({ id: e.id, top: e.getBoundingClientRect().top })).sort((a, b) => a.top - b.top).map((e) => e.id));
     const upcoming = sections.findIndex((id) => id === "later" || id === "next");
