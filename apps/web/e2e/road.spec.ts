@@ -47,7 +47,7 @@ test("a team still in: its road lists the rounds ahead, next game first, ending 
   await expect(steps).toHaveCount(road!.steps.length);
   await expect(steps.first()).toHaveAttribute("data-road-step", "next");
   // Rounds in the bracket's own order, the last one the State Championship.
-  const names = await steps.locator("p").evaluateAll((ps) => ps.filter((p) => /uppercase/.test(p.className)).map((p) => p.textContent ?? ""));
+  const names = await steps.locator("[data-road-round]").allTextContents();
   expect(names.at(-1)).toMatch(/State Championship/);
   await expect(steps.first()).toContainText(/Chance to win it: (>99|<1|\d+)%|Not enough games/);
   // Every opponent names its chance of being there and a projection, and every link is at least 44 px.

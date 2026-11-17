@@ -112,7 +112,7 @@ export async function RoadToChampionship({ school, accent }: { school: string; a
                 const sure = step.opponents.length === 1 && step.opponents[0].reach > SURE;
                 return (
                   <li key={step.slot} data-road-step={next ? "next" : "ahead"} data-round={step.round} className="border-b border-line px-3 py-2">
-                    <p className="font-num text-[16px] font-bold uppercase leading-tight tracking-wide text-navy">
+                    <p data-road-round className="font-num text-[16px] font-bold uppercase leading-tight tracking-wide text-navy">
                       {roundLabel(step.round, b.league)}
                       {next && <span className="text-red"> · {step.reported ? "Score not confirmed yet" : "Next game"}</span>}
                     </p>
