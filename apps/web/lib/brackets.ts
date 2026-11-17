@@ -8,6 +8,7 @@ import { pairsOf, type Pair } from "./playoff-path";
 import { slugify } from "./slug";
 import { loadPlayoffGames, playoffLeagueSet, ROUNDS, type PlayoffGame } from "./games";
 import { advancement, slotShares, type Advancement, type Projected } from "./advancement";
+import { roads, type Road } from "./road";
 import { project, projectAt, STATE_CHAMPIONSHIP_ROUNDS, type Projection } from "./projection";
 import { loadRatings, ratingSeasons } from "./ratings";
 import { bracketTitleChances, loadBracketTemplate, type BracketChances, type Chance, type RegionChances } from "./title-chances";
@@ -41,7 +42,10 @@ export type Bracket = { name: string; league: string; rounds: BracketRound[]; tr
   /** The page order of each game the bracket sets by winners, listed or not (bracket-fill.ts pageOrders, ADR 0079); this season only. */
   orders: PageOrder[];
   /** This season's chance to reach each round still to be set and to win the State Championship (ADR 0071). */
-  advancement?: Advancement };
+  advancement?: Advancement;
+  /** Each team's road to the State Championship, by name as the bracket lists it: the rounds it has still to play, who it could meet
+   * and its chances in each (lib/road.ts, ADR 0104). This season only. Never mutate it. */
+  roads?: Map<string, Road<PlayoffGame>> };
 
 /** A bracket's own page (/playoffs/bracket/<slug>), and its name without the league ("Division II Large School"; a league's one bracket keeps the league). */
 export const bracketSlug = (name: string) => slugify(name);
@@ -123,6 +127,7 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
       return { ...n, label: roundLabel(n.round, league), ...(projection ? { projection } : {}), ...(projected?.some(Boolean) ? { projected } : {}) };
     });
     const advance = season === CURRENT_SEASON ? advancement(shape, list, ROUNDS, win, STATE_CHAMPIONSHIP_ROUNDS) : undefined;
+    const road = season === CURRENT_SEASON ? roads(shape, list, ROUNDS, win, (a, b, g) => (g ? projectAt(ratings, g) : project(ratings, a, b, true, true)), STATE_CHAMPIONSHIP_ROUNDS) : undefined;
     // Past seasons are all played: their pages stay as listed.
     const filled = season === CURRENT_SEASON ? fill(slots, list, ROUNDS) : [];
     const orders = pageOrders(slots, filled);
@@ -151,6 +156,7 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
       ...(chances ? { chances, chanceRound: found.state!.round } : {}),
       ...(found.regions.length ? { regionChances: found.regions } : {}),
       ...(advance ? { advancement: advance } : {}),
+      ...(road ? { roads: road } : {}),
     };
   });
   const order = (b: Bracket) => LEAGUES.indexOf(b.league as (typeof LEAGUES)[number]);

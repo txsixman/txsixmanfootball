@@ -201,7 +201,8 @@ test.describe("who's left", () => {
     await expect(page.getByText(/’s path is lit\./)).toBeVisible();
     const link = page.getByRole("link", { name: "Playoff path on its page" });
     await expect(link).toHaveAttribute("href", `/programs/${key}#path`);
-    await expect(row.getByRole("link", { name: /playoff path$/ })).toHaveAttribute("href", `/programs/${key}#path`);
+    // Its road to the State Championship (ADR 0104) is a link in the row, and its name goes to its page.
+    await expect(row.getByRole("link", { name: /^Path to the State Championship for / })).toHaveAttribute("href", `/programs/${key}#road`);
 
     // The road, game by game: games played, then the next, then what its wins would lead to.
     const road = page.locator("[data-path-road]");

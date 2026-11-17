@@ -41,6 +41,7 @@ import { seriesPartners } from "@/lib/series-data";
 import { contrast, EMPTY, loadIdentities } from "@/lib/identity";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../crest";
 import { PathToFinal, PrivateLeagueFinals, StateChampionLine } from "../path-to-final";
+import { RoadToChampionship } from "../road-to-final";
 import { Follow } from "../follow";
 import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
@@ -538,7 +539,8 @@ export default async function ProgramPage({ params }: Props) {
         {/* This season's State Championship: the title once it is won, else where the school plays for it (ADR 0083). */}
         <StateChampionLine school={school.school} />
 
-        {/* A team in this season's playoff bracket: its path, round by round, before the full schedule. */}
+        {/* A team still in this season's playoff bracket: the rounds ahead and who it could meet, then the path it has taken, before the full schedule (ADR 0104). */}
+        <RoadToChampionship school={school.school} accent={accent} />
         <PathToFinal school={school.school} accent={accent} />
 
         {/* This season's games lead, right after the next and latest game: a fan mid-season wants the schedule before six seasons of history. */}

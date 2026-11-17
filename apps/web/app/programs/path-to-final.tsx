@@ -6,11 +6,10 @@ import { sideText } from "@/lib/bracket-fill";
 import { type Bracket, bracketHref, loadBrackets, roundLabel } from "@/lib/brackets";
 import { gameDay } from "@/lib/game-day";
 import { EMPTY, loadIdentities, type Identity } from "@/lib/identity";
-import { aheadFor, gamesOf } from "@/lib/playoff-path";
+import { gamesOf } from "@/lib/playoff-path";
 import { centralClock, gameStatus } from "@/lib/playoff-status";
 import { chanceText, projectionParts } from "@/lib/projection";
 import { loadLineage, successorOf } from "@/lib/lineage";
-import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
 import { championshipFor, recordedFinals } from "@/lib/state-championships";
 import { appearancesOf, championLine } from "@/lib/state-finals";
@@ -33,20 +32,19 @@ function advanceLine(b: Pick<Bracket, "advancement" | "league">, school: string)
 
 /**
  * "Path to the final": this season's games of a team that is in a playoff bracket (one block per bracket: a school in
- * two leagues has two, ADR 0012) round by round, each final with its score (ADR 0040), then the games listed ahead with their projections and, where the next pairing is
- * known, the likely opponents (lib/playoff-path.ts). Renders nothing for a team in no bracket.
+ * two leagues has two, ADR 0012) round by round, each final with its score (ADR 0040), then the games listed ahead with their projections. The rounds after those, with
+ * each possible opponent, are the "Road to the State Championship" above it (road-to-final.tsx, ADR 0104). Renders nothing for a team in no bracket.
  */
 export async function PathToFinal({ school, accent }: { school: string; accent: string }) {
-  const [brackets, alignments, identities, table] = await Promise.all([loadBrackets(CURRENT_SEASON), loadAlignments(), loadIdentities(), loadRatings(CURRENT_SEASON)]);
+  const [brackets, alignments, identities] = await Promise.all([loadBrackets(CURRENT_SEASON), loadAlignments(), loadIdentities()]);
   const { date: today } = centralClock();
   const paths = brackets.flatMap((b) => {
     const steps = gamesOf(b.rounds, school);
     if (!steps.length) return [];
-    const pair = b.pairs.find((p) => p.games.some((g) => g.home === school || g.away === school));
-    // The next game the bracket sets before a site lists it (ADR 0047): firmer than the "if it advances" guess, so it replaces it.
+    // The next game the bracket sets before a site lists it (ADR 0047): the pairing is known.
     const next = b.rounds.flatMap((r) => r.built.map((g) => ({ ...g, label: r.label }))).find((g) => g.sides.some((s) => "team" in s && s.team === school));
     return [{
-      b, steps, next, ahead: !next && pair ? aheadFor(table, pair, school) : undefined,
+      b, steps, next,
       state: b.chances?.find((c) => c.team === school)?.shown,
       advance: advanceLine(b, school),
       region: b.regionChances?.flatMap((r) => r.chances).find((c) => c.team === school)?.shown, // a team is in one region
@@ -74,7 +72,7 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
       <h2 id="path" className="bg-band py-1 pl-5 pr-3 font-num text-[20px] font-bold uppercase tracking-wider text-white" style={{ boxShadow: `inset 8px 0 0 ${accent}` }}>
         Path to the State Championship
       </h2>
-      {paths.map(({ b, steps, next, ahead, state, region, advance }) => (
+      {paths.map(({ b, steps, next, state, region, advance }) => (
         <div key={b.name}>
           <h3 className="border-b border-line">
             <Link href={bracketHref(b.name)} className="flex min-h-11 items-center justify-between px-3 font-num text-[17px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
@@ -144,22 +142,6 @@ export async function PathToFinal({ school, accent }: { school: string; accent: 
                 </li>
               );
             })()}
-            {ahead && (
-              <li className="border-b border-line bg-panel px-3 py-2">
-                <p className="font-num text-[14px] font-bold uppercase tracking-wide text-navy">If it advances: {roundLabel(ahead.next, b.league)}</p>
-                {ahead.candidates.map((c, i) => {
-                  const p = projectionParts(c.projection);
-                  return (
-                    <p key={c.team} className="text-[15px] leading-6 text-ink">
-                      <span className="font-semibold">{i === 0 ? "Likely opponent" : "Other possibility"}: {c.team}</span> ({chanceText(c.reach)} to get there)
-                      <span className="block font-semibold text-navy">
-                        <span>Projected: {p.margin}</span> · <span className="whitespace-nowrap">{p.chance}</span>
-                      </span>
-                    </p>
-                  );
-                })}
-              </li>
-            )}
           </ol>
           {(state != null || region != null || advance) && (
             <p className="px-3 pt-2 text-[15px] font-semibold text-ink">

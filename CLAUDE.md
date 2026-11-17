@@ -85,6 +85,7 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   `lib/bracket-tree.ts`; `/playoffs/bracket/sample` is invented schools only (`lib/demo-bracket.ts`)
 - `apps/web/lib/results-text.ts`, `results-text-load.ts`, `app/results/text/`, `app/results/copy-results.tsx`: a results week as plain text for a paper or radio station (ADR 0102): the file at `/results/text/<season>/<week>/<org>`, "Copy results", and the print block `app/results/view.tsx` shows only when printed (`globals.css`)
 - `apps/web/app/seasons/review.tsx`, `lib/season-review.ts` (pure rules), `lib/season-review-load.ts`: each organization's "Season in review" on `/seasons/<year>` (ADR 0099)
+- `apps/web/app/programs/road-to-final.tsx`, `path-to-final.tsx`, `lib/road.ts`: a program page's "Road to the State Championship" (the rounds ahead, each possible opponent, chances to reach and win; pure logic in `lib/road.ts`, built into `Bracket.roads`, ADR 0104) and its "Path to the State Championship" (games played and listed)
 - `apps/web/app/embed/`: the embeddable scoreboard, `/embed/programs/<slug>` (ADR 0023): the only route that may be framed; its page and CSP are built in `lib/embed-html.ts`
 - `apps/web/lib/board-wire.ts`: what the scores board (a client component) is sent: its games and crests without a field it never reads (ADR 0100); `scripts/speed.test.mjs`
   holds that byte budget, the table of long lists whose links must not prefetch, and the rule that nothing ships `tailwind-merge`. A new long list of links says `prefetch={false}`
