@@ -88,9 +88,9 @@ test("Pagefind joins inline boxes, skips data-pagefind-ignore, and indexes hidde
 
   const after = await indexedText(
     page(
-      `<main data-pagefind-body><li><p hidden>Oakwood at Jayton, 8 to 54.</p><div data-pagefind-ignore>${row(["Oakwood", "Jayton"])}</div></li></main>`,
+      `<main data-pagefind-body><li><p hidden>Oakwood vs Jayton, 8 to 54.</p><div data-pagefind-ignore>${row(["Oakwood", "Jayton"])}</div></li></main>`,
     ),
     "/results/b",
   );
-  assert.equal(after, "Oakwood at Jayton, 8 to 54.");
+  assert.equal(after, "Oakwood vs Jayton, 8 to 54.");
 });

@@ -194,5 +194,5 @@ Not in an ADR:
   in each bracket's list (Nov 16, 2026).
 - **Search excerpts read as a sentence**: Pagefind joins inline boxes with no space and indexes a crest's initials as text, so a
   week of results showed "OOakwoodJayton. 8 54". Each results row now leaves the index (`data-pagefind-ignore`) and a hidden
-  sentence says the game once ("Oakwood at Jayton, 8 to 54."); the crest and monogram letters are ignored everywhere. Nothing
+  sentence says the game once ("Oakwood vs Jayton, 8 to 54."); the crest and monogram letters are ignored everywhere. Nothing
   visible changes; a node test pins Pagefind's behaviour and a CI test reads the real excerpts (Nov 16, 2026).

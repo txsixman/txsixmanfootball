@@ -14,12 +14,13 @@ import { WeekStrip } from "../week-strip";
 import { CrestSlot, EmptyState, PageHeader, SectionBar } from "../ui";
 import { seasonHref, weekHref } from "./paths";
 
+/** A game as one sentence for the site search's excerpts: "Oakwood vs Jayton, 8 to 54." (away team first, as the rows are; "vs",
+ * never "at", ADR 0037). */
+const indexedSentence = (g: { away: string; home: string; awayScore: number | null; homeScore: number | null; forfeit?: boolean }) =>
+  `${g.away} vs ${g.home}, ${g.forfeit ? "forfeit" : g.awayScore == null || g.homeScore == null ? "no score" : `${g.awayScore} to ${g.homeScore}`}.`;
+
 /** One week of one organization's results: the games with a team in it, whoever the other team is (ADR 0012). Robot-read
  * scores are unconfirmed, so no row names a winner (ADR 0004, ADR 0008). */
-/** A game as one sentence for the site search's excerpts: "Oakwood at Jayton, 8 to 54." (away team first, as the rows are). */
-export const indexedSentence = (g: { away: string; home: string; awayScore: number | null; homeScore: number | null; forfeit?: boolean }) =>
-  `${g.away} at ${g.home}, ${g.forfeit || g.awayScore == null || g.homeScore == null ? "forfeit" : `${g.awayScore} to ${g.homeScore}`}.`;
-
 export async function ResultsWeek({ org, season, week }: { org: Org; season: number; week: number }) {
   const [weeks, seasons, alignments, identities, { byId: before }, disputed, orgSeasons] = await Promise.all([
     loadWeeks(season, org),
