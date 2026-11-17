@@ -22,8 +22,8 @@ export type BoxSide = { text: string; title?: string; key?: string; program?: st
 export type Box = {
   id: string; col: number; row: number; half: "left" | "right" | "center";
   label: string; code?: string; state: TreeState; sides: [BoxSide, BoxSide];
-  /** "Nov 20", when known; `time` is the kickoff ("7:00 PM") of a game not yet played. */
-  when?: string; time?: string; site?: string; href?: string; forfeit?: boolean;
+  /** "Nov 20", when known; `date` is the same day as YYYY-MM-DD (Central); `time` is the kickoff ("7:00 PM") of a game not yet played. */
+  date?: string; when?: string; time?: string; site?: string; href?: string; forfeit?: boolean;
   projection?: { margin: string; chance: string };
   /** The game this one's winner goes on to. */
   to?: string;
@@ -112,7 +112,7 @@ export function buildTree(name: string, league: string, tree: Node[], info: (n: 
         };
       }) as [BoxSide, BoxSide],
       ...(n.code ? { code: n.code } : {}),
-      ...(date ? { when: day(date) } : {}),
+      ...(date ? { date, when: day(date) } : {}),
       // A played game's time no longer matters: its date alone.
       ...(kickoff && n.state !== "final" && n.state !== "disputed" ? { time: kickoffTime(kickoff).replace(/ CT$/, "") } : {}),
       ...(site ? { site } : {}),

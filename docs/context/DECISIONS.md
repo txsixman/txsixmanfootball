@@ -167,3 +167,8 @@ Not in an ADR:
   linked State Championship line and this season's district place on the season rows, and a plain page for a program with
   under five games (its seasons only, no rows of dashes, no all-time numbers); a past season shows no district place because
   only today's alignments are held (Nov 16, 2026).
+- **Brackets on a phone** (ADR 0094): the rounds view is a real tab set (tablist, tabs, panels, arrow keys) opening on the round
+  the page calls current, each game a card (both teams, day and kickoff, site, result or projection, a Game page link); a "Who's
+  left" list per bracket with each team's next game and State title chance, a button that lights its path, and its program page's
+  playoff path; a team's road game by game; and a "Current round" block on /playoffs and every league's page, with the round marked
+  in each bracket's list (Nov 16, 2026).

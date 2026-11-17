@@ -9,11 +9,12 @@ import { bracketGamesList, breadcrumbList } from "@/lib/json-ld";
 import { previewOf } from "@/lib/playoff-path";
 import { centralClock, currentRound } from "@/lib/playoff-status";
 import { roundCount } from "@/lib/this-round";
-import { chanceText, projectionParts } from "@/lib/projection";
+import { chanceText, chanceTexts, projectionParts } from "@/lib/projection";
 import { loadRatings } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
 import { stateChampionships } from "@/lib/state-championships";
 import { SITE_URL } from "@/lib/site";
+import { slugify } from "@/lib/slug";
 import { StateChampionshipLink } from "../championships/shared";
 import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
@@ -23,6 +24,13 @@ import { ChanceList } from "./chance-list";
 import { BuiltList, GameList } from "./game-list";
 import { BracketBoard } from "./tree/board";
 import { treeData } from "./tree/data";
+
+/** [program slug, { text, chance }] for every team of an advancement table that has a chance to win the State Championship; the same words as the table's last column. */
+const titleChances = (a: NonNullable<Bracket["advancement"]>) => {
+  const all = a.rows.every((r) => r.title !== undefined);
+  const texts = all ? chanceTexts(a.rows.map((r) => r.title!)) : a.rows.map((r) => (r.title === undefined ? "" : chanceText(r.title)));
+  return a.rows.flatMap((r, i) => (r.title === undefined ? [] : [[slugify(r.team), { text: texts[i], chance: r.title }] as const]));
+};
 
 const leagueHref = (league: string) => (league === "UIL" ? "/playoffs" : `/playoffs/${league.toLowerCase()}`);
 
@@ -43,6 +51,9 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
     return preview ? [{ pair, ...preview }] : [];
   });
   const roundId = (round: string) => `round-${round}`;
+  // Each team still in and its chance to win the State Championship (ADR 0071), for "Who's left" (ADR 0094): worded together as the
+  // table below words them, so the two agree. A team with no chance to give (too few games) has none listed.
+  const titles = b.advancement ? Object.fromEntries(titleChances(b.advancement)) : {};
   // The games that have a page of their own, earliest round first, for search engines: listed games, then in each round the
   // games the bracket sets with both teams known (ADR 0079), in the page's order, with the day and kickoff once known.
   const pages = new Map((await bracketGames()).filter((g) => g.id.startsWith(`${CURRENT_SEASON}-`)).map((g) => [`${g.date}|${g.home.name}|${g.away.name}`, g.id]));
@@ -86,7 +97,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
       </div>
       </div>
 
-      <BracketBoard data={tree} imageBase={`${bracketHref(b.name)}/image`} />
+      <BracketBoard data={tree} imageBase={`${bracketHref(b.name)}/image`} current={current?.round} titles={titles} />
 
       {b.advancement && <AdvanceTable advancement={b.advancement} league={b.league} identities={identities} />}
 

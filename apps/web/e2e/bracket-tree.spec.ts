@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { layoutTree } from "../lib/bracket-layout";
 import { bracketHref, loadBrackets } from "../lib/brackets";
+import { centralClock, currentRound } from "../lib/playoff-status";
 import { noLiveScores } from "./live-route";
 
 // The bracket drawn (ADR 0049): the whole tree on a wide screen, one round at a time on a phone, a team's path lit on a
@@ -131,22 +132,20 @@ test.describe("desktop", () => {
 test.describe("phone", () => {
   test.beforeEach(({}, info) => test.skip(info.project.name !== "phone", "phones open one round at a time"));
 
-  test("one round at a time: the round bar stays on top and jumps to a round; the whole bracket fits the screen", async ({ page }) => {
+  test("one round at a time: round tabs held at the top, the current round open, the whole bracket fits the screen", async ({ page }) => {
     const { b } = (await brackets()).find((x) => x.b.name === "UIL Division I")!;
     await page.goto(bracketHref(b.name));
     await expect(tree(page)).toBeHidden();
-    const bar = rounds(page).getByRole("navigation");
-    // It opens on the round being played: the first with a game still to play, or the last once all are played.
-    const order = [...new Set(b.tree.map((n) => n.round))];
-    const playing = order.find((r) => b.tree.some((n) => n.round === r && (n.state === "upcoming" || n.state === "open"))) ?? order.at(-1)!;
-    const playingLabel = b.tree.find((n) => n.round === playing)!.label;
-    await expect(bar.locator("[aria-current=true]")).toHaveText(playingLabel);
-    await expect.poll(async () => (await rounds(page).getByRole("group", { name: playingLabel }).boundingBox())!.x).toBeLessThan(40);
-    await bar.getByRole("button", { name: /^Bi-district$/i }).click();
-    await expect(bar.locator("[aria-current=true]")).toHaveText(/Bi-district/i);
-    await bar.getByRole("button", { name: /^Area$/i }).click();
-    await expect(bar.locator("[aria-current=true]")).toHaveText(/Area/i);
-    await expect.poll(async () => (await rounds(page).getByRole("group", { name: "Area" }).boundingBox())!.x).toBeLessThan(40);
+    const bar = rounds(page).getByRole("tablist");
+    // It opens on the round the page calls current (the one its list marks), by the same rule the page uses.
+    const now = currentRound(b.rounds, centralClock().date)!;
+    const nowLabel = b.tree.find((n) => n.round === now.round)!.label;
+    await expect(bar.getByRole("tab", { selected: true })).toHaveText(new RegExp(`^${nowLabel}`, "i"));
+    await bar.getByRole("tab", { name: /^Bi-district/i }).click();
+    await expect(bar.getByRole("tab", { selected: true })).toHaveText(/^Bi-district/i);
+    await expect(rounds(page).getByRole("tabpanel")).toHaveCount(1); // the others are hidden
+    await bar.getByRole("tab", { name: /^Area/i }).click();
+    await expect(bar.getByRole("tab", { selected: true })).toHaveText(/^Area/i);
     // The bar is held at the top while the round scrolls under it.
     const top = (await bar.boundingBox())!.y;
     await page.evaluate((y) => window.scrollTo(0, y), top + 800);
