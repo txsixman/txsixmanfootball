@@ -199,3 +199,29 @@ test("a finished live row is a final: Final with the winner marked, as of the re
   // A row with no flag (the MaxPreps reader's, or one written before migration 0019) is under way.
   assert.equal(liveView(parseLiveRows([row({ read_at: at })]), { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" }, Date.parse(at)).finished, false);
 });
+
+test("a read two reads old is still shown, and says the score may be behind (ADR 0087)", async () => {
+  const { liveStatus, LIVE_STALE_MS, updatedAgo } = await import("../lib/live-scores.ts");
+  const game = { date: "2026-11-13", home: "Salt Fork", away: "Cedar Gap" };
+  const at = "2026-11-14T01:42:30Z"; // 7:42 PM in Central
+  const readAt = Date.parse(at);
+  const view = (minutes, over = {}) => liveView(parseLiveRows([row({ read_at: at, clock: "4:12", ...over })]), game, readAt + minutes * 60_000);
+  assert.equal(LIVE_STALE_MS, 25 * 60_000);
+  assert.equal(view(0).stale, false);
+  assert.equal(view(25).stale, false, "exactly 25 minutes is not past it");
+  assert.equal(view(26).stale, true);
+  assert.equal(liveStatus(view(26)), "Q3 · 4:12 left · as of 7:42 PM CT · may be behind");
+  assert.equal(liveStatus(view(5)), "Q3 · 4:12 left · as of 7:42 PM CT");
+  // Past the shown age (90 minutes) it is dropped, as before; a finished row is never "behind".
+  assert.equal(view(91), null);
+  assert.equal(view(60, { finished: true, period: null }).stale, false);
+  assert.equal(liveStatus(view(60, { finished: true, period: null })), "Final · as of 7:42 PM CT");
+  // How long ago, in words a phone reads at a glance.
+  const d = new Date(at);
+  assert.equal(updatedAgo(d, readAt), "just now");
+  assert.equal(updatedAgo(d, readAt + 59_000), "just now");
+  assert.equal(updatedAgo(d, readAt + 60_000), "1 min ago");
+  assert.equal(updatedAgo(d, readAt + 59 * 60_000), "59 min ago");
+  assert.equal(updatedAgo(d, readAt + 60 * 60_000), "at 7:42 PM CT");
+  assert.equal(updatedAgo(d, readAt - 5 * 60_000), "just now", "a clock behind the read never goes negative");
+});

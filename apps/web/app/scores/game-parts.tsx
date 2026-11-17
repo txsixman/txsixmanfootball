@@ -31,6 +31,7 @@ export function BigLine({ g, side, program, neutral }: { g: Game; side: Side; pr
   const winner = winnerOf(g);
   const lost = winner !== null && winner !== side;
   const leads = leaderOf(g) === side;
+  // The dash has the same line height as a score (leading-[0.95] below), so a live score arriving in its place moves nothing (ADR 0087).
   return (
     <div className="flex items-center gap-3 border-b border-line py-3">
       {program ? <Crest school={team.name} identity={program.identity} size={44} decorative /> : <Monogram team={team} />}
@@ -52,7 +53,7 @@ export function BigLine({ g, side, program, neutral }: { g: Game; side: Side; pr
       {isForfeit(g) && winner ? (
         <ForfeitMark side={side} winner={winner} large />
       ) : score == null || isForfeit(g) ? (
-        <p className="min-w-[92px] px-2 text-center font-num text-[72px] font-semibold leading-none text-muted">
+        <p className="min-w-[92px] px-2 text-center font-num text-[72px] font-semibold leading-[0.95] text-muted">
           <span aria-hidden="true">&ndash;</span>
           <span className="sr-only">no score</span>
         </p>

@@ -2,7 +2,7 @@
 // time known. Invented games only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { anyInProgress, groupTonight, IN_PROGRESS_MS, kickoffState, kickoffTime } from "../lib/kickoff.ts";
+import { anyInProgress, groupTonight, IN_PROGRESS_MS, kickoffState, kickoffTime, orgRank, pendingNote } from "../lib/kickoff.ts";
 
 // Friday Nov 13, 2026, 7:00 PM Central is 01:00 UTC on the 14th.
 const game = { date: "2026-11-13", kickoff: "2026-11-14T01:00:00Z" };
@@ -127,4 +127,39 @@ test("no kickoff time: live scores are read through the game date's evening, 5:0
   assert.equal(anyInProgress([{ date: "2026-09-04" }], at("2026-09-04T22:00:00Z")), true);
   // One timed game out of its window and one untimed game in its evening: the page reads.
   assert.equal(anyInProgress([game, { date: "2026-11-14" }], at("2026-11-15T00:00:00Z")), true);
+});
+
+// What a game page says where its live score goes while it has none (ADR 0087): never blank, never a guess, no winner.
+test("the note in the score's place: not started, in progress with no score, no score reported, or no time listed", () => {
+  const note = (g, now) => pendingNote(g, now === null ? null : at(now));
+  assert.deepEqual(note(game, null), { title: "Not started", detail: "Kickoff 7:00 PM CT. Score shows here once it starts." }, "the server and the first render read as before kickoff");
+  assert.equal(note(game, "2026-11-14T00:59:00Z").title, "Not started");
+  assert.deepEqual(note(game, "2026-11-14T01:00:00Z"), { title: "In progress", detail: "No live score yet. This page checks every minute." });
+  assert.equal(note(game, "2026-11-14T04:59:00Z").title, "In progress");
+  assert.deepEqual(note(game, "2026-11-14T05:00:00Z"), { title: "Score not reported yet", detail: "Kickoff was 7:00 PM CT. No score has come in. Reload later to check." });
+  const noTime = { date: "2026-11-13" };
+  assert.deepEqual(note(noTime, null), { title: "Kickoff time not listed", detail: "A live score shows here once the game is under way." });
+  assert.equal(note(noTime, "2026-11-13T20:00:00Z").title, "Kickoff time not listed");
+  assert.deepEqual(note(noTime, "2026-11-14T06:00:00Z"), { title: "Score not reported yet", detail: "No score has come in. Reload later to check." });
+  assert.equal(pendingNote({ date: "2026-11-13", kickoff: "not a time" }, null).title, "Kickoff time not listed");
+  // Plain words only: no winner, no betting word, no source.
+  for (const n of [note(game, null), note(game, "2026-11-14T01:30:00Z"), note(game, "2026-11-14T06:00:00Z"), note(noTime, null)]) {
+    assert.doesNotMatch(`${n.title} ${n.detail}`, NAMES_A_WINNER);
+    assert.doesNotMatch(`${n.title} ${n.detail}`, BETTING);
+  }
+});
+
+test("organizations with a game in progress are listed before those with games to come, and those before finals only", () => {
+  const key = (...keys) => keys.map((k) => ({ key: k }));
+  assert.equal(orgRank(key("in-progress", "final")), 0);
+  assert.equal(orgRank(key("up-next", "final")), 1);
+  assert.equal(orgRank(key("awaiting", "final")), 2);
+  assert.equal(orgRank(key("final")), 3);
+  assert.equal(orgRank([]), 9, "an organization with no group sorts last");
+  const orgs = [["uil", key("final")], ["tapps", key("up-next")], ["taiao", key("in-progress")], ["tcaf", key("up-next")]];
+  const order = [...orgs].sort((a, b) => orgRank(a[1]) - orgRank(b[1])).map((o) => o[0]);
+  assert.deepEqual(order, ["taiao", "tapps", "tcaf", "uil"], "ties keep the site's order");
+  // With no clock (the server render) a game with no final is up next, so the first paint is the same everywhere.
+  const first = [{ state: "later", date: "2026-11-13", kickoff: game.kickoff }, { state: "final", date: "2026-11-13" }];
+  assert.equal(orgRank(groupTonight(first, null)), 1);
 });

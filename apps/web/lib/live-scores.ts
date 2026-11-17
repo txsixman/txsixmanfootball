@@ -55,6 +55,10 @@ function liveRow(r: unknown): LiveRow | null {
  * reads stopped, and "live" would be a guess. (The database drops rows after 6 hours either way.) */
 export const LIVE_MAX_AGE_MS = 90 * 60_000;
 
+/** A row read longer ago than this is still shown, but says the score may be behind (round 10, ADR 0087): the writer
+ * replaces rows every 10 minutes, so 25 minutes is two reads missed. */
+export const LIVE_STALE_MS = 25 * 60_000;
+
 /** The rows of a live_score response that pass the checks, newest read first not required; anything but a list is nothing. */
 export function parseLiveRows(json: unknown): LiveRow[] {
   if (!Array.isArray(json) || json.length > 200) return [];
@@ -79,7 +83,9 @@ export async function fetchLiveRows(signal?: AbortSignal, supabase = { url: SUPA
 }
 
 /** What a page shows for one game under way: the two scores in the page's own order (away listed first, as the pages do). */
-export type LiveView = { away: { name: string; score: number }; home: { name: string; score: number }; period: string | null; clock: string | null; finished: boolean; readAt: Date };
+export type LiveView = { away: { name: string; score: number }; home: { name: string; score: number }; period: string | null; clock: string | null; finished: boolean; readAt: Date;
+  /** Not final, and the read is older than LIVE_STALE_MS: shown with "may be behind" (ADR 0087). */
+  stale: boolean };
 
 /** The live row for a game, with each score on the right team (the row's home and away may differ from the page's: a
  * neutral site has no real home), or null when there is none, or the row is too old, its teams are not this game's, or it is 0-0 with no period. */
@@ -94,20 +100,27 @@ export function liveView(rows: LiveRow[], game: { date?: string; home: string; a
   if (h === null || a === null || home === away) return null;
   // 0-0 with no period may be a game that has not kicked off: not shown as live (the reader skips it too, maxpreps.mjs liveRows).
   if (h === 0 && a === 0 && row.period === null) return null;
-  return { away: { name: game.away, score: a }, home: { name: game.home, score: h }, period: row.period, clock: row.clock ?? null, finished: row.finished === true, readAt };
+  return { away: { name: game.away, score: a }, home: { name: game.home, score: h }, period: row.period, clock: row.clock ?? null, finished: row.finished === true, readAt, stale: row.finished !== true && now - readAt.getTime() > LIVE_STALE_MS };
 }
 
 /** "7:42 PM CT": when the read was made, in the time zone the games are played in. */
 export const checkedAt = (at: Date) =>
   `${new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" }).format(at)} CT`;
 
+/** How long ago a read was, at `now` (ms): "just now", "4 min ago", then the clock time once it is an hour or more. */
+export function updatedAgo(at: Date, now: number): string {
+  const minutes = Math.floor(Math.max(0, now - at.getTime()) / 60_000);
+  if (minutes < 1) return "just now";
+  return minutes < 60 ? `${minutes} min ago` : `at ${checkedAt(at)}`;
+}
+
 /** Where a game under way stands, beside its score: "Q3 · 4:12 left · as of 7:42 PM CT". The period reads "Live" when the
- * read has none, and the time left is left out until the reader has it. A finished game: "Final · as of 9:45 PM CT"
- * (ADR 0043), never "In progress". */
+ * read has none, and the time left is left out until the reader has it. A read two reads old adds "may be behind" (ADR
+ * 0087). A finished game: "Final · as of 9:45 PM CT" (ADR 0043), never "In progress". */
 export const liveStatus = (live: LiveView) =>
   live.finished
     ? `Final · as of ${checkedAt(live.readAt)}`
-    : [live.period ?? "Live", live.clock && `${live.clock} left`, `as of ${checkedAt(live.readAt)}`].filter(Boolean).join(" · ");
+    : [live.period ?? "Live", live.clock && `${live.clock} left`, `as of ${checkedAt(live.readAt)}`, live.stale && "may be behind"].filter(Boolean).join(" · ");
 
 /** The fields of a game the board needs to show it live (lib/demo-games.ts Game; named here so this file stays plain). */
 type BoardGame = {

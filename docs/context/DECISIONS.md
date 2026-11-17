@@ -156,3 +156,9 @@ Not in an ADR:
   team's last five games with links, the projection with what is in it, how often and when they last met, the common opponents,
   the next round from the bracket (day and site only when the league lists them), and at a State Championship each
   team's earlier ones; static, no client JavaScript (Nov 16, 2026).
+- **Following a game live** (ADR 0087): the game page holds a place for the live line (never blank: not started, in progress
+  with no score yet, no score reported) so a score arriving moves nothing; the top band reads Live with "Updated 3 min ago";
+  a read over 25 minutes old says "may be behind"; a confirmed final shows "What's next for <winner>" with the next round's
+  opponent, day, kickoff and site and a link; the scoreboard lists a game under way with no score under Live now; Tonight
+  keeps one list per organization but orders them live first and adds a strip counting Live, Up next and Final; no new
+  request or interval (Nov 16, 2026).

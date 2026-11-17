@@ -2,11 +2,12 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import type { Game } from "@/lib/demo-games";
-import { asLive, liveStatus, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
+import { pendingNote } from "@/lib/kickoff";
+import { asLive, liveStatus, liveView, updatedAgo, type LiveRow, type LiveView } from "@/lib/live-scores";
 import { projectedLine } from "@/lib/outcome";
 import { outcomeOf } from "@/lib/score-display";
 import { BigLine, type Program } from "./game-parts";
-import { KickoffStatus } from "../kickoff-status";
+import { KickoffStatus, useNow } from "../kickoff-status";
 import { useLiveScores } from "./live-score";
 
 // A game under way shows its live score where its score goes, not beside it (ADR 0021): the read's score, dashed and
@@ -30,34 +31,90 @@ export function GameLiveRead({ date, kickoff, watch, children }: { date?: string
 
 /** The game page header's kickoff status (ADR 0036), except for a game the live read says is over: "Final", never
  * "In progress" (ADR 0043). */
-export function GameKickoffStatus({ g }: { g: Game & { date: string } }) {
+function GameKickoffStatus({ g }: { g: Game & { date: string } }) {
   const live = liveView(useContext(GameLiveRows), { date: g.date, home: g.home.name, away: g.away.name });
   if (live?.finished) return <span data-kickoff-status="final">Final</span>;
   return <KickoffStatus date={g.date} kickoff={g.kickoff} tone={false} />;
 }
 
+/** The game page's top band (ADR 0087). A game the live read has a score for turns red and reads "Live" with how long ago the
+ * score was read ("Updated 3 min ago", plus "may be behind" past two missed reads); a game not yet played says its kickoff
+ * status as before (ADR 0036). The band is one line in every state, so a score arriving moves nothing. */
+export function GameBand({ g, sample }: { g: Game; sample: boolean }) {
+  const now = useNow();
+  const rows = useContext(GameLiveRows);
+  const watched = !sample && g.state === "scheduled" && !!g.date;
+  const live = watched ? liveView(rows, { date: g.date, home: g.home.name, away: g.away.name }, now?.getTime()) : null;
+  const underWay = g.state === "live" || (live !== null && !live.finished);
+  return (
+    <div className={`flex items-center justify-between gap-3 px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${underWay ? "bg-alert" : "bg-band"}`}>
+      <span>
+        {underWay ? "Live" : g.status}
+        {/* A real game not yet played: its kickoff status at the moment of viewing (ADR 0036). */}
+        {!underWay && watched && (
+          <>
+            {" · "}
+            <GameKickoffStatus g={{ ...g, date: g.date! }} />
+          </>
+        )}
+      </span>
+      {g.state === "live" && <span>{g.status}</span>}
+      {live && !live.finished && (
+        <span data-live-updated className="whitespace-nowrap text-[14px]">
+          Updated {updatedAgo(live.readAt, now?.getTime() ?? Date.now())}
+          {live.stale && " · may be behind"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** The game page's score: the two big lines. While a game with no final is under way (`watch`), they hold the live score,
- * under a line saying where it stands; otherwise they are the page's own. Reads the page's one live read (GameLiveRead). */
+ * under a line saying where it stands; otherwise they are the page's own. Reads the page's one live read (GameLiveRead).
+ * A game that may be under way holds a place for that line from the first paint (never blank: not started, in progress with
+ * no score yet, or no score reported), so the score arriving, or leaving, moves nothing (ADR 0087). */
 export function GameScore({ g, away, home, neutral, watch }: { g: Game; away?: Program; home?: Program; neutral?: boolean; watch: boolean }) {
   const rows = useContext(GameLiveRows);
-  const live = watch ? liveView(rows, { date: g.date, home: g.home.name, away: g.away.name }) : null;
+  const now = useNow();
+  const live = watch ? liveView(rows, { date: g.date, home: g.home.name, away: g.away.name }, now?.getTime()) : null;
   const shown = live ? asLive(g, live) : g;
+  const note = watch && g.date && !live ? pendingNote({ date: g.date, kickoff: g.kickoff }, now) : null;
   return (
     <>
-      {live && (
-        <p data-live-score className="px-3 pt-2 font-num text-[15px] font-bold uppercase leading-5 tracking-wide text-red">
-          {statusLine(live)}
-        </p>
+      {watch && (
+        <div aria-live="polite" className="min-h-[3.75rem]">
+          {live && (
+            <p data-live-score className="px-3 pt-2 font-num text-[15px] font-bold uppercase leading-5 tracking-wide text-red">
+              {statusLine(live)}
+            </p>
+          )}
+          {note && (
+            <div data-score-note className="px-3 pt-2">
+              <p className="font-num text-[15px] font-bold uppercase leading-5 tracking-wide text-ink">{note.title}</p>
+              <p className="text-[13px] leading-4 text-muted">{note.detail}</p>
+            </div>
+          )}
+        </div>
       )}
       <section aria-label="Score" className="px-3">
         <BigLine g={shown} side="away" program={away} neutral={neutral} />
         <BigLine g={shown} side="home" program={home} neutral={neutral} />
       </section>
-      {/* Under way: what was projected beside the score so far, naming no leader (ADR 0044). */}
-      {live && shown.projected && (
-        <p data-projected className="px-3 pt-1 text-[13px] leading-4 text-muted">
-          {projectedLine(shown.projected, outcomeOf(shown))}
-        </p>
+      {/* Under way: what was projected beside the score so far, naming no leader (ADR 0044). The place is held either way: until
+          a score arrives, the same line is drawn hidden with stand-in digits, so it takes exactly the lines it will (it wraps
+          to two or three on a phone) and the page below never moves. */}
+      {watch && shown.projected && (
+        <div className="px-3 pt-1">
+          {live ? (
+            <p data-projected className="text-[13px] leading-4 text-muted">
+              {projectedLine(shown.projected, outcomeOf(shown))}
+            </p>
+          ) : (
+            <p aria-hidden="true" className="invisible text-[13px] leading-4">
+              {projectedLine(g.projected, outcomeOf({ ...g, state: "live", homeScore: 88, awayScore: 88, verification: "unconfirmed" }))}
+            </p>
+          )}
+        </div>
       )}
     </>
   );

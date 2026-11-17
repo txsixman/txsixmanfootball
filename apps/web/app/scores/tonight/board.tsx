@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { groupTonight } from "@/lib/kickoff";
+import { groupTonight, kickoffState, orgRank, type NightGroupKey } from "@/lib/kickoff";
 import { checkedAt, liveView, type LiveRow, type LiveView } from "@/lib/live-scores";
 import { projectedLine, type Outcome } from "@/lib/outcome";
 import type { Night, NightGame } from "@/lib/tonight";
@@ -9,7 +9,8 @@ import { KickoffStatus, useNow } from "../../kickoff-status";
 import { ScoresChecked } from "../freshness";
 import { LiveLine, useLiveScores } from "../live-score";
 
-// Tonight's games, one organization at a time (ADR 0012), each in groups by the clock: in progress, up next, final. A game
+// Tonight's games, one organization at a time (ADR 0012), each in groups by the clock: in progress, up next, final; the
+// organization with a game on comes first and a strip counts what is live, coming and done across all of them (ADR 0087). A game
 // with no final yet may be under way, so its live score is read in the browser as the scoreboard reads it (ADR 0021) and
 // shown in place (ADR 0039): a game the read has a score for is In progress, its line "Unconfirmed" with no leader; one the
 // read says is over is a Final with its score and when it was read (ADR 0043), until the stored final replaces it. Each
@@ -43,7 +44,7 @@ function Projected({ g, live }: { g: TonightGame; live: LiveView | null }) {
   return line ? <p data-projected className="text-[14px] leading-5 text-muted">{line}</p> : null;
 }
 
-function Status({ g, liveRows }: { g: TonightGame; liveRows: LiveRow[] }) {
+function Status({ g, liveRows, now }: { g: TonightGame; liveRows: LiveRow[]; now: Date | null }) {
   if (g.state === "forfeit") {
     return (
       <>
@@ -74,15 +75,28 @@ function Status({ g, liveRows }: { g: TonightGame; liveRows: LiveRow[] }) {
       </>
     );
   }
+  // Past kickoff with no score: say so, plainly (ADR 0087). "In progress" with nothing to show is not left bare, and a game
+  // past its window says no score has come in.
+  const kind = now ? kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind : null;
   return (
     <>
       <p className="text-[14px] font-bold uppercase leading-5 tracking-wide text-navy">
         <KickoffStatus date={g.date} kickoff={g.kickoff} />
       </p>
+      {kind === "in-progress" && <p data-no-score className="text-[13px] leading-4 text-muted">No live score yet. Checked every few minutes.</p>}
+      {kind === "awaiting" && <p data-no-score className="text-[13px] leading-4 text-muted">No score has come in for this game yet.</p>}
       <Projected g={g} live={null} />
     </>
   );
 }
+
+/** The strip's four kinds, in the order a fan wants them: what is on now, what is coming, what is done, what is missing. */
+const KINDS: { key: NightGroupKey; label: string }[] = [
+  { key: "in-progress", label: "Live" },
+  { key: "up-next", label: "Up next" },
+  { key: "final", label: "Final" },
+  { key: "awaiting", label: "No score" },
+];
 
 export default function TonightBoard({ night }: { night: Night }) {
   // Only a game with no final can be under way, and only inside its window (lib/kickoff.ts anyInProgress): a night of
@@ -90,40 +104,64 @@ export default function TonightBoard({ night }: { night: Night }) {
   const liveRows = useLiveScores(night.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games.filter((g) => g.state === "later"))));
   // The groups are worked out in the browser, as the status labels are, so this static page re-sorts as the clock moves.
   const now = useNow();
+  // Each game keeps its round on its line, now that the groups replace the round headings.
+  const orgs = night.orgs.map((org) => {
+    const games = org.rounds.flatMap((r) => r.games.map((g) => withLive({ ...g, round: r.label }, liveRows)));
+    return { org, groups: groupTonight(games, now) };
+  });
+  // Across every organization, what is on now comes first (ADR 0087): an organization with a game in progress is listed
+  // before one with games still to come, and that before one with only finals. Organizations still never share a list
+  // (ADR 0012); ties keep the site's order. The strip counts games and jumps to the first organization that has each kind.
+  const ordered = [...orgs].sort((a, b) => orgRank(a.groups) - orgRank(b.groups));
+  const strip = KINDS.map((k) => {
+    const holding = ordered.filter((o) => o.groups.some((g) => g.key === k.key));
+    return { ...k, n: new Set(holding.flatMap((o) => o.groups.filter((g) => g.key === k.key).flatMap((g) => g.games.map((x) => x.id)))).size, first: holding[0]?.org.slug };
+  }).filter((k) => k.key !== "awaiting" || k.n);
   return (
     <>
       <ScoresChecked games={night.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games))} className="px-3 pt-2" />
-      {night.orgs.map((org) => {
-        // Each game keeps its round on its line, now that the groups replace the round headings.
-        const games = org.rounds.flatMap((r) => r.games.map((g) => withLive({ ...g, round: r.label }, liveRows)));
-        return (
-          <section key={org.slug} aria-labelledby={`night-${org.slug}`}>
-            <h2 id={`night-${org.slug}`} className="bg-band px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">
-              {org.label}
-            </h2>
-            {groupTonight(games, now).map((group) => (
-              <div key={group.key} data-group={group.key}>
-                <h3 className="border-b border-line bg-panel px-3 py-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">{group.label}</h3>
-                <ul>
-                  {group.games.map((g) => (
-                    <li key={g.id} data-game={g.id} className="border-b border-line">
-                      <Link href={g.href} className="block min-h-16 px-3 py-2 hover:bg-panel focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-navy active:bg-panel">
-                        <p className="text-[16px] font-semibold leading-5 text-ink">
-                          {g.away} vs {g.home}
-                        </p>
-                        <p className="text-[13px] leading-4 text-muted">{g.round === "Season games" ? g.where : `${g.where} \u00b7 ${g.round}`}</p>
-                        <div className="mt-0.5">
-                          <Status g={g} liveRows={liveRows} />
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </section>
-        );
-      })}
+      <nav aria-label="All organizations tonight" data-night-strip className="sticky top-0 z-20 mt-2 flex h-[45px] border-y border-line bg-page">
+        {strip.map((k) =>
+          k.n ? (
+            <a key={k.key} href={`#night-${k.first}-${k.key}`} className="flex flex-1 items-center justify-center gap-1.5 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
+              {k.label}
+              <span className={k.key === "in-progress" ? "text-red" : "text-muted"}>{k.n}</span>
+            </a>
+          ) : (
+            <span key={k.key} className="flex flex-1 items-center justify-center gap-1.5 font-num text-[16px] font-semibold uppercase tracking-wide text-muted">
+              {k.label}
+              <span>{k.n}</span>
+            </span>
+          ),
+        )}
+      </nav>
+      {ordered.map(({ org, groups }) => (
+        <section key={org.slug} aria-labelledby={`night-${org.slug}`}>
+          <h2 id={`night-${org.slug}`} className="bg-band px-3 py-1 font-num text-[20px] font-bold uppercase tracking-wider text-white">
+            {org.label}
+          </h2>
+          {groups.map((group) => (
+            <div key={group.key} id={`night-${org.slug}-${group.key}`} data-group={group.key} className="scroll-mt-[45px]">
+              <h3 className="border-b border-line bg-panel px-3 py-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">{group.label}</h3>
+              <ul>
+                {group.games.map((g) => (
+                  <li key={g.id} data-game={g.id} className="border-b border-line">
+                    <Link href={g.href} className="block min-h-16 px-3 py-2 hover:bg-panel focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-navy active:bg-panel">
+                      <p className="text-[16px] font-semibold leading-5 text-ink">
+                        {g.away} vs {g.home}
+                      </p>
+                      <p className="text-[13px] leading-4 text-muted">{g.round === "Season games" ? g.where : `${g.where} \u00b7 ${g.round}`}</p>
+                      <div className="mt-0.5">
+                        <Status g={g} liveRows={liveRows} now={now} />
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      ))}
     </>
   );
 }

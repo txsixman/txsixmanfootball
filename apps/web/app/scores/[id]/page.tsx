@@ -28,11 +28,12 @@ import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
 import { GoingInSection, MeetingsSection, ProjectionSection } from "../game-extras";
 import { GamePreviewSection } from "../game-preview";
-import { GameKickoffStatus, GameLiveRead, GameScore } from "../live-game";
+import { GameBand, GameLiveRead, GameScore } from "../live-game";
 import { Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 import { SiteAddress } from "../directions";
 import { hasCard } from "./card/ids";
+import { WhatsNext } from "./whats-next";
 import { stateChampionshipOf } from "./card/state-championship";
 import { gameTitle } from "@/lib/titles";
 import { STATE_ROUNDS } from "@/lib/state-finals";
@@ -167,7 +168,6 @@ export default async function GamePage({ params }: Props) {
   // Fan comments and score reports exist only while FAN_POSTS (and FAN_SIGNIN) is "on" (read when the page is built; flip it and
   // redeploy). If a page built with them on is served after the flag goes off, their routes answer 404 and the blocks hide themselves.
   const fan = fanPosts();
-  const live = g.state === "live";
   // Back to where the game is listed: a season game's own results week (the season's week numbers, ADR 0012), a playoff
   // or sample game's scoreboard.
   const week = own && g.date ? (await loadWeeks(own.season)).findLast((w) => w.monday <= g.date!) : undefined;
@@ -192,19 +192,7 @@ export default async function GamePage({ params }: Props) {
 
       <GameLiveRead date={g.date} kickoff={g.kickoff} watch={!sample && !!g.date && g.state === "scheduled"}>
       <header>
-        <div className={`flex items-center justify-between px-3 py-1.5 font-num text-[18px] font-bold uppercase tracking-wider text-white ${live ? "bg-alert" : "bg-band"}`}>
-          <span>
-            {live ? "Live" : g.status}
-            {/* A real game not yet played: its kickoff status at the moment of viewing (ADR 0036). */}
-            {!live && !sample && g.state === "scheduled" && g.date && (
-              <>
-                {" · "}
-                <GameKickoffStatus g={{ ...g, date: g.date }} />
-              </>
-            )}
-          </span>
-          {live && <span>{g.status}</span>}
-        </div>
+        <GameBand g={g} sample={sample} />
         <VerifyBar g={g} />
         <h1 id="game-title" className="sr-only">
           {g.away.name} vs {g.home.name}
@@ -221,6 +209,9 @@ export default async function GamePage({ params }: Props) {
       </GameLiveRead>
 
       <Linescore g={g} />
+
+      {/* A confirmed final: where its winner goes next (ADR 0087). */}
+      {!sample && g.state === "final" && (!found || found.season === CURRENT_SEASON) && <WhatsNext g={g} />}
 
       <section aria-labelledby="details" className="mt-5 px-3 pb-1">
         <h2 id="details" className="mb-0.5 border-b-2 border-navy pb-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">

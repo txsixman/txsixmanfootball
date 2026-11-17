@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { groupTonight } from "../lib/kickoff";
+import { groupTonight, orgRank } from "../lib/kickoff";
 import { FIRST_SEASON } from "../lib/season";
 import path from "node:path";
 import { LIVE_SCORES_URL, noLiveScores } from "./live-route";
@@ -201,11 +201,13 @@ test.describe("Tonight", () => {
       await expect(page.getByRole("link", { name: "See every playoff game" })).toHaveAttribute("href", "/scores");
       return;
     }
-    // One section per organization, in the site's order; each holds only its own games: In progress, Up next, then Final,
-    // an empty group left out, the order inside each group by kickoff (lib/kickoff.ts, unit-tested at fixed times).
+    // One section per organization, the one with a game on now first, then those with games to come, then finals only, ties in
+    // the site's order (ADR 0087); each holds only its own games: In progress, Up next, then Final, an empty group left out,
+    // the order inside each group by kickoff (lib/kickoff.ts, unit-tested at fixed times).
     const sections = page.locator("main section[aria-labelledby^='night-']");
     await expect(sections).toHaveCount(tonight.orgs.length);
-    for (const [i, org] of tonight.orgs.entries()) {
+    const clockOrder = [...tonight.orgs].sort((a, b) => orgRank(groupTonight(a.rounds.flatMap((r) => r.games), NOW)) - orgRank(groupTonight(b.rounds.flatMap((r) => r.games), NOW)));
+    for (const [i, org] of clockOrder.entries()) {
       const section = sections.nth(i);
       await expect(section.getByRole("heading", { level: 2 })).toHaveText(org.label);
       const groups = groupTonight(org.rounds.flatMap((r) => r.games), NOW);
