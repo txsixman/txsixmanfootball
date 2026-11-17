@@ -1,26 +1,23 @@
 import type { Metadata } from "next";
-import { loadAlignments } from "@/lib/alignments";
-import { loadIdentities } from "@/lib/identity";
-import { SearchBox, type SearchPrograms } from "./search-box";
+import { loadFindIndex } from "@/lib/find-index";
+import { SearchBox } from "./search-box";
 import { FIRST_SEASON } from "@/lib/season";
 
 export const metadata: Metadata = { title: "Search", robots: { index: false } };
 
 export default async function SearchPage() {
-  // A program result carries its school's crest (looked up by the page's address); week-of-results results have none.
-  const [alignments, identities] = await Promise.all([loadAlignments(), loadIdentities()]);
-  const programs: SearchPrograms = {};
-  for (const a of alignments) {
-    const identity = identities.get(a.slug);
-    if (identity) programs[a.slug] = { school: a.school, identity };
-  }
+  // The index is built here, when the site is built (ADR 0090), and travels with the page: a team, mascot, town or two
+  // teams are found as the letters are typed, with nothing to wait for.
+  const index = await loadFindIndex();
   return (
     <section aria-labelledby="search">
       <h1 id="search" className="font-num text-[56px] font-bold uppercase leading-none tracking-wide text-navy">
         Search
       </h1>
-      <p className="mt-2 text-[15px] text-muted">Every program page and every week of results since {FIRST_SEASON}.</p>
-      <SearchBox programs={programs} />
+      <p className="mt-2 text-[15px] text-muted">
+        Every program, game and week of results since {FIRST_SEASON}. Type a school, a town, a mascot or two teams.
+      </p>
+      <SearchBox index={index} />
     </section>
   );
 }
