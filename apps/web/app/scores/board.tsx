@@ -2,12 +2,13 @@
 
 import { CalendarClock, Check, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useState, type ReactNode } from "react";
 import type { Address } from "@/lib/address";
 import type { Game } from "@/lib/demo-games";
 import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files
 import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
 import { gameDay } from "@/lib/game-day";
+import { upcomingFirstAt, upcomingFirstScript } from "@/lib/upcoming-first";
 import { kickoffState } from "@/lib/kickoff";
 import { ORGS } from "@/lib/orgs";
 import { projectedLine } from "@/lib/outcome";
@@ -285,20 +286,32 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
   const underWay = shown.filter(noScoreYet);
   const later = shown.filter((g) => (g.state === "scheduled" || g.state === "postponed") && !awaiting(g) && !noScoreYet(g));
   const nextShown = next.filter((g) => org && g.org === org.league && (!q || g.sides.some((s) => s.name.toLowerCase().includes(q))));
-  // Between game nights, this week's games come before last week's finals once the next game day is nearer than the last
-  // one (worked out at the moment of viewing; before that, and on the server, finals first). Saturday reads last night's
-  // finals first; Tuesday reads Friday's games, kickoffs and sites first.
-  const noon = (d: string) => Date.parse(`${d}T12:00:00-06:00`);
+  // Between game nights, this week's games come before last week's finals once the next game day is nearer than the last one.
+  // The page is built with finals first; a script that runs as the board starts sets data-upcoming-first on <html> before anything
+  // is painted, and CSS `order` puts the sections right (lib/upcoming-first.ts), so nothing moves when the page's own script
+  // arrives (ADR 0103). Saturday reads last night's finals first; Tuesday reads Friday's games, kickoffs and sites first.
   const lastDay = [...final, ...reported].reduce((d, g) => (g.date && g.date > d ? g.date : d), "");
-  const nextDay = [...later.flatMap((g) => (g.state === "scheduled" && g.date ? [g.date] : [])), ...nextShown.flatMap((g) => (g.date ? [g.date] : []))].sort()[0];
-  const upcomingFirst = now !== null && !!lastDay && !!nextDay && noon(nextDay) - now.getTime() < now.getTime() - noon(lastDay);
+  const toPlay = [...new Set([...shown.flatMap((g) => ((g.state === "scheduled" || g.state === "postponed") && g.date ? [g.date] : [])), ...nextShown.flatMap((g) => (g.date ? [g.date] : []))])].sort();
+  const toPlayKey = toPlay.join(" ");
+  // Again on the client, as the minutes pass and when the games listed change; before paint, so a change moves nothing visibly late.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (upcomingFirstAt(Date.now(), lastDay, toPlay)) root.setAttribute("data-upcoming-first", "");
+    else root.removeAttribute("data-upcoming-first");
+    // `toPlay` is rebuilt every render; `toPlayKey` says when it changed. `now` is the minute tick.
+  }, [now, lastDay, toPlayKey]);
   // "Later" counts the next games the bracket sets too: they are listed right under it.
   const coming = { href: later.length ? "#later" : "#next", label: "Later", n: later.length + nextShown.length };
   const results = [
     { href: "#reported", label: "Reported", n: reported.length },
     { href: "#final", label: "Final", n: final.length },
   ];
-  const jumps = [{ href: live.length || !underWay.length ? "#live" : "#in-progress", label: saved ? "Under way" : "Live", n: live.length || underWay.length }, ...(upcomingFirst ? [coming, ...results] : [...results, coming])];
+  // In the page's own order (finals first); `order` moves "Later" up when the board does (data-upcoming-first, above).
+  const jumps = [
+    { href: live.length || !underWay.length ? "#live" : "#in-progress", label: saved ? "Under way" : "Live", n: live.length || underWay.length, order: "order-1" },
+    ...results.map((r) => ({ ...r, order: "order-3" })),
+    { ...coming, order: "order-4 [[data-upcoming-first]_&]:order-2" },
+  ];
   const upcoming = (
     <>
       <Section id="later" title="Later" games={later} crests={crests} checked={checked} counts={commentCounts} />
@@ -308,6 +321,8 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
 
   return (
     <>
+      {/* Runs as the board starts, before anything below is painted (lib/upcoming-first.ts). */}
+      <script dangerouslySetInnerHTML={{ __html: upcomingFirstScript(lastDay, toPlay) }} />
       <header className="border-b-2 border-navy px-3 pb-3 pt-4">
         <PageHeader eyebrow={eyebrow} title={title} />
         <label className="mt-3 flex h-11 items-center gap-2 border border-field bg-panel px-3 focus-within:outline-2 focus-within:outline-navy">
@@ -353,12 +368,12 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
         {jumps.map((j) =>
           // A section with no games is not on the page, so its jump link would do nothing: show it as plain, dimmed text.
           j.n ? (
-            <a key={j.href} href={j.href} className="flex flex-1 items-center justify-center gap-1.5 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
+            <a key={j.href} href={j.href} className={`${j.order} flex flex-1 items-center justify-center gap-1.5 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel`}>
               {j.label}
               <span className={j.href === "#live" ? "text-red" : "text-muted"}>{j.n}</span>
             </a>
           ) : (
-            <span key={j.href} className="flex flex-1 items-center justify-center gap-1.5 font-num text-[16px] font-semibold uppercase tracking-wide text-muted">
+            <span key={j.href} className={`${j.order} flex flex-1 items-center justify-center gap-1.5 font-num text-[16px] font-semibold uppercase tracking-wide text-muted`}>
               {j.label}
               <span>{j.n}</span>
             </span>
@@ -366,13 +381,18 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
         )}
       </nav>
 
-      <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} counts={commentCounts} />
-      <Section id="in-progress" title="In progress, no score yet" games={underWay} crests={crests} checked={checked} counts={commentCounts} />
-      {upcomingFirst && upcoming}
-      <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} counts={commentCounts} newestFirst />
-      <Section id="final" title="Final" games={final} crests={crests} checked={checked} counts={commentCounts} newestFirst />
-      <Section id="not-reported" title="Score not reported yet" games={notReported} crests={crests} checked={checked} counts={commentCounts} />
-      {!upcomingFirst && upcoming}
+      <div className="flex flex-col">
+        <div className="order-1">
+          <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} counts={commentCounts} />
+          <Section id="in-progress" title="In progress, no score yet" games={underWay} crests={crests} checked={checked} counts={commentCounts} />
+        </div>
+        <div className="order-3">
+          <Section id="reported" title="Score reported" games={reported} crests={crests} checked={checked} counts={commentCounts} newestFirst />
+          <Section id="final" title="Final" games={final} crests={crests} checked={checked} counts={commentCounts} newestFirst />
+          <Section id="not-reported" title="Score not reported yet" games={notReported} crests={crests} checked={checked} counts={commentCounts} />
+        </div>
+        <div className="order-4 [[data-upcoming-first]_&]:order-2">{upcoming}</div>
+      </div>
       {!shown.length && (
         <div className="px-3 pb-6">
           <EmptyState>{q ? <>No team matches &ldquo;{query.trim()}&rdquo;.</> : "No games in this organization yet."}</EmptyState>

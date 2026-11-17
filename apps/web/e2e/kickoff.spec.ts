@@ -94,7 +94,8 @@ test("scores puts the newest finals first, and this week's games first midweek",
     await page.clock.setFixedTime(new Date(when));
     await page.goto("/scores", { waitUntil: "networkidle" });
     await expect(page.locator('[data-kickoff-status="pending"]')).toHaveCount(0);
-    return page.locator("main section[id]").evaluateAll((els) => els.map((e) => e.id));
+    // The order on screen: the board keeps its sections in one order and CSS moves "Later" up midweek (lib/upcoming-first.ts, ADR 0103).
+    return page.locator("main section[id]").evaluateAll((els) => els.map((e) => ({ id: e.id, top: e.getBoundingClientRect().top })).sort((a, b) => a.top - b.top).map((e) => e.id));
   };
   const day = (d: string, plus: number) => new Date(Date.parse(`${d}T18:00:00Z`) + plus * 86_400_000).toISOString();
   // The morning after the last game night: finals first, the newest round on top.
