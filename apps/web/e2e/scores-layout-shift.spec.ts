@@ -38,7 +38,7 @@ async function shift(page: Page) {
 }
 
 for (const [label, where] of [["finals first (the morning after the last game night)", 0.1], ["this week's games first (past the halfway point)", 0.9]] as const) {
-test(`/scores moves nothing after it loads, with the worker active: ${label}`, async ({ page }) => {
+  test(`/scores moves nothing after it loads, with the worker active: ${label}`, async ({ page }) => {
     const { last, next } = await gameDays();
     test.skip(!last || !next || noon(next) - noon(last) < 3 * 86_400_000, "no later game day far enough off");
     // `where` of the way from the last game day to the next (the board flips at one half).
