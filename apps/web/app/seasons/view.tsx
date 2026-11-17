@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { loadAlignments } from "@/lib/alignments";
+import { loadAlignments, type Alignment } from "@/lib/alignments";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { finalLinker, type Linker } from "@/lib/final-linker";
 import { finalScore } from "@/lib/champions";
+import { loadSeasonReview, type SeasonReview } from "@/lib/season-review-load";
 import { loadLineage, successorOf } from "@/lib/lineage";
 import { orgHref, type Org } from "@/lib/orgs";
 import { ratingText } from "@/lib/ratings";
@@ -15,10 +16,11 @@ import { weekLabel } from "@/lib/weeks";
 import { seasonHref as rankingsHref } from "../rankings/view";
 import { seasonHref as resultsHref, weekHref } from "../results/paths";
 import { BoardRow, CrestSlot, PageHeader, SectionBar } from "../ui";
+import { SeasonInReview } from "./review";
 
 // A season's hub (/seasons/<year>): everything the site has for one season, one organization at a time (ADR 0012). Scores
-// are robot-read and not confirmed here (ADR 0004), so the page names no game's winner; the state finals are UIL's official
-// results. Pure server rendering: no client script.
+// are robot-read and a final is confirmed (ADR 0040); the season in review (ADR 0099, app/seasons/review.tsx) names winners, never
+// a game under way. The state finals are UIL's official results. Pure server rendering: no client script.
 
 const LINK = "inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-2 hover:text-ink";
 const PILL = "inline-flex min-h-11 min-w-11 items-center justify-center border-2 border-navy px-3 font-num text-[15px] font-bold uppercase tracking-wide text-navy hover:bg-panel";
@@ -105,7 +107,7 @@ function Leaders({ id, title, note, rows, identities }: { id: string; title: str
   );
 }
 
-function OrgSection({ hub, o, identities }: { hub: SeasonHub; o: OrgHub; identities: Awaited<ReturnType<typeof loadIdentities>> }) {
+function OrgSection({ hub, o, identities, alignments, review }: { hub: SeasonHub; o: OrgHub; identities: Awaited<ReturnType<typeof loadIdentities>>; alignments: Alignment[]; review: SeasonReview }) {
   const { season, latest } = hub;
   const id = seasonId(o.org);
   const past = !latest;
@@ -138,17 +140,19 @@ function OrgSection({ hub, o, identities }: { hub: SeasonHub; o: OrgHub; identit
       <Leaders
         id={`${id}-scored`}
         title="Most points per game"
-        note={`Points scored per game, teams with at least ${LEADER_MIN_GAMES} games. From scores not confirmed here, and forfeits are left out.`}
+        note={`Points scored per game, teams with at least ${LEADER_MIN_GAMES} games; forfeits are left out.`}
         rows={o.scored}
         identities={identities}
       />
       <Leaders
         id={`${id}-allowed`}
         title="Fewest points allowed per game"
-        note={`Points allowed per game, teams with at least ${LEADER_MIN_GAMES} games. From scores not confirmed here, and forfeits are left out.`}
+        note={`Points allowed per game, teams with at least ${LEADER_MIN_GAMES} games; forfeits are left out.`}
         rows={o.allowed}
         identities={identities}
       />
+
+      <SeasonInReview review={review} alignments={alignments} latest={latest} />
 
       <nav aria-label={`More ${o.org.label} ${season}`} className="mt-3 flex flex-wrap gap-x-5 px-3">
         <Link href={resultsHref(season, hub.current, o.org)} className={LINK}>
@@ -179,6 +183,7 @@ export async function SeasonHubView({ hub }: Props) {
   const link = finalLinker(alignments, identities, successorOf(lineage));
   const { season, latest } = hub;
   const orgs = hub.orgs.map((o) => o.org.label);
+  const reviews = await Promise.all(hub.orgs.map((o) => loadSeasonReview(season, o.org)));
   const jump = [{ id: "finals", label: "State Championships" }, ...hub.orgs.map((o) => ({ id: seasonId(o.org), label: o.org.label })), { id: "weeks", label: "Weeks" }];
 
   return (
@@ -188,7 +193,7 @@ export async function SeasonHubView({ hub }: Props) {
           id="season"
           eyebrow="Texas six-man football"
           title={`${season} season`}
-          note={`${hub.games.toLocaleString("en-US")} games read from ${hub.programs} programs across ${orgs.join(", ")}${latest ? ", so far" : ""}. Scores are not confirmed here and may change.`}
+          note={`${hub.games.toLocaleString("en-US")} games read from ${hub.programs} programs across ${orgs.join(", ")}${latest ? ", so far" : ""}. Scores may be corrected if a mistake is found.`}
         />
         {!latest && <p id="season-coverage" className="mt-1 max-w-prose text-[14px] leading-5 text-muted">{coverageLine(hub.coverage)}</p>}
         <nav aria-label="Jump to" className="mt-4 flex flex-wrap gap-2">
@@ -245,8 +250,8 @@ export async function SeasonHubView({ hub }: Props) {
         )}
       </section>
 
-      {hub.orgs.map((o) => (
-        <OrgSection key={o.org.slug} hub={hub} o={o} identities={identities} />
+      {hub.orgs.map((o, i) => (
+        <OrgSection key={o.org.slug} hub={hub} o={o} identities={identities} alignments={alignments} review={reviews[i]} />
       ))}
 
       <section aria-labelledby="weeks" className="mt-8 scroll-mt-4">

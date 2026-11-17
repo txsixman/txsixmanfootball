@@ -9,8 +9,9 @@ import { noLiveScores } from "./live-route";
 noLiveScores(test);
 test.setTimeout(600_000); // the dev server compiles each linked route the first time it is asked (CI serves a build)
 
-// No game row names a winner from an unconfirmed score (ADR 0004); the state finals are official, so "Champion" is fine.
-const WINNER_WORDS = /\b(won|beat|beats|defeated|defeats|winner|wins|winning|victory|loser|lost|leads?|leading|ahead)\b/i;
+// A final is confirmed (ADR 0040), so the season in review names who won ("Final: X by 3", "Won 9 games in a row"); but no row ever
+// says "winner", "leading" or "ahead", the words of a game still being played (ADR 0099, as the week's recap, ADR 0092).
+const WINNER_WORDS = /\b(winner|winners|leads?|leading|ahead)\b/i;
 const BETTING_OR_SOURCE = /\b(spreads?|odds|lines?|bets?|bettors?|favou?rites?|underdogs?|locks?|sources?|maxpreps)\b/i;
 const plain = (text: string) => text.replace(/win probability/gi, "");
 
@@ -30,10 +31,12 @@ const fixtures = () => (cached ??= inWeb(build));
 
 async function build() {
   const { hubSeasons, loadSeasonHub } = await import("../lib/season-hub");
+  const { loadSeasonReview } = await import("../lib/season-review-load");
   const { CURRENT_SEASON } = await import("../lib/season");
   const seasons = await hubSeasons();
   const hubs = new Map(await Promise.all(seasons.map(async (s) => [s, await loadSeasonHub(s)] as const)));
-  return { seasons, hubs, CURRENT_SEASON };
+  const reviews = async (season: number) => Promise.all(hubs.get(season)!.orgs.map(async (o) => ({ org: o.org, review: await loadSeasonReview(season, o.org) })));
+  return { seasons, hubs, CURRENT_SEASON, reviews };
 }
 
 async function checkPage(page: Page, url: string) {
@@ -93,7 +96,7 @@ test("2025: the UIL State Championships, one section per organization with five 
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/seasons\/2025$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("2025 season");
   await expect(main).toContainText(`${hub.games.toLocaleString("en-US")} games read from ${hub.programs} programs`);
-  await expect(main).toContainText("Scores are not confirmed here");
+  await expect(main).toContainText("Scores may be corrected if a mistake is found");
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("2025 season");
   // A past season says how many of today's schools it reaches.
   expect(hub.coverage.played).toBeLessThanOrEqual(hub.coverage.total);
@@ -190,6 +193,93 @@ test("2026: the State Championships are in December, with the playoffs one tap a
   expect(hrefs).not.toContain(`/results/${CURRENT_SEASON}`);
   expect(hrefs).not.toContain(`/rankings/season/${CURRENT_SEASON}`);
   for (const href of hrefs) expect((await request.get(href, { maxRedirects: 0 })).status(), href).toBe(200);
+});
+
+test("2025: each organization has its own season in review, counted from the same data, with a link on every line", async ({ page }) => {
+  const { reviews } = await fixtures();
+  await page.goto("/seasons/2025", { waitUntil: "networkidle" });
+  const teams: string[] = [];
+  for (const { org, review } of await reviews(2025)) {
+    const id = `org-${org.slug}-review`;
+    const section = page.locator(`section[aria-labelledby='org-${org.slug}']`);
+    await expect(section.locator(`#${id}`)).toHaveText("Season in review");
+    // State Champions: one row per recorded final, with its score; none is claimed beyond what is recorded.
+    const champions = section.locator(`#${id}-champions + ul > li`);
+    if (review.champions.length) {
+      await expect(champions).toHaveCount(review.champions.length);
+      for (const [i, c] of review.champions.entries()) {
+        await expect(champions.nth(i)).toContainText(c.champion);
+        await expect(champions.nth(i)).toContainText(c.runnerUp);
+        await expect(champions.nth(i)).toContainText(c.score);
+        teams.push(c.champion, c.runnerUp);
+      }
+    } else {
+      await expect(section).toContainText(`No ${org.label} State Championship is recorded for 2025.`);
+    }
+    // The upsets are the lowest chances first, each a link to its game page; the section never holds more than ten.
+    expect(review.upsets.length).toBeLessThanOrEqual(10);
+    const upsets = section.locator(`ol[aria-labelledby='${id}-upsets'] > li`);
+    await expect(upsets).toHaveCount(review.upsets.length);
+    for (const [i, u] of review.upsets.entries()) {
+      await expect(upsets.nth(i).locator(`a[href='${u.game.href}']`)).toHaveCount(1);
+      await expect(upsets.nth(i)).toContainText(`${u.winner} had a`);
+      expect(u.chance).toBeLessThan(0.5);
+      if (i) expect(u.chance).toBeGreaterThanOrEqual(review.upsets[i - 1].chance);
+      teams.push(u.winner, u.loser);
+    }
+    // Records, streaks and risers name teams of this organization only, each a link to a program.
+    const records = section.locator(`ol[aria-labelledby='${id}-records'] > li`);
+    await expect(records).toHaveCount(review.best.length);
+    for (const [i, r] of review.best.entries()) await expect(records.nth(i)).toContainText(r.team);
+    const n = review.unbeaten.length;
+    if (review.best.length) await expect(section).toContainText(n ? `${n} ${n === 1 ? "team" : "teams"} finished the season unbeaten.` : "No team finished the season unbeaten.");
+    const streaks = section.locator(`ol[aria-labelledby='${id}-streaks'] > li`);
+    await expect(streaks).toHaveCount(review.streaks.length);
+    for (const s of review.streaks) {
+      expect(s.length).toBeGreaterThanOrEqual(5);
+      teams.push(s.team);
+    }
+    await expect(section.locator(`ol[aria-label='Biggest risers'] > li`)).toHaveCount(review.risers.length);
+    // Totals come from the games of this organization alone.
+    await expect(section.locator(`#${id}-totals`)).toBeVisible();
+    await expect(section).toContainText(`${review.totals.games.toLocaleString("en-US")} games with ${org.label} teams`);
+    // A past season says nothing "so far".
+    await expect(section.locator(`#${id}`)).not.toContainText("so far");
+    for (const m of review.milestones) teams.push(m.team);
+    teams.push(...review.best.map((r) => r.team), ...review.risers.map((r) => r.team), ...(review.highest ? [review.highest.team] : []));
+  }
+  // Organizations stay apart (ADR 0012): a team-level list (records, streaks, risers) holds only that organization's teams. A game
+  // between two organizations may sit in both upset lists, as it sits under each team's own organization.
+  const all = await reviews(2025);
+  const uil = all.find((r) => r.org.slug === "uil")!;
+  expect(uil.review.best.length).toBeGreaterThan(0);
+  const uilTeams = new Set([...uil.review.best, ...uil.review.streaks, ...uil.review.risers, ...uil.review.milestones].map((r) => r.team));
+  for (const other of all.filter((r) => r.org.slug !== "uil")) {
+    for (const r of [...other.review.best, ...other.review.streaks, ...other.review.risers]) expect(uilTeams.has(r.team), `${other.org.label} ${r.team} in the UIL lists`).toBe(false);
+  }
+  await checkWords(page, teams);
+});
+
+test("the season under way: 'so far' in every heading, and a champion only where one is recorded", async ({ page }) => {
+  const { reviews, CURRENT_SEASON } = await fixtures();
+  await page.goto(`/seasons/${CURRENT_SEASON}`, { waitUntil: "networkidle" });
+  const teams: string[] = [];
+  for (const { org, review } of await reviews(CURRENT_SEASON)) {
+    const id = `org-${org.slug}-review`;
+    const section = page.locator(`section[aria-labelledby='org-${org.slug}']`);
+    await expect(section.locator(`#${id}`)).toHaveText("Season in review, so far");
+    const champions = section.locator(`#${id}-champions + ul > li`);
+    await expect(champions).toHaveCount(review.champions.length);
+    if (!review.champions.length) await expect(section).toContainText(`No ${org.label} State Champion is recorded yet this season.`);
+    for (const c of review.champions) teams.push(c.champion, c.runnerUp);
+    // Nothing is written as finished: no "finished the season", and the records line says "so far".
+    await expect(section.locator(`#${id}`).locator("xpath=..")).not.toContainText(/finished the season/);
+    if (review.best.length) await expect(section.locator(`#${id}-records`).locator("xpath=..")).toContainText("so far");
+    await expect(section.locator(`#${id}-totals`).locator("xpath=..")).toContainText("games so far with");
+    teams.push(...review.best.map((r) => r.team), ...review.upsets.flatMap((u) => [u.winner, u.loser]), ...review.streaks.map((s) => s.team), ...review.risers.map((r) => r.team), ...review.milestones.map((m) => m.team));
+    if (review.highest) teams.push(review.highest.team);
+  }
+  await checkWords(page, teams);
 });
 
 test("an unknown year answers 404", async ({ page }) => {

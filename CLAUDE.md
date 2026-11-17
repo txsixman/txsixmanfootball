@@ -83,6 +83,7 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `apps/web/app/playoffs/tree/`: the bracket drawing on each bracket page (ADR 0049): `board.tsx` (tree and by-round views), `rounds.tsx` (ARIA round tabs and game cards, ADR 0094), `whos-left.tsx`
   (the teams still in; logic in `lib/whos-left.ts`), `parts.tsx`, `data.ts`, `image.tsx` (the share and full-size PNGs); layout math in `lib/bracket-layout.ts`, box content in
   `lib/bracket-tree.ts`; `/playoffs/bracket/sample` is invented schools only (`lib/demo-bracket.ts`)
+- `apps/web/app/seasons/review.tsx`, `lib/season-review.ts` (pure rules), `lib/season-review-load.ts`: each organization's "Season in review" on `/seasons/<year>` (ADR 0099)
 - `apps/web/app/embed/`: the embeddable scoreboard, `/embed/programs/<slug>` (ADR 0023): the only route that may be framed; its page and CSP are built in `lib/embed-html.ts`
 - `apps/web/lib/find.ts`, `find-index.ts`, `app/search/`: search (ADR 0090). `find-index.ts` makes the index at build time (programs, mascots, other
   names, series-page bits, season and State Championship years); `find.ts` is the pure matcher the browser, the build and
@@ -179,7 +180,7 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   disparage it, never use its name or content without permission.
 - **Minors**: no birth dates (fan accounts keep the birth year only, never shown; ADR 0018), no public real names,
   contact details, player rankings or precise location for minors; no minor's data to any third party. No direct messages.
-- **Betting**: the words are rating, projected margin and chance to win (ADR 0045). Never spreads, lines, odds or picks. "Upset" appears only on the week-in-review recap, its home card and its descriptions, as the name of a result (ADR 0092), never on a game row or game page (ADR 0044).
+- **Betting**: the words are rating, projected margin and chance to win (ADR 0045). Never spreads, lines, odds or picks. "Upset" appears only on the week-in-review recap, its home card and its descriptions, and the season in review on `/seasons/<year>` (ADR 0099), as the name of a result (ADR 0092), never on a game row or game page (ADR 0044).
 - **Row-level security on every table.** A new table without it fails the schema test.
 - **`score_submission` is never deleted; `audit_log` is append-only.** Enforced by triggers.
 - **Six-man scoring flags are soft for admins** (plan Appendix B), so they live in `packages/core`, not in
