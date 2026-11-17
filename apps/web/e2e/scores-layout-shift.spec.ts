@@ -37,6 +37,9 @@ async function shift(page: Page) {
   return page.evaluate(() => (window as unknown as { __shift: number }).__shift);
 }
 
+/** What moved, so a failure names it: each shifted element, its value, and its box before and after (ADR 0103). */
+const moved = (page: Page) => page.evaluate(() => (window as unknown as { __moved: string[] }).__moved.join("; ") || "nothing recorded");
+
 for (const [label, where] of [["finals first (the morning after the last game night)", 0.1], ["this week's games first (past the halfway point)", 0.9]] as const) {
   test(`/scores moves nothing after it loads, with the worker active: ${label}`, async ({ page }) => {
     const { last, next } = await gameDays();
@@ -44,19 +47,43 @@ for (const [label, where] of [["finals first (the morning after the last game ni
     // `where` of the way from the last game day to the next (the board flips at one half).
     await page.clock.setFixedTime(new Date(noon(last!) + (noon(next!) - noon(last!)) * where));
     await page.addInitScript(() => {
-      (window as unknown as { __shift: number }).__shift = 0;
+      const w = window as unknown as { __shift: number; __moved: string[] };
+      w.__shift = 0;
+      w.__moved = [];
+      type Rect = { x: number; y: number; width: number; height: number };
+      type Source = { node?: Node | null; previousRect: Rect; currentRect: Rect };
+      const box = (r: Rect) => `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)}`;
+      const name = (n?: Node | null) => {
+        if (!(n instanceof Element)) return n?.nodeName ?? "?";
+        const id = n.id ? `#${n.id}` : "";
+        const cls = typeof n.className === "string" && n.className ? `.${n.className.trim().split(/\s+/).slice(0, 3).join(".")}` : "";
+        return `${n.tagName.toLowerCase()}${id}${cls} "${(n.textContent ?? "").trim().slice(0, 40)}"`;
+      };
       new PerformanceObserver((list) => {
-        for (const e of list.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) if (!e.hadRecentInput) (window as unknown as { __shift: number }).__shift += e.value;
+        for (const e of list.getEntries() as unknown as { value: number; hadRecentInput: boolean; startTime: number; sources?: Source[] }[]) {
+          if (e.hadRecentInput) continue;
+          w.__shift += e.value;
+          for (const src of e.sources ?? []) w.__moved.push(`${e.value.toFixed(3)} at ${Math.round(e.startTime)} ms: ${name(src.node)} ${box(src.previousRect)} -> ${box(src.currentRect)}`);
+        }
       }).observe({ type: "layout-shift", buffered: true });
     });
     await page.goto("/scores");
     await page.evaluate(() => navigator.serviceWorker.ready);
-    expect(await shift(page), "first load").toBeLessThan(MAX_SHIFT);
+    {
+      const value = await shift(page);
+      expect(value, `first load: ${await moved(page)}`).toBeLessThan(MAX_SHIFT);
+    }
     await page.reload(); // through the worker now
     await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-    expect(await shift(page), "second load, through the worker").toBeLessThan(MAX_SHIFT);
+    {
+      const value = await shift(page);
+      expect(value, `second load, through the worker: ${await moved(page)}`).toBeLessThan(MAX_SHIFT);
+    }
     await page.goto("/scores"); // a third, as Lighthouse's third run is
-    expect(await shift(page), "third load").toBeLessThan(MAX_SHIFT);
+    {
+      const value = await shift(page);
+      expect(value, `third load: ${await moved(page)}`).toBeLessThan(MAX_SHIFT);
+    }
     // And the order really is the one for that side of the halfway point.
     const sections = await page.locator("main section[id]").evaluateAll((els) => els.map((e) => ({ id: e.id, top: e.getBoundingClientRect().top })).sort((a, b) => a.top - b.top).map((e) => e.id));
     const upcoming = sections.findIndex((id) => id === "later" || id === "next");
