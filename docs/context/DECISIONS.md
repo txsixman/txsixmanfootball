@@ -173,3 +173,8 @@ Not in an ADR:
   loss), all counted from the data and linked to their game, one organization at a time; a disputed final names no winner;
   the existing Rating movers section stays; the home page's card shows the newest UIL week's top upset and closest game;
   amends ADR 0044's "no upset label" (Nov 16, 2026).
+- **Search finds what fans type** (ADR 0090): /search is an instant, forgiving search from a 53 KB index made at build time
+  (program, mascot, other names, abbreviations, town, league lines; misspellings, "White Face", "ISD"/"Academy"/"Christian",
+  two teams as a game, a year with a team as its season), exact and prefix names first, league and place on every result,
+  keyboard and screen-reader paths, what to try when nothing matches; weeks of results stay Pagefind's; "Find your team" on
+  /welcome opens it (Nov 16, 2026).
