@@ -47,12 +47,12 @@ export function NewThread({ board, next, empty = false }: { board: string; next:
       <Input id="thread-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required />
       <Label htmlFor="thread-body">First post</Label>
       <textarea id="thread-body" value={body} onChange={(e) => setBody(e.target.value)} rows={4} maxLength={BODY_MAX} required className={TEXTAREA} />
-      <div className="flex items-center justify-between gap-3">
+      <div className="row-between">
         <Button ref={button} type="submit" disabled={busy || title.trim() === "" || body.trim() === ""}>{busy ? "Posting…" : "Start thread"}</Button>
         <span className="text-[13px] text-muted">{body.length} / {BODY_MAX}</span>
       </div>
       <p role="status" aria-live="polite" className="min-h-5 text-[14px] font-semibold text-red">{error}</p>
-      <p className="text-[13px] leading-4 text-muted">Plain text only. No slurs or threats; links only from accounts older than 7 days.</p>
+      <p className="note-13i">Plain text only. No slurs or threats; links only from accounts older than 7 days.</p>
     </form>
   );
 }

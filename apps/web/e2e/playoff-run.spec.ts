@@ -66,7 +66,7 @@ for (const b of BRACKETS) {
       const text = ((await row.textContent()) ?? "").replace(/\s+/g, " ");
       expect(text, text).toMatch(/(Starts \d|In progress|Time not listed|Score not reported yet|Reported tonight|Score reported|Final|Forfeit)/i);
       // A game with a score (digits right after a team) is a final: confirmed, never marked Unconfirmed (ADR 0040).
-      const scored = await row.locator("span.font-num.tabular-nums").evaluateAll((els) => els.some((e) => /\d/.test(e.textContent ?? "")));
+      const scored = await row.locator("span.gl-score").evaluateAll((els) => els.some((e) => /\d/.test(e.textContent ?? "")));
       if (scored) expect(text, text).toMatch(/Final|Forfeit/);
       expect(text, text).not.toContain("Unconfirmed");
       expect(text, text).not.toMatch(NAMES_A_WINNER);
@@ -141,7 +141,7 @@ test("a forfeit shows the word and no score on a bracket row", async ({ page }) 
   for (const b of ["taiao-division-3", "tapps-division-iii-large-school", "uil-division-i"]) {
     await page.goto(`/playoffs/bracket/${b}`);
     for (const row of await page.locator("section[aria-label] li").all()) {
-      if (/Forfeit/.test((await row.textContent()) ?? "")) expect((await row.locator("span.font-num.tabular-nums").allTextContents()).join("")).toBe("");
+      if (/Forfeit/.test((await row.textContent()) ?? "")) expect((await row.locator("span.gl-score").allTextContents()).join("")).toBe("");
     }
   }
 });

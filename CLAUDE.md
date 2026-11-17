@@ -89,6 +89,7 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `apps/web/app/embed/`: the embeddable scoreboard, `/embed/programs/<slug>` (ADR 0023): the only route that may be framed; its page and CSP are built in `lib/embed-html.ts`
 - `apps/web/lib/board-wire.ts`: what the scores board (a client component) is sent: its games and crests without a field it never reads (ADR 0100); `scripts/speed.test.mjs`
   holds that byte budget, the table of long lists whose links must not prefetch, and the rule that nothing ships `tailwind-merge`. A new long list of links says `prefetch={false}`
+  and names its row's look once in `app/globals.css` ("Repeated markup", ADR 0105: `scripts/speed.test.mjs` fails a list spelled out again); `e2e/page-bytes.spec.ts` holds each heavy page's HTML bytes on the build
 - `apps/web/lib/find.ts`, `find-index.ts`, `app/search/`: search (ADR 0090). `find-index.ts` makes the index at build time (programs, mascots, other
   names, series-page bits, season and State Championship years); `find.ts` is the pure matcher the browser, the build and
   `scripts/find.test.mjs` (a table of queries and the first result each opens) share; Pagefind adds only weeks of results

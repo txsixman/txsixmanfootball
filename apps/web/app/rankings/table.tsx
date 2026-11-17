@@ -22,7 +22,7 @@ function Moved({ by }: { by: number | "new" | undefined }) {
   if (by === "new") return <span className="block text-[13px] font-bold uppercase text-muted">New<span className="sr-only"> in the rankings this week</span></span>;
   if (by === 0) {
     return (
-      <span className="block text-[13px] font-bold text-muted">
+      <span className="rk-new">
         <span aria-hidden="true">–</span>
         <span className="sr-only">steady since last week</span>
       </span>
@@ -44,13 +44,13 @@ function MeetingCell({ meeting, hrefs }: { meeting?: Meeting; hrefs?: Map<string
   return (
     <>
       {href ? (
-        <Link href={href} prefetch={false} className="inline-flex min-h-11 items-center text-ink hover:text-navy hover:underline">
+        <Link href={href} prefetch={false} className="ink-link">
           {meeting.opponent}
         </Link>
       ) : (
         meeting.opponent
       )}{" "}
-      <Link href={meeting.href} prefetch={false} aria-label={`${meetingScore(meeting)}, game page`} className="inline-flex min-h-11 items-center whitespace-nowrap font-num text-[15px] tabular-nums text-muted hover:text-navy hover:underline">
+      <Link href={meeting.href} prefetch={false} aria-label={`${meetingScore(meeting)}, game page`} className="rk-score">
         {meetingScore(meeting)}
       </Link>
     </>
@@ -100,22 +100,22 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
             <>
               <CrestSlot school={r.name} identity={r.identity} />
               <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="line-clamp-3 min-w-0 text-[14.5px] leading-[1.15]">{r.name}</span>
-                {outsideOnly && <span className="text-[13px] leading-4 text-muted">{OUTSIDE_ONLY_NOTE}</span>}
+                <span className="rk-team">{r.name}</span>
+                {outsideOnly && <span className="note-13i">{OUTSIDE_ONLY_NOTE}</span>}
                 {place.range && (
-                  <span className="text-[13px] leading-4 text-muted">
+                  <span className="note-13i">
                     <span className="sr-only">Rank range </span>
                     {rangeText(place.range)}
                   </span>
                 )}
-                {r.played != null && <span className="text-[13px] leading-4 text-muted">{r.played} played, {r.rated} rated</span>}
+                {r.played != null && <span className="note-13i">{r.played} played, {r.rated} rated</span>}
               </span>
             </>
           );
           const sched = r.schedule;
           return (
             <tr key={r.team} className={`border-b border-line ${(startsTier && i > 0) || startsNR ? "border-t-2 border-t-navy/40" : ""}`}>
-              <td className="pr-1.5 text-right align-middle font-num text-[17px] font-semibold leading-tight text-muted">
+              <td className="rk-rank">
                 {place.rank ?? (
                   <>
                     <span aria-hidden="true" className="text-[14px]">NR</span>
@@ -131,14 +131,14 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
                   </span>
                 )}
                 {r.href ? (
-                  <Link href={r.href} prefetch={false} className="flex min-h-12 items-center text-ink hover:text-navy hover:underline">
+                  <Link href={r.href} prefetch={false} className="rk-name-link">
                     {name}
                   </Link>
                 ) : (
                   <span className="flex min-h-12 items-center text-ink">{name}</span>
                 )}
               </th>
-              <td className="text-right font-num text-[17px] tabular-nums">
+              <td className="num-17">
                 {outsideOnly ? (
                   <>
                     <span aria-hidden="true">–</span>
@@ -148,7 +148,7 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
                   record(r)
                 )}
               </td>
-              <td className="pr-1 text-right font-num tabular-nums">
+              <td className="rk-pad">
                 {few ? (
                   <>
                     <span className="block text-[20px] font-bold text-muted">{ratingText(r)}</span>
@@ -160,9 +160,9 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
                   </>
                 ) : (
                   <>
-                    <span className="block text-[20px] font-bold leading-6 text-navy">{ratingText(r)}</span>
+                    <span className="rk-rating">{ratingText(r)}</span>
                     {r.sd != null && !r.mercy_only && (
-                      <span className="block text-[13px] leading-4 text-muted">
+                      <span className="note-13">
                         <span aria-hidden="true">±{Math.round(r.sd)}</span>
                         <span className="sr-only">give or take {Math.round(r.sd)}</span>
                       </span>
@@ -172,10 +172,10 @@ export function RatingsTable({ rows, hrefs }: { rows: Row[]; hrefs?: Map<string,
               </td>
               {wide && (
                 <>
-                  <td className={`${WIDE} pl-3 text-right font-num text-[17px] tabular-nums`}>{sched ? signed(sched.sor) : ""}</td>
-                  <td className={`${WIDE} text-right font-num text-[17px] tabular-nums`}>{sched ? signed(sched.sos) : ""}</td>
-                  <td className={`${WIDE} pl-4 text-[14.5px] leading-tight`}>{sched && <MeetingCell meeting={sched.best} hrefs={hrefs} />}</td>
-                  <td className={`${WIDE} pl-4 text-[14.5px] leading-tight`}>{sched && <MeetingCell meeting={sched.worst} hrefs={hrefs} />}</td>
+                  <td className="wide-sor">{sched ? signed(sched.sor) : ""}</td>
+                  <td className="wide-sos">{sched ? signed(sched.sos) : ""}</td>
+                  <td className="wide-best">{sched && <MeetingCell meeting={sched.best} hrefs={hrefs} />}</td>
+                  <td className="wide-best">{sched && <MeetingCell meeting={sched.worst} hrefs={hrefs} />}</td>
                 </>
               )}
             </tr>

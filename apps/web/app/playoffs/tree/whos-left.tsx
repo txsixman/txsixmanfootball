@@ -32,7 +32,7 @@ export function WhosLeft({ rows, team, onFollow, titled }: { rows: Left[]; team:
       <ul className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
         {rows.map((l) => (
           <li key={l.key} data-left={l.key} className="min-w-0 border-b border-line px-3 py-1">
-            <div className="flex items-center justify-between gap-3">
+            <div className="row-between">
               {l.program ? (
                 <Link href={`/programs/${l.program}`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center text-[18px] font-bold leading-tight text-ink hover:text-navy hover:underline">
                   <span className="line-clamp-2">{l.name}</span>

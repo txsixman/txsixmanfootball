@@ -23,7 +23,7 @@ import { SeasonInReview } from "./review";
 // a game under way. The state finals are UIL's official results. Pure server rendering: no client script.
 
 const LINK = "inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-2 hover:text-ink";
-const PILL = "inline-flex min-h-11 min-w-11 items-center justify-center border-2 border-navy px-3 font-num text-[15px] font-bold uppercase tracking-wide text-navy hover:bg-panel";
+const PILL = "pill-n";
 
 const seasonId = (org: Org) => `org-${org.slug}`;
 
@@ -56,7 +56,7 @@ type Props = { hub: SeasonHub };
 function TeamLine({ name, slug, identities }: { name: string; slug?: string; identities: Awaited<ReturnType<typeof loadIdentities>> }) {
   const crest = <CrestSlot school={name} identity={(slug && identities.get(slug)) || EMPTY} />;
   return slug ? (
-    <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 items-center font-semibold leading-tight hover:text-navy hover:underline">
+    <Link href={`/programs/${slug}`} prefetch={false} className="lead-link">
       {crest}
       {name}
     </Link>
@@ -215,14 +215,14 @@ export async function SeasonHubView({ hub }: Props) {
               return (
                 <li key={`${f.division}-${f.champion}`} className="border-b border-line px-3 py-1">
                   <p className="font-num text-[13px] font-bold uppercase tracking-widest text-red">{f.division ? `Division ${f.division}` : "Six-man"}</p>
-                  <p className="flex items-center justify-between gap-3">
+                  <p className="row-between">
                     <span className="min-w-0 font-semibold text-ink">
                       <span className="sr-only">Champion: </span>
                       <FinalTeam name={f.champion} l={champion} />
                     </span>
                     <span className="shrink-0 text-right font-num text-[20px] font-bold tabular-nums text-navy">{f.championScore == null ? finalScore(f) : `${f.championScore}-${f.runnerUpScore}`}</span>
                   </p>
-                  <p className="flex items-center text-[14px] text-muted">
+                  <p className="row-note">
                     <span className="pr-2">Runner-up</span>
                     <FinalTeam name={f.runnerUp} l={runnerUp} />
                   </p>

@@ -28,7 +28,7 @@ function Board({ id, title, note, rows, children }: { id: string; title: string;
 /** One team in a game, its score at the right. The team name is the tap target, so each team gets its own line. */
 function Side({ team, score }: { team: ReactNode; score: number }) {
   return (
-    <span className="flex items-center justify-between gap-3">
+    <span className="row-between">
       <span className="min-w-0 flex-1">{team}</span>
       <span className="font-num text-[18px] font-bold text-ink">{score}</span>
     </span>
@@ -36,7 +36,7 @@ function Side({ team, score }: { team: ReactNode; score: number }) {
 }
 
 // Wraps rather than cutting off: "124-74 vs Covenant Classical-Fort Worth · Aug 29, 2025" is more than one phone line.
-const Sub = ({ children }: { children: ReactNode }) => <span className="block text-[13px] leading-snug text-muted">{children}</span>;
+const Sub = ({ children }: { children: ReactNode }) => <span className="note-13s">{children}</span>;
 
 /** The game's date and its own page on one line, so a row is not a line taller for the link alone. */
 const GameLine = ({ date, href, label }: { date: string; href: string; label: string }) => (
@@ -61,7 +61,7 @@ export async function RecordsView({ org }: { org: Org }) {
     const slug = programFor(alignments, name, org.league)?.slug;
     const crest = <CrestSlot school={name} identity={(slug && identities.get(slug)) || EMPTY} />;
     return slug ? (
-      <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 items-center font-semibold leading-tight hover:text-navy hover:underline">
+      <Link href={`/programs/${slug}`} prefetch={false} className="lead-link">
         {crest}
         {name}
       </Link>

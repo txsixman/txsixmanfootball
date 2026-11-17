@@ -15,9 +15,9 @@ export function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; oth
   const lost = other.won && !side.won;
   const text = (
     <>
-      <span className={`min-w-0 flex-1 break-words leading-[15px] ${side.won ? "font-bold text-ink" : lost ? "text-muted" : "text-ink"}`}>{side.text}</span>
+      <span className={side.won ? "bx-won" : lost ? "bx-lost" : "bx-name"}>{side.text}</span>
       {right != null && (
-        <span className={`shrink-0 font-num tabular-nums ${typeof right === "string" ? "text-[13px] font-semibold text-navy" : `text-[19px] font-bold ${live != null ? "text-red" : ""}`}`}>
+        <span className={typeof right === "string" ? "bx-chance" : live != null ? "bx-live" : "bx-score"}>
           {right}
         </span>
       )}
@@ -33,7 +33,7 @@ export function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; oth
       title={side.text}
       aria-pressed={lit}
       onClick={() => onTeam(side.key!)}
-      className={`relative z-10 flex h-11 w-full items-center gap-1 px-1.5 text-left text-[13px] hover:bg-panel focus-visible:outline-2 focus-visible:outline-navy ${lit ? "bg-panel" : ""}`}
+      className={lit ? "bx-side bg-panel" : "bx-side"}
     >
       {text}
     </button>

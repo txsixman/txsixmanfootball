@@ -92,7 +92,7 @@ function TeamBoard({
         shown.map((r) => (
           <BoardRow key={r.team} place={r.place} figure={figure(r.value)} unit={unit}>
             {team(r.team)}
-            <span className="block text-[13px] leading-snug text-muted">
+            <span className="note-13s">
               {noun(r.games, "game")}
               {r.tied && " · tied"}
             </span>
@@ -111,7 +111,7 @@ function GameBoard({ rows, team }: { rows: readonly GameEntry[]; team: Teams }) 
         shown.map((g) => (
           <BoardRow key={`${g.date}-${g.team}`} place={g.place} figure={g.points} unit="points">
             {team(g.team)}
-            <span className="block text-[13px] leading-snug text-muted">
+            <span className="note-13s">
               {g.points}-{g.against} vs {g.opponent}
               {g.tied && " · tied"}
             </span>
@@ -147,7 +147,7 @@ export async function LeadersView({ season, view }: { season: number; view: Lead
     const slug = programFor(alignments, name, view.org.league)?.slug;
     const crest = <CrestSlot school={name} identity={(slug && identities.get(slug)) || EMPTY} />;
     return slug ? (
-      <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 items-center font-semibold leading-tight hover:text-navy hover:underline">
+      <Link href={`/programs/${slug}`} prefetch={false} className="lead-link">
         {crest}
         {name}
       </Link>

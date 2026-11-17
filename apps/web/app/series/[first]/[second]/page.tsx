@@ -133,7 +133,7 @@ export default async function SeriesPage({ params }: Props) {
           <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(r.date)}</span>{" "}
           <span className="min-w-0 text-[15px] leading-5 text-ink">
             {r.away} vs {r.home}{" "}
-            <span className="block text-[13px] leading-4 text-muted">{where}{disputed ? " · score reported, not counted" : ""}</span>
+            <span className="note-13">{where}{disputed ? " · score reported, not counted" : ""}</span>
           </span>{" "}
           <span className="font-num text-[19px] font-bold tabular-nums text-ink">{r.forfeit ? "Forfeit" : `${r.awayScore}-${r.homeScore}`}</span>
           <ChevronRight aria-hidden="true" className="size-4 text-muted" />

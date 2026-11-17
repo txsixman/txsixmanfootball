@@ -127,7 +127,7 @@ function Fact({ label, children, sub }: { label: string; children: ReactNode; su
     <div>
       <dt className="text-[13px] font-bold uppercase tracking-widest text-muted">{label}</dt>
       <dd className="font-num text-[26px] font-bold leading-tight tabular-nums text-navy">{children}</dd>
-      {sub && <dd className="text-[13px] leading-4 text-muted">{sub}</dd>}
+      {sub && <dd className="note-13i">{sub}</dd>}
     </div>
   );
 }
@@ -287,8 +287,8 @@ export default async function ProgramPage({ params }: Props) {
                 {lead(r)} {opponentLink(r.opponent)}
               </span>
             </span>
-            {r.note && <span className="block text-[13px] leading-4 text-muted">{r.note}</span>}
-            {r.projected && <span data-projected className="block text-[13px] leading-4 text-muted">{r.projected}</span>}
+            {r.note && <span className="note-13">{r.note}</span>}
+            {r.projected && <span data-projected className="note-13">{r.projected}</span>}
           </span>
           {r.href ? (
             <Link
@@ -685,7 +685,7 @@ export default async function ProgramPage({ params }: Props) {
                     <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">Best season</span>
                     <span className="min-w-0 text-[15px] leading-5 text-ink">
                       {best.season}
-                      <span className="block text-[13px] leading-4 text-muted">
+                      <span className="note-13">
                         {best.rank != null ? `#${best.rank} of ${best.of} in ${org?.label ?? school.league}` : "Not ranked"}
                         {best.playoff && ` · reached ${roundPhrase(best.playoff.round, best.playoff.league)}`}
                       </span>
@@ -716,7 +716,7 @@ export default async function ProgramPage({ params }: Props) {
                             {opponentCrest(g.opponent)}
                             {opponentLink(g.opponent)}
                           </span>
-                          <span className="block text-[13px] leading-4 text-muted">
+                          <span className="note-13">
                             {mediumDate(g.date)}
                             {g.playoff && " · playoff game"}
                           </span>
@@ -739,7 +739,7 @@ export default async function ProgramPage({ params }: Props) {
                     <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">Win streak</span>
                     <span className="min-w-0 text-[15px] leading-5 text-ink">
                       Wins in a row
-                      <span className="block text-[13px] leading-4 text-muted">
+                      <span className="note-13">
                         {mediumDate(streak.from.date)} to {mediumDate(streak.to.date)}
                         {streak.current && " · still going"}
                       </span>
@@ -920,7 +920,7 @@ export default async function ProgramPage({ params }: Props) {
                       ) : (
                         <>
                           <span className="block text-[19px] font-bold leading-5">{`${f.championScore}-${f.runnerUpScore}`}</span>
-                          {f.scoreNote && <span className="block text-[13px] leading-4 text-muted">{f.scoreNote}</span>}
+                          {f.scoreNote && <span className="note-13">{f.scoreNote}</span>}
                         </>
                       )}
                     </span>

@@ -560,10 +560,10 @@ test("records list the most points, the longest winning runs and unbeaten season
   }
   const points = page.getByRole("region", { name: "Most points in a game" }).getByRole("listitem");
   await expect(points).toHaveCount(10);
-  const figures = await points.locator("span.font-num.text-navy").allTextContents();
+  const figures = await points.locator("span.brd-fig").allTextContents();
   expect(figures.map(Number)).toEqual([...figures.map(Number)].sort((a, b) => b - a));
   await expect(page.getByText(/maxpreps|odds|spread|underdog|line\b/i)).toHaveCount(0);
-  const surprises = await page.getByRole("region", { name: "Biggest surprises" }).locator("li span.font-num.text-navy").allTextContents();
+  const surprises = await page.getByRole("region", { name: "Biggest surprises" }).locator("li span.brd-fig").allTextContents();
   expect(surprises.length).toBe(10);
   for (const u of surprises) expect(u).toMatch(/^(<1|[1-4]\d?)%( chance to win before the game)?$/); // the unit after it is read aloud only
 });

@@ -29,7 +29,7 @@ function RoundCard({ box, live, team, dim, onTeam }: { box: Box; live: LiveView 
       data-state={live ? "live" : box.state}
       className={`border bg-page transition-opacity ${box.state === "open" ? "border-dashed" : ""} ${mine ? "border-navy shadow-[0_0_0_1px_var(--color-navy)]" : "border-line"} ${dim ? "opacity-40" : ""}`}
     >
-      <p className="flex flex-wrap items-center justify-between gap-x-2 border-b border-line px-2 py-1 text-[13px] uppercase leading-5 tracking-wider text-muted">
+      <p className="rd-head">
         <span className="font-bold">{box.code ?? box.label}</span>
         <span>{[box.date ? dayLine(box.date) : played ? "" : "Date not listed yet", box.time].filter(Boolean).join(" · ")}</span>
       </p>
