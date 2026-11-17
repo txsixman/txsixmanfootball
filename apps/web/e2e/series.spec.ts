@@ -354,7 +354,7 @@ test("a final the sources disagree on is listed with its score, left out of the 
   const row = rows(page).filter({ has: page.locator(`a[href="${pair!.href}"]`) });
   await expect(row).toContainText("score reported, not counted");
   await expect(row.getByRole("link")).toHaveAttribute("aria-label", /, score reported, not counted, game page$/);
-  await expect(page.locator("header")).toContainText(/finals? (is|are) listed with the score reported and left out of the record/);
+  await expect(page.locator("article header")).toContainText(/finals? (is|are) listed with the score reported and left out of the record/);
   // It names no winner, so it is nobody's biggest win.
   for (const link of await glance(page).locator("dl > div").filter({ hasText: /^Biggest/ }).getByRole("link").all()) expect(await link.getAttribute("href")).not.toBe(pair!.href);
 });

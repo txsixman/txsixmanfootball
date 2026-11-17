@@ -161,7 +161,7 @@ test("a preview whose teams have met twice links to all their meetings", async (
   // One link to the page, not two: the preview's replaces the line a game with no preview has below it.
   await expect(page.getByRole("link", { name: new RegExp(`game since ${FIRST_SEASON}$`) })).toHaveCount(0);
   await link.click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/ vs /);
+  await expect(page).toHaveURL(/\/series\/[a-z0-9-]+\/[a-z0-9-]+$/);
   expect(detail.meetings.total).toBe(await page.locator("section[aria-labelledby=meetings] > ul > li").count());
 });
 
