@@ -84,13 +84,13 @@ export async function latestReview(org: Org = ORGS[0]): Promise<{ season: number
 }
 
 /** The ids of a season's games whose finals the sources dispute (ADR 0040). */
-const disputedIds = memo(async (season: number): Promise<ReadonlySet<string>> => {
+export const disputedIds = memo(async (season: number): Promise<ReadonlySet<string>> => {
   const [games, disputed] = await Promise.all([loadSeasonResults(season), loadDisputed(season)]);
   return new Set(games.filter((g) => isDisputed(disputed, g.date, g.home, g.away)).map((g) => g.id));
 });
 
 /** Every team's games through a season, across seasons, with the seasons read (a streak is not joined across a season with none of the team's games). Shared: never mutate it. */
-const sequencesThrough = memo(async (season: number) => {
+export const sequencesThrough = memo(async (season: number) => {
   const seasons = (await resultSeasons()).filter((s) => s <= season).sort((a, b) => a - b);
   const per = await Promise.all(seasons.map(async (s) => (await loadSeasonResults(s)).map((g) => ({ ...g, season: s }))));
   const ids = new Set((await Promise.all(seasons.map(disputedIds))).flatMap((d) => [...d]));
@@ -98,7 +98,7 @@ const sequencesThrough = memo(async (season: number) => {
 });
 
 /** Every playoff game of every season held, with the program each team is counted under (a renamed school under the name it became, lib/lineage.ts). Shared: never mutate it. */
-const playoffHistory = memo<void, { seasons: { season: number; games: PlayoffGame[] }[]; program: (team: string) => string }>(async () => {
+export const playoffHistory = memo<void, { seasons: { season: number; games: PlayoffGame[] }[]; program: (team: string) => string }>(async () => {
   const [alignments, lineage] = await Promise.all([loadAlignments(), loadLineage()]);
   const successors = successorOf(lineage);
   const seasons = await Promise.all(
@@ -114,7 +114,7 @@ const firstWins = memo<void, Map<string, string>>(async () => {
 });
 
 /** The week's firsts for the organization's own teams, each with its game (a first needs an earlier season held to compare with, so the oldest season's playoffs claim none). */
-async function weekMilestones(org: Org, season: number, monday: string, sunday: string, games: SeasonResult[], sequences: Awaited<ReturnType<typeof sequencesThrough>>["sequences"], schools: Awaited<ReturnType<typeof schoolAlignments>>): Promise<Milestone[]> {
+export async function weekMilestones(org: Org, season: number, monday: string, sunday: string, games: SeasonResult[], sequences: Awaited<ReturnType<typeof sequencesThrough>>["sequences"], schools: Awaited<ReturnType<typeof schoolAlignments>>): Promise<Milestone[]> {
   const mine = (team: string) => teamInOrg(schools, org, team);
   const byKey = new Map(games.map((g) => [gameKey(g.date, g.home, g.away), g]));
   const byId = new Map(games.map((g) => [g.id, g]));
