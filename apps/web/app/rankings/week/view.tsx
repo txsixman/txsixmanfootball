@@ -11,6 +11,7 @@ import { ratingSeasons } from "@/lib/ratings";
 import { rankingWeeks, weekRows } from "@/lib/week-rankings";
 import { TabNav } from "../../tab-nav";
 import { WeekStrip } from "../../week-strip";
+import { Movers } from "../movers";
 import { RankingsHeader, RatingsTable, type Row } from "../table";
 
 const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -52,6 +53,7 @@ export async function WeekRankings({ wanted, org }: { wanted: string; org: Org }
         </Link>
         }
       />
+      <Movers rows={rows} title={`Biggest movers in week ${week.number}`} />
       <RatingsTable rows={rows} />
       <p className="mt-3 text-[13px] text-muted">
         Scores may be corrected if a mistake is found. Records count forfeits; ratings leave them out. Under each team: games played and games rated, through that Sunday.

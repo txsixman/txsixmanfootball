@@ -499,8 +499,8 @@ test("rankings pick a season; a past season shows its final table, overall only"
 
 test("a program page lists each season: record, place and the last playoff round played", async ({ page }) => {
   await page.goto("/programs/gordon");
-  const trend = page.getByRole("region", { name: "2026 rank by week" });
-  await expect(trend.getByRole("img", { name: /^Rank in its organization from #\d+ in the week ending .+ to #\d+ in the week ending .+; best #\d+\.$/ })).toBeVisible();
+  const trend = page.getByRole("region", { name: "2026 rank and rating by week" });
+  await expect(trend.getByRole("img", { name: /^Rank in .+ from #\d+ in the week ending .+ to #\d+ in the week ending .+; best #\d+\. Rating from / })).toBeVisible();
   expect(await trend.locator("tbody tr").count()).toBeGreaterThanOrEqual(3);
   const seasons = page.getByRole("region", { name: "Season by season" });
   await expect(seasons.getByRole("listitem")).toHaveCount(SEASONS);
@@ -712,11 +712,11 @@ test("PWA: installable, and a visited page opens offline while an unvisited one 
   await context.setOffline(false);
 });
 
-test("a program page charts its rating by week (Observable Plot), with a text alternative and no betting words", async ({ page }, info) => {
+test("a program page charts its rank and rating by week, with a text alternative and no betting words", async ({ page }, info) => {
   await checkPage(page, "/programs/jayton", `rating-chart-${info.project.name}`);
-  const section = page.getByRole("region", { name: /rating by week$/ });
-  await expect(section.getByRole("img", { name: /^Rating from [+−-]?\d/ })).toBeVisible();
+  const section = page.getByRole("region", { name: /rank and rating by week$/ });
+  await expect(section.getByRole("img", { name: /Rating from [+−-]?\d/ })).toBeVisible();
   await expect(section.locator("figcaption")).toHaveText(/Zero is an average team\.$/);
   expect(await section.locator("table tbody tr").count()).toBeGreaterThanOrEqual(3);
-  await expect(section.getByText(/odds|spread|line|bet/i)).toHaveCount(0);
+  await expect(section.getByText(/\b(odds|spread|lock|bets?|picks?)\b/i)).toHaveCount(0);
 });

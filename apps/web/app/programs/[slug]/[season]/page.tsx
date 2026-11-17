@@ -13,6 +13,7 @@ import { lead, seasonRows, type Row } from "@/lib/program-games";
 import { programSeason, programSeasonPages } from "@/lib/program-seasons";
 import { FEW_GAMES, ratingSeasons, record, signed } from "@/lib/ratings";
 import { seriesHref } from "@/lib/series";
+import { teamHistory } from "@/lib/team-history";
 import { seriesPartners } from "@/lib/series-data";
 import { CURRENT_SEASON } from "@/lib/season";
 import { resultSeasons } from "@/lib/weeks";
@@ -21,6 +22,7 @@ import { seasonHref } from "../../../rankings/view";
 import { seasonHref as resultsHref } from "../../../results/paths";
 import { CrestSlot, EdgeToEdge, SectionBar } from "../../../ui";
 import { Crest, HEADER_CREST_MAX_ASPECT, headerCrestSize } from "../../crest";
+import { HistoryChart } from "../../history-chart";
 import { programSeasonTitle } from "@/lib/titles";
 import { programCardTags } from "../card/program-card";
 
@@ -83,6 +85,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
 
   // Every game read, oldest first. For the season under way, a bracket game not yet played joins them, with its projection.
   const unplayed = season === CURRENT_SEASON ? seasonRows(school.school, await bracketGames(), await loadSeasonResults(season)).rows.filter((r) => !r.score) : [];
+  const history = await teamHistory(season, school);
   const rows: Row[] = [...played, ...unplayed].sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
 
   const label = org?.label ?? school.league;
@@ -147,6 +150,17 @@ export default async function ProgramSeasonPage({ params }: Props) {
             Record counts the playoffs; a forfeit counts as a win or a loss. Rank is among {label} teams as today&rsquo;s alignments place them.
           </p>
         </section>
+
+        {history.length >= 3 && (
+          <section aria-labelledby="rank-rating-by-week" className="mt-4">
+            <SectionBar id="rank-rating-by-week" title={`${season} rank and rating by week`} className="mt-2" />
+            <HistoryChart
+              points={history}
+              label={org?.label ?? school.league}
+              note={season === seasons[0] ? undefined : "Teams are placed by today's alignments."}
+            />
+          </section>
+        )}
 
         <section aria-labelledby="games" className="mt-4">
           <SectionBar id="games" title={`${season} games`} aside="Oldest first" className="mt-2" />
