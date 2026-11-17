@@ -7,6 +7,8 @@ import { ORGS } from "@/lib/orgs";
 import { CURRENT_SEASON } from "@/lib/season";
 import { SITE_URL } from "@/lib/site";
 import { lastmodFor, type SitemapDates, type SitemapEntry } from "@/lib/sitemap-xml";
+import { leadersHref } from "@/lib/leaders";
+import { leaderPages, leaderSeasons } from "@/lib/leaders-load";
 import { loadWeeks, resultSeasons } from "@/lib/weeks";
 import { generateStaticParams as stateChampionshipPages } from "../championships/[year]/[bracket]/page";
 import { generateStaticParams as championshipYears } from "../championships/[year]/page";
@@ -41,6 +43,12 @@ type Kind = (typeof KINDS)[number];
 const SECTIONS = ["", "scores", "scores/tonight", "playoffs", "playoffs/this-round", "results", "rankings", "rankings/how", "about/ratings", "standings", "programs", "records", "championships", "matchup", "seasons", "welcome"];
 const SAMPLE_GAMES = new Set(demoGames.map((g) => g.id));
 
+/** Every scoring-leaders page (app/leaders), from the same list that makes the pages. */
+const leaderPaths = async () => {
+  const [latest] = await leaderSeasons();
+  return (await leaderPages()).map(({ season, view }) => leadersHref(season, latest, view).slice(1));
+};
+
 const PATHS: Record<Kind, () => Promise<string[]>> = {
   sections: async () => [
     ...SECTIONS,
@@ -59,6 +67,7 @@ const PATHS: Record<Kind, () => Promise<string[]>> = {
     ...(await championshipYears()).map((p) => `championships/${p.year}`),
     ...(await stateChampionshipPages()).map((p) => `championships/${p.year}/${p.bracket}`),
     ...(await seasonHubs()).map((p) => `seasons/${p.year}`),
+    ...(await leaderPaths()),
   ],
   programs: async () => [
     ...(await programs()).map((p) => `programs/${p.slug}`),

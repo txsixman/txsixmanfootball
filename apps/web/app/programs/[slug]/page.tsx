@@ -13,6 +13,8 @@ import { loadCorrections } from "@/lib/correction-files";
 import { countingRows, loadAliases, loadLineage, loadNames, type OtherName, otherNames, successorOf } from "@/lib/lineage";
 import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
+import { leadersHref, viewOfSchool } from "@/lib/leaders";
+import { leaderPages, leaderSeasons, loadLeaders } from "@/lib/leaders-load";
 import { loadRanked, rankLabel } from "@/lib/rankings";
 import { ratedFromOutsideOnly, OUTSIDE_ONLY_NOTE } from "@/lib/outside-only";
 import { FEW_GAMES, ratingSeasons, ratingText, record, signed } from "@/lib/ratings";
@@ -154,6 +156,13 @@ export default async function ProgramPage({ params }: Props) {
   const ranksPage = !org || (await activeOrgs()).includes(org);
   const standing = (await loadStandings(CURRENT_SEASON)).find((d) => d.rows.some((r) => r.school.slug === slug));
   const place = standing ? standing.rows.findIndex((r) => r.school.slug === slug) + 1 : 0;
+  // This season's scoring ranks (/leaders, ADR 0101): once the team has enough games to be listed.
+  const leadersView = viewOfSchool(school);
+  const leadersPageOf = leadersView && (await leaderPages()).some((p) => p.season === CURRENT_SEASON && p.view === leadersView);
+  const scoring = leadersView && leadersPageOf ? await loadLeaders(CURRENT_SEASON, leadersView) : undefined;
+  const leadersLatest = (await leaderSeasons())[0];
+  const scoredRank = scoring?.scored.find((r) => r.team === school.school);
+  const allowedRank = scoring?.allowed.find((r) => r.team === school.school);
   const opponentLink = (name: string) => {
     const opponent = programFor(all, name, school.league);
     return opponent ? (
@@ -453,6 +462,16 @@ export default async function ProgramPage({ params }: Props) {
           )}
         </header>
         <p className="px-3 pt-3 text-[14px] leading-5 text-muted">{programEdge({ name: school.school, firstSeason: FIRST_SEASON })}</p>
+        {leadersView && scoredRank && allowedRank && (
+          <p data-pagefind-ignore className="flex flex-wrap items-center gap-x-3 px-3 text-[14px] leading-5 text-muted">
+            <span>
+              Scoring: {scoredRank.value.toFixed(1)} points per game ({scoredRank.tied && "tied "}{ordinal(scoredRank.place)} in {leadersView.name}), {allowedRank.value.toFixed(1)} allowed ({allowedRank.tied && "tied "}{ordinal(allowedRank.place)}).
+            </span>
+            <Link href={leadersHref(CURRENT_SEASON, leadersLatest, leadersView)} prefetch={false} className="inline-flex min-h-11 items-center font-semibold text-navy underline underline-offset-2">
+              Scoring leaders
+            </Link>
+          </p>
+        )}
 
         {(next || latest) && (
           <section aria-label="Next and latest game" className="grid gap-px border-b border-line bg-line sm:grid-cols-2">

@@ -97,7 +97,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <div className="mx-auto max-w-5xl px-4 py-6">
               <p className="font-num text-[22px] font-bold tracking-wide">{SITE_NAME}</p>
               <nav aria-label="Site sections" className="mt-2 grid grid-cols-2 gap-x-4 sm:grid-cols-5">
-                {[...SECTIONS, { href: "/matchup", label: "Matchup" }, { href: "/seasons", label: "Seasons" }].map((s) => (
+                {[...SECTIONS, { href: "/matchup", label: "Matchup" }, { href: "/seasons", label: "Seasons" }, { href: "/leaders", label: "Leaders" }].map((s) => (
                   <Link
                     key={s.href}
                     href={s.href}

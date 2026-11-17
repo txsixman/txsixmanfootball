@@ -90,7 +90,7 @@ test("plain-text addresses are found, and comments and built addresses are not",
 
 test("the site's routes include the sections the header lists", () => {
   const has = known();
-  for (const h of ["/", "/scores", "/playoffs", "/programs", "/rankings", "/results", "/standings", "/championships", "/records", "/search", "/matchup", "/seasons", "/welcome", "/privacy", "/terms", "/programs/jayton", "/results/2025/9/tapps", "/sitemap.xml", "/robots.txt", "/ratings", "/champions"]) {
+  for (const h of ["/", "/scores", "/playoffs", "/programs", "/rankings", "/results", "/standings", "/championships", "/records", "/search", "/matchup", "/seasons", "/leaders", "/leaders/tapps", "/leaders/2025", "/leaders/2025/division-1", "/welcome", "/privacy", "/terms", "/programs/jayton", "/results/2025/9/tapps", "/sitemap.xml", "/robots.txt", "/ratings", "/champions"]) {
     assert.ok(has(h), h);
   }
   assert.ok(!has("/no-such-section") && !has("/scores/a/b/c"));

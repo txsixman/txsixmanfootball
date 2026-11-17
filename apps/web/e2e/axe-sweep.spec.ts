@@ -40,6 +40,8 @@ const PAGES = [
   "/championships/2025",
   "/seasons/2025",
   "/records",
+  "/leaders",
+  "/leaders/2025/division-1",
   "/search?q=jayton",
   "/sign-in",
   "/no-such-page",

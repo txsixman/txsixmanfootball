@@ -103,6 +103,15 @@ test("every other page kind fits, names its organization and season, and differs
   assert.match(d.districtStandingsDescription({ label: "TCAF District 2", season: 2026, teams: 4, games: 0 }), /4 teams, no district games played\./);
 });
 
+test("scoring leaders: one view and season each, final scores only, no winner or betting word", () => {
+  const all = ["UIL", "UIL Division I", "UIL Division II", "TAPPS", "TAIAO", "TCAF", "Independent"].flatMap((label) => [2018, 2026].map((season) => d.leadersDescription({ label, season })));
+  all.forEach(clean);
+  assert.equal(new Set(all).size, all.length, "two descriptions alike");
+  assert.equal(d.leadersDescription({ label: "UIL", season: 2026 }), "UIL six-man scoring leaders for 2026: points per game, points allowed, shutouts and 60-point games. Final scores only.");
+  assert.ok(d.leadersDescription({ label: "UIL Division II", season: 2026 }).length <= 160);
+  for (const text of all) assert.doesNotMatch(text, /\b(won|beat|winner|victory)\b/i);
+});
+
 test("an empty week or season reads plainly", () => {
   assert.equal(d.resultsDescription({ org: "TAPPS", season: 2026, week: 13, games: 0, scope: "latest" }), "Latest TAPPS six-man results: 2026 week 13, no games.");
   assert.equal(d.resultsDescription({ org: "UIL", season: 2026, week: 3, games: 1, scope: "week" }).slice(0, 39), "UIL 2026 week 3 six-man results: 1 game");

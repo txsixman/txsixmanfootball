@@ -46,6 +46,10 @@ test("each kind of page takes the date of the latest game it shows", () => {
   assert.equal(s.lastmodFor("standings/district/uil-division-i-district-8", d), "2026-11-14");
   assert.equal(s.lastmodFor("seasons", d), "2026-11-14");
   assert.equal(s.lastmodFor("seasons/2025", d), "2025-12-12");
+  assert.equal(s.lastmodFor("leaders", d), "2026-11-14");
+  assert.equal(s.lastmodFor("leaders/tapps", d), "2026-11-14");
+  assert.equal(s.lastmodFor("leaders/2025", d), "2025-12-12");
+  assert.equal(s.lastmodFor("leaders/2025/division-1", d), "2025-12-12");
   assert.equal(s.lastmodFor("welcome", d), "2026-11-14", "the landing page's counts move with every game");
 });
 

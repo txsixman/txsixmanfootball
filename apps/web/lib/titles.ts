@@ -115,6 +115,10 @@ export const resultsTitle = ({ label, season, week, scope }: { label: string; se
 
 export const recordsTitle = (label: string) => fit(`${label} six-man football records`, `${label} records`);
 
+/** One view's scoring leaders for a season (/leaders): `label` is "UIL", "UIL Division I", "TAPPS"... */
+export const leadersTitle = ({ label, season }: { label: string; season: number }) =>
+  fit(`${season} ${label} six-man scoring leaders`, `${season} ${label} scoring leaders`);
+
 export const championshipsTitle = ({ first, latest }: { first?: number; latest?: number }) =>
   first === undefined ? "UIL six-man state champions" : `UIL six-man state champions, ${first} to ${latest}`;
 
