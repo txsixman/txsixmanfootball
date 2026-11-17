@@ -8,8 +8,8 @@ page says, shows or reads aloud.
   things: the phone's hidden `/rankings` columns, the bracket's three copies of its games, and Tailwind class text in repeated rows.
   This pass measures the live site again (Nov 17, 06:00 UTC, `curl` with `accept-encoding: br`, a phone user agent) and cuts what can
   be cut without a reader noticing.
-- **How a page's bytes are counted.** "HTML sent" is what Vercel sends. It is brotli at quality 3, checked to the byte on four pages
-  (`/rankings` 59,325 B live, 59,325 B when the saved HTML is recompressed at quality 3), so every "sent" number here, before and after,
+- **How a page's bytes are counted.** "HTML sent" is what Vercel sends. It is brotli at quality 3: the saved live HTML recompressed that way matches what Vercel sent within 2 bytes on `/seasons/2025` (36,318 B live, 36,316 B), the program page (41,334, 41,332) and the bracket (31,635, 31,634), and within 1 percent on `/rankings` (59,325, 58,799),
+  so every "sent" number here, before and after,
   is the HTML recompressed that way. "HTML raw" is the HTML as the browser parses it; "page data" is the `self.__next_f` stream inside it.
 - **Where the bytes are.** None of the heavy pages hands a large prop to a client component (that was the scores board, ADR 0100):
   `/seasons/2025`, `/leaders`, `/rankings`, `/standings`, `/championships` and the program page are pure server rendering. Their page
@@ -27,7 +27,7 @@ page says, shows or reads aloud.
   - The bracket page's tree, round cards and "Who's left" are one client component rendered to HTML (4.3, 3.9 and 1.9 KB sent) and
     sent as data once (3.0 KB); the games list below is the keyboard path past the drawing (ADR 0094) and is server markup (HTML and data).
     Which view shows depends on the width, so the server cannot send only one. No copy was removed.
-- **Measured before (live site main, Nov 17, 2026)**, then after in the table below.
+- Before and after, measured the same way on CI's builds, are in Results.
 
 ## Decision
 - **Repeated markup is named once.** `app/globals.css` gets 63 `@utility` names under "Repeated markup": the crest (`crest-slot`,
@@ -45,13 +45,36 @@ page says, shows or reads aloud.
   component outside `app/scores/` spells out a named list again beside its name. `e2e/page-bytes.spec.ts` (CI's page tests, on the
   production build): ten heavy pages (`/`, `/scores`, `/rankings`, a bracket, `/seasons/2025`, `/leaders`, a series page, a program page,
   `/standings`, `/championships`) each stay under a raw-HTML budget and a sent budget (quality-3 brotli), set at the measured size with
-  about 6 percent of room for a game night's new rows. Lighthouse's `resource-summary:document:size` stays at 70 KB sent.
+  4 to 8 percent of room for a game night's new rows. Lighthouse's `resource-summary:document:size` stays at 70 KB sent.
 
 ## Results
-(Filled from the CI build of this branch, below; "before" is the live site, "after" is the built page, both counted as above.)
+Both columns are the same measure (`e2e/page-bytes.spec.ts`, the HTML the production build serves, recompressed at quality 3), taken on
+CI's build of `main` at b40a906 (a throwaway pull request, run 44073125028) and of this branch (run 44070319214), minutes apart on the same
+data. The live-site numbers in Context (measured with `curl`) differ from the build's by a few percent, as `/scores` shows (231.6 live,
+231.2 built); the build pair is the fair comparison.
+
+| Page | HTML raw KB | HTML sent KB (quality-3 brotli) |
+|---|---|---|
+| / | 246.1 -> 219.7 (-11%) | 19.3 -> 18.8 (-3%) |
+| /scores (not touched) | 231.2 -> 220.8 (-4%) | 21.7 -> 21.8 (+0%) |
+| /rankings | 1021.8 -> 707.5 (-31%) | 57.4 -> 54.3 (-5%) |
+| /playoffs/bracket/uil-division-i | 409.7 -> 326.7 (-20%) | 30.4 -> 29.4 (-3%) |
+| /seasons/2025 | 614.7 -> 487.8 (-21%) | 35.1 -> 33.0 (-6%) |
+| /leaders | 231.1 -> 163.4 (-29%) | 14.0 -> 13.3 (-5%) |
+| /series/aspermont/jayton | 63.0 -> 59.7 (-5%) | 9.7 -> 9.5 (-2%) |
+| /programs/jayton | 434.3 -> 397.1 (-9%) | 40.1 -> 39.7 (-1%) |
+| /standings | 599.2 -> 438.2 (-27%) | 25.5 -> 24.2 (-5%) |
+| /championships | 512.4 -> 372.0 (-27%) | 24.4 -> 23.2 (-5%) |
+
+- Raw HTML, which is also what the page's data stream is made of, falls 5 to 31 percent; bytes sent fall 1 to 6 percent (`/scores`, not edited, is flat). The
+  difference is the point made in Context: Vercel's quality-3 brotli already squeezes repeated class text, so the saving is real but
+  small. `/scores` (not edited; its raw size moved only because the header and footer links share the new names) and the program page
+  (its crests were most of its repeated markup, and its rows were already trimmed by `.pg`, ADR 0100) gain least.
+- Not measured, and not claimed: blocking time and largest paint (the runner's noise is larger than anything here), or a phone's parse
+  time for 25 to 300 KB less markup, which is what the raw column stands for.
 
 ## Consequences
-- A page is smaller by what its class text was, not by what it says: raw HTML falls 10 to 30 percent and sent bytes 3 to 7 percent,
+- A page is smaller by what its class text was, not by what it says: raw HTML falls 5 to 31 percent and sent bytes 1 to 6 percent,
   because brotli already squeezes repeated class text well. That is the honest size of this lever.
 - A new long list says `prefetch={false}` (ADR 0100) **and** names its row's look once in `globals.css` rather than spelling it per row.
 - Not done, with the cost named: the `/rankings` hidden columns (22 KB sent, above) and a client-side table for rankings (the data
