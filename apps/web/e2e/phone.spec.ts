@@ -125,7 +125,7 @@ test("a shared search link does not jump when its results land", async ({ page }
     }).observe({ type: "layout-shift", buffered: true });
   });
   await open(page, "/search?q=jayton");
-  await expect(page.getByRole("status")).toHaveText(/\d+ matches?/);
+  await expect(page.getByRole("status")).toHaveText(/\d+ match(es)?\b/);
   await expect(page.locator('main a[href="/programs/jayton"]')).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { shift: number }).shift)).toBeLessThan(0.1);
 });

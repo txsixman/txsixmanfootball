@@ -35,7 +35,9 @@ for (const [typed, name, href] of [
 
 test("each result says its league and place, so schools of one name are told apart", async ({ page }) => {
   await page.goto("/search?q=lubbock");
-  const lines = await page.getByRole("list", { name: "Teams, games and seasons" }).getByRole("listitem").allInnerTexts();
+  const items = page.getByRole("list", { name: "Teams, games and seasons" }).getByRole("listitem");
+  await expect(items.first()).toBeVisible(); // the results land after the page has drawn
+  const lines = await items.allInnerTexts();
   expect(lines.some((l) => /TAIAO/.test(l)) && lines.some((l) => /Lubbock\s+·.*TAPPS Division III/.test(l.replace(/\n/g, " ")))).toBe(true);
 });
 
