@@ -1,7 +1,7 @@
 // The scoreboard's midweek order is decided before first paint by an inline script (lib/upcoming-first.ts, ADR 0103).
 //   node --test apps/web/scripts/
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -45,4 +45,12 @@ test("the inline script is the same function, whole, and sets or clears the attr
   assert.equal(run("2026-11-17T07:00:00Z", "2026-11-14", ["2026-11-19"]), true);
   assert.equal(run("2026-11-15T14:00:00Z", "2026-11-14", ["2026-11-19"]), false);
   assert.equal(run("2026-11-17T07:00:00Z", "", ["2026-11-19"]), false);
+});
+
+test("midweek, the sections stay hidden until the last of them is in, so a phone never paints the finals first (ADR 0107)", () => {
+  const css = readFileSync(path.join(WEB, "app/globals.css"), "utf8");
+  assert.match(css, /\[data-upcoming-first\] \.board-sections:not\(:has\(> \[data-board-end\]\)\) \{\s*visibility: hidden;/);
+  const board = readFileSync(path.join(WEB, "app/scores/board.tsx"), "utf8");
+  // The end mark is the container's last child, right after "Later" and "Next games", the part that arrives last.
+  assert.match(board, /<div className="board-sections flex flex-col">[\s\S]*?\{upcoming\}<\/div>\s*<i hidden data-board-end="" \/>\s*<\/div>/);
 });

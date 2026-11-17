@@ -380,7 +380,8 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
         )}
       </nav>
 
-      <div className="flex flex-col">
+      {/* `board-sections` stays hidden midweek until its last child (the end mark) is parsed (globals.css, ADR 0107). */}
+      <div className="board-sections flex flex-col">
         <div className="order-1">
           <Section id="live" title="Live now" live games={live} crests={crests} checked={checked} counts={commentCounts} />
           <Section id="in-progress" title="In progress, no score yet" games={underWay} crests={crests} checked={checked} counts={commentCounts} />
@@ -391,6 +392,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
           <Section id="not-reported" title="Score not reported yet" games={notReported} crests={crests} checked={checked} counts={commentCounts} />
         </div>
         <div className="order-4 [[data-upcoming-first]_&]:order-2">{upcoming}</div>
+        <i hidden data-board-end="" />
       </div>
       {!shown.length && (
         <div className="px-3 pb-6">

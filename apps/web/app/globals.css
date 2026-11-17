@@ -116,6 +116,15 @@ body {
   @apply inline-flex min-h-11 items-center justify-center border-2 border-alert bg-alert px-4 font-bold text-white hover:brightness-110;
 }
 
+/* The scoreboard's midweek order (ADR 0103, 0107). Midweek "Later" is moved above the finals with CSS `order`, but it comes
+   after them in the HTML, and a phone paints a long page before it has all of it: the finals were painted at the top, then
+   "Later" arrived and pushed them down (Lighthouse: 0.52 of layout shift). So, in that order only, the sections stay hidden
+   until the end mark after the last of them is in, and then appear in place at once. A browser without `:has()` ignores the
+   rule and behaves as before. */
+[data-upcoming-first] .board-sections:not(:has(> [data-board-end])) {
+  visibility: hidden;
+}
+
 /* Printing a bracket (ADR 0049): the drawing alone, on one landscape page. Its frame sets --print-zoom to fit the page. */
 @media print {
   @page {
