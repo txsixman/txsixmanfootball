@@ -1,5 +1,6 @@
 // node --test apps/web/scripts/*.test.mjs (CI, after npm ci in apps/web)
 import assert from "node:assert/strict";
+import { gunzipSync } from "node:zlib";
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -61,4 +62,35 @@ test("files written after the build go to Vercel's output too, when its adapter 
 test("a build with no searchable pages fails loudly", async () => {
   const dir = site({ "app/index.html": page("<h1>Home</h1>") });
   await assert.rejects(buildIndex({ serverDir: dir, outputPaths: [path.join(dir, "out")] }), /no searchable pages/);
+});
+
+/** What Pagefind stored as the text of the page at `url`. */
+async function indexedText(html, url) {
+  const pagefind = await import("pagefind");
+  const { index } = await pagefind.createIndex();
+  try {
+    const added = await index.addHTMLFile({ url, content: html });
+    assert.deepEqual(added.errors, []);
+    const { files } = await index.getFiles();
+    const fragment = files.find((f) => f.path.endsWith(".pf_fragment"));
+    // A fragment is gzipped JSON behind a short marker (pagefind_dcd).
+    return JSON.parse(gunzipSync(Buffer.from(fragment.content)).toString().replace(/^[^{]*/, "")).content;
+  } finally {
+    await pagefind.close();
+  }
+}
+
+// app/results/view.tsx and app/programs/crest.tsx rely on three things Pagefind does; this fails if an upgrade changes one.
+test("Pagefind joins inline boxes, skips data-pagefind-ignore, and indexes hidden text: how a results row stays readable in the search", async () => {
+  const row = (names) => `<div><span><span aria-hidden="true">O</span><a>${names[0]}</a></span><span><span aria-hidden="true">J</span><a>${names[1]}</a></span></div>`;
+  const before = await indexedText(page(`<main data-pagefind-body><li>${row(["Oakwood", "Jayton"])}</li></main>`), "/results/a");
+  assert.match(before, /OOakwoodJJayton/, "inline parts are joined, which is the fault being guarded against");
+
+  const after = await indexedText(
+    page(
+      `<main data-pagefind-body><li><p hidden>Oakwood at Jayton, 8 to 54.</p><div data-pagefind-ignore>${row(["Oakwood", "Jayton"])}</div></li></main>`,
+    ),
+    "/results/b",
+  );
+  assert.equal(after, "Oakwood at Jayton, 8 to 54.");
 });

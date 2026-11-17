@@ -13,6 +13,7 @@ function Monogram({ team }: { team: Team }) {
   return (
     <span
       aria-hidden="true"
+      data-pagefind-ignore // decoration: the letters must not be indexed as text
       className="inline-flex size-10 shrink-0 items-center justify-center font-num text-[16px] font-bold leading-none tracking-wide text-white"
       style={{ backgroundColor: team.color }}
     >

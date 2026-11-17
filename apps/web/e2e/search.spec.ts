@@ -123,3 +123,23 @@ test("shared search links do not jump when their results land", async ({ page },
     expect(await page.evaluate(() => (window as unknown as { shift: number }).shift), q).toBeLessThan(0.1);
   }
 });
+
+test("a week of results is found with a sentence, not words run together (production build, which has the Pagefind index)", async ({ page }) => {
+  test.skip(!process.env.CI, "the search index exists only after a production build");
+  await page.goto("/search");
+  // What the search box does for the weeks: Pagefind's excerpts for a team's name.
+  const excerpts = await page.evaluate(async () => {
+    const index = "/pagefind/pagefind.js"; // in a variable, so neither the compiler nor the bundler looks for the file
+    const pagefind = await import(/* webpackIgnore: true */ index);
+    const { results } = await pagefind.search("jayton");
+    const data = await Promise.all(results.slice(0, 40).map((r: { data: () => Promise<{ url: string; excerpt: string }> }) => r.data()));
+    return data.filter((d) => !d.url.startsWith("/programs/")).map((d) => d.excerpt);
+  });
+  expect(excerpts.length).toBeGreaterThan(0);
+  for (const e of excerpts) {
+    // A letter touching a highlighted word is a name joined to the one beside it ("OakwoodJayton") or a crest's initials before it ("OJayton").
+    expect(e).not.toMatch(/[A-Za-z]<mark>|<\/mark>[A-Za-z]/);
+    // The game, said once in words: "Oakwood at Jayton, 8 to 54."
+    expect(e).toMatch(/[A-Za-z.'&-]+(?: [A-Za-z.'&-]+)* at (?:[A-Za-z.'&-]+ )*[A-Za-z.'&-]+, (?:\d+ to \d+|forfeit)\./);
+  }
+});

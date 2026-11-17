@@ -192,3 +192,7 @@ Not in an ADR:
   left" list per bracket with each team's next game and State title chance, a button that lights its path, and its program page's
   playoff path; a team's road game by game; and a "Current round" block on /playoffs and every league's page, with the round marked
   in each bracket's list (Nov 16, 2026).
+- **Search excerpts read as a sentence**: Pagefind joins inline boxes with no space and indexes a crest's initials as text, so a
+  week of results showed "OOakwoodJayton. 8 54". Each results row now leaves the index (`data-pagefind-ignore`) and a hidden
+  sentence says the game once ("Oakwood at Jayton, 8 to 54."); the crest and monogram letters are ignored everywhere. Nothing
+  visible changes; a node test pins Pagefind's behaviour and a CI test reads the real excerpts (Nov 16, 2026).

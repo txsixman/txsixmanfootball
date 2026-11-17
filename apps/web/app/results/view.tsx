@@ -16,6 +16,10 @@ import { seasonHref, weekHref } from "./paths";
 
 /** One week of one organization's results: the games with a team in it, whoever the other team is (ADR 0012). Robot-read
  * scores are unconfirmed, so no row names a winner (ADR 0004, ADR 0008). */
+/** A game as one sentence for the site search's excerpts: "Oakwood at Jayton, 8 to 54." (away team first, as the rows are). */
+export const indexedSentence = (g: { away: string; home: string; awayScore: number | null; homeScore: number | null; forfeit?: boolean }) =>
+  `${g.away} at ${g.home}, ${g.forfeit || g.awayScore == null || g.homeScore == null ? "forfeit" : `${g.awayScore} to ${g.homeScore}`}.`;
+
 export async function ResultsWeek({ org, season, week }: { org: Org; season: number; week: number }) {
   const [weeks, seasons, alignments, identities, { byId: before }, disputed, orgSeasons] = await Promise.all([
     loadWeeks(season, org),
@@ -85,7 +89,9 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
           <ul className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
             {games.map((g) => (
               <li key={g.id} className="min-w-0 border-b border-line py-1 text-[15px] text-ink">
-                <div className="flex items-stretch">
+                {/* What the site search indexes for this game: one plain sentence. The row below is left out of the index, because its team names are separate inline boxes that Pagefind joins into one word ("OakwoodJayton"). The sentence is hidden from the page and from screen readers, which have the row. */}
+                <p hidden>{indexedSentence(g)}</p>
+                <div data-pagefind-ignore className="flex items-stretch">
                   <div className="min-w-0 flex-1">
                     {team(g.away)}
                     {team(g.home)}
