@@ -49,6 +49,6 @@ State Championship), ADR 0040 (a final names a winner unless disputed) and ADR 0
   were State Championships with history (TAPPS and TCAF; UIL's are in December).
 - The game-night e2e no longer reads the next-game block as part of "the preview names no winner": that block says "the winner
   plays ..." by design, and has its own tests (`e2e/game-preview.spec.ts`, `scripts/game-preview.test.mjs`).
-- `state-championships.ts` still writes a Central day from a bracket slot's UTC kickoff by cutting the string (`slice(0, 10)`),
-  right for a State Championship's afternoon kickoff and wrong for an evening one. Not changed here: only the preview needed an
-  evening kickoff's day, and it takes it from the Central clock.
+- `state-championships.ts` took a bracket slot's day by cutting its UTC kickoff string (`slice(0, 10)`), right for a State
+  Championship's afternoon kickoff and wrong for an evening one (2026-11-21T00:00:00Z is Friday, Nov 20). It now reads the
+  Central day through the same helper the preview uses (`centralDate`, `lib/preview-parts.ts`), with a unit test.

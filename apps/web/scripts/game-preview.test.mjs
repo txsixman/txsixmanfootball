@@ -15,7 +15,7 @@ const load = async (name) => {
   await build({ entryPoints: [path.join(WEB, `lib/${name}.ts`)], bundle: true, platform: "node", format: "esm", outfile, logLevel: "error" });
   return import(pathToFileURL(outfile).href);
 };
-const { lastGames, nextGame, boxOf } = await load("preview-parts");
+const { lastGames, nextGame, boxOf, centralDate } = await load("preview-parts");
 test.after(() => rmSync(tmp, { recursive: true, force: true }));
 
 const game = (date, home, away, homeScore, awayScore, extra = {}) => ({ href: `/scores/${date}-${away}-at-${home}`, date, home, away, homeScore, awayScore, forfeit: false, ...extra });
@@ -105,4 +105,11 @@ test("next game: none for a State Championship, a game in no box, an unnamed pai
   assert.equal(boxOf(tree, "area", "Bexar", "Aldan").id, "G1"); // either way round
   const bye = [...tree, box("G10", "round-1", [null, null], "Hale", "Ivy"), { id: "G11", round: "area", feeds: ["G10", "G9"], sides: [{ text: "Hale", team: "Hale" }, { text: "Bye", bye: true }] }];
   assert.equal(nextGame(bye, "round-1", "Hale", "Ivy"), undefined);
+});
+
+test("a kickoff's day is its Central day: an evening kickoff is already the next day in UTC", () => {
+  assert.equal(centralDate("2026-11-21T00:00:00Z"), "2026-11-20"); // 6:00 PM CST, Friday Nov 20
+  assert.equal(centralDate("2026-11-28T01:00:00Z"), "2026-11-27"); // 7:00 PM CST, Friday Nov 27
+  assert.equal(centralDate("2026-12-16T20:00:00Z"), "2026-12-16"); // 2:00 PM CST: an afternoon State Championship keeps its day
+  assert.equal(centralDate("2026-09-05T01:30:00Z"), "2026-09-04"); // daylight time: 8:30 PM CDT
 });

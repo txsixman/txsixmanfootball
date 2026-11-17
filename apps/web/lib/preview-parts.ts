@@ -45,7 +45,7 @@ export type NextGame = {
 };
 
 /** A date in Central time, "YYYY-MM-DD" (a 7 PM Friday kickoff is already Saturday in UTC). */
-const centralDate = (utc: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date(utc));
+export const centralDate = (utc: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date(utc));
 
 const teamsOf = (n: PathNode) => n.sides.flatMap((s) => (s.team ? [slugify(s.team)] : []));
 
