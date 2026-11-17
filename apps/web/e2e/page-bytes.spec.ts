@@ -19,7 +19,7 @@ const BUDGETS: [string, number, number][] = [
   ["/seasons/2025", 517, 34.3],
   ["/leaders", 173, 13.8],
   ["/series/aspermont/jayton", 63, 9.9],
-  ["/programs/jayton", 421, 41.3],
+  ["/programs/jayton", 445, 43.8], // 420.2 raw and 41.3 sent with the road to the State Championship (ADR 0104), plus the same headroom
   ["/standings", 464, 25.2],
   ["/championships", 395, 24.1],
 ];
