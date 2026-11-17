@@ -203,3 +203,8 @@ Not in an ADR:
   game day saves the board, Tonight, this round's bracket and tonight's game pages ahead (about 0.6 to 0.9 MB stored, 70 to 100 KB
   downloaded; a button on Tonight does it for anyone); old caches are deleted on each new build; the manifest opens on `/scores` with
   192, 512 and maskable icons (Nov 16, 2026).
+- **Games on a phone calendar** (ADR 0095): a static calendar feed for each program (`/programs/<slug>/calendar.ics`: this season's games
+  still to play and played) and each bracket (`/playoffs/bracket/<slug>/calendar.ics`), and a one-game file for each game still to play
+  (`/scores/<id>/calendar.ics`); "Add to calendar" (webcal:// for an iPhone or Mac, plus a https file) on program and bracket pages and
+  on a game page. Events are "Away vs Home", timed in UTC at the kickoff or all-day, with the site as the location, a UID from the game's
+  page id, and a confirmed final (or "Score reported", or "Forfeit") in the description; a game with no date is left out (Nov 16, 2026).
