@@ -6,7 +6,7 @@ import { dayLine, type Left, type LeftBox } from "@/lib/whos-left";
 
 // "Who's left" (ADR 0094): the teams still in one bracket, most likely State Championship winner first, each with the game it
 // plays next, its chance to win the State Championship where the site works one out (lib/advancement.ts), a button that lights
-// its path in the drawing above, and its program page's playoff path. It is worked out from the same boxes as the drawing
+// its path in the drawing above, and its program page's road to the State Championship (ADR 0104). It is worked out from the same boxes as the drawing
 // (lib/whos-left.ts), so the two cannot disagree. A projection, not a result (ADR 0004).
 
 /** "Area · Fri, Nov 20 · 7:00 PM · vs Hermleigh": the next game as one line, "vs" the team or the game whose winner it will be. */
@@ -34,9 +34,8 @@ export function WhosLeft({ rows, team, onFollow, titled }: { rows: Left[]; team:
           <li key={l.key} data-left={l.key} className="min-w-0 border-b border-line px-3 py-1">
             <div className="flex items-center justify-between gap-3">
               {l.program ? (
-                <Link href={`/programs/${l.program}#path`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center text-[18px] font-bold leading-tight text-ink hover:text-navy hover:underline">
+                <Link href={`/programs/${l.program}`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center text-[18px] font-bold leading-tight text-ink hover:text-navy hover:underline">
                   <span className="line-clamp-2">{l.name}</span>
-                  <span className="sr-only">, playoff path</span>
                 </Link>
               ) : (
                 <span className="flex min-h-11 min-w-0 flex-1 items-center text-[18px] font-bold leading-tight text-ink">
@@ -63,6 +62,13 @@ export function WhosLeft({ rows, team, onFollow, titled }: { rows: Left[]; team:
                 {team === l.key ? "Path lit above" : "Light its path"}
                 <span className="sr-only"> for {l.name}</span>
               </button>
+              {l.program && (
+                <Link href={`/programs/${l.program}#road`} prefetch={false} className="inline-flex min-h-11 items-center text-[14px] font-semibold text-navy hover:underline">
+                  Path
+                  <ChevronRight aria-hidden="true" className="size-4" />
+                  <span className="sr-only"> to the State Championship for {l.name}</span>
+                </Link>
+              )}
               {l.next?.href && (
                 <Link href={l.next.href} className="inline-flex min-h-11 items-center text-[14px] font-semibold text-navy hover:underline">
                   Next game page

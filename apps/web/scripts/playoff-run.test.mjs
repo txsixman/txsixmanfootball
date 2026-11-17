@@ -1,5 +1,5 @@
 // The playoff run's pure logic (lib/playoff-status.ts, lib/playoff-path.ts): a game's status line, the round shown first,
-// the next pairing and a team's likely opponents. Invented teams only.   node --test apps/web/scripts/
+// the next pairing (a team's opponents ahead are in road.test.mjs). Invented teams only.   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,7 +16,7 @@ const load = async (name) => {
   return import(pathToFileURL(outfile).href);
 };
 const { gameStatus, centralClock, currentRound } = await load("playoff-status");
-const { pairsOf, aheadFor, previewOf, gamesOf } = await load("playoff-path");
+const { pairsOf, previewOf, gamesOf } = await load("playoff-path");
 const { project, projectAt, fieldOf } = await load("projection");
 const { chancesFor } = await load("title-chances");
 test.after(() => rmSync(tmp, { recursive: true, force: true }));
@@ -76,19 +76,6 @@ test("area games pair only inside one region, and only two to a region", () => {
   assert.equal(pairs[0].next, "regional");
   assert.deepEqual(pairsOf(rounds(["area", a1, a2]), undefined), []); // no region data: no pairing is guessed
   assert.deepEqual(pairsOf(rounds(["area", a1, game("area", "E", "G")]), region), []); // a game linking regions
-});
-
-test("a team's likely opponents come from the other game of its pair, most likely first, with a projection each", () => {
-  const [s1, s2] = [game("semifinal", "A", "D"), game("semifinal", "B", "C")];
-  const [pair] = pairsOf(rounds(["semifinal", s1, s2]));
-  const ahead = aheadFor(table, pair, "A");
-  assert.equal(ahead.next, "final");
-  assert.deepEqual(ahead.candidates.map((c) => c.team), ["B", "C"]); // B is rated higher, so more likely to get there
-  assert.ok(ahead.candidates[0].reach > ahead.candidates[1].reach);
-  assert.ok(Math.abs(ahead.candidates[0].reach + ahead.candidates[1].reach - 1) < 1e-9);
-  assert.equal(ahead.candidates[0].projection.favorite, "A"); // A (+8) over B (+6) on a neutral field
-  assert.equal(aheadFor(table, pair, "Z"), undefined);
-  assert.equal(aheadFor({ ...table, teams: table.teams.filter((t) => t.team !== "C") }, pair, "A"), undefined); // an unrated team: no guess
 });
 
 test("the pairing preview takes the higher-rated side of each game", () => {

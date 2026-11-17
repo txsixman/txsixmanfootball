@@ -34,29 +34,6 @@ export function pairsOf(rounds: RoundRows[], regionOf?: (team: string) => string
   return out;
 }
 
-/** The chance `side` wins `g` at its own site, or undefined when either team is unrated. */
-function winChance(table: RatingsTable, g: BracketRow, side: string): number | undefined {
-  const p = projectAt(table, g);
-  return p && (p.favorite === side ? p.winProbability : 1 - p.winProbability);
-}
-
-/** A possible opponent in the next round: its chance to get there, and the projection against `team` on a neutral field. */
-export type Candidate = { team: string; reach: number; projection: Projection };
-
-/** `team`'s likely opponents in the round after its listed game, most likely first; undefined when `team` is in no pair or a team is unrated. */
-export function aheadFor(table: RatingsTable, pair: Pair, team: string): { next: string; candidates: Candidate[] } | undefined {
-  const mine = pair.games.find((g) => g.home === team || g.away === team);
-  const other = pair.games.find((g) => g !== mine);
-  if (!mine || !other) return undefined;
-  const candidates: Candidate[] = [];
-  for (const o of [other.home, other.away]) {
-    const [reach, projection] = [winChance(table, other, o), project(table, team, o, true, true)];
-    if (reach == null || !projection) return undefined;
-    candidates.push({ team: o, reach, projection });
-  }
-  return { next: pair.next, candidates: candidates.sort((a, b) => b.reach - a.reach) };
-}
-
 /** The pairing if the higher-rated team wins each game of the pair, with each side's chance to get there and the projection for that meeting. */
 export function previewOf(table: RatingsTable, pair: Pair): { sides: [{ team: string; reach: number }, { team: string; reach: number }]; projection: Projection } | undefined {
   const sides = pair.games.map((g) => projectAt(table, g));
