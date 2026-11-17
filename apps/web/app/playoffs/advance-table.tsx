@@ -43,7 +43,7 @@ export function AdvanceTable({ advancement: a, league, identities }: { advanceme
                   <th scope="row" className="sticky left-0 max-w-[11rem] bg-page px-1 text-left font-normal">
                     <Link href={`/programs/${slug}`} prefetch={false} className="ink-link-fl">
                       <CrestSlot school={r.team} identity={identities.get(slug) ?? EMPTY} />
-                      <span className="clamp2">{r.team}</span>
+                      <span className="clamp2 break-words">{r.team}</span>
                     </Link>
                   </th>
                   {none ? (

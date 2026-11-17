@@ -18,7 +18,7 @@ test("playoffs: a bracket with several rounds has a jump bar, and each link land
 
 test("playoffs: state title chances are linked, ranked rows with the percent read out, in the bracket they belong to", async ({ page }) => {
   await page.goto("/playoffs/tapps");
-  const chances = page.getByRole("region", { name: "TAPPS Division I", exact: true }).getByRole("region", { name: "State title chances" });
+  const chances = page.getByRole("region", { name: "TAPPS Division I", exact: true }).getByRole("group", { name: "State title chances" });
   const rows = chances.getByRole("listitem");
   expect(await rows.count()).toBeGreaterThan(1);
   await expect(rows.first().getByRole("link")).toHaveAttribute("href", /^\/programs\/.+/);

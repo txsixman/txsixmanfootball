@@ -8,7 +8,7 @@ import { historySummary, rankChart, weekLabel, type HistoryPoint } from "@/lib/r
 import { signed } from "@/lib/signed";
 
 const W = 400;
-const PANEL = { height: 94, top: 8, bottom: 8, left: 64, right: 14 };
+const PANEL = { height: 94, top: 8, bottom: 8, left: 72, right: 14 }; // left holds a tick such as "−100.0" whole at 17px
 const TITLE = 20; // room for a panel's title above it
 const GAP = 14;
 
@@ -26,7 +26,7 @@ export function HistoryChart({ points, label, color = "var(--color-navy)", note 
   const last = points.at(-1)!;
   return (
     <figure className="px-3 pt-2">
-      <svg role="img" aria-label={summary} viewBox={`0 0 ${W} ${height}`} className="block h-auto w-full max-w-[480px]" fontSize="16">
+      <svg role="img" aria-label={summary} viewBox={`0 0 ${W} ${height}`} className="block h-auto w-full max-w-[480px]" fontSize="17">
         {rank && (
           <g>
             <text x={12} y={rankTop - 6} fontWeight={700} className="fill-ink">

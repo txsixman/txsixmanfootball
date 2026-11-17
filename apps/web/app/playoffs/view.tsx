@@ -87,9 +87,9 @@ export async function PlayoffsView({ league, season }: { league: League; season?
         // The round being played in every bracket of this league, before anything else (ADR 0094): a fan should not have to
         // work it out from a list that starts at the first round. Each line jumps to that round below.
         <section aria-labelledby="current-round" data-current-rounds className="mt-4 border-2 border-navy bg-panel">
-          <h3 id="current-round" className="px-3 pt-2 font-num text-[20px] font-bold uppercase leading-tight tracking-wider text-navy">
+          <h2 id="current-round" className="px-3 pt-2 font-num text-[20px] font-bold uppercase leading-tight tracking-wider text-navy">
             Current round
-          </h3>
+          </h2>
           <ul>
             {standing.map(({ b, round, left }) => {
               const id = `bracket-${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;

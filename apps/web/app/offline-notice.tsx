@@ -10,7 +10,9 @@ import { askSavedCopy, setOnline, setSavedCopy, useOnline, useSavedCopy } from "
 // foot of the screen, a fixed height, so it moves nothing. A saved copy shows no live score and asks for none (lib/saved-copy-state.ts);
 // it tries again when the signal returns (and every 20 seconds, and on "Try again"), and when the network answers it loads the page
 // again and says "Back online — updated".
-const BAR = "fixed inset-x-0 bottom-0 z-40 flex h-14 items-center gap-3 bg-band px-4 text-[14px] font-semibold leading-[18px] text-white shadow-[0_-2px_8px_rgba(0,0,0,0.25)]";
+// 76px under 330px wide: at 320 the saved-copy sentence beside "Checking..." runs four lines (72px), which the 56px bar clipped.
+const HEIGHT = "h-[76px] min-[330px]:h-14";
+const BAR = `fixed inset-x-0 bottom-0 z-40 flex ${HEIGHT} items-center gap-3 bg-band px-4 text-[14px] font-semibold leading-[18px] text-white shadow-[0_-2px_8px_rgba(0,0,0,0.25)]`;
 const RELOADED = "tx6-reloaded-for-updates";
 const RETRY_EVERY_MS = 20_000;
 /** An automatic reload waits this long after the last one, so a flaky signal never reloads the page again and again. */
@@ -135,7 +137,7 @@ export function Offline({ children }: { children: ReactNode }) {
             )}
           </div>
           {/* The bar covers the foot of the screen; this holds the same room at the end of the page so the footer's links stay reachable. */}
-          <div aria-hidden="true" className="h-14" />
+          <div aria-hidden="true" className={HEIGHT} />
         </>
       )}
     </>

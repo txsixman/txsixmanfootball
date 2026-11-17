@@ -9,7 +9,7 @@ export function ChanceList({ id, title, chances, identities }: {
   id: string; title: string; chances: Chance[]; identities: Awaited<ReturnType<typeof loadIdentities>>;
 }) {
   return (
-    <section aria-labelledby={id} className="min-w-0">
+    <div role="group" aria-labelledby={id} className="min-w-0">
       <h3 id={id} className="sub-title">{title}</h3>
       <ul>
         {chances.map((c) => {
@@ -19,7 +19,7 @@ export function ChanceList({ id, title, chances, identities }: {
             <li key={c.team} className="flex items-center gap-2 border-b border-line">
               <Link href={`/programs/${slug}`} prefetch={false} className="cl-link">
                 <CrestSlot school={c.team} identity={identities.get(slug) ?? EMPTY} />
-                <span className="clamp2">{c.team}</span>
+                <span className="clamp2 break-words">{c.team}</span>
               </Link>
               <span aria-hidden="true" className="h-2 w-12 shrink-0 bg-panel sm:w-16">
                 <span className="block h-2 bg-alert" style={{ width: `${Math.max(2, pct)}%` }} />
@@ -31,6 +31,6 @@ export function ChanceList({ id, title, chances, identities }: {
           );
         })}
       </ul>
-    </section>
+    </div>
   );
 }
