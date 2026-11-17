@@ -44,6 +44,7 @@ import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
 import { programJsonLd } from "@/lib/json-ld";
 import { ShareButton } from "../../share-button";
+import { CalendarFeedLinks } from "../../add-to-calendar";
 import { SITE_NAME } from "@/lib/site";
 import { HistoryChart } from "../history-chart";
 import { teamHistory } from "@/lib/team-history";
@@ -510,6 +511,7 @@ export default async function ProgramPage({ params }: Props) {
 
         <Follow slug={slug} school={school.school} />
         <ShareButton title={`${school.school} | ${SITE_NAME}`} className="mt-4 px-3" />
+        <CalendarFeedLinks path={`/programs/${slug}/calendar.ics`} what={`${school.school}\u2019s games`} className="mt-2 px-3" />
 
         {/* This season's State Championship: the title once it is won, else where the school plays for it (ADR 0083). */}
         <StateChampionLine school={school.school} />
