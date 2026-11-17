@@ -19,6 +19,7 @@ import { StateChampionshipLink } from "../championships/shared";
 import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { PageHeader } from "../ui";
+import { CalendarFeedLinks } from "../add-to-calendar";
 import { AdvanceTable } from "./advance-table";
 import { ChanceList } from "./chance-list";
 import { BuiltList, GameList } from "./game-list";
@@ -95,6 +96,7 @@ export async function BracketView({ bracket: b, siblings }: { bracket: Bracket; 
           This page is rebuilt with the newest scores read, about every 30 minutes on playoff Friday nights. Scores may be corrected if a mistake is found.
         </p>
       </div>
+      <CalendarFeedLinks path={`${bracketHref(b.name)}/calendar.ics`} what={`the ${b.name} playoff games`} className="mt-3" />
       </div>
 
       <BracketBoard data={tree} imageBase={`${bracketHref(b.name)}/image`} current={current?.round} titles={titles} />

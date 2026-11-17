@@ -22,6 +22,7 @@ import { currentPeriod, isForfeit, outcomeOf, playedPeriods } from "@/lib/score-
 import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
 import { ShareButton } from "../../share-button";
+import { CalendarGameLink } from "../../add-to-calendar";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Follow } from "../../programs/follow";
 import { Comments } from "../comments";
@@ -257,6 +258,8 @@ export default async function GamePage({ params }: Props) {
           )}
           {g.stream && <Fact label="Listen or watch">{g.stream}</Fact>}
         </dl>
+        {/* A game still to play, with a day: its one-game calendar file (ADR 0095). */}
+        {!sample && g.date && g.state === "scheduled" && <CalendarGameLink path={`/scores/${id}/calendar.ics`} />}
       </section>
 
       {followable.length > 0 && (
