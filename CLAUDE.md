@@ -176,7 +176,7 @@ a complete almanac since 1938, and community. Codename only; the public brand is
   disparage it, never use its name or content without permission.
 - **Minors**: no birth dates (fan accounts keep the birth year only, never shown; ADR 0018), no public real names,
   contact details, player rankings or precise location for minors; no minor's data to any third party. No direct messages.
-- **Betting**: the words are rating, projected margin and chance to win (ADR 0045). Never spreads, lines, odds or "upset".
+- **Betting**: the words are rating, projected margin and chance to win (ADR 0045). Never spreads, lines, odds or picks. "Upset" appears only on the week-in-review recap, its home card and its descriptions, as the name of a result (ADR 0092), never on a game row or game page (ADR 0044).
 - **Row-level security on every table.** A new table without it fails the schema test.
 - **`score_submission` is never deleted; `audit_log` is append-only.** Enforced by triggers.
 - **Six-man scoring flags are soft for admins** (plan Appendix B), so they live in `packages/core`, not in

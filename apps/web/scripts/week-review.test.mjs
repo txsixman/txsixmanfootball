@@ -1,4 +1,4 @@
-// The week in review's pure rules (lib/week-review.ts): closest games and biggest margins, results furthest from the
+// The week in review's pure rules (lib/week-review.ts): closest games, results furthest from the
 // projection, rating movers, and playoff advancement. Invented teams only.   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -12,7 +12,7 @@ const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tmp = mkdtempSync(path.join(tmpdir(), "week-review-"));
 const outfile = path.join(tmp, "week-review.mjs");
 await build({ entryPoints: [path.join(WEB, "lib/week-review.ts")], bundle: true, platform: "node", format: "esm", outfile, logLevel: "error" });
-const { advancement, biggestMargins, closestGames, furthestFromProjection, ratingMovers, weekEnd } = await import(pathToFileURL(outfile).href);
+const { advancement, closestGames, furthestFromProjection, ratingMovers, weekEnd } = await import(pathToFileURL(outfile).href);
 test.after(() => rmSync(tmp, { recursive: true, force: true }));
 
 let n = 0;
@@ -26,15 +26,13 @@ test("a week ends on the Sunday after its Monday, across a month and a year", ()
   assert.equal(weekEnd("2025-12-29"), "2026-01-04");
 });
 
-test("closest games and biggest margins leave out forfeits and no contests, keep ties, and stop at five", () => {
+test("closest games leave out forfeits and no contests, keep ties, and stop at five", () => {
   const games = [
     game("A", "B", 21, 20), game("C", "D", 40, 0), game("E", "F", 14, 14), game("G", "H", 1, 0, { forfeit: true }), game("I", "J", 0, 0),
     game("K", "L", 35, 7), game("M", "N", 28, 21), game("O", "P", 50, 6), game("Q", "R", 12, 0),
   ];
   assert.deepEqual(closestGames(games).map((g) => g.home), ["E", "A", "M", "Q", "K"]);
-  assert.deepEqual(biggestMargins(games).map((g) => g.home), ["O", "C", "K", "Q", "M"]);
   assert.ok(!closestGames(games, 20).some((g) => g.forfeit || g.homeScore + g.awayScore === 0));
-  assert.ok(!biggestMargins(games, 20).some((g) => g.forfeit || g.homeScore + g.awayScore === 0));
   assert.deepEqual(closestGames([]), []);
 });
 
