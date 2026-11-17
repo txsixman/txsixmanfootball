@@ -2,7 +2,8 @@
 
 ADR 0018. Fans sign in with an emailed link or Google, pick a display name and give a birth year, and can follow teams on
 their account. Forums, game comments and score reports sit on the same profile and have their own switch, `FAN_POSTS`
-(ADR 0052), so they can open about a week after sign-in and follows.
+(ADR 0052). As of Nov 16, 2026 sign-in, follows and posts are all on in production, and so are the game-night push alerts
+(below); the switches stay as the way to close any of them.
 
 Sign-in itself is the shared foundation (`apps/web/lib/auth/`, `/sign-in`, `/auth/callback`, `proxy.ts`); the admin console
 uses it too (`docs/admin-console.md`). Every Supabase call is made on the server with the visitor's own session cookie
@@ -49,9 +50,9 @@ Forums, game comments and score reports are behind `FAN_POSTS`, which must be ex
   them, undo either one (`is_on = false`, or remove `FAN_POSTS` and redeploy); the closed one wins. Only the database closed: the
   routes answer `posts_closed` ("Posting is not open yet."). Only the site closed: 404. Either way nothing is posted.
 
-## Launch checklist: opening posts (about Sun Nov 22, 2026)
+## Launch checklist: opening posts (done: posts are open as of Nov 16, 2026; kept for reopening)
 
-Do these in order, in one sitting. Each step names how to check it worked.
+Still owed from it: the owner's one signed-in test comment (step 5 of "Open"). Do these in order, in one sitting. Each step names how to check it worked.
 
 **Before (any day that week)**
 1. `main` has migration 0027 (ADRs 0060 to 0062) and the `Supabase` workflow run after it passed. Check in the Supabase SQL editor
@@ -108,7 +109,7 @@ Do these in order, in one sitting. Each step names how to check it worked.
 | `/forums`, a board, a thread | Only while `FAN_POSTS` is on (otherwise 404). Anyone reads; a signed-in fan with a profile posts, replies, edits their own and flags others |
 | A game page | Only while `FAN_POSTS` is on: the comments block (it checks for new comments once a minute while the tab is visible and offers "Show N new comments" rather than moving the list), and for a game with no score yet the fan score-report block. With it off the page is as it was |
 | `/scores` | Only while `FAN_POSTS` is on: a game with comments shows "1 comment" or "N comments" with a small icon at the bottom of its score card (plain text; the card is one link to the game page). Nothing for a game with none, while the number loads, and with posts off (ADR 0078) |
-| `/playoffs/this-round`, `/playoffs`, a bracket page | Only while `FAN_POSTS` is on, for a current-season game that has its own page (a game a bracket only sets has none): a link under the game, on its own line, to the game's comments (`/scores/<id>#comments`). On this-round it reads "Comments" for a game with none, "1 comment" or "N comments" otherwise, with a small icon; on `/playoffs` and the bracket pages only a game that has comments shows one. Each link's accessible name names its game ("3 comments on Away vs Home"). Nothing while the counts load, with posts off, and when the request fails. Past seasons' lists have none. One counts request serves the whole page (ADR 0078) |
+| `/playoffs/this-round`, `/playoffs`, a bracket page | Only while `FAN_POSTS` is on, for a current-season game that has its own page (every game the bracket sets has one once both teams are known, ADR 0079): a link under the game, on its own line, to the game's comments (`/scores/<id>#comments`). On this-round it reads "Comments" for a game with none, "1 comment" or "N comments" otherwise, with a small icon; on `/playoffs` and the bracket pages only a game that has comments shows one. Each link's accessible name names its game ("3 comments on Away vs Home"). Nothing while the counts load, with posts off, and when the request fails. Past seasons' lists have none. One counts request serves the whole page (ADR 0078) |
 
 No age, birth year, email or school is shown anywhere. The birth year is stored in `profile.birth_year` and no function returns it.
 
@@ -185,11 +186,11 @@ No age, birth year, email or school is shown anywhere. The birth year is stored 
 Followers get three alerts per game on every device they turn alerts on for: the kickoff ("Whiteface v Jayton has started"),
 the final ("Final: Whiteface 48, Jayton 12") and, in the playoffs, the next game once the bracket sets it ("Next round: …").
 Each opens the game's page. Finals alerts were already live (migration 0008, ADR 0054); the other two, the new wording and the
-toggle are **built dark** behind two switches, both off.
+toggle were **built dark** behind two switches; both are on as of Nov 16, 2026.
 
 | Switch | Where | What it does |
 |---|---|---|
-| `push_alerts` | Supabase, table `site_switch` (migration 0031; every change in `audit_log`) | The sender (`tools/push/send-finals.mjs`) reads it. Off: finals go out as before, nothing else. On: kickoff and next-game alerts too, and the new final wording |
+| `push_alerts` | Supabase, table `site_switch` (migration 0031; every change in `audit_log`) | The sender (`tools/push/send-finals.mjs`) reads it. Off: finals go out as before, nothing else. On (now): kickoff and next-game alerts too, and the new final wording |
 | `FAN_PUSH_ALERTS` | Vercel, Production, server only, exactly `on` | Shows the "Game alerts on this device" toggle on the home page's My teams block and on `/account` (`GET /api/push/status` answers `{"alerts":true}`). Off: the site looks as before |
 
 - **Keys:** none to make. The VAPID pair in use since Nov 12 serves both (public half committed, private half in the owner's
@@ -202,7 +203,7 @@ toggle are **built dark** behind two switches, both off.
   Signed out, on alerts for the teams this browser follows; off stops alerts and keeps the list. iPhone and iPad: "add this site
   to your Home Screen first", since Safari shows web alerts only from there. Blocked permission: says to change it in the browser.
 
-**To turn them on (about 10 minutes, most of it the redeploy):**
+**How they were turned on, and how to turn them on again (about 10 minutes, most of it the redeploy):**
 1. Supabase SQL editor (project `vhgnaihnyjdnaaergtcl`): `update site_switch set is_on = true where name = 'push_alerts';`
    Check: `select is_on from site_switch where name = 'push_alerts';` answers `true`. From the next night read on, followers get
    kickoffs, and the next results commit sends each playoff pairing already set and not yet played, once.

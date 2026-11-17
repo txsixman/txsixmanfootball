@@ -11,7 +11,7 @@ reporters, LLC, attorney, sponsors or owner talk; `txsixmanfootball.com` may be 
 |---|---|
 | Stack ADR signed | Done, Nov 10, 2026 |
 | Schema migrates | Done: PGlite in tests, and live on Supabase since Nov 10, 2026 |
-| Ratings prototype on captured games | Done: `/rankings` rates 1,227 games of the 2026 season (ADR 0008) across 275 teams |
+| Ratings prototype on captured games | Done: `/rankings` rates 1,274 games of the 2026 season (ADR 0008) across 278 teams (Nov 16: `data/ratings/2026.json`) |
 
 **G3 (Apr 18, 2027) passes today** (Nov 14, after the ratings audit, `docs/audits/ratings-2026-11.md`):
 `run.py --backtest` (`services/ratings/backtest.py`, ~5 min) rates each week from earlier games only, 2018 to 2026, and
@@ -34,7 +34,7 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   three, state title chances (brackets down to their last four), the reigning UIL champions, a Matchup link
 - **Scores** `/scores`: 2026 playoff games, one organization at a time (buttons, UIL first); unplayed
   games show a projected margin and win probability (`lib/projection.ts`); robot scores are unconfirmed (ADR 0004)
-- **Game pages** `/scores/<id>`: one for every robot-read game, 2021 to 2026 (~6,800 static pages; `lib/game-pages.ts`).
+- **Game pages** `/scores/<id>`: one for every robot-read game, 2021 to 2026 (~7,000 static pages; `lib/game-pages.ts`).
   A regular game's id is `<date>-<away>-at-<home>`; a current-season playoff game is also in the bracket files, so it has
   the bracket game's page (`<season>-<round>-<away>-at-<home>`) and its result's `href` points there, never a second page.
   Teams (crest, program link), score (a forfeit shows the word), unconfirmed, the week-before projection and how far the
@@ -49,7 +49,7 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   (below), and a 404 and an error page of the site's own (noindex, a plain search form, the main sections)
 - **Playoffs** `/playoffs` (UIL), `/playoffs/tapps`, `/taiao`, `/tcaf`: each 2026 bracket round by round
   (`lib/brackets.ts`), earlier games in the order of the later games they feed, projections for unplayed games; no
-  winner named. Title chances (`lib/title-chances.ts`): UIL region chances once a region's bracket closes (data only, no
+  winner named from an unconfirmed score, but a recorded State Championship final names its champion (ADR 0083). Title chances (`lib/title-chances.ts`): UIL region chances from the games the bracket sets, so all 8 regions a division show before any listing (data only, no
   hand-entered template; the owner Nov 11), state chances from the last four; advancement may rest on unconfirmed scores (ADR 0013). Season tabs (2026, then 2025 to 2021): past seasons at
   `/playoffs/season/<year>` (UIL) and `/playoffs/season/<year>/<league>`, only leagues with games that year, no
   projections or chances (all played); teams missing from today's alignments render as plain text
@@ -75,15 +75,37 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
 - **Series** `/series/<a>/<b>` (slugs in alphabetical order; the reversed address is a 404): one page per pair of current programs that met 3 or more times since 2021 (965 pairs; a pair of two organizations is fine, ranks never shown). Both crests, the record from the first-named side (a forfeit counts, ADR 0013), every meeting newest first with its round and game page (a forfeit shows the word), UIL finals between them, and a projection if they met now (rating, projected margin, win probability; links to Matchup). `lib/series.ts` holds the rules; program pages link their games count to it, and the sitemap lists it. No client script, no share card
 - **Seasons** `/seasons` (every season with games, newest first) and `/seasons/<year>` (every season with games, FIRST_SEASON to the current, one static page each; `lib/season-hub.ts`, `app/seasons/`): games read and programs that played, the UIL state finals that year (champion, runner-up, score, from UIL's archive; the current season says the finals are in December), then each organization on its own (ADR 0012): its top five by rating (final for a past season), top three for points per game and for fewest allowed per game (teams with 6+ played games, forfeits left out entirely, `lib/season-leaders.ts`; scores unconfirmed, so the page says so), and links to its rankings, results, playoffs, week in review and records; then every results week and week in review of the season. The season under way links the bare addresses (`/results`, `/rankings`, `/playoffs`). Linked from the footer only (not the header nav); in the sitemap (the sections kind, `app/sitemaps/lists.ts`; lastmod the season's latest game)
 - **State Championships** `/championships` (was `/champions`): every UIL six-man final 1972 to 2025, Division I and II
-  since 2006, one division before, most titles
+  since 2006, one division before, most titles; the season under way has a page for each bracket's State Championship,
+  `/championships/<season>/<bracket>`, and a final the robot or a correction records names its champion on every page, the
+  private leagues' recorded finals since 2018 being their record (ADR 0083). The last round is always "State Championship"
 - **Search Console** (done): the owner set up a domain property, and `https://txsixmanfootball.com/sitemap.xml` was
   submitted Nov 13, 2026: Google read it, Success, 8,032 pages. Sample, search and offline pages stay `noindex`
+- **Fan accounts and posts** (ADRs 0018, 0052, 0058, 0060 to 0062, 0078, 0085; `docs/fan-accounts.md`): sign-in and follows are on,
+  and so are posts as of Nov 16 (`FAN_POSTS` on):
+  `/forums`, a comments block on each game page (new comments appear without a reload), fan score reports on a game with no
+  score, Report with a confirm step, and "N comments" on a score card and under a playoff row. The owner's `/admin/moderation`
+  lists reported posts and every post of the last 7 days (migration 0032) to hide, mute or ban. A browser that cannot show
+  alerts follows on the browser only (ADR 0085). Email alerts and the digest are built but not on (see Blockers)
+- **Game-night push alerts** (ADR 0082, on): a follower of a team gets a kickoff, a final ("Final: Winner 48, Loser 12") and, in
+  the playoffs, a "Next round" alert, each opening the game's page, each event sent once (`push_sent`, migration 0031). On
+  through the `push_alerts` row of `site_switch` (the sender) and Vercel's `FAN_PUSH_ALERTS=on` (the "Game alerts on this
+  device" toggle on My teams and `/account`). Sent only from Results watch, never from a site route
+- **Pages for games the bracket sets** (ADR 0079): a current-season playoff game has a page, comments and (when found) a
+  kickoff, site and Directions as soon as both teams are known, at one address that keeps (`<season>-<round>-<away>-at-<home>`,
+  the bracket's order; the listing's order redirects). `/playoffs/this-round` lists every game of the round, the ones the
+  bracket sets too
+- **Welcome** `/welcome` (ADR 0086): what the site is and where to start (find your team, tonight's scores), every number from
+  the data; home shows a dismissible "New here?" link on a first visit only
+- **Phone speed and accessibility** (ADRs 0080, 0081): section links and program links in lists do not prefetch, the service
+  worker installs after load, Inter loads from the head, logos cache a week; CI's Lighthouse covers nine kinds of page and a
+  full axe sweep runs at 375 px in light and dark. Nov 16 also fixed phone layouts (Sign in keeps its width, State
+  Championships fit a phone, 44 px jump links, search keeps room for its results)
 - **Descriptions**: every public page has its own meta description (at most 160 characters), built from its own data in
   `lib/descriptions.ts` (program: record, rank in its organization or UIL division, state titles; game: teams, date and round, no
   score or winner; the rest: season, week and organization). `e2e/descriptions.spec.ts` checks one page of each kind
 - **Search** `/search` (Pagefind): program pages and results weeks, indexed after each build; `?q=` links work
-- **Score alerts**: a Follow button on each program page; a browser push alert when Results watch reads a new final
-  (no winner named). Stores only the browser's push address and keys and the followed programs
+- **Score alerts**: a Follow button on each program page (see Game-night push alerts above); stores only the browser's push
+  address and keys and the followed programs, no winner named in a score that is unconfirmed
 - **Live scores** (ADR 0021): on a game page and on `/scores`, a game with no final that the game-day read sees under way shows
   "Live · <period> · <away>–<home> · Unconfirmed", the teams with their scores and when it was read (Central); no winner or
   leader. Read in the browser through the public function `live_scores()` every 60 s (the project's public URL and key,
@@ -103,11 +125,11 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
 - No page names or links a source (ADRs 0009, 0010). Words are rating, projected margin and chance to win only (ADR 0045)
 
 ## Data and pipeline
-- Alignments: UIL 2026-28 (158, with High Island in no district, ADR 0074), TAPPS 2026-28 (68, weekly robot), TAIAO (46, weekly robot), TCAF (9, by hand), Independent (3: CenTex Chargers, CHANT, Covenant Prep, by hand); not yet listed (ADR 0073): TCAL, TCSAAL and 10 teams in `private-2026/not-listed.csv`
+- Alignments: UIL 2026-28 (158, with High Island in no district, ADR 0074), TAPPS 2026-28 (68, weekly robot), TAIAO (46, weekly robot), TCAF (9, by hand), Independent (3: CenTex Chargers, CHANT, Covenant Prep, by hand; all three have 2026 games, so the Independent tab is live); not yet listed (ADR 0073): TCAL, TCSAAL and 10 teams in `private-2026/not-listed.csv`
 - Results: `tools/league-watch/maxpreps.mjs` (ADR 0008) via `results-watch.yml`, Fri to Sun Aug to Jan, and every 10 minutes noon to midnight Central on any November or December day with a bracket game of that night or the 3 game nights before still unscored, plus a 9 AM Central catch-up (`--tonight`: only those games, ADRs 0015, 0019 and 0030; it also sends the games under way to the hosted database's `live_score` table, ADR 0021, with no commit); rerates and
   commits the private repo `txsixman/data-private` first (full captures), then the facts to `main` here (ADR 0017,
-  `publish.mjs`). 276 of 279 schools reached. Past seasons via `--season <year>` (season-segment pages): 2025 1,230
-  games, 2024 1,195, 2023 1,090, 2022 1,076, 2021 970; coverage falls with age (237 of 279 in 2021) because only
+  `publish.mjs`). 276 of 279 schools reached. Past seasons via `--season <year>` (season-segment pages): 2025 1,244
+  games, 2024 1,212, 2023 1,095, 2022 1,079, 2021 976 (rows in each `games.csv`, Nov 16); coverage falls with age (237 of 279 in 2021) because only
   current alignments are known. Past team-seasons get league only (`pastTeamSeasons` in `load.mjs`). The reader retries
   twice, never follows a redirect, skips open dates, and drops games listed twice with different scores (coverage.txt).
   `run.py --season` writes ratings with `sd`, `rated`, `was` (Monday-to-Sunday weeks, as on `/results`), `trend` and `rated_trend` by week (from week 4), `home_field`, `sigma`, `playoff_edge`, `calibration`, `group_means` and a `report` of forfeits, duplicates, ties and outside games; seasons chain, so rate 2021 to 2026 in order
@@ -118,10 +140,10 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   program pages list other names (Formed from, Became, Also known as); a renamed or consolidated school's finals count
   toward the program it became, an annexed or split one's do not. Left out for want of a school, TEA or UIL page: 15
   current programs' older mergers (ADR 0072 lists them) and the 49 past private-league playoff teams not in a 2026 list
-- **Supabase** (`vhgnaihnyjdnaaergtcl`): migrations 0001 to 0016 (0009: `team_season_league`, every league that lists a team that season; 0016: `live_score` and `live_scores()`, ADR 0021), loaded after every push to `main` (`main.yml`) with live RLS and
-  API-role checks (`.github/workflows/supabase.yml`, with `PRIVATE_DATA`); unchanged games are skipped, ~5 min. The site does not read the database yet
-- **CI** on every push: database, league readers, history, school identity, ratings, typecheck, 98 page tests (phone
-  and desktop, axe) on a production build, inside Playwright's container image
+- **Supabase** (`vhgnaihnyjdnaaergtcl`): migrations 0001 to 0032 (0009: `team_season_league`, every league that lists a team that season; 0016: `live_score` and `live_scores()`, ADR 0021; 0011 to 0015 and 0023 to 0027 fan accounts, posts and alerts; 0029 `comment_counts`; 0030 `bracket_pairing`; 0031 `push_alerts` switch and `push_sent`; 0032 `admin_recent_posts`), loaded after every push to `main` (`main.yml`) with live RLS and
+  API-role checks (`.github/workflows/supabase.yml`, with `PRIVATE_DATA`); unchanged games are skipped, ~5 min. The site's pages are built from the data files; the database serves fan accounts, posts, follows, push links, live scores and the owner's console, always through the visitor's own session or a public read function, never the `service_role` key
+- **CI** on every push: database, league readers, history, school identity, ratings, typecheck, the page tests (phone
+  and desktop, axe), the data-gaps check and Lighthouse budgets on a production build, inside Playwright's container image
 - **UI kit**: shadcn/ui on Radix (`apps/web/components/ui`: Button, Input, Label), tokens mapped to navy, red, Inter and
   Barlow Condensed in `globals.css`; used for new pieces only (search, Follow), existing pages unchanged
 - **Stories** (Ladle, `apps/web/stories`): the scores board live, final, unconfirmed and postponed; crests with no,
@@ -130,28 +152,50 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   on mobile settings (home, `/rankings`, `/results`, a program page); knip; ruff; Dependabot weekly. Licenses in
   `docs/licenses.md` (web-push is MPL-2.0, used unmodified and only in GitHub Actions)
 - **Data gaps** (ADR 0084, Nov 16): `scripts/data-gaps.mjs` in CI's web-checks counts eleven kinds of gap every season and
-  fails on a new one; 15 known gaps are in `data/gaps-allowed.json` with reasons. Three of them (CHANT, Covenant Prep,
-  High Island: no 2026 game yet) go stale after the next full results read, which moves their games out of the private
-  `outside.csv`: remove those entries then
+  fails on a new one; 12 known gaps are in `data/gaps-allowed.json` with reasons (Nov 16: the three empty-season entries for CHANT, Covenant Prep
+  and High Island went once the full read brought their games). A gap that is fixed turns its entry stale and fails the check until the entry is removed
 
 ## In progress
-- Program season pages (Round N) on their PR.
-- Landed Nov 12 to 13: go-public (search engines), Round A (JSON-LD, share cards, canonical links, breadcrumbs), Rounds F,
-  G and H (embeddable scoreboard, sitemap, 404 page), J (descriptions), K (series pages), L (game pages link the series),
-  M (dated game titles), the game-day clock (ADR 0024), and a second live-score source (ADR 0025, read with its owner's
-  written permission, which the owner confirmed Nov 13; `tools/league-watch/davecampbells.mjs`, on since Nov 13 by the
-  repo variable `SECOND_LIVE`, 9 of 28 bracket games matched in its first check). Check its first night's summary lines.
+Round 10 (started Nov 16: five parallel branches, each a draft PR; the master lands them by fast-forward):
+- **Game-night live view** (`r10/game-night`), **playoff previews** (`r10/previews`), **program pages** (`r10/programs`) and **search**.
+- **Status documents** (`r10/docs`): this file and the fan and alert docs brought up to date with main.
+
+Landed Nov 12 to 14: go-public (search engines), Round A (JSON-LD, share cards, canonical links, breadcrumbs), Rounds F, G
+and H (embeddable scoreboard, sitemap, 404 page), J (descriptions), K (series pages), L (game pages link the series), M
+(dated game titles), program season pages, the game-day clock (ADR 0024) and a second live-score source (ADR 0025, read with
+its owner's written permission, on since Nov 13 by the repo variable `SECOND_LIVE`; `tools/league-watch/davecampbells.mjs`).
+
+Landed Nov 15 to 16:
+- **Fan posts on:** forums, game comments and fan score reports, with the owner's hide, mute and ban (ADRs 0060 to 0062) and the
+  last 7 days of posts for moderation (ADR 0085, migration 0032, applied). **Comment counts** on score cards and playoff rows (ADR 0078).
+- **Game pages for bracket-set games**, one address that keeps (ADR 0079, migration 0030); **region chances** from the games the
+  bracket sets, so all 8 UIL regions per division and TAIAO's last four show before any listing.
+- **Push alerts on:** kickoff, final and next-round alerts (ADR 0082, migration 0031); the `push_alerts` row of `site_switch`
+  and Vercel's `FAN_PUSH_ALERTS=on` are both set. **Follow without alerts** where a browser cannot show them (ADR 0085).
+- **State Championship pages** and champions named from recorded finals (ADR 0083); TAPPS State Championship kickoffs and
+  sites by hand (ADR 0075); Runge v Mount Calm's site withheld (ADR 0076).
+- **Playoff-week reads:** a kickoff and site read every morning Monday to Thursday (ADR 0077), the 72-hour alert for a game
+  with no kickoff or site, and loud game-night failures (a failed live-score, database or kickoff-alert step posts a fixed reason on the robot-alert issue
+  instead of showing only inside the run).
+- **Speed and accessibility:** ADR 0080 (phone speed) and ADR 0081 (axe sweep in CI); phone layout fixes; every page keeps its own title.
+- **Data:** the data-gaps check (ADR 0084, 12 known gaps); the Independent tab is live (CHANT and Covenant Prep have 2026
+  games); the `/welcome` landing page (ADR 0086); program registry for all leagues (ADR 0073); High Island (ADR 0074).
 
 ## Next three steps
-1. Past UIL alignments (2024-26 first): UIL's robots.txt disallows `/files/`, where the PDFs live, so a robot may not
-   fetch them. Needs the owner to download the 2024-26 six-man PDFs by hand. Loader and reader plumbing waits, unmerged, on
-   branch `worktree-agent-a5da57ea8cad69af1` (e1417b1); `app/rankings/view.tsx` must stop throwing on unknown teams first
-2. Game-night reads: GitHub's `schedule` never fires in this repo, so reads come only by dispatch: a loop on the
-   owner's Mac (`gh workflow run results-watch.yml -f tonight=true` every 10 minutes) and the game-day clock
-   (`gameday-clock.yml`, ADR 0024, started by hand each season). Check tonight's runs: finals commit (data-private
-   first), live rows reach `live_score`, and the first in-progress summary sets `PERIOD_INDEX` in `maxpreps.mjs`
-3. Region chances now count the games the bracket sets (Nov 16: all 8 UIL regions per division, and the TAIAO last four,
-   show before any listing); watch them move to the regional round after Nov 21 and the round names as the playoffs advance
+1. **This week's playoff nights, Thu Nov 19 to Sat Nov 21.** The first game nights with push alerts, comments and the area round
+   all on. Watch, in order: the morning details reads (Mon to Thu) fill kickoffs and sites; each night's read commits
+   finals (data-private first) and `live_score` rows reach the site; kickoff and final alerts arrive once each (`push_sent`);
+   no new line in the robot-alert issue; `/admin/moderation` after Friday night; the first in-progress summary shows which
+   contest field holds the period, which sets `PERIOD_INDEX` in `maxpreps.mjs` (still null, so no live period is shown).
+   Region chances should move to the regional round after Nov 21 (likely Thu Nov 26 to Sat Nov 28), and the round names with them.
+   The TAPPS State Championships are Nov 20 and 21; UIL's are in December.
+2. **Round 10's work lands:** the game-night live view, playoff previews, program pages and search, each a draft PR the
+   master lands in turn after CI is green.
+3. **Past UIL alignments (2024-26 first), if wanted.** Still true as a data limit, smaller than it was: past seasons are read
+   from today's alignments only (`lib/season-coverage.ts`), and UIL's robots.txt disallows `/files/`, where the alignment PDFs
+   live, so a robot may not fetch them; it needs the owner to download the 2024-26 six-man PDFs by hand. The pages no longer
+   throw on a team missing from today's alignments (they show plain text, ADR 0069), and the unmerged loader plumbing that was
+   once on branch `worktree-agent-a5da57ea8cad69af1` is not on GitHub, so it would be written again.
 
 ## Blockers and open items
 - **Remote:** public repo `txsixman/txsixmanfootball`; commits as `TX Six-Man Football <contact@txsixmanfootball.com>`.
@@ -163,16 +207,22 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   Results watch (data-private commit, then this repo's) and the ratings table, all by hand. The old repo is history.
 - **Never read SixManFootball.com** (robots.txt blocks Claude; partnership hard lines). Build from first principles.
 - **Accepted risks (ADRs 0008, 0014):** MaxPreps terms of use; the domain's closeness to the incumbent's name; no
-  attorney review. Optional: reset the Supabase password (it appeared in a transcript), then Keychain and the secret
-  (`CLAUDE.md`).
+  attorney review.
 - **Domain `txsixmanfootball.com`** (ADR 0014) is connected since Nov 11, 2026: Cloudflare DNS (the owner's account), DNS
   only per ADR 0001: two A records (216.150.1.1, 216.150.16.1) and `www` CNAME to Vercel; `www` redirects (308) to the
   bare address. Vercel issues both certificates.
-- **Independent tab and Community Christian (the owner, Nov 11):** the Independent organization (CenTex Chargers) and TCAF's Community Christian
-  (Mineral Wells) are in the alignments, but their games are not in the season files until the next `Results watch` run
-  reads them (the aliases in `tools/league-watch/maxpreps-aliases.json` and the new alignment rows make that run keep
-  them). Until then Independent has program pages and a Programs block only; its Rankings, Results and Records tabs
-  appear on their own once a game is read (`lib/active-orgs.ts`), and Standings never lists it. Check the first run.
+- **Still blank, no allowed source (Nov 16):** the site of Ladonia Fannindel v Apple Springs (Nov 20, kickoff known); the site of
+  Runge v Mount Calm (Nov 20), withheld on purpose because two schools' own calendars contradict the read one (ADR 0076;
+  lift it by hand once an allowed page names the venue); the dates of 4 TAIAO semifinals. The 72-hour alert names the undated semifinals. Fill by hand (ADR 0064 item 2) the moment an allowed page states one.
+- **Owner-only items:**
+  - Post one comment on a game page while signed in as a fan, to prove posting end to end (`docs/fan-accounts.md`, checklist step 5).
+  - **Delete the `GITHUB_CORRECTIONS_TOKEN` Vercel variable and its GitHub token.** Caution, from the code as it stands:
+    `app/admin/gate.tsx` closes every admin page ("Admin is not configured"), moderation included, when the variable is
+    missing, and the corrections form commits through it. Delete it only with a change that lets `/admin/moderation` work
+    without it, or accept that the console is closed.
+  - Email alerts and the weekly digest stay off until the owner makes a second Resend key (a sending key for that domain only,
+    `docs/email-alerts.md` step 3) and sets `EMAIL_POSTAL_ADDRESS` (an address that is not a home; the digest refuses to send without it).
+  - Optional: reset the Supabase password (it appeared in a transcript), then Keychain and the secret (`CLAUDE.md`).
 - **Private leagues not yet listed (ADR 0073):** TCAL runs six-man (its own plan) but publishes no 2026 teams; TCSAAL is 11-man only. Both show under "Not yet listed" on `/programs`; re-check each season. Sherman Grayson
   Christian School is in TCAF and TAIAO at once: one program, ranked in each (`programsFor`, `team_season_league`).
 - **School logos** are an accepted trademark risk (ADRs 0006, 0016). 280 of 283 programs have one (Nov 16): edited where needed (padding trimmed, solid boxes stripped), the untouched originals in `data/seed/schools/logo-originals/`, many replaced by Dave Campbell's team-page logos. Missing, no allowed source found (searched again Nov 16, `data/gaps-allowed.json`): Brazos Valley Lions, Community School of Mesquite, New Braunfels Spartans. Added Nov 16 (ADR 0084): High Island, CHANT, St. Mary's and Grace (Perrin) from Dave Campbell's team pages, Covenant Prep from its own site. Still weak: Founders Classical Conroe and Plainview share the Founders network mark; Immanuel (El Paso) and Vernon Northside are 100px. 34 logos still come from hosts (mostly ParentSquare's file host) whose robots.txt disallows a refetch, so their originals are the 320px copies kept from the first download.
