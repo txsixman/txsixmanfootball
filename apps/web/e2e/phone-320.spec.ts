@@ -152,7 +152,7 @@ test("results for a paper, Copy results, game and calendar pages: nothing sidewa
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), scheme).toBeLessThanOrEqual(0);
   }
   // "Add to calendar" on a program, a bracket and a game still to play.
-  const game = await firstLink(page, "/playoffs", /^\/scores\/\d{4}-[a-z]/);
+  const game = await firstLink(page, "/scores", /^\/scores\/\d{4}-[a-z]/);
   await sweep(page, ["/programs/jayton", game]);
 });
 
@@ -169,19 +169,22 @@ test("scores, tonight, the offline page and the 404 page: nothing sideways, ever
   expect((await problems(page)).small).toEqual([]);
 });
 
-test("the saved-copy bar holds its whole sentence beside \"Checking...\" at 320 px", async ({ page, context }) => {
-  test.skip(!process.env.CI, "the service worker runs only in a production build");
-  await page.goto("/scores/tonight");
-  await page.evaluate(() => navigator.serviceWorker.ready);
-  await page.reload(); // now through the worker, which keeps a copy
-  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-  await expect.poll(() => page.evaluate(async () => Boolean(await (await caches.open("saved-pages")).match("/scores/tonight")))).toBe(true);
-  await context.setOffline(true);
-  await page.reload();
-  const notice = page.locator('[data-saved-notice="saved"]');
-  await expect(notice).toBeVisible();
-  await notice.getByRole("button").evaluate((b) => void (b.textContent = "Checking...")); // the longest label, as it is while the signal is tried
-  const fit = await notice.evaluate((bar) => ({ bar: bar.getBoundingClientRect().height, text: bar.querySelector("span")!.getBoundingClientRect().height }));
-  expect(fit.text).toBeLessThanOrEqual(fit.bar);
-  await context.setOffline(false);
+test.describe("saved copies", () => {
+  test.use({ serviceWorkers: "allow" }); // this one test needs the worker the rest of the file blocks
+  test("the saved-copy bar holds its whole sentence beside \"Checking...\" at 320 px", async ({ page, context }) => {
+    test.skip(!process.env.CI, "the service worker runs only in a production build");
+    await page.goto("/scores/tonight");
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload(); // now through the worker, which keeps a copy
+    await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+    await expect.poll(() => page.evaluate(async () => Boolean(await (await caches.open("saved-pages")).match("/scores/tonight")))).toBe(true);
+    await context.setOffline(true);
+    await page.reload();
+    const notice = page.locator('[data-saved-notice="saved"]');
+    await expect(notice).toBeVisible();
+    await notice.getByRole("button").evaluate((b) => void (b.textContent = "Checking...")); // the longest label, as it is while the signal is tried
+    const fit = await notice.evaluate((bar) => ({ bar: bar.getBoundingClientRect().height, text: bar.querySelector("span")!.getBoundingClientRect().height }));
+    expect(fit.text).toBeLessThanOrEqual(fit.bar);
+    await context.setOffline(false);
+  });
 });

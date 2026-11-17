@@ -578,7 +578,8 @@ test("playoffs show every bracket round by round, naming no winner and no source
   expect(await page.getByText(/Projected: .+ by (\d+|45\+) · (>99|\d+)% chance to win/).count()).toBeGreaterThan(0);
 
   await checkPage(page, "/playoffs/tapps", `playoffs-tapps-${info.project.name}`);
-  await expect(page.getByRole("heading", { level: 2 })).toHaveCount(5);
+  // One h2 a bracket; the "Current round" block above them is an h2 too (ADR 0106: no h3 straight after the h1).
+  await expect(page.getByRole("heading", { level: 2 }).filter({ hasNotText: "Current round" })).toHaveCount(5);
   // Quarterfinals sit in the order of the semifinals they feed: every semifinal team played in the quarterfinal
   // listed at the same place, two to a semifinal.
   const bracket = page.getByRole("region", { name: "TAPPS Division I", exact: true });
