@@ -100,12 +100,18 @@ export function GameScore({ g, away, home, neutral, watch }: { g: Game; away?: P
         <BigLine g={shown} side="away" program={away} neutral={neutral} />
         <BigLine g={shown} side="home" program={home} neutral={neutral} />
       </section>
-      {/* Under way: what was projected beside the score so far, naming no leader (ADR 0044). The place is held either way. */}
+      {/* Under way: what was projected beside the score so far, naming no leader (ADR 0044). The place is held either way: until
+          a score arrives, the same line is drawn hidden with stand-in digits, so it takes exactly the lines it will (it wraps
+          to two or three on a phone) and the page below never moves. */}
       {watch && shown.projected && (
-        <div className="min-h-5 px-3 pt-1">
-          {live && (
+        <div className="px-3 pt-1">
+          {live ? (
             <p data-projected className="text-[13px] leading-4 text-muted">
               {projectedLine(shown.projected, outcomeOf(shown))}
+            </p>
+          ) : (
+            <p aria-hidden="true" className="invisible text-[13px] leading-4">
+              {projectedLine(g.projected, outcomeOf({ ...g, state: "live", homeScore: 88, awayScore: 88, verification: "unconfirmed" }))}
             </p>
           )}
         </div>
