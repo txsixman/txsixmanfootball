@@ -24,7 +24,7 @@ ADR 0016 (logos shown as published, else the initials badge in the school's colo
   school's logo as published, its name and place, this season's record and rank, and its latest score ("Latest score: 75-6 vs Kress",
   or "Latest game: forfeit at Kress"). No winner is named; a robot-read score may be unconfirmed (ADR 0004). A school with no logo
   gets the initials in its colors. The program's season pages share the program's card.
-- **State Championship pages** (`/championships/<season>/<bracket>/card`): the matchup (a side not known yet reads "Winner of G29")
+- **State Championship pages** (`/championships/<season>/<bracket>/card`): the matchup (a side not settled yet reads "To be decided (game 29)" in the image and "the team that wins game 29" in the alt text; a card never says "winner" while a game may be live)
   with the day, time, site and each team's season record; or, once the final is recorded and confirmed, the champion and the score;
   the listed score alone, with no champion, while the result is not confirmed; a forfeit's winner with no score (ADR 0083). The words
   are "State Championship" always.

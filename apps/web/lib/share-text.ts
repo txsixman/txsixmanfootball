@@ -50,6 +50,16 @@ function whereAndWhen(date?: string, kickoff?: string, site?: string): string {
 export const kickerSize = (kicker: string, alone: boolean) =>
   alone ? (kicker.length > 46 ? 30 : kicker.length > 36 ? 38 : 44) : kicker.length > 46 ? 24 : kicker.length > 36 ? 28 : 34;
 
+/** A side the bracket has not settled yet reads "Winner of G29" there; a card never says "winner" (a game page may be live), so the
+ * image says "To be decided (game 29)" and the alt text "the team that wins game 29". A known team is its own name in both. */
+function sideWords(side: { text: string; known: boolean }): { label: string; alt: string } {
+  if (side.known) return { label: side.text, alt: side.text };
+  const token = /^Winner of (.+)$/.exec(side.text)?.[1];
+  if (!token) return { label: "To be decided", alt: "a team to be decided" };
+  const game = token.replace(/^G(\d+)$/, "game $1").replace(/^SF(\d+)$/, "semifinal $1");
+  return { label: `To be decided (${game})`, alt: `the team that wins ${game}` };
+}
+
 const sentence = (parts: (string | undefined | false)[]) => parts.filter(Boolean).join(" ");
 
 type GameCardSide = { name: string; score: number | null; record?: string };
@@ -159,6 +169,8 @@ type ChampionshipCardText = {
   title: string;
   /** "Pinecrest Academy · State Champion", only for a recorded, confirmed final. */
   banner?: string;
+  /** What the image calls each side: the team's name, or "To be decided (game 29)" for a side not settled yet. */
+  names: [string, string];
   /** Each side's score, shown only when the game is played and the score may be shown. */
   shown: [number | null, number | null];
   /** Each side's season record, for a game still to play. */
@@ -173,6 +185,7 @@ type ChampionshipCardText = {
  * score with no champion while the result is not confirmed (ADR 0040); a forfeit's winner with no score. */
 export function championshipCardText(c: ChampionshipCardInput): ChampionshipCardText {
   const [a, b] = c.sides;
+  const [wa, wb] = [sideWords(a), sideWords(b)];
   const banner = championBanner(c.final);
   // The score: the recorded final's (never a forfeit's), else the listed one of a played game.
   const shown: [number | null, number | null] = c.final
@@ -192,10 +205,10 @@ export function championshipCardText(c: ChampionshipCardInput): ChampionshipCard
     const score = c.final.forfeit ? "A forfeit, no score was played" : `Final score ${scoreInWords(`${c.final.championScore}-${c.final.runnerUpScore}`)}`;
     alt = sentence([`${c.title}: ${c.final.champion}, State Champion.`, `${score} over ${c.final.runnerUp}${date ? `, ${date}` : ""}.`]);
   } else if (c.scores) {
-    alt = `${c.title}, score reported, not confirmed: ${a.text} ${c.scores[0]}, ${b.text} ${c.scores[1]}. No champion is named yet.`;
+    alt = `${c.title}, score reported, not confirmed: ${wa.alt} ${c.scores[0]}, ${wb.alt} ${c.scores[1]}. No champion is named yet.`;
   } else {
-    const have = [a.record && `${a.text} ${recordInWords(a.record)}`, b.record && `${b.text} ${recordInWords(b.record)}`].filter(Boolean);
-    alt = sentence([`${c.title}: ${a.text} versus ${b.text}, ${whereAndWhen(c.date, c.kickoff, site)}.`, have.length > 0 && `Records: ${have.join("; ")}.`]);
+    const have = [a.record && `${wa.alt} ${recordInWords(a.record)}`, b.record && `${wb.alt} ${recordInWords(b.record)}`].filter(Boolean);
+    alt = sentence([`${c.title}: ${wa.alt} versus ${wb.alt}, ${whereAndWhen(c.date, c.kickoff, site)}.`, have.length > 0 && `Records: ${have.join("; ")}.`]);
   }
-  return { title: c.title, ...(banner && { banner }), shown, records: played ? [undefined, undefined] : [a.record, b.record], footer, ...(day && { when: day }), ...(site && { site }), alt };
+  return { title: c.title, ...(banner && { banner }), names: [wa.label, wb.label], shown, records: played ? [undefined, undefined] : [a.record, b.record], footer, ...(day && { when: day }), ...(site && { site }), alt };
 }

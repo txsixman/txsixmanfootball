@@ -147,7 +147,7 @@ test("a State Championship played but not confirmed shows the listed score and n
   assert.match(t.alt, /not confirmed: Harvest Lantana 14, Faustina Academy 20\. No champion is named yet\.$/);
 });
 
-test("a State Championship still to play: the matchup (open sides as the bracket words them), day, time, site and records", () => {
+test("a State Championship still to play: the matchup (open sides as a game to be decided), day, time, site and records", () => {
   const t = championshipCardText({
     title: "2026 UIL Division I State Championship",
     sides: [side("Winner of G29", false), side("Winner of G30", false)],
@@ -160,7 +160,8 @@ test("a State Championship still to play: the matchup (open sides as the bracket
   assert.equal(t.footer, "Scheduled");
   assert.equal(t.when, "Wed, Dec 16 · 2:00 PM CT");
   assert.equal(t.site, "AT&T Stadium, Arlington");
-  assert.equal(t.alt, "2026 UIL Division I State Championship: Winner of G29 versus Winner of G30, Wednesday, December 16, 2026 at 2:00 PM CT, at AT&T Stadium, Arlington.");
+  assert.deepEqual(t.names, ["To be decided (game 29)", "To be decided (game 30)"]);
+  assert.equal(t.alt, "2026 UIL Division I State Championship: the team that wins game 29 versus the team that wins game 30, Wednesday, December 16, 2026 at 2:00 PM CT, at AT&T Stadium, Arlington.");
   const known = championshipCardText({ ...championship, sides: [side("Harvest Lantana", true, "9-2"), side("Faustina Academy", true, "11-0")] });
   assert.deepEqual(known.records, ["9-2", "11-0"]);
   assert.match(known.alt, /Records: Harvest Lantana 9 wins and 2 losses; Faustina Academy 11 wins and 0 losses\.$/);
@@ -181,4 +182,14 @@ test("the top line steps down with its length, larger when no date shares it", (
   assert.ok(kickerSize("2026 TAPPS Division II Large School State Championship", false) < kickerSize("2026 TCAF State Championship", false));
   assert.ok(kickerSize("2026 TCAF State Championship", true) > kickerSize("2026 TCAF State Championship", false));
   assert.ok(kickerSize("2026 TAPPS Division II Large School State Championship", true) < kickerSize("2026 TCAF State Championship", true));
+});
+
+test("an open side never says winner, in the image or the alt text", () => {
+  const sides = [side("Winner of SF1", false), side("To be decided", false)];
+  const t = championshipCardText({ ...championship, sides });
+  assert.deepEqual(t.names, ["To be decided (semifinal 1)", "To be decided"]);
+  assert.match(t.alt, /the team that wins semifinal 1 versus a team to be decided,/);
+  for (const text of [t.alt, ...t.names, championshipCardText({ ...championship, sides, scores: [7, 14] }).alt]) assert.doesNotMatch(text, /winner|leading/i);
+  const known = championshipCardText({ ...championship, sides: [side("Harvest Lantana"), side("Faustina Academy")] });
+  assert.deepEqual(known.names, ["Harvest Lantana", "Faustina Academy"]);
 });

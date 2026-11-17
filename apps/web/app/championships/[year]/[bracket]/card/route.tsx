@@ -28,7 +28,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ yea
       const slug = s.team ? alignments.find((a) => a.school === s.team)?.slug : undefined;
       const team = s.team ?? "";
       return {
-        name: s.text,
+        name: text.names[i],
         initials: s.team ? initials(team) : "?",
         tile: await tileOf(slug ? (identities.get(slug) ?? EMPTY) : undefined, "#1c3a72"),
         score: text.shown[i],
