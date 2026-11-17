@@ -4,6 +4,7 @@ import { bracketHref, bracketLabel, bracketSlug, loadBrackets, type Bracket } fr
 import { loadPlayoffGames } from "./games";
 import { memo } from "./memo";
 import { orderMap, pageId } from "./page-id";
+import { centralDate } from "./preview-parts";
 import type { Projection } from "./projection";
 import { CURRENT_SEASON, FIRST_SEASON } from "./season";
 import { finalOf, STATE_ROUNDS, type LeagueFinal } from "./state-finals";
@@ -93,7 +94,7 @@ function championshipOf(season: number, b: Bracket): StateChampionship | undefin
   return {
     ...base,
     sides,
-    date: built?.date ?? node?.kickoff_utc?.slice(0, 10), kickoff: built?.kickoff ?? node?.kickoff_utc, site, address: built?.address,
+    date: built?.date ?? (node?.kickoff_utc ? centralDate(node.kickoff_utc) : undefined), kickoff: built?.kickoff ?? node?.kickoff_utc, site, address: built?.address,
     directions: directionsOf(site, built?.address),
     ...(a.team && b2.team ? { gameHref: `/scores/${pageId(season, orders, { round: finalRound, home: a.team, away: b2.team })}` } : {}),
     ...(built?.projection ? { projection: built.projection } : node?.projection ? { projection: node.projection } : {}),

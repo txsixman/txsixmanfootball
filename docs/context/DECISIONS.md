@@ -152,3 +152,7 @@ Not in an ADR:
 - **Landing page** (ADR 0086): `/welcome` says what the site is and sends a first-time visitor on (find your team, tonight's
   scores), every number from the data; home stays the scoreboard and shows a dismissible "New here?" link on a first visit
   only, hidden before it paints (Nov 16, 2026).
+- **Previews on upcoming playoff games** (ADR 0088): every game not yet played with both teams known (dated or not) shows each
+  team's last five games with links, the projection with what is in it, how often and when they last met, the common opponents,
+  the next round from the bracket (day and site only when the league lists them), and at a State Championship each
+  team's earlier ones; static, no client JavaScript (Nov 16, 2026).
