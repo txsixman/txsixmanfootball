@@ -29,7 +29,7 @@ const days = (r: Pick<WeekReview, "monday" | "sunday">) => `${weekLabel(r.monday
 function TeamName({ name, org, alignments }: { name: string; org: Org; alignments: Alignment[] }) {
   const slug = programFor(alignments, name, org.league)?.slug;
   return slug ? (
-    <Link href={`/programs/${slug}`} prefetch={false} className="inline-flex min-h-11 items-center text-ink hover:text-navy hover:underline">
+    <Link href={`/programs/${slug}`} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center text-ink hover:text-navy hover:underline">
       {name}
     </Link>
   ) : (
@@ -41,7 +41,7 @@ function TeamName({ name, org, alignments }: { name: string; org: Org; alignment
 function GameLink({ g }: { g: Games }) {
   const line = (team: string, score: number) => (
     <span className="flex items-center justify-between gap-3">
-      <span className="min-w-0 truncate">{team}</span>{" "}
+      <span className="min-w-0 break-words">{team}</span>{" "}
       <span className="font-num text-[20px] font-bold tabular-nums">{g.forfeit ? "" : score}</span>
     </span>
   );

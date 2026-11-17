@@ -17,7 +17,7 @@ export function TabNav({ label, tabs, current, wrap = false }: { label: string; 
     <nav
       aria-label={label}
       style={grid}
-      className={`mt-4 border-b-2 border-navy ${wrap ? "grid grid-cols-[repeat(var(--cols),minmax(0,1fr))] sm:grid-cols-[repeat(var(--cols-sm),minmax(0,1fr))]" : "flex"}`}
+      className={`mt-4 border-b-2 border-navy ${wrap ? "grid grid-cols-[repeat(var(--cols),minmax(0,1fr))] sm:grid-cols-[repeat(var(--cols-sm),minmax(0,1fr))]" : "flex flex-wrap"}`}
     >
       {tabs.map((t) => {
         const active = t.href === current;
@@ -27,7 +27,7 @@ export function TabNav({ label, tabs, current, wrap = false }: { label: string; 
             href={t.href}
             prefetch={false} // tabs are other full tables (past seasons, other leagues): fetch one only when it is chosen
             aria-current={active ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center justify-center px-2 ${wrap ? "text-center" : "flex-auto whitespace-nowrap"} font-num text-[16px] font-bold uppercase tracking-wide ${
+            className={`inline-flex min-h-11 items-center justify-center px-2 ${wrap ? "text-center" : "min-w-11 flex-auto whitespace-nowrap"} font-num text-[16px] font-bold uppercase tracking-wide ${
               active ? "bg-band text-white" : "text-navy hover:bg-panel"
             }`}
           >

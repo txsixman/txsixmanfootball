@@ -41,7 +41,7 @@ export async function GameList({ games, league, alignments, identities, today, s
     const label = (
       <>
         <CrestSlot school={name} identity={(slug && identities.get(slug)) || EMPTY} />
-        <span className="line-clamp-2 min-w-0 leading-tight">{name}</span>
+        <span className="line-clamp-2 min-w-0 break-words leading-tight">{name}</span>
       </>
     );
     return (
@@ -118,7 +118,7 @@ export async function BuiltList({ games, league, alignments, identities, comment
     const label = (
       <>
         {"team" in s ? <CrestSlot school={s.team} identity={(slug && identities.get(slug)) || EMPTY} /> : <span aria-hidden="true" className="mr-2 w-10 shrink-0" />}
-        <span className="line-clamp-2 min-w-0 leading-tight">{sideText(s)}</span>
+        <span className="line-clamp-2 min-w-0 break-words leading-tight">{sideText(s)}</span>
       </>
     );
     return slug ? (

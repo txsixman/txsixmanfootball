@@ -52,7 +52,7 @@ function RoundCard({ box, live, team, dim, onTeam }: { box: Box; live: LiveView 
 }
 
 const tabClass = (on: boolean) =>
-  `inline-flex min-h-11 shrink-0 items-center gap-1.5 px-3 font-num text-[16px] font-bold uppercase tracking-wide focus-visible:outline-2 focus-visible:outline-navy ${on ? "bg-band text-white" : "text-navy hover:bg-panel"}`;
+  `inline-flex min-h-11 shrink-0 items-center gap-1.5 px-3 font-num text-[16px] font-bold uppercase tracking-wide focus-visible:outline-2 focus-visible:-outline-offset-4 ${on ? "bg-band text-white focus-visible:outline-white" : "text-navy hover:bg-panel focus-visible:outline-navy"}`;
 
 /** `current`: the tab open; `now`: the round being played (marked on its tab, whichever tab is open). */
 export function RoundTabs({ data, current, now, onSelect, team, onPath, onTeam, liveOf }: {

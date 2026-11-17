@@ -187,7 +187,7 @@ export default async function ProgramSeasonPage({ params }: Props) {
                           href={opp.series.href}
                           prefetch={false}
                           aria-label={`${school.school} and ${opp.series.name} series`}
-                          className="relative z-10 inline-flex min-h-11 items-center text-[14px] font-semibold text-navy underline underline-offset-2"
+                          className="relative z-10 inline-flex min-h-11 min-w-11 items-center text-[14px] font-semibold text-navy underline underline-offset-2"
                         >
                           Series
                         </Link>

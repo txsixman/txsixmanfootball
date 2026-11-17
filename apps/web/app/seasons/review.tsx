@@ -49,7 +49,7 @@ const finalLine = (g: SeasonResult) => (g.homeScore === g.awayScore ? "Final: ti
 function GameLink({ g }: { g: SeasonResult }) {
   const line = (team: string, score: number) => (
     <span className="flex items-center justify-between gap-3">
-      <span className="min-w-0 truncate">{team}</span>{" "}
+      <span className="min-w-0 break-words">{team}</span>{" "}
       <span className="font-num text-[18px] font-bold tabular-nums">{g.forfeit ? "" : score}</span>
     </span>
   );

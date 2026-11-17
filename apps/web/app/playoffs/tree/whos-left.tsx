@@ -35,12 +35,12 @@ export function WhosLeft({ rows, team, onFollow, titled }: { rows: Left[]; team:
             <div className="flex items-center justify-between gap-3">
               {l.program ? (
                 <Link href={`/programs/${l.program}#path`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center text-[18px] font-bold leading-tight text-ink hover:text-navy hover:underline">
-                  <span className="line-clamp-2">{l.name}</span>
+                  <span className="line-clamp-2 break-words">{l.name}</span>
                   <span className="sr-only">, playoff path</span>
                 </Link>
               ) : (
                 <span className="flex min-h-11 min-w-0 flex-1 items-center text-[18px] font-bold leading-tight text-ink">
-                  <span className="line-clamp-2">{l.name}</span>
+                  <span className="line-clamp-2 break-words">{l.name}</span>
                 </span>
               )}
               {titled && l.title && l.state !== "champion" && (

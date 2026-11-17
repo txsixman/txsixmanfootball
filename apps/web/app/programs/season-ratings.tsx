@@ -7,7 +7,7 @@ import { signed } from "@/lib/signed";
 export type SeasonRating = { season: number; rating: number | null };
 
 // About a phone's width at 16px text (the viewBox stops growing at 480px, as in rating-chart.tsx), so labels stay near 14 to 19px wherever it is seen.
-const BOX = { width: 400, height: 170, left: 56, right: 26, top: 12, bottom: 30 };
+const BOX = { width: 400, height: 170, left: 72, right: 26, top: 12, bottom: 30 };
 
 export function SeasonRatings({ points }: { points: SeasonRating[] }) {
   const have = points.filter((p) => p.rating != null);
@@ -21,7 +21,7 @@ export function SeasonRatings({ points }: { points: SeasonRating[] }) {
   const chart = lineChart(points.map((p) => ({ x: p.season, y: p.rating })), BOX);
   return (
     <figure className="px-3 pt-2">
-      <svg role="img" aria-label={summary} viewBox={`0 0 ${BOX.width} ${BOX.height}`} className="block h-auto w-full max-w-[480px]" fontSize="16">
+      <svg role="img" aria-label={summary} viewBox={`0 0 ${BOX.width} ${BOX.height}`} className="block h-auto w-full max-w-[480px]" fontSize="17">
         {chart.yTicks.map((t) => (
           <g key={t.value}>
             <line x1={chart.plot.left} x2={chart.plot.right} y1={t.cy} y2={t.cy} className="stroke-line" strokeWidth={1} />
