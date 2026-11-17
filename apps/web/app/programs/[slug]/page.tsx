@@ -15,7 +15,7 @@ import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
 import { loadRanked, rankLabel } from "@/lib/rankings";
 import { ratedFromOutsideOnly, OUTSIDE_ONLY_NOTE } from "@/lib/outside-only";
-import { FEW_GAMES, loadRatings, ratingSeasons, ratingText, record, signed } from "@/lib/ratings";
+import { FEW_GAMES, ratingSeasons, ratingText, record, signed } from "@/lib/ratings";
 import { meetingScore, schedulesFor, type Meeting } from "@/lib/schedule-strength";
 import { whyItMoved } from "@/lib/why-moved";
 import { seasonHref } from "../../rankings/view";
@@ -45,9 +45,9 @@ import { JsonLd } from "../../json-ld";
 import { programJsonLd } from "@/lib/json-ld";
 import { ShareButton } from "../../share-button";
 import { SITE_NAME } from "@/lib/site";
-import { RatingChart, ratingPoints } from "../rating-chart";
+import { HistoryChart } from "../history-chart";
+import { teamHistory } from "@/lib/team-history";
 import { SeasonRatings } from "../season-ratings";
-import { RankTrend, rankTrend } from "../trend";
 import { CrestSlot, EdgeToEdge } from "../../ui";
 import { programTitle } from "@/lib/titles";
 
@@ -149,7 +149,6 @@ export default async function ProgramPage({ params }: Props) {
   // A season links to its rankings only where the organization has rankings pages (lib/active-orgs.ts): Independent
   // gets none until a game against a listed school is read, though CenTex is rated from its outside games.
   const ranksPage = !org || (await activeOrgs()).includes(org);
-  const sameOrg = new Set(all.filter((a) => a.league === school.league).map((a) => a.slug));
   const standing = (await loadStandings(CURRENT_SEASON)).find((d) => d.rows.some((r) => r.school.slug === slug));
   const place = standing ? standing.rows.findIndex((r) => r.school.slug === slug) + 1 : 0;
   const opponentLink = (name: string) => {
@@ -206,15 +205,13 @@ export default async function ProgramPage({ params }: Props) {
   const seasonPages = new Set((await programSeasonPages()).get(slug));
   // The opponents this program has a series page with (lib/series-data.ts): their games count links to it.
   const partners = (await seriesPartners()).get(slug);
-  const current = await loadRatings(seasons[0]);
   // What the rating rests on: the games played (from the season's games the site lists) and the ratings' own `rated`.
   const played = ranked ? (playedCounts(await loadSeasonResults(seasons[0])).get(ranked.team) ?? 0) : 0;
   // How hard the record was, measured against this organization's top teams (lib/schedule-strength.ts), and the game each
   // week that went furthest from its projection (lib/why-moved.ts).
   const schedule = ranked ? (await schedulesFor(seasons[0], ranked.org.league)).stats.get(ranked.team) : undefined;
   const moves = ranked ? await whyItMoved(seasons[0], ranked.team) : [];
-  const trend = ranked ? rankTrend(current, ranked.team, sameOrg) : [];
-  const ratings = ranked ? ratingPoints(current, ranked.team) : [];
+  const history = ranked ? await teamHistory(seasons[0], school) : [];
   const withRecord = entries.filter((e) => e.line.record);
   const sum = (k: "won" | "lost" | "tied") => withRecord.reduce((n, e) => n + e.line.record![k], 0);
   const allTime = { won: sum("won"), lost: sum("lost"), tied: sum("tied"), playoffs: entries.filter((e) => e.line.playoff).length };
@@ -592,15 +589,9 @@ export default async function ProgramPage({ params }: Props) {
           </p>
         </section>
 
-        {trend.length >= 3 && (
-          <Section id="trend" title={`${seasons[0]} rank by week`} accent={accent} className="mt-4">
-            <RankTrend points={trend} color={lineColor} />
-          </Section>
-        )}
-
-        {ratings.length >= 3 && (
-          <Section id="rating-by-week" title={`${seasons[0]} rating by week`} accent={accent}>
-            <RatingChart points={ratings} />
+        {history.length >= 3 && (
+          <Section id="rank-rating-by-week" title={`${seasons[0]} rank and rating by week`} accent={accent} className="mt-4">
+            <HistoryChart points={history} label={org?.label ?? school.league} color={lineColor} />
           </Section>
         )}
 

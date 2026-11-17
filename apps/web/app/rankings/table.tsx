@@ -14,9 +14,20 @@ export function RankingsHeader({ eyebrow, note }: { eyebrow: string; note?: stri
   return <PageHeader id="rankings" eyebrow={eyebrow} title="Rankings" note={note} />;
 }
 
+/** Places moved since a week earlier, always as an icon and words, never colour alone: ▲ up, ▼ down, a dash for steady
+ * (the rating moved by MOVE_THRESHOLD points or less), NEW for a team not ranked a week ago. Shown for every ranked team
+ * once the table carries week-earlier ratings, so a steady team says so too (ADR 0091). */
 function Moved({ by }: { by: number | "new" | undefined }) {
-  if (by === undefined || by === 0) return null;
-  if (by === "new") return <span className="block text-[13px] font-bold uppercase text-muted">New</span>;
+  if (by === undefined) return null;
+  if (by === "new") return <span className="block text-[13px] font-bold uppercase text-muted">New<span className="sr-only"> in the rankings this week</span></span>;
+  if (by === 0) {
+    return (
+      <span className="block text-[13px] font-bold text-muted">
+        <span aria-hidden="true">–</span>
+        <span className="sr-only">steady since last week</span>
+      </span>
+    );
+  }
   const up = by > 0;
   return (
     <span className={`block text-[13px] font-bold ${up ? "text-navy" : "text-red"}`}>
@@ -192,7 +203,7 @@ export function HowToRead({ schedule = false, basis = false }: { schedule?: bool
             <Link href="/about/ratings" className="flex min-h-11 w-fit items-center font-semibold text-navy underline">What a rating rests on</Link>
           </li>
         )}
-        <li>An arrow beside a rank shows places moved since a week earlier, within the organization (or division) tab you are on. It shows only when the rating itself moved by more than {MOVE_THRESHOLD} points.</li>
+        <li>Under a rank: ▲ or ▼ and the places moved since a week earlier, within the organization (or division) tab you are on; NEW for a team not ranked a week ago; a dash for a team that held steady. A move counts only when the rating itself moved by more than {MOVE_THRESHOLD} points.</li>
         <li>A team with fewer than {FEW_GAMES} rated games is not ranked (NR), is listed last, and shows its game count: one result can move its rating a long way.</li>
         {schedule && <li>On wide screens: record strength is a team&rsquo;s wins minus the wins a typical top-25 team would be expected to get against the same opponents at the same sites; the opponents&rsquo; rating is the average rating of the teams it played. Both, with the best win and worst loss, are also on every program page.</li>}
       </ul>

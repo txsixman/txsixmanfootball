@@ -16,6 +16,7 @@ import { rankingWeeks } from "@/lib/week-rankings";
 import { JsonLd } from "../json-ld";
 import { TabNav } from "../tab-nav";
 import { EmptyState } from "../ui";
+import { Movers } from "./movers";
 import { HowToRead, RankingsHeader, RatingsTable, type Row } from "./table";
 
 // Every ranking stands inside one organization (ADR 0012): UIL, TAPPS, TAIAO, TCAF or Independent. Under UIL a second tab row
@@ -102,6 +103,7 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
       )}
       {rows.length ? (
         <>
+          <Movers rows={rows} title="Biggest movers this week" />
           <RatingsTable rows={rows} hrefs={hrefs} />
           {forfeitOnly.length > 0 && (
             <div className="mt-3">

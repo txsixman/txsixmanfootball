@@ -167,3 +167,7 @@ Not in an ADR:
   linked State Championship line and this season's district place on the season rows, and a plain page for a program with
   under five games (its seasons only, no rows of dashes, no all-time numbers); a past season shows no district place because
   only today's alignments are held (Nov 16, 2026).
+- **Rankings tell the season** (ADR 0091): every ranked row shows its move since last week as an icon and words (▲ up, ▼ down,
+  NEW, a dash for steady), `/rankings` and the week pages open with the biggest movers (up to three up and three down), and a
+  program page and every program-season page draw one static SVG of rank and rating by week with a text alternative; read from
+  the table's stored week-by-week ratings, no new field, no chart library (Nov 16, 2026).
