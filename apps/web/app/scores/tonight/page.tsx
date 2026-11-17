@@ -4,6 +4,7 @@ import { centralClock } from "@/lib/playoff-status";
 import { loadNight } from "@/lib/tonight";
 import { EmptyState, PageHeader } from "../../ui";
 import TonightBoard from "./board";
+import { SaveForOffline } from "./save-for-offline";
 import { tonightTitle } from "@/lib/titles";
 
 // Static, like the other score pages: which night it is, and the games on it, are worked out when the site is built
@@ -32,6 +33,7 @@ export default async function TonightPage() {
           }
         />
         <p className="mt-2 text-[13px] text-muted">Page updated {updated}</p>
+        <SaveForOffline />
       </header>
       {night.count ? (
         <TonightBoard night={night} />
