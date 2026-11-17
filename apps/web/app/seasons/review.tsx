@@ -43,11 +43,13 @@ function TeamLink({ name, org, alignments, identities, bold = true }: { name: st
 /** "Final: Oglesby by 52", or "Final: tied" for a tie. */
 const finalLine = (g: SeasonResult) => (g.homeScore === g.awayScore ? "Final: tied" : `Final: ${g.homeScore > g.awayScore ? g.home : g.away} by ${marginOf(g)}`);
 
-/** Away team, home team and the score, as one link to the game's page. A forfeit shows the word, never the recorded score. */
+/** Away team, home team and the score, as one link to the game's page. A forfeit shows the word, never the recorded score. The
+ * link's name is its own text plus hidden separators, never an aria-label, so what is read starts with what is seen (axe's
+ * label-content-name-mismatch). */
 function GameLink({ g }: { g: SeasonResult }) {
   const line = (team: string, score: number) => (
     <span className="flex items-center justify-between gap-3">
-      <span className="min-w-0 truncate">{team}</span>
+      <span className="min-w-0 truncate">{team}</span>{" "}
       <span className="font-num text-[18px] font-bold tabular-nums">{g.forfeit ? "" : score}</span>
     </span>
   );
@@ -55,12 +57,13 @@ function GameLink({ g }: { g: SeasonResult }) {
     <Link
       href={g.href}
       prefetch={false}
-      aria-label={g.forfeit ? `${g.away}, ${g.home}, forfeit, game page` : `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}, game page`}
       className="block min-h-11 py-0.5 text-ink hover:text-navy"
     >
       {line(g.away, g.awayScore)}
+      <span className="sr-only">, </span>
       {line(g.home, g.homeScore)}
-      {g.forfeit && <span className="block text-[13px] font-semibold text-muted">Forfeit</span>}
+      {g.forfeit && <span className="block text-[13px] font-semibold text-muted"><span className="sr-only">, </span>Forfeit</span>}
+      <span className="sr-only">, game page</span>
     </Link>
   );
 }
@@ -111,8 +114,10 @@ export function SeasonInReview({ review, alignments, identities, latest }: { rev
                     {team(c.champion)}
                   </span>
                   {c.game ? (
-                    <Link href={c.game.href} prefetch={false} aria-label={`${c.champion} ${c.score}, State Championship game page`} className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-end font-num text-[20px] font-bold tabular-nums text-navy hover:underline">
+                    <Link href={c.game.href} prefetch={false} className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-end font-num text-[20px] font-bold tabular-nums text-navy hover:underline">
+                      <span className="sr-only">{c.champion} </span>
                       {c.score}
+                      <span className="sr-only">, State Championship game page</span>
                     </Link>
                   ) : (
                     <span className="shrink-0 font-num text-[20px] font-bold tabular-nums text-navy">{c.score}</span>
