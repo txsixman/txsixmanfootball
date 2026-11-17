@@ -289,7 +289,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
   // Between game nights, this week's games come before last week's finals once the next game day is nearer than the last one.
   // The page is built with finals first; a script that runs as the board starts sets data-upcoming-first on <html> before anything
   // is painted, and CSS `order` puts the sections right (lib/upcoming-first.ts), so nothing moves when the page's own script
-  // arrives (ADR 0099). Saturday reads last night's finals first; Tuesday reads Friday's games, kickoffs and sites first.
+  // arrives (ADR 0103). Saturday reads last night's finals first; Tuesday reads Friday's games, kickoffs and sites first.
   const lastDay = [...final, ...reported].reduce((d, g) => (g.date && g.date > d ? g.date : d), "");
   const toPlay = [...new Set([...shown.flatMap((g) => ((g.state === "scheduled" || g.state === "postponed") && g.date ? [g.date] : [])), ...nextShown.flatMap((g) => (g.date ? [g.date] : []))])].sort();
   const toPlayKey = toPlay.join(" ");

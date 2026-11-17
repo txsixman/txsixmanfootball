@@ -1,4 +1,4 @@
-// The scoreboard's midweek order is decided before first paint by an inline script (lib/upcoming-first.ts, ADR 0099).
+// The scoreboard's midweek order is decided before first paint by an inline script (lib/upcoming-first.ts, ADR 0103).
 //   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";

@@ -1,4 +1,4 @@
-# ADR 0099: The scoreboard's midweek order is set before first paint
+# ADR 0103: The scoreboard's midweek order is set before first paint
 
 **Status:** Proposed Nov 17, 2026; accepted when its pull request is merged. It changes when the order is decided, not what it is: ADR 0036's "decided at the moment of viewing" and the game-night order stand.
 

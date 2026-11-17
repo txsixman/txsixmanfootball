@@ -3,7 +3,7 @@ import path from "node:path";
 
 // The scoreboard moved by 0.55 on a Tuesday (Nov 17, 2026): between game nights it lists this week's games before last week's finals,
 // and it worked that out after the page's script loaded, so every section jumped (Lighthouse's cumulative-layout-shift, limit 0.03).
-// Now the order is set before first paint (lib/upcoming-first.ts, ADR 0099). This loads /scores on each side of the halfway point
+// Now the order is set before first paint (lib/upcoming-first.ts, ADR 0103). This loads /scores on each side of the halfway point
 // between the last game day and the next, twice each with the service worker active (the second load comes through it), and
 // reads the page's layout shift with a PerformanceObserver. CI only: the worker runs only in a production build.
 test.skip(!process.env.CI, "the service worker runs only in a production build");

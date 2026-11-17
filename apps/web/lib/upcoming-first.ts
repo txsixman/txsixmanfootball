@@ -3,7 +3,7 @@
  * the last one (app/scores/board.tsx). Whether it is, depends on the clock, and the page is static: so the page is always built
  * with finals first, and this decides the order BEFORE THE FIRST PAINT. A small script (`upcomingFirstScript`) runs as the board
  * starts and sets `data-upcoming-first` on <html>; CSS `order` does the rest, so nothing moves when the page's own script loads
- * (ADR 0099). The board runs the same function again on the client (when it shows, as the clock moves, and when an organization or a
+ * (ADR 0103). The board runs the same function again on the client (when it shows, as the clock moves, and when an organization or a
  * search changes the games it lists).
  *
  * Self-contained on purpose (no imports, no outside names): its source text is the inline script.
