@@ -171,7 +171,7 @@ export async function RoadToChampionship({ school, accent }: { school: string; a
       {outs}
       <p className="px-3 pt-2 text-[13px] text-muted">
         A projection, not a result. Chances and margins come from the current ratings, the same as the bracket&rsquo;s table of chances, with the home edge for the
-        listed home team, except in the State Championship, a neutral site. A score no source confirms does not move a team on.
+        listed home team, except in the State Championship, a neutral site. A score that is not yet confirmed does not move a team on.
       </p>
     </section>
   );
