@@ -265,7 +265,7 @@ export async function SeasonHubView({ hub }: Props) {
         {hub.reviewWeeks.length > 0 && (
           <>
             <h3 id="weeks-review" className="mt-5 px-3 font-num text-[16px] font-bold uppercase tracking-wider text-navy">Week in review</h3>
-            <Text>Rating movers, closest games and playoff advancement, one week at a time.</Text>
+            <Text>Upsets, closest games, streaks and playoff advancement, one week at a time.</Text>
             <ol aria-labelledby="weeks-review" className="mt-2 flex flex-wrap gap-2 px-3">
               {hub.reviewWeeks.map((n) => (
                 <li key={n}>

@@ -7,13 +7,14 @@ import { loadGames } from "@/lib/games";
 import { loadFinals } from "@/lib/champions";
 import { nightTitle } from "@/lib/game-night";
 import { EMPTY, loadIdentities } from "@/lib/identity";
+import { chanceText } from "@/lib/projection";
 import { loadRanked, type Ranked } from "@/lib/rankings";
 import { FEW_GAMES, ratingText } from "@/lib/ratings";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
 import { CURRENT_SEASON, FIRST_SEASON } from "@/lib/season";
 import { loadNight } from "@/lib/tonight";
 import { weekHref } from "@/lib/week-review-hrefs";
-import { latestReview } from "@/lib/week-review-load";
+import { latestReview, loadWeekReview, type WeekReview } from "@/lib/week-review-load";
 import { homeEdge } from "@/lib/intros";
 import { websiteJsonLd } from "@/lib/json-ld";
 import { JsonLd } from "./json-ld";
@@ -62,10 +63,45 @@ function Top({ title, href, teams, identities }: {
   );
 }
 
+/** The week in review's card: the week's top upset and its closest game, each a link to its game (a UIL card, ADR 0012). A fact the data lacks is left out. */
+function WeekCard({ review }: { review: WeekReview }) {
+  const { upsets, closest } = review;
+  const upset = upsets[0];
+  const score = (g: { away: string; home: string; awayScore: number; homeScore: number }) => `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}`;
+  const apart = closest ? Math.abs(closest.homeScore - closest.awayScore) : 0;
+  const row = "flex min-h-11 items-center py-1 text-[14px] leading-5 text-ink hover:text-navy";
+  return (
+    <section aria-label={`${review.org.label} week ${review.week} highlights`} className="mt-2 max-w-prose">
+      <ul>
+        {upset && (
+          <li className="border-b border-line">
+            <Link href={upset.game.href} prefetch={false} className={row}>
+              <span>
+                <span className="font-semibold">Top upset, {review.org.label} week {review.week}:</span> {score(upset.game)}. {upset.winner} had a {chanceText(upset.chance)} chance to win.
+              </span>
+            </Link>
+          </li>
+        )}
+        {closest && (
+          <li className="border-b border-line">
+            <Link href={closest.href} prefetch={false} className={row}>
+              <span>
+                <span className="font-semibold">Closest game, {review.org.label} week {review.week}:</span> {score(closest)}, {apart === 0 ? "tied" : `${apart} ${apart === 1 ? "point" : "points"} apart`}.
+              </span>
+            </Link>
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+}
+
 export default async function Home() {
   const [ranked, finals, identities, alignments, chances, tonight, review, brackets] = await Promise.all([
     loadRanked(), loadFinals(), loadIdentities(), loadAlignments(), loadTitleChances(), loadNight(), latestReview(), loadBrackets(),
   ]);
+  // The newest UIL week's top upset and closest game, counted from the same data as its week in review page (ADR 0092).
+  const recap = review && (await loadWeekReview(ORGS[0], review.season, review.week));
   // This round's page is linked while a playoff game is still to be played (app/playoffs/this-round).
   const playoffsOn = brackets.some((b) => b.rounds.some((r) => r.games.some((g) => g.homeScore == null && !g.forfeit)));
   const current = new Set(alignments.map((a) => a.slug));
@@ -119,6 +155,8 @@ export default async function Home() {
           </Link>
         )}
       </div>
+
+      {recap && (recap.upsets[0] || recap.closest) && <WeekCard review={recap} />}
 
       {watch.length > 0 && (
         <section aria-labelledby="watch" className="mt-6">

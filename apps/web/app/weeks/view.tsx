@@ -4,23 +4,25 @@ import { activeOrgs } from "@/lib/active-orgs";
 import { loadAlignments, programFor, type Alignment } from "@/lib/alignments";
 import { weekReviewDescription, weeksIndexDescription } from "@/lib/descriptions";
 import { roundPhrase } from "@/lib/games";
-import { projectionText } from "@/lib/projection";
+import { chanceText, projectionText } from "@/lib/projection";
 import { signed } from "@/lib/ratings";
 import { ORGS, type Org } from "@/lib/orgs";
 import { resultSeasons, weekLabel } from "@/lib/weeks";
 import { marginOf } from "@/lib/week-review";
 import { indexHref, weekHref } from "@/lib/week-review-hrefs";
 import { weekNeighbours } from "@/lib/neighbours";
-import { loadWeekReview, orgWeeks, reviewedWeeks, type PlacedMover, type WeekReview } from "@/lib/week-review-load";
+import { loadWeekReview, orgWeeks, reviewedWeeks, type Milestone, type PlacedMover, type RecapStreak, type WeekReview } from "@/lib/week-review-load";
 import { TabNav } from "../tab-nav";
 import { WeekStrip } from "../week-strip";
 import { BoardRow, EmptyState, PageHeader, SectionBar } from "../ui";
 
 // The week in review: one week of one organization (ADR 0012), from the same games, ratings and projections as the Results,
-// Rankings and Playoffs pages. Robot-read scores are unconfirmed, so no row names a winner (ADR 0004); advancement is shown the
-// way the bracket pages show it, from the later round's own games (ADR 0013).
+// Rankings and Playoffs pages. A final score is confirmed (ADR 0040), so the recap sections name winners; a game the sources
+// dispute names none and is left out of them (ADR 0092). Every line is counted from the data, never written; advancement is
+// shown the way the bracket pages show it, from the later round's own games (ADR 0013).
 
 type Games = WeekReview["games"][number];
+const UPSETS_SHOWN = 8;
 const days = (r: Pick<WeekReview, "monday" | "sunday">) => `${weekLabel(r.monday)} to ${weekLabel(r.sunday)}`;
 
 /** A team's name, linking to its program page when the alignments list it. A link is its own 44px row. */
@@ -78,6 +80,27 @@ function Mover({ m, i, org, alignments }: { m: PlacedMover; i: number; org: Org;
   );
 }
 
+/** The week in one line, counted from the lists below: "18 games: 2 upsets, 3 decided by one score or less." */
+function recapLine(r: WeekReview) {
+  const n = r.upsets.length;
+  const bits = [r.judged ? `${n} ${n === 1 ? "upset" : "upsets"}` : undefined, `${r.oneScore.length} decided by one score or less`].filter(Boolean);
+  return `${r.games.length} ${r.games.length === 1 ? "game" : "games"}: ${bits.join(", ")}.`;
+}
+
+/** "Final: Oglesby by 52", or "Final: tied" for a tie. */
+const finalLine = (g: Games) => (g.homeScore === g.awayScore ? "Final: tied" : `Final: ${g.homeScore > g.awayScore ? g.home : g.away} by ${marginOf(g)}`);
+
+const STREAK_TEXT = {
+  ended: (s: RecapStreak) => `${s.kind === "win" ? "Winning" : "Losing"} streak of ${s.length} games ended`,
+  reached: (s: RecapStreak) => `Has now won ${s.length} games in a row`,
+};
+
+const MILESTONE_TEXT: Record<Milestone["kind"], (m: Milestone) => string> = {
+  "state-game": () => "First State Championship game in the records held here",
+  "playoff-win": () => "First playoff win in the results held here",
+  "first-loss": (m) => `First loss of the season, after ${m.unbeaten} games with no loss`,
+};
+
 const Section = ({ id, title, note, children }: { id: string; title: string; note: string; children: ReactNode }) => (
   <section aria-labelledby={id} className="mt-8 min-w-0">
     <SectionBar id={id} title={title} className="" />
@@ -134,6 +157,102 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
         Away team first. Scores may be corrected if a mistake is found. Rankings and projections use the
         ratings at the end of the week before.
       </p>
+      <p className="mt-1 text-[14px] font-semibold text-ink">{recapLine(review)}</p>
+
+      <Section
+        id="upsets"
+        title="Upsets"
+        note="Games the team with the lower chance to win won, using the ratings at the end of the week before (once each team had four rated games). Forfeits and disputed finals are left out."
+      >
+        {review.upsets.length ? (
+          <>
+            <ol>
+              {review.upsets.slice(0, UPSETS_SHOWN).map((u, i) => (
+                <BoardRow key={u.game.id} place={i + 1} figure={chanceText(u.chance)} unit="chance to win before the game">
+                  <GameLink g={u.game} />
+                  <span className="block pb-1 text-[13px] text-muted">
+                    {u.winner} had a {chanceText(u.chance)} chance to win. {finalLine(u.game)}.
+                  </span>
+                </BoardRow>
+              ))}
+            </ol>
+            {review.upsets.length > UPSETS_SHOWN && (
+              <p className="py-2 text-[13px] text-muted">{review.upsets.length - UPSETS_SHOWN} more {review.upsets.length - UPSETS_SHOWN === 1 ? "upset" : "upsets"}, each with a higher chance to win.</p>
+            )}
+          </>
+        ) : (
+          <EmptyState>
+            {review.judged ? "No game this week went to the team with the lower chance to win." : "No game this week had a projection to compare with."}
+          </EmptyState>
+        )}
+      </Section>
+
+      <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+        <Section id="margins" title="Biggest wins" note="The wins by the most points. Forfeits, ties and disputed finals are left out.">
+          {review.wins.length ? (
+            <ol>
+              {review.wins.map((w, i) => (
+                <BoardRow key={w.game.id} place={i + 1} figure={w.margin} unit="points apart">
+                  <GameLink g={w.game} />
+                  <span className="block pb-1 text-[13px] text-muted">{finalLine(w.game)}</span>
+                </BoardRow>
+              ))}
+            </ol>
+          ) : (
+            <EmptyState>No played game this week.</EmptyState>
+          )}
+        </Section>
+        <Section id="closest" title="Closest games" note="Games decided by one score or less: eight points or fewer, a touchdown and a two-point conversion. Forfeits and disputed finals are left out.">
+          {review.oneScore.length ? (
+            <ol>
+              {review.oneScore.map((g, i) => (
+                <BoardRow key={g.id} place={i + 1} figure={marginOf(g)} unit="points apart">
+                  <GameLink g={g} />
+                  <span className="block pb-1 text-[13px] text-muted">{finalLine(g)}</span>
+                </BoardRow>
+              ))}
+            </ol>
+          ) : (
+            <EmptyState>No game this week was decided by one score or less.</EmptyState>
+          )}
+        </Section>
+      </div>
+
+      {review.streaks.length > 0 && (
+        <Section
+          id="streaks"
+          title="Streaks"
+          note={`${org.label} teams whose run of games in a row ended this week (five or more), or whose winning run reached five, ten, fifteen and on. A tie ends a run, and so does a season with none of the team's games.`}
+        >
+          <ol>
+            {review.streaks.map((s, i) => (
+              <BoardRow key={`${s.team}-${s.change}`} place={i + 1} figure={s.length} unit="games in a row">
+                <TeamName name={s.team} org={org} alignments={alignments} />
+                <span className="block text-[13px] text-muted">{STREAK_TEXT[s.change](s)}</span>
+                <GameLink g={s.game} />
+              </BoardRow>
+            ))}
+          </ol>
+        </Section>
+      )}
+
+      {review.milestones.length > 0 && (
+        <Section
+          id="milestones"
+          title="Milestones"
+          note="Firsts in the data held here: playoff games and State Championship games since 2018 (UIL's State Championship games since 1972), and a team's first loss of the season after at least four games with none."
+        >
+          <ul>
+            {review.milestones.map((m) => (
+              <li key={`${m.kind}-${m.team}`} className="border-b border-line px-3 py-1 text-[15px] leading-5 text-ink">
+                <TeamName name={m.team} org={org} alignments={alignments} />
+                <span className="block text-[13px] text-muted">{MILESTONE_TEXT[m.kind](m)}</span>
+                <GameLink g={m.game} />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       <Section
         id="movers"
@@ -185,35 +304,6 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
           <EmptyState>No game this week had a projection to compare with.</EmptyState>
         )}
       </Section>
-
-      <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
-        <Section id="closest" title="Closest games" note="The fewest points between the two scores. Forfeits are left out.">
-          {review.closest.length ? (
-            <ol>
-              {review.closest.map((g, i) => (
-                <BoardRow key={g.id} place={i + 1} figure={marginOf(g)} unit="points apart">
-                  <GameLink g={g} />
-                </BoardRow>
-              ))}
-            </ol>
-          ) : (
-            <EmptyState>No played game this week.</EmptyState>
-          )}
-        </Section>
-        <Section id="margins" title="Biggest margins" note="The most points between the two scores. Forfeits are left out.">
-          {review.biggest.length ? (
-            <ol>
-              {review.biggest.map((g, i) => (
-                <BoardRow key={g.id} place={i + 1} figure={marginOf(g)} unit="points apart">
-                  <GameLink g={g} />
-                </BoardRow>
-              ))}
-            </ol>
-          ) : (
-            <EmptyState>No played game this week.</EmptyState>
-          )}
-        </Section>
-      </div>
 
       <Section
         id="advancement"
@@ -302,7 +392,7 @@ export async function WeeksIndex({ org }: { org: Org }) {
   const latest = bySeason[0]?.[1].filter((w) => w.games.length).at(-1);
   return (
     <section aria-labelledby="weeks">
-      <PageHeader id="weeks" size="md" eyebrow={`${org.label} · ${seasons.at(-1)} to ${seasons[0]}`} title="Week in review" note="Rating movers, results furthest from the projection, the closest games and biggest margins, and playoff advancement, week by week." />
+      <PageHeader id="weeks" size="md" eyebrow={`${org.label} · ${seasons.at(-1)} to ${seasons[0]}`} title="Week in review" note="Upsets, biggest wins, closest games, streaks, milestones, rating movers, results furthest from the projection and playoff advancement, week by week." />
       <TabNav label="Organization" tabs={orgs.map((o) => ({ href: indexHref(o), label: o.label }))} current={indexHref(org)} />
       {latest && (
         <Link href={weekHref(seasons[0], latest.number, org)} className="btn mt-4 w-full sm:w-auto">

@@ -167,6 +167,12 @@ Not in an ADR:
   linked State Championship line and this season's district place on the season rows, and a plain page for a program with
   under five games (its seasons only, no rows of dashes, no all-time numbers); a past season shows no district place because
   only today's alignments are held (Nov 16, 2026).
+- **Week recaps** (ADR 0092): each week's review page gains Upsets (the lower chance to win won, with the chance in words),
+  Biggest wins, Closest games (one score or less, eight points), Streaks (a run of five or more that ended, or a winning run
+  that reached five, ten ...) and Milestones (a first playoff win, a first State Championship game, an unbeaten team's first
+  loss), all counted from the data and linked to their game, one organization at a time; a disputed final names no winner;
+  the existing Rating movers section stays; the home page's card shows the newest UIL week's top upset and closest game;
+  amends ADR 0044's "no upset label" (Nov 16, 2026).
 - **Search finds what fans type** (ADR 0090): /search is an instant, forgiving search from a 53 KB index made at build time
   (program, mascot, other names, abbreviations, town, league lines; misspellings, "White Face", "ISD"/"Academy"/"Christian",
   two teams as a game, a year with a team as its season), exact and prefix names first, league and place on every result,
