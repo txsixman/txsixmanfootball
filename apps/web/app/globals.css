@@ -188,3 +188,195 @@ body {
 .pg > li > a {
   @apply flex min-h-11 min-w-11 items-center justify-end font-num text-[19px] font-bold tabular-nums text-ink after:absolute after:inset-0;
 }
+
+/* Repeated markup, named once (ADR 0105): a row of a long list repeats its classes in the page's HTML and again in its data, so a
+   rarely-changing look is a class here, the very same utilities. scripts/speed.test.mjs checks each one is exactly the list it replaced. */
+@utility crest-box {
+  @apply inline-flex shrink-0 items-center justify-center;
+}
+@utility crest-badge {
+  @apply inline-flex shrink-0 items-center justify-center font-num font-bold leading-none;
+}
+@utility crest-img {
+  @apply size-full object-contain;
+}
+@utility rk-score {
+  @apply inline-flex min-h-11 items-center whitespace-nowrap font-num text-[15px] tabular-nums text-muted hover:text-navy hover:underline;
+}
+@utility fd-row {
+  @apply flex min-h-12 items-center px-3 text-[16px] leading-tight text-ink hover:bg-page hover:text-navy hover:underline;
+}
+@utility ink-link {
+  @apply inline-flex min-h-11 items-center text-ink hover:text-navy hover:underline;
+}
+@utility brd-place {
+  @apply w-6 shrink-0 text-right font-num text-[17px] font-semibold text-muted;
+}
+@utility brd-row {
+  @apply flex min-h-14 items-center gap-3 border-b border-line px-3 py-1;
+}
+@utility brd-fig {
+  @apply shrink-0 text-right font-num text-[24px] font-bold text-navy;
+}
+@utility brd-body {
+  @apply min-w-0 flex-1 text-[15px] leading-5 text-ink;
+}
+@utility ink-link-sq {
+  @apply inline-flex min-h-11 min-w-11 items-center text-ink hover:text-navy hover:underline;
+}
+@utility lead-link {
+  @apply flex min-h-11 items-center font-semibold leading-tight hover:text-navy hover:underline;
+}
+@utility ink-link-fl {
+  @apply flex min-h-11 items-center text-ink hover:text-navy hover:underline;
+}
+@utility hdr-link {
+  @apply inline-flex min-h-11 items-center text-[15px] text-white/85 hover:text-white hover:underline;
+}
+@utility hdr-link-sq {
+  @apply inline-flex min-h-11 min-w-11 items-center text-[15px] text-white/85 hover:text-white hover:underline;
+}
+@utility st-wl {
+  @apply text-right font-num text-[18px] font-bold tabular-nums text-navy;
+}
+@utility st-pts {
+  @apply pr-3 text-right font-num text-[15px] tabular-nums text-muted;
+}
+@utility rk-rank {
+  @apply pr-1.5 text-right align-middle font-num text-[17px] font-semibold leading-tight text-muted;
+}
+@utility num-17 {
+  @apply text-right font-num text-[17px] tabular-nums;
+}
+@utility gl-score {
+  @apply w-14 shrink-0 text-right font-num text-[30px] font-bold leading-none tabular-nums;
+}
+@utility gl-link {
+  @apply flex min-h-11 min-w-0 flex-1 items-center hover:text-navy hover:underline;
+}
+@utility rk-name-link {
+  @apply flex min-h-12 items-center text-ink hover:text-navy hover:underline;
+}
+@utility fd-item {
+  @apply border-b border-line last:border-b-0;
+}
+@utility ch-pts {
+  @apply py-2 pr-3 text-right font-num text-[17px] tabular-nums text-ink;
+}
+@utility st-rank {
+  @apply pl-3 font-num text-[15px] tabular-nums text-muted;
+}
+@utility ch-year {
+  @apply pl-3 text-left font-num text-[17px] font-bold text-navy;
+}
+@utility sq-link {
+  @apply inline-flex min-h-11 min-w-11 items-center hover:underline;
+}
+@utility rk-team {
+  @apply line-clamp-3 min-w-0 text-[14.5px] leading-[1.15];
+}
+@utility rk-rating {
+  @apply block text-[20px] font-bold leading-6 text-navy;
+}
+@utility clamp2 {
+  @apply line-clamp-2 min-w-0 leading-tight;
+}
+@utility note-13 {
+  @apply block text-[13px] leading-4 text-muted;
+}
+@utility blk-link {
+  @apply block min-h-11 py-0.5 text-ink hover:text-navy;
+}
+@utility ch-note {
+  @apply w-12 shrink-0 pr-2 text-right text-[13px];
+}
+@utility st-name {
+  @apply pl-3 text-left font-normal;
+}
+@utility rk-pad {
+  @apply pr-1 text-right font-num tabular-nums;
+}
+@utility rk-new {
+  @apply block text-[13px] font-bold text-muted;
+}
+@utility fd-help {
+  @apply flex min-h-11 items-center underline decoration-current/40 underline-offset-4 hover:decoration-current;
+}
+@utility note-13s {
+  @apply block text-[13px] leading-snug text-muted;
+}
+@utility rs-name {
+  @apply min-w-0 flex-1 truncate leading-[2.75rem] hover:text-navy hover:underline;
+}
+@utility bx-head {
+  @apply pointer-events-none relative flex h-[18px] items-center justify-between gap-1 whitespace-nowrap border-b border-line px-1.5 leading-none text-muted;
+}
+@utility rd-head {
+  @apply flex flex-wrap items-center justify-between gap-x-2 border-b border-line px-2 py-1 text-[13px] uppercase leading-5 tracking-wider text-muted;
+}
+@utility gl-cell {
+  @apply min-w-0 border-b border-line px-3 py-1 text-[16px] text-ink;
+}
+@utility cl-link {
+  @apply flex min-h-11 min-w-0 flex-1 items-center text-ink hover:text-navy hover:underline;
+}
+@utility bx-foot {
+  @apply pointer-events-none relative flex h-[36px] flex-col justify-center border-t border-line px-1.5 text-[13px] leading-4;
+}
+@utility wide-best {
+  @apply hidden lg:table-cell pl-4 text-[14.5px] leading-tight;
+}
+@utility wide-sor {
+  @apply hidden lg:table-cell pl-3 text-right font-num text-[17px] tabular-nums;
+}
+@utility wide-sos {
+  @apply hidden lg:table-cell text-right font-num text-[17px] tabular-nums;
+}
+@utility crest-slot {
+  @apply mr-2 flex shrink-0 justify-center w-10;
+}
+@utility crest-slot-x {
+  @apply mr-2 flex shrink-0 justify-center;
+}
+@utility bx-side {
+  @apply relative z-10 flex h-11 w-full items-center gap-1 px-1.5 text-left text-[13px] hover:bg-panel focus-visible:outline-2 focus-visible:outline-navy;
+}
+@utility bx-won {
+  @apply min-w-0 flex-1 break-words leading-[15px] font-bold text-ink;
+}
+@utility bx-lost {
+  @apply min-w-0 flex-1 break-words leading-[15px] text-muted;
+}
+@utility bx-name {
+  @apply min-w-0 flex-1 break-words leading-[15px] text-ink;
+}
+@utility bx-chance {
+  @apply shrink-0 font-num tabular-nums text-[13px] font-semibold text-navy;
+}
+@utility bx-live {
+  @apply shrink-0 font-num tabular-nums text-[19px] font-bold text-red;
+}
+@utility bx-score {
+  @apply shrink-0 font-num tabular-nums text-[19px] font-bold;
+}
+@utility adv-cell {
+  @apply px-2 py-1 text-right font-num text-[17px] font-bold tabular-nums;
+}
+@utility row-between {
+  @apply flex items-center justify-between gap-3;
+}
+@utility row-note {
+  @apply flex items-center text-[14px] text-muted;
+}
+@utility ch-row {
+  @apply border-t border-line align-top;
+}
+@utility note-13i {
+  @apply text-[13px] leading-4 text-muted;
+}
+@utility fl-bold {
+  @apply flex items-center font-semibold;
+}
+@utility pill-n {
+  @apply inline-flex min-h-11 min-w-11 items-center justify-center border-2 border-navy px-3 font-num text-[15px] font-bold uppercase tracking-wide text-navy hover:bg-panel;
+}

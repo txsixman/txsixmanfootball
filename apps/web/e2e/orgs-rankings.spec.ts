@@ -46,7 +46,7 @@ const schools = (dir: string, league: string) =>
 
 const tapps = schools("tapps-2026-28", "TAPPS");
 const taiao = schools("private-2026", "TAIAO");
-const tableTeams = async (page: Page) => (await page.getByRole("table").locator("tbody th[scope=row] span.line-clamp-3").allInnerTexts()).map((t) => t.trim());
+const tableTeams = async (page: Page) => (await page.getByRole("table").locator("tbody th[scope=row] span.rk-team").allInnerTexts()).map((t) => t.trim());
 
 test("every rankings page has an organization tab row marking the current one; divisions are under UIL only", async ({ page }) => {
   await page.goto("/rankings");

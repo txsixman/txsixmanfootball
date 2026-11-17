@@ -82,7 +82,7 @@ export function Finder({ groups }: { groups: FinderGroup[] }) {
                         <article key={g.key} className="border border-line bg-panel">
                           <H className={`border-b border-line bg-page px-3 font-num text-[15px] font-bold uppercase tracking-wider text-navy ${g.href ? "" : "py-2"}`}>
                             {g.href ? (
-                              <Link href={g.href} prefetch={false} className="flex min-h-11 items-center underline decoration-current/40 underline-offset-4 hover:decoration-current">
+                              <Link href={g.href} prefetch={false} className="fd-help">
                                 {g.place}
                               </Link>
                             ) : (
@@ -91,8 +91,8 @@ export function Finder({ groups }: { groups: FinderGroup[] }) {
                           </H>
                           <ul>
                             {g.schools.map((s) => (
-                              <li key={s.slug} className="border-b border-line last:border-b-0">
-                                <Link href={`/programs/${s.slug}`} prefetch={false} className="flex min-h-12 items-center px-3 text-[16px] leading-tight text-ink hover:bg-page hover:text-navy hover:underline">
+                              <li key={s.slug} className="fd-item">
+                                <Link href={`/programs/${s.slug}`} prefetch={false} className="fd-row">
                                   <CrestSlot school={s.school} identity={s.identity} size={28} />
                                   <span className="min-w-0">{s.school}</span>
                                 </Link>

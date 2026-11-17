@@ -40,13 +40,13 @@ function BoxView({ box, live, team, dim, onTeam, max, style }: { box: Box; live:
       {box.href && (
         <Link href={box.href} prefetch={false} className="absolute inset-0 hover:bg-panel/60" aria-label={`${box.code ? `${box.code}, ` : ""}${box.label}: ${box.sides.map((s) => s.text).join(" vs ")}. Game page`} />
       )}
-      <p className="pointer-events-none relative flex h-[18px] items-center justify-between gap-1 whitespace-nowrap border-b border-line px-1.5 leading-none text-muted">
+      <p className="bx-head">
         <span className="text-[12px] font-bold uppercase tracking-wider">{box.code}</span>
         <span className="text-[12px] uppercase tracking-wider">{box.when}</span>
       </p>
       <SideRow side={box.sides[0]} other={box.sides[1]} live={scoreOf(box.sides[0])} lit={team === box.sides[0].key} onTeam={onTeam} />
       <SideRow side={box.sides[1]} other={box.sides[0]} live={scoreOf(box.sides[1])} lit={team === box.sides[1].key} onTeam={onTeam} />
-      <p data-foot className="pointer-events-none relative flex h-[36px] flex-col justify-center border-t border-line px-1.5 text-[13px] leading-4">
+      <p data-foot className="bx-foot">
         <span className={live ? "font-bold text-red" : box.projection ? "font-semibold text-navy" : "text-muted"}>{lines[0]}</span>
         {lines[1] && <span className="text-muted">{lines[1]}</span>}
       </p>

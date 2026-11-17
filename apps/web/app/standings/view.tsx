@@ -44,8 +44,8 @@ type Identities = Awaited<ReturnType<typeof loadIdentities>>;
 // have no program page, so a prefetch of each 404 kept the page from ever going quiet.
 function TeamCell({ r, identities }: { r: RankedRow | DistrictStandings["rows"][number]; identities: Identities }) {
   return (
-    <th scope="row" className="pl-3 text-left font-normal">
-      <Link href={`/programs/${r.school.slug}`} prefetch={false} className="flex min-h-11 items-center text-ink hover:text-navy hover:underline">
+    <th scope="row" className="st-name">
+      <Link href={`/programs/${r.school.slug}`} prefetch={false} className="ink-link-fl">
         <CrestSlot school={r.school.school} identity={identities.get(r.school.slug) ?? EMPTY} />
         {r.school.school}
       </Link>
@@ -55,7 +55,7 @@ function TeamCell({ r, identities }: { r: RankedRow | DistrictStandings["rows"][
 
 function PointDiff({ r }: { r: { pointsFor: number; pointsAgainst: number } }) {
   return (
-    <td className="pr-3 text-right font-num text-[15px] tabular-nums text-muted">
+    <td className="st-pts">
       {r.pointsFor - r.pointsAgainst > 0 ? "+" : ""}
       {r.pointsFor - r.pointsAgainst}
     </td>
@@ -107,7 +107,7 @@ export function District({ d, identities, title = d.title, bar, linked = true }:
           {d.rows.map((r) => (
             <tr key={r.school.slug} className="border-t border-line">
               <TeamCell r={r} identities={identities} />
-              {d.districtPlay && <td className="text-right font-num text-[18px] font-bold tabular-nums text-navy">{wl(r.district)}</td>}
+              {d.districtPlay && <td className="st-wl">{wl(r.district)}</td>}
               <td className={`text-right font-num tabular-nums ${d.districtPlay ? "text-[17px]" : "text-[18px] font-bold text-navy"}`}>{wl(r.overall)}</td>
               <PointDiff r={r} />
             </tr>
@@ -146,10 +146,10 @@ function Ranked({ id, title, league, rows, identities, level }: { id: string; ti
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.school.slug} className="border-t border-line">
-              <td className="pl-3 font-num text-[15px] tabular-nums text-muted">{i + 1}</td>
+              <td className="st-rank">{i + 1}</td>
               <TeamCell r={r} identities={identities} />
-              <td className="text-right font-num text-[17px] tabular-nums">{r.districtNumber}</td>
-              <td className="text-right font-num text-[18px] font-bold tabular-nums text-navy">{wl(r.overall)}</td>
+              <td className="num-17">{r.districtNumber}</td>
+              <td className="st-wl">{wl(r.overall)}</td>
               <PointDiff r={r} />
             </tr>
           ))}

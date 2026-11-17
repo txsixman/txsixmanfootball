@@ -20,7 +20,7 @@ export function Team({ name, link, crest = true }: { name: string; link: Linker;
     </>
   );
   return href ? (
-    <Link href={href} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center text-ink hover:text-navy hover:underline">
+    <Link href={href} prefetch={false} className="ink-link-sq">
       {body}
     </Link>
   ) : (
@@ -52,10 +52,10 @@ export function Bracket({ id, title, finals, link, yearLinks = true }: { id: str
         </thead>
         <tbody>
           {rows.map((f) => (
-            <tr key={`${f.season}-${f.division}`} className="border-t border-line align-top">
-              <th scope="row" className="pl-3 text-left font-num text-[17px] font-bold text-navy">
+            <tr key={`${f.season}-${f.division}`} className="ch-row">
+              <th scope="row" className="ch-year">
                 {yearLinks ? (
-                  <Link href={`/championships/${f.season}`} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center hover:underline">
+                  <Link href={`/championships/${f.season}`} prefetch={false} className="sq-link">
                     {f.season}
                   </Link>
                 ) : (
@@ -63,19 +63,19 @@ export function Bracket({ id, title, finals, link, yearLinks = true }: { id: str
                 )}
               </th>
               <td className="py-0.5">
-                <span className="flex items-center font-semibold">
+                <span className="fl-bold">
                   <Team name={f.champion} link={link} />
                 </span>
-                <span className="flex items-center text-[14px] text-muted">
+                <span className="row-note">
                   <span className="sr-only">Runner-up: </span>
-                  <span aria-hidden="true" className="w-12 shrink-0 pr-2 text-right text-[13px]">over</span>
+                  <span aria-hidden="true" className="ch-note">over</span>
                   <Team name={f.runnerUp} link={link} crest={false} />
                 </span>
                 {/* On a phone a long note ("Mercy Rule-9:45 3rd Quarter") ran three lines down the narrow score column: it reads
                     here, under the teams, instead. One of the two copies is always display:none, so it is read once. */}
                 {f.championScore != null && f.scoreNote && <span className="block pb-2 text-[13px] leading-tight text-muted sm:hidden">{f.scoreNote}</span>}
               </td>
-              <td className="py-2 pr-3 text-right font-num text-[17px] tabular-nums text-ink">
+              <td className="ch-pts">
                 {f.championScore == null ? (
                   finalScore(f)
                 ) : (
@@ -101,7 +101,7 @@ export async function loadLinker() {
   return { link, successors };
 }
 
-const SCORE_CELL = "py-2 pr-3 text-right font-num text-[17px] tabular-nums text-ink";
+const SCORE_CELL = "ch-pts";
 
 /** A side of a State Championship still to be set reads as the bracket words it ("Winner of G29"). */
 function Side({ side, link, crest = true }: { side: StateChampionship["sides"][number]; link: Linker; crest?: boolean }) {
@@ -132,7 +132,7 @@ export function StateChampionshipTable({ id, title, aside, items, link }: { id: 
         </thead>
         <tbody>
           {items.map((c) => (
-            <tr key={c.slug} className="border-t border-line align-top">
+            <tr key={c.slug} className="ch-row">
               <th scope="row" className="pl-3 pr-2 text-left align-top text-[15px] font-bold leading-5 text-navy">
                 <Link href={c.href} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center text-balance hover:underline">
                   {c.bracket}
@@ -142,24 +142,24 @@ export function StateChampionshipTable({ id, title, aside, items, link }: { id: 
               <td className="py-0.5">
                 {c.final ? (
                   <>
-                    <span className="flex items-center font-semibold">
+                    <span className="fl-bold">
                       <Trophy aria-hidden="true" className="mr-1 size-4 shrink-0 text-red" />
                       <span className="sr-only">Champion: </span>
                       <Team name={c.final.champion} link={link} />
                     </span>
-                    <span className="flex items-center text-[14px] text-muted">
+                    <span className="row-note">
                       <span className="sr-only">Runner-up: </span>
-                      <span aria-hidden="true" className="w-12 shrink-0 pr-2 text-right text-[13px]">over</span>
+                      <span aria-hidden="true" className="ch-note">over</span>
                       <Team name={c.final.runnerUp} link={link} crest={false} />
                     </span>
                   </>
                 ) : (
                   <>
-                    <span className="flex items-center font-semibold">
+                    <span className="fl-bold">
                       <Side side={c.sides[0]} link={link} />
                     </span>
-                    <span className="flex items-center text-[14px] text-muted">
-                      <span aria-hidden="true" className="w-12 shrink-0 pr-2 text-right text-[13px]">vs</span>
+                    <span className="row-note">
+                      <span aria-hidden="true" className="ch-note">vs</span>
                       <Side side={c.sides[1]} link={link} crest={false} />
                     </span>
                   </>
@@ -211,10 +211,10 @@ export function LeagueFinals({ finals, link, yearLinks = true }: { finals: Leagu
               </thead>
               <tbody>
                 {rows.map((f) => (
-                  <tr key={`${f.season}-${f.bracket}`} className="border-t border-line align-top">
-                    <th scope="row" className="pl-3 text-left font-num text-[17px] font-bold text-navy">
+                  <tr key={`${f.season}-${f.bracket}`} className="ch-row">
+                    <th scope="row" className="ch-year">
                       {yearLinks ? (
-                        <Link href={`/championships/${f.season}`} prefetch={false} className="inline-flex min-h-11 min-w-11 items-center hover:underline">
+                        <Link href={`/championships/${f.season}`} prefetch={false} className="sq-link">
                           {f.season}
                         </Link>
                       ) : (
@@ -222,12 +222,12 @@ export function LeagueFinals({ finals, link, yearLinks = true }: { finals: Leagu
                       )}
                     </th>
                     <td className="py-0.5">
-                      <span className="flex items-center font-semibold">
+                      <span className="fl-bold">
                         <Team name={f.champion} link={link} />
                       </span>
-                      <span className="flex items-center text-[14px] text-muted">
+                      <span className="row-note">
                         <span className="sr-only">Runner-up: </span>
-                        <span aria-hidden="true" className="w-12 shrink-0 pr-2 text-right text-[13px]">over</span>
+                        <span aria-hidden="true" className="ch-note">over</span>
                         <Team name={f.runnerUp} link={link} crest={false} />
                       </span>
                       {f.bracket !== league && <span className="block pb-2 pl-12 text-[13px] leading-tight text-muted">{f.bracket.slice(league.length).trim()}</span>}

@@ -48,7 +48,7 @@ const finalLine = (g: SeasonResult) => (g.homeScore === g.awayScore ? "Final: ti
  * label-content-name-mismatch). */
 function GameLink({ g }: { g: SeasonResult }) {
   const line = (team: string, score: number) => (
-    <span className="flex items-center justify-between gap-3">
+    <span className="row-between">
       <span className="min-w-0 truncate">{team}</span>{" "}
       <span className="font-num text-[18px] font-bold tabular-nums">{g.forfeit ? "" : score}</span>
     </span>
@@ -57,7 +57,7 @@ function GameLink({ g }: { g: SeasonResult }) {
     <Link
       href={g.href}
       prefetch={false}
-      className="block min-h-11 py-0.5 text-ink hover:text-navy"
+      className="blk-link"
     >
       {line(g.away, g.awayScore)}
       <span className="sr-only">, </span>
@@ -123,7 +123,7 @@ export function SeasonInReview({ review, alignments, identities, latest }: { rev
                     <span className="shrink-0 font-num text-[20px] font-bold tabular-nums text-navy">{c.score}</span>
                   )}
                 </p>
-                <p className="flex items-center text-[14px] text-muted">
+                <p className="row-note">
                   <span className="pr-2">Runner-up</span>
                   {team(c.runnerUp, false)}
                 </p>

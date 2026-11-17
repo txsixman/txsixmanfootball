@@ -75,7 +75,7 @@ export function Composer({ id, label, button, max = 2000, onSubmit }: { id: stri
         aria-busy={busy}
         className={TEXTAREA}
       />
-      <div className="flex items-center justify-between gap-3">
+      <div className="row-between">
         <Button type="submit" disabled={busy || text.trim() === ""}>{busy ? "Posting…" : button}</Button>
         <span className="text-[13px] text-muted">{text.length} / {max}</span>
       </div>

@@ -39,7 +39,7 @@ export function Crest({
   if (logo) {
     return (
       <span
-        className="inline-flex shrink-0 items-center justify-center"
+        className="crest-box"
         style={{
           width: size * Math.max(1, logo.aspect),
           height: size,
@@ -48,7 +48,7 @@ export function Crest({
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size logos, a copy sized for the crest (ADR 0022) */}
-        <img src={logoCopy(logo, size)} alt={decorative ? "" : `${school} logo`} loading={decorative ? "lazy" : "eager"} className="size-full object-contain" />
+        <img src={logoCopy(logo, size)} alt={decorative ? "" : `${school} logo`} loading={decorative ? "lazy" : "eager"} className="crest-img" />
       </span>
     );
   }
@@ -57,7 +57,7 @@ export function Crest({
     <span
       aria-hidden="true"
       data-pagefind-ignore // the badge's letters are decoration: in the site search they ran into the team's name ("OOakwood")
-      className="inline-flex shrink-0 items-center justify-center font-num font-bold leading-none"
+      className="crest-badge"
       style={{ width: size, height: size, background: bg, color: fg, fontSize: size * 0.42, boxShadow: stripe ? `inset 0 -${Math.max(2, size / 12)}px 0 ${stripe}` : undefined }}
     >
       {initials(school)}

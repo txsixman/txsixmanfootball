@@ -36,10 +36,11 @@ export function SectionBar({ id, title, aside, className = "mt-8" }: { id: strin
 }
 
 /** Same-width box for a school's logo or badge, so team names line up down a list whatever the logo's shape.
- * `size` is the crest's height; a larger crest gets a box wide enough for the widest logo it draws (aspect 1.6). */
+ * `size` is the crest's height; a larger crest gets a box wide enough for the widest logo it draws (aspect 1.6). No `style` at the
+ * usual size: a prop that is only `undefined` still travels in the page data (ADR 0105). */
 export function CrestSlot({ school, identity, size = 24 }: { school: string; identity: Identity; size?: number }) {
   return (
-    <span className={`mr-2 flex shrink-0 justify-center ${size === 24 ? "w-10" : ""}`} style={size === 24 ? undefined : { width: Math.ceil(size * 1.6) + 2 }}>
+    <span className={size === 24 ? "crest-slot" : "crest-slot-x"} {...(size === 24 ? {} : { style: { width: Math.ceil(size * 1.6) + 2 } })}>
       <Crest school={school} identity={identity} size={size} decorative />
     </span>
   );
@@ -48,10 +49,10 @@ export function CrestSlot({ school, identity, size = 24 }: { school: string; ide
 /** One row of a ranked board: place, what it is, the one number that matters (`unit`: what that number counts, read aloud only). */
 export function BoardRow({ place, children, figure, unit }: { place: number; children: ReactNode; figure: ReactNode; unit?: string }) {
   return (
-    <li className="flex min-h-14 items-center gap-3 border-b border-line px-3 py-1">
-      <span className="w-6 shrink-0 text-right font-num text-[17px] font-semibold text-muted">{place}</span>
-      <span className="min-w-0 flex-1 text-[15px] leading-5 text-ink">{children}</span>
-      <span className="shrink-0 text-right font-num text-[24px] font-bold text-navy">
+    <li className="brd-row">
+      <span className="brd-place">{place}</span>
+      <span className="brd-body">{children}</span>
+      <span className="brd-fig">
         {figure}
         {/* A bare number says nothing to a screen reader; `unit` names what it counts. */}
         {unit && <span className="sr-only"> {unit}</span>}

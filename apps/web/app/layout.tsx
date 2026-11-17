@@ -101,7 +101,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     key={s.href}
                     href={s.href}
                     prefetch={PREFETCHED_SECTIONS.includes(s.href) ? undefined : false}
-                    className="inline-flex min-h-11 items-center text-[15px] text-white/85 hover:text-white hover:underline"
+                    className="hdr-link"
                   >
                     {s.label}
                   </Link>
@@ -114,7 +114,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   { href: "/privacy", label: "Privacy" },
                   { href: "/terms", label: "Terms" },
                 ].map((s) => (
-                  <Link key={s.href} href={s.href} className="inline-flex min-h-11 min-w-11 items-center text-[15px] text-white/85 hover:text-white hover:underline">
+                  <Link key={s.href} href={s.href} className="hdr-link-sq">
                     {s.label}
                   </Link>
                 ))}

@@ -17,7 +17,7 @@ const reachText = (p: number | undefined) => (p === undefined ? "—" : p === 1 
 export function AdvanceTable({ advancement: a, league, identities }: { advancement: Advancement; league: string; identities: Awaited<ReturnType<typeof loadIdentities>> }) {
   const titles = a.rows.every((r) => r.title !== undefined) ? chanceTexts(a.rows.map((r) => r.title!)) : a.rows.map((r) => reachText(r.title));
   const partial = a.rows.some((r) => [...r.reach, r.title].some((x) => x === undefined) && [...r.reach, r.title].some((x) => x !== undefined));
-  const cell = "px-2 py-1 text-right font-num text-[17px] font-bold tabular-nums";
+  const cell = "adv-cell";
   return (
     <section data-advance-table aria-labelledby="advance" className="mt-5">
       <h2 id="advance" className="border-b-2 border-navy px-3 pb-1 font-num text-[20px] font-bold uppercase tracking-wider text-navy">
@@ -41,9 +41,9 @@ export function AdvanceTable({ advancement: a, league, identities }: { advanceme
               return (
                 <tr key={r.team} className="border-b border-line">
                   <th scope="row" className="sticky left-0 max-w-[11rem] bg-page px-1 text-left font-normal">
-                    <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 items-center text-ink hover:text-navy hover:underline">
+                    <Link href={`/programs/${slug}`} prefetch={false} className="ink-link-fl">
                       <CrestSlot school={r.team} identity={identities.get(slug) ?? EMPTY} />
-                      <span className="line-clamp-2 min-w-0 leading-tight">{r.team}</span>
+                      <span className="clamp2">{r.team}</span>
                     </Link>
                   </th>
                   {none ? (

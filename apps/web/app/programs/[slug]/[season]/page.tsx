@@ -180,8 +180,8 @@ export default async function ProgramSeasonPage({ params }: Props) {
                       </span>
                       {/* A playoff game names its round; a game the ratings had a view on (both teams four games in) adds the
                           projection from the week before, beside what happened (ADR 0044). */}
-                      {r.note && <span className="block text-[13px] leading-4 text-muted">{r.note}</span>}
-                      {r.projected && <span data-projected className="block text-[13px] leading-4 text-muted">{r.projected}</span>}
+                      {r.note && <span className="note-13">{r.note}</span>}
+                      {r.projected && <span data-projected className="note-13">{r.projected}</span>}
                       {opp.series && (
                         <Link
                           href={opp.series.href}

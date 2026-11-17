@@ -136,3 +136,30 @@ test("the layout, the header and the home page load their heavy code late", () =
   for (const heavy of ["./alerts-toggle", "../scores/live-game", "../programs/crest"]) assert.ok(!myTeams.includes(`from "${heavy}"`), `my-teams/block.tsx imports ${heavy} statically: it is loaded for every visitor to the home page, follower or not (view.tsx loads late)`);
   assert.match(myTeams, /dynamic\(\(\) => import\(".\/view"\)/);
 });
+
+// Repeated markup is named once (ADR 0105). A row of a long list repeats its class text in the page's HTML and again in the page's
+// data, so the rows' looks live in app/globals.css as `@utility` names, under the "Repeated markup" comment. Each name must still be
+// used (a dead one is dead CSS), and no source may spell out a named list again beside its name: that is how a page grows back.
+test("repeated row styles are named once and used", () => {
+  const css = read("app/globals.css");
+  const section = css.slice(css.indexOf("/* Repeated markup"));
+  const named = [...section.matchAll(/@utility ([a-z0-9-]+) \{\n  @apply ([^;]+);\n\}/g)].map((m) => ({ name: m[1], list: m[2] }));
+  assert.ok(named.length >= 60, `only ${named.length} named styles: the repeated markup went back into the pages`);
+  const files = [];
+  for (const dir of ["app", "components"]) for (const file of sources(path.join(WEB, dir))) if (file.endsWith(".tsx")) files.push([path.relative(WEB, file), readFileSync(file, "utf8")]);
+  const usage = (name) => new RegExp(`["\`\\s]${name}["\`\\s]`);
+  for (const { name, list } of named) {
+    assert.ok(files.some(([, text]) => usage(name).test(text)), `.${name} is in globals.css and used nowhere`);
+    // The scores board and tonight's board (app/scores) are left as they were: their first paint is ADR 0103's, and e2e reads their classes.
+    for (const [file, text] of files.filter(([file]) => !file.startsWith("app/scores/"))) assert.ok(!text.includes(`"${list}"`), `${file} spells out the classes of .${name}: use the name`);
+  }
+});
+
+// The heaviest page's markup, counted on the source: a long list's row no longer carries a class text that a name covers. The byte
+// budgets of the built pages are in e2e/page-bytes.spec.ts (CI's page tests).
+test("the shared crest and board row use their names", () => {
+  assert.match(read("app/programs/crest.tsx"), /crest-box/);
+  assert.match(read("app/programs/crest.tsx"), /crest-badge/);
+  assert.match(read("app/ui.tsx"), /crest-slot/);
+  assert.match(read("app/ui.tsx"), /brd-row/);
+});

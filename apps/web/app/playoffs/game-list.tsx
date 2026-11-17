@@ -41,19 +41,19 @@ export async function GameList({ games, league, alignments, identities, today, s
     const label = (
       <>
         <CrestSlot school={name} identity={(slug && identities.get(slug)) || EMPTY} />
-        <span className="line-clamp-2 min-w-0 leading-tight">{name}</span>
+        <span className="clamp2">{name}</span>
       </>
     );
     return (
       <span className="flex min-h-11 items-center">
         {slug ? (
-          <Link href={`/programs/${slug}`} prefetch={false} className="flex min-h-11 min-w-0 flex-1 items-center hover:text-navy hover:underline">
+          <Link href={`/programs/${slug}`} prefetch={false} className="gl-link">
             {label}
           </Link>
         ) : (
           <span className="flex min-w-0 flex-1 items-center">{label}</span>
         )}
-        <span className="w-14 shrink-0 text-right font-num text-[30px] font-bold leading-none tabular-nums">{score ?? ""}</span>
+        <span className="gl-score">{score ?? ""}</span>
       </span>
     );
   };
@@ -64,7 +64,7 @@ export async function GameList({ games, league, alignments, identities, today, s
         const proj = g.projection && !g.forfeit ? projectionParts(g.projection) : undefined;
         const pageId = pages?.get(`${g.date}|${g.home}|${g.away}`);
         return (
-          <li key={`${g.date}-${g.home}-${g.away}`} className="min-w-0 border-b border-line px-3 py-1 text-[16px] text-ink">
+          <li key={`${g.date}-${g.home}-${g.away}`} className="gl-cell">
             {team(g.away, g.forfeit ? undefined : g.awayScore)}
             {team(g.home, g.forfeit ? undefined : g.homeScore)}
             <p className="pb-1.5 pl-12 text-[14px] leading-6 text-muted">
@@ -118,7 +118,7 @@ export async function BuiltList({ games, league, alignments, identities, comment
     const label = (
       <>
         {"team" in s ? <CrestSlot school={s.team} identity={(slug && identities.get(slug)) || EMPTY} /> : <span aria-hidden="true" className="mr-2 w-10 shrink-0" />}
-        <span className="line-clamp-2 min-w-0 leading-tight">{sideText(s)}</span>
+        <span className="clamp2">{sideText(s)}</span>
       </>
     );
     return slug ? (
