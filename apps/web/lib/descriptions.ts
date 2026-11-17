@@ -149,6 +149,10 @@ export function recordsDescription({ org, first, latest }: { org: string; first?
   ]);
 }
 
+/** One view's scoring leaders for a season (/leaders): `label` is "UIL", "UIL Division I", "TAPPS"... */
+export const leadersDescription = ({ label, season }: { label: string; season: number }) =>
+  fit(`${label} six-man scoring leaders for ${season}: points per game, points allowed, shutouts and 60-point games.`, "Final scores only.");
+
 const REVIEW = ["Upsets, biggest wins, closest games, streaks, milestones, rating movers and playoff advancement.", "Upsets, biggest wins, closest games, streaks and milestones.", "Upsets, biggest wins and closest games."];
 
 export const weeksIndexDescription = ({ org, first, latest }: { org: string; first?: number; latest?: number }) =>

@@ -87,6 +87,8 @@ test("section pages: scores, rankings, standings, results, records, champions", 
   assert.equal(clean(t.resultsTitle({ label: "TCAF", season: 2025, week: 12, scope: "season" })), "TCAF six-man football scores, 2025 season");
   assert.equal(clean(t.resultsTitle({ label: "Independent", season: 2026, week: 12, scope: "latest" })), "Independent six-man football scores this week");
   assert.equal(clean(t.recordsTitle("TAIAO")), "TAIAO six-man football records");
+  assert.equal(clean(t.leadersTitle({ label: "UIL Division I", season: 2026 })), "2026 UIL Division I six-man scoring leaders");
+  assert.equal(clean(t.leadersTitle({ label: "Independent", season: 2018 })), "2018 Independent six-man scoring leaders");
   assert.equal(clean(t.championshipsTitle({ first: 1938, latest: 2025 })), "UIL six-man state champions, 1938 to 2025");
   assert.equal(clean(t.championshipsTitle({})), "UIL six-man state champions");
   for (const s of [t.homeTitle(), t.programsTitle(), t.matchupTitle(), t.seriesTitle({ first: "Jayton", second: "Kress" })]) clean(s);

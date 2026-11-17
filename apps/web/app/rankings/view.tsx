@@ -3,6 +3,8 @@ import { activeOrgs } from "@/lib/active-orgs";
 import { loadAlignments } from "@/lib/alignments";
 import { rankingsDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
+import { LEADER_VIEWS, leadersHref } from "@/lib/leaders";
+import { leaderPages } from "@/lib/leaders-load";
 import { ORGS, orgHref, type Org } from "@/lib/orgs";
 import { rankedList } from "@/lib/json-ld";
 import { loadSeasonResults } from "@/lib/games";
@@ -81,6 +83,9 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
         : `${rows.length} ${org.label} ${rows.length === 1 ? "team" : "teams"} from ${games} games.`) + outsideNote;
   const coverage = past ? coverageLine(seasonCoverage(alignments.filter((a) => a.league === org.league), await loadSeasonResults(table.season))) : undefined;
   const orgBase = past ? `/rankings/season/${table.season}` : "/rankings";
+  // The same view's scoring leaders (ADR 0101), when that season has a page for it.
+  const leadersView = LEADER_VIEWS.find((v) => v.org === org && ("division" in view ? "division" in v && v.division === view.division : !("division" in v)));
+  const leaders = leadersView && (await leaderPages()).some((p) => p.season === table.season && p.view === leadersView) ? leadersHref(table.season, seasons[0], leadersView) : undefined;
 
   const ranked = rankedOrder([...rows]); // the table's order, teams with too few games left out
 
@@ -99,6 +104,11 @@ export async function RankingsView({ view, season }: { view: View; season?: numb
       {!past && !("division" in view) && weeks.length > 0 && (
         <Link href={orgHref(`/rankings/week/${weeks.at(-1)!.number}`, org)} className="mt-2 inline-flex min-h-11 items-center font-semibold text-navy underline">
           {org.label} rankings at the end of each week
+        </Link>
+      )}
+      {leaders && (
+        <Link href={leaders} prefetch={false} className="mt-1 flex min-h-11 w-fit items-center font-semibold text-navy underline">
+          {view.eyebrow} scoring leaders
         </Link>
       )}
       {rows.length ? (

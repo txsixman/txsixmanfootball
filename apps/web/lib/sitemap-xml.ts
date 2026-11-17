@@ -51,6 +51,8 @@ export function lastmodFor(path: string, d: SitemapDates): string | undefined {
       return d.latest;
     case "seasons":
       return rest[0] ? d.seasons.get(Number(rest[0])) : d.latest;
+    case "leaders": // /leaders, /leaders/<view>, /leaders/<season>, /leaders/<season>/<view>
+      return number(rest[0]) === undefined ? d.latest : d.seasons.get(Number(rest[0]));
     case "results":
     case "weeks": {
       const last = rest.at(-1);
