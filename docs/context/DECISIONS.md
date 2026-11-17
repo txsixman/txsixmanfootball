@@ -152,3 +152,8 @@ Not in an ADR:
 - **Landing page** (ADR 0086): `/welcome` says what the site is and sends a first-time visitor on (find your team, tonight's
   scores), every number from the data; home stays the scoreboard and shows a dismissible "New here?" link on a first visit
   only, hidden before it paints (Nov 16, 2026).
+- **Program pages hold the whole history** (ADR 0089): an All-time section (record, playoff seasons and games, State titles
+  across every league), Records (best season, biggest win and loss, longest winning streak, each linked), a playoff record, a
+  linked State Championship line and this season's district place on the season rows, and a plain page for a program with
+  under five games (its seasons only, no rows of dashes, no all-time numbers); a past season shows no district place because
+  only today's alignments are held (Nov 16, 2026).

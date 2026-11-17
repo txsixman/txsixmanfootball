@@ -10,7 +10,7 @@ import { programEdge } from "@/lib/intros";
 import { programDescription, rankPhrase } from "@/lib/descriptions";
 import { titlesBySlug } from "@/lib/program-titles";
 import { loadCorrections } from "@/lib/correction-files";
-import { countingRows, loadAliases, loadLineage, loadNames, type OtherName, otherNames } from "@/lib/lineage";
+import { countingRows, loadAliases, loadLineage, loadNames, type OtherName, otherNames, successorOf } from "@/lib/lineage";
 import { activeOrgs } from "@/lib/active-orgs";
 import { orgByLeague } from "@/lib/orgs";
 import { loadRanked, rankLabel } from "@/lib/rankings";
@@ -29,6 +29,10 @@ import { lead, seasonRows, type Row } from "@/lib/program-games";
 import { ProgramLiveRead, ProgramLiveScore } from "../../scores/live-game";
 import { embedSnippet } from "@/lib/embed-html";
 import { ratingSeries, type Rivalry } from "@/lib/program-history";
+import { bestSeason, yearSpans, biggestLoss, biggestWin, BEST_SEASON_MIN_GAMES, LITTLE_DATA, longestWinStreak, programTotals, stateSummary, winShare, type GameLine } from "@/lib/program-records";
+import { mediumDate } from "@/lib/game-pages";
+import { recordedFinals } from "@/lib/state-championships";
+import { appearancesOf } from "@/lib/state-finals";
 import { programHistory, programSeasonPages } from "@/lib/program-seasons";
 import { seriesHref } from "@/lib/series";
 import { seriesPartners } from "@/lib/series-data";
@@ -111,6 +115,17 @@ function Dash({ what }: { what: string }) {
   );
 }
 
+/** A figure on the page's body: a small label over a big number (the same as the header's, in the page's own colors). */
+function Fact({ label, children, sub }: { label: string; children: ReactNode; sub?: ReactNode }) {
+  return (
+    <div>
+      <dt className="text-[13px] font-bold uppercase tracking-widest text-muted">{label}</dt>
+      <dd className="font-num text-[26px] font-bold leading-tight tabular-nums text-navy">{children}</dd>
+      {sub && <dd className="text-[13px] leading-4 text-muted">{sub}</dd>}
+    </div>
+  );
+}
+
 /** A figure in the team header: a small label over a big number, in the school's own foreground color (already 4.5:1 on its band). */
 function Stat({ label, children, sub }: { label: string; children: ReactNode; sub?: ReactNode }) {
   return (
@@ -186,7 +201,7 @@ export default async function ProgramPage({ params }: Props) {
   // Season by season, FIRST_SEASON on: record, final rating, place within its organization and the last playoff round played, from each
   // season's table (lib/program-seasons.ts); a season with nothing on record keeps its row, with dashes.
   const seasons = await ratingSeasons();
-  const { entries, opponents } = await programHistory(school, seasons);
+  const { entries, opponents, games: allGames } = await programHistory(school, seasons);
   // The seasons with a page of their own (lib/program-seasons.ts): each season's row links to it.
   const seasonPages = new Set((await programSeasonPages()).get(slug));
   // The opponents this program has a series page with (lib/series-data.ts): their games count links to it.
@@ -207,6 +222,28 @@ export default async function ProgramPage({ params }: Props) {
   const rivals = opponents.filter((o) => o.games >= 3).slice(0, 6);
   const ratingLine = ratingSeries(entries.map((e) => e.line));
   const group = school.district === "0" ? "Division" : /^\d+$/.test(school.district) ? "District" : school.district;
+
+  // All-time numbers and records (lib/program-records.ts, ADR 0089), from the same games and season lines as the table below. A
+  // program with fewer than LITTLE_DATA games has too little for either: the page says so and shows the seasons it has.
+  const little = allGames.length < LITTLE_DATA;
+  const lines = entries.map((e) => e.line);
+  const totals = little ? undefined : programTotals(lines);
+  // State Championship games and titles over every league: UIL's list since 1972 (renamed and merged schools counted, ADR 0072) and
+  // the private leagues' recorded finals since 2018. Each season's result (a title or a runner-up finish) also marks its row.
+  const stateGames = [
+    ...finals.map((f) => ({ season: f.season, won: names.has(slugify(f.champion)) })),
+    ...appearancesOf(school.school, (await recordedFinals()).filter((f) => f.league !== "UIL"), successorOf(lineage)),
+  ];
+  const state = stateSummary(stateGames);
+  const stateOf = new Map(stateGames.map((g) => [g.season, g.won] as const));
+  const best = little ? undefined : bestSeason(lines, CURRENT_SEASON);
+  const win = little ? undefined : biggestWin(allGames);
+  const loss = little ? undefined : biggestLoss(allGames);
+  const streak = little ? undefined : longestWinStreak(allGames, seasons);
+  const hasRecords = !!(best || win || loss || streak);
+  // A program with little on record lists only the seasons it has, and says in one line which it has none for (not a row of dashes each).
+  const shown = little ? entries.filter((e) => e.line.games > 0 || e.line.record) : entries;
+  const noData = little ? yearSpans(entries.filter((e) => !shown.includes(e)).map((e) => e.line.season)) : "";
 
   /** A game row: date, opponent (and a projection or round), score. Every game links to its page: the score is the link,
    * stretched over the row, and the opponent's name stays its own link above it. */
@@ -419,6 +456,13 @@ export default async function ProgramPage({ params }: Props) {
 
         {(next || latest) && (
           <section aria-label="Next and latest game" className="grid gap-px border-b border-line bg-line sm:grid-cols-2">
+            {/* A season with a game played and none listed ahead says so, rather than showing one box that looks unfinished. */}
+            {!next && (
+              <div className="bg-page px-3 py-2.5">
+                <p className="text-[12px] font-bold uppercase tracking-widest text-red">Next game</p>
+                <p className="flex min-h-11 items-center text-[15px] leading-5 text-muted">No game is listed ahead.</p>
+              </div>
+            )}
             {next && (
               <div className="bg-page px-3 py-2.5">
                 {/* A game dated before tonight with no score yet is waiting on its score, not still to play. */}
@@ -590,7 +634,115 @@ export default async function ProgramPage({ params }: Props) {
           </Section>
         )}
 
+        {totals && (
+          <Section id="all-time" title="All-time" accent={accent}>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 px-3 pt-3">
+              <Fact label={`Record since ${totals.first}`} sub={`${Math.round(winShare(totals.record) * 100)}% of ${totals.record.won + totals.record.lost + totals.record.tied} games won`}>
+                {record(totals.record)}
+              </Fact>
+              <Fact label="Playoff seasons" sub={`of ${totals.seasons} ${totals.seasons === 1 ? "season" : "seasons"}`}>
+                {totals.playoffSeasons}
+              </Fact>
+              <Fact label="Playoff games" sub={totals.playoffRecord.won + totals.playoffRecord.lost + totals.playoffRecord.tied ? `since ${totals.first}` : "none on record"}>
+                {totals.playoffRecord.won + totals.playoffRecord.lost + totals.playoffRecord.tied ? record(totals.playoffRecord) : "None"}
+              </Fact>
+              <Fact label="State titles" sub={state.games ? `in ${state.games} State Championship ${state.games === 1 ? "game" : "games"}` : "no State Championship games"}>
+                {state.titles.length}
+              </Fact>
+            </dl>
+            <p className="px-3 pt-3 text-[13px] text-muted">
+              Every game read since {totals.first}, playoffs included. State Championship games count UIL&rsquo;s since 1972 and the private leagues&rsquo; since 2018.
+            </p>
+          </Section>
+        )}
+
+        {hasRecords && (
+          <Section id="records" title="Records" accent={accent}>
+            <ul>
+              {best && (
+                <li className="relative border-b border-line hover:bg-panel">
+                  <div className="grid min-h-14 grid-cols-[5.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
+                    <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">Best season</span>
+                    <span className="min-w-0 text-[15px] leading-5 text-ink">
+                      {best.season}
+                      <span className="block text-[13px] leading-4 text-muted">
+                        {best.rank != null ? `#${best.rank} of ${best.of} in ${org?.label ?? school.league}` : "Not ranked"}
+                        {best.playoff && ` · reached ${roundPhrase(best.playoff.round, best.playoff.league)}`}
+                      </span>
+                    </span>
+                    {seasonPages.has(best.season) ? (
+                      <Link
+                        href={`/programs/${slug}/${best.season}`}
+                        prefetch={false}
+                        aria-label={`${best.season} season, ${record(best.record!)}, season page`}
+                        className="flex min-h-11 items-center font-num text-[22px] font-bold tabular-nums text-ink after:absolute after:inset-0"
+                      >
+                        {record(best.record!)}
+                      </Link>
+                    ) : (
+                      <span className="font-num text-[22px] font-bold tabular-nums text-ink">{record(best.record!)}</span>
+                    )}
+                  </div>
+                </li>
+              )}
+              {([["Biggest win", win], ["Biggest loss", loss]] as [string, GameLine | undefined][]).map(
+                ([label, g]) =>
+                  g && (
+                    <li key={label} className="relative border-b border-line hover:bg-panel">
+                      <div className="grid min-h-14 grid-cols-[5.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
+                        <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{label}</span>
+                        <span className="min-w-0 text-[15px] leading-5 text-ink">
+                          <span className="flex items-center">
+                            {opponentCrest(g.opponent)}
+                            {opponentLink(g.opponent)}
+                          </span>
+                          <span className="block text-[13px] leading-4 text-muted">
+                            {mediumDate(g.date)}
+                            {g.playoff && " · playoff game"}
+                          </span>
+                        </span>
+                        <Link
+                          href={g.href}
+                          prefetch={false}
+                          aria-label={`${mediumDate(g.date)} ${g.opponent}, ${g.us}-${g.them}, game page`}
+                          className="flex min-h-11 items-center font-num text-[22px] font-bold tabular-nums text-ink after:absolute after:inset-0"
+                        >
+                          {g.us}-{g.them}
+                        </Link>
+                      </div>
+                    </li>
+                  ),
+              )}
+              {streak && (
+                <li className="border-b border-line">
+                  <div className="grid min-h-14 grid-cols-[5.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
+                    <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">Win streak</span>
+                    <span className="min-w-0 text-[15px] leading-5 text-ink">
+                      Wins in a row
+                      <span className="block text-[13px] leading-4 text-muted">
+                        {mediumDate(streak.from.date)} to {mediumDate(streak.to.date)}
+                        {streak.current && " · still going"}
+                      </span>
+                    </span>
+                    <span className="font-num text-[22px] font-bold tabular-nums text-ink">{streak.wins}</span>
+                  </div>
+                </li>
+              )}
+            </ul>
+            <p className="px-3 pt-2 text-[13px] text-muted">
+              Games read since {totals?.first ?? seasons.at(-1)}. A forfeit counts as a win or a loss in a streak but has no margin, so it is never the biggest win or loss. The best season is the best share of games won among completed seasons of {BEST_SEASON_MIN_GAMES} games or more.
+            </p>
+          </Section>
+        )}
+
         <Section id="seasons" title="Season by season" accent={accent}>
+          {little && (
+            <p className="px-3 pt-2 text-[15px] text-ink">
+              {allGames.length === 0
+                ? `No games of ${school.school}\u2019s are on record yet. Its seasons, all-time numbers and records appear here as games are read.`
+                : `Only ${allGames.length} ${allGames.length === 1 ? "game is" : "games are"} on record so far, so there are no all-time numbers or records yet. They appear here once ${LITTLE_DATA} games are.`}
+            </p>
+          )}
           {withRecord.length > 1 && (
             <p className="px-3 pt-2 text-[15px] text-ink">
               <b className="font-num text-[19px] tabular-nums">{record(allTime)}</b> from {withRecord.at(-1)!.line.season} to {withRecord[0].line.season}
@@ -599,7 +751,7 @@ export default async function ProgramPage({ params }: Props) {
           )}
           {ratingLine.filter((p) => p.rating != null).length >= 2 && <SeasonRatings points={ratingLine} />}
           <ul className="mt-1">
-            {entries.map(({ line, played }) => (
+            {shown.map(({ line, played }) => (
               <li key={line.season} className="border-b border-line">
                 <div className="grid min-h-14 grid-cols-[3.5rem_1fr_auto] items-center gap-x-3 px-3 py-1">
                   {ranksPage ? (
@@ -632,7 +784,25 @@ export default async function ProgramPage({ params }: Props) {
                             : "No games on record"}
                     </span>
                     {line.playoff && (
-                      <span className="block text-[14px] font-semibold text-navy">Playoffs: reached {roundPhrase(line.playoff.round, line.playoff.league)}</span>
+                      <span className="block text-[14px] font-semibold text-navy">
+                        Playoffs: reached {roundPhrase(line.playoff.round, line.playoff.league)}
+                        {line.playoffRecord && `, ${record(line.playoffRecord)} in playoff games`}
+                      </span>
+                    )}
+                    {stateOf.has(line.season) && (
+                      <Link
+                        href={`/championships/${line.season}`}
+                        prefetch={false}
+                        className="flex min-h-11 items-center gap-1 text-[14px] font-semibold text-navy underline underline-offset-2"
+                      >
+                        {stateOf.get(line.season) && <Trophy aria-hidden="true" className="size-4 shrink-0 text-red" />}
+                        {stateOf.get(line.season) ? "State Champion" : "State Championship runner-up"}
+                      </Link>
+                    )}
+                    {line.season === CURRENT_SEASON && standing && (
+                      <Link href={districtHref(standing)} prefetch={false} className="flex min-h-11 items-center text-[14px] font-semibold text-navy underline underline-offset-2">
+                        {ordinal(place)} of {standing.rows.length} in district, {wl(standing.rows[place - 1].district)}
+                      </Link>
                     )}
                     {seasonPages.has(line.season) && (
                       <Link
@@ -665,8 +835,10 @@ export default async function ProgramPage({ params }: Props) {
               </li>
             ))}
           </ul>
+          {little && noData && <p className="px-3 pt-2 text-[14px] text-muted">No games on record for {noData}.</p>}
           <p className="px-3 pt-2 text-[13px] text-muted">
             Final rating and place of each season, among {org?.label ?? school.league} teams as today&rsquo;s alignments place them. A dash means the data has nothing for that season.
+            District place is shown for {CURRENT_SEASON} only: earlier seasons were played in districts that today&rsquo;s alignments no longer match.
           </p>
         </Section>
 
