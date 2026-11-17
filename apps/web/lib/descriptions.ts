@@ -149,10 +149,10 @@ export function recordsDescription({ org, first, latest }: { org: string; first?
   ]);
 }
 
-const REVIEW = ["Rating movers, results furthest from the projection, closest games, biggest margins and playoff advancement.", "Rating movers, closest games, biggest margins and playoff advancement."];
+const REVIEW = ["Upsets, biggest wins, closest games, streaks, milestones, rating movers and playoff advancement.", "Upsets, biggest wins, closest games, streaks and milestones.", "Upsets, biggest wins and closest games."];
 
 export const weeksIndexDescription = ({ org, first, latest }: { org: string; first?: number; latest?: number }) =>
-  fit(`${org} six-man week in review${first === undefined ? "" : first === latest ? ` for ${first}` : `, ${first} to ${latest}`}.`, ["Each week of every season, with its rating movers and closest games.", ...REVIEW]);
+  fit(`${org} six-man week in review${first === undefined ? "" : first === latest ? ` for ${first}` : `, ${first} to ${latest}`}.`, ["Each week of every season, with its upsets, closest games and rating movers.", ...REVIEW]);
 
 export const weekReviewDescription = ({ org, season, week, games }: { org: string; season: number; week: number; games: number }) =>
   fit(`${org} six-man ${season} week ${week} in review: ${count(games, "game")}.`, REVIEW);

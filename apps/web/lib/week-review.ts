@@ -1,7 +1,7 @@
 import type { Projection } from "./projection";
 import type { SeasonResult } from "./season-results";
 
-// The week in review's pure rules: which games are closest, which results sit furthest from the week-before projection,
+// The week in review's pure rules (the recap's own are in lib/week-recap.ts): the closest game, which results sit furthest from the week-before projection,
 // which ratings moved most, and which teams a playoff round sent on. No file access, so the node tests run it as it is.
 // Words (ADRs 0004, 0013): a result is described by how far
 // it sits from the projection, never by who won; advancement is read from the later round's own games, as the bracket pages
@@ -13,17 +13,13 @@ const DAY = 86_400_000;
 export const weekEnd = (monday: string) => new Date(Date.parse(`${monday}T12:00:00Z`) + 6 * DAY).toISOString().slice(0, 10);
 
 /** A game with a score worth comparing: never a forfeit (recorded 1-0 or 2-0) and never 0-0 (a no contest). */
-const played = (g: SeasonResult) => !g.forfeit && g.homeScore + g.awayScore > 0;
+export const played = (g: SeasonResult) => !g.forfeit && g.homeScore + g.awayScore > 0;
 const points = (g: SeasonResult) => Math.abs(g.homeScore - g.awayScore);
 const inOrder = (a: SeasonResult, b: SeasonResult) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
 
 /** The games decided by the fewest points (a tie is 0), forfeits and no contests left out. */
 export const closestGames = (games: SeasonResult[], n = 5): SeasonResult[] =>
   games.filter(played).sort((a, b) => points(a) - points(b) || inOrder(a, b)).slice(0, n);
-
-/** The games decided by the most points, forfeits and no contests left out. */
-export const biggestMargins = (games: SeasonResult[], n = 5): SeasonResult[] =>
-  games.filter(played).sort((a, b) => points(b) - points(a) || inOrder(a, b)).slice(0, n);
 
 export const marginOf = points;
 

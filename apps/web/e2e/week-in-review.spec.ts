@@ -11,8 +11,9 @@ import { SITE_NAME } from "../lib/site";
 noLiveScores(test);
 test.setTimeout(180_000);
 
-// A game row names no winner from an unconfirmed score (ADR 0004); "chance to win" is the projection's own phrase.
-const WINNER_WORDS = /\b(won|beat|beats|defeated|defeats|winner|wins|winning|victory|loser|lost|leads?|leading|ahead)\b/i;
+// A final is confirmed (ADR 0040), so the recap names who won ("Final: X by 3", "Has now won 5 games in a row"); but no row ever
+// says "winner", "leading" or "ahead", the words of a game still being played (ADR 0092). "chance to win" is the projection's own phrase.
+const WINNER_WORDS = /\b(winner|winners|leads?|leading|ahead)\b/i;
 const BETTING_OR_SOURCE = /\b(spreads?|odds|lines?|bets?|bettors?|favou?rites?|underdogs?|locks?|sources?|maxpreps)\b/i;
 const plain = (text: string) => text.replace(/win probability|chance to win/gi, "");
 
@@ -36,6 +37,7 @@ async function build() {
   const { ORGS } = await import("../lib/orgs");
   const { resultSeasons } = await import("../lib/weeks");
   const { latestReview, loadWeekReview, reviewPages } = await import("../lib/week-review-load");
+  const { chanceText } = await import("../lib/projection");
   const { weekHref } = await import("../lib/week-review-hrefs");
   const orgs = await activeOrgs();
   const uil = ORGS[0];
@@ -52,6 +54,7 @@ async function build() {
   const seasonCards = (await Promise.all(orgs.map(async (o) => (await resultSeasons(o)).map((s) => `/weeks/card/${s}/${o.slug}/opengraph-image`)))).flat();
   return {
     orgs,
+    chanceText,
     uil,
     latest,
     review,
@@ -61,6 +64,10 @@ async function build() {
     withAdvance: await everyReview(uil, (r) => r.advanced.some((a) => a.wentOn.length > 0)),
     withForfeit: await everyReview(uil, (r) => r.games.some((g) => g.forfeit)),
     untracked: await everyReview(uil, (r) => !r.tracked),
+    withUpset: await everyReview(uil, (r) => r.upsets.length > 1),
+    withStreak: await everyReview(uil, (r) => r.streaks.some((s) => s.change === "ended") && r.streaks.some((s) => s.change === "reached")),
+    withFirsts: await everyReview(uil, (r) => new Set(r.milestones.map((m) => m.kind)).size > 1),
+    withDispute: await everyReview(uil, (r) => r.disputed.size > 0),
     other: orgs.length > 1 ? await everyReview(orgs[1], (r) => r.games.length > 3) : undefined,
     pageCount: [...pages.values()].reduce((n, p) => n + p.length, 0),
   };
@@ -102,7 +109,7 @@ async function checkWords(page: Page, teams: string[] = []) {
 
 const teamsOf = (r: { games: { home: string; away: string }[] }) => r.games.flatMap((g) => [g.home, g.away]);
 
-const SECTIONS = ["Rating movers", "Furthest from the projection", "Closest games", "Biggest margins", "Playoff advancement", "Every game"];
+const SECTIONS = ["Upsets", "Biggest wins", "Closest games", "Rating movers", "Furthest from the projection", "Playoff advancement", "Every game"];
 
 test("the index lists every season and week, newest first, one organization at a time", async ({ page }) => {
   const { orgs, latest, weekHref, uil } = await fixtures();
@@ -146,8 +153,8 @@ test("the latest week has every section, each with rows or a plain empty message
     await expect(link).toHaveAttribute("aria-label", g.forfeit ? `${g.away}, ${g.home}, forfeit, game page` : `${g.away} ${g.awayScore}, ${g.home} ${g.homeScore}, game page`);
   }
 
-  // Closest games and biggest margins: the lib's order, never a forfeit, the figure is the points between the scores.
-  for (const [name, list] of [["Closest games", review.closest], ["Biggest margins", review.biggest]] as const) {
+  // Closest games (one score or less) and biggest wins: the lib's order, never a forfeit, the figure is the points between the scores.
+  for (const [name, list] of [["Closest games", review.oneScore], ["Biggest wins", review.wins.map((w) => w.game)]] as const) {
     const rows = page.getByRole("region", { name, exact: true }).getByRole("listitem");
     await expect(rows).toHaveCount(list.length);
     for (const [i, g] of list.entries()) {
@@ -155,6 +162,10 @@ test("the latest week has every section, each with rows or a plain empty message
       await expect(rows.nth(i)).toContainText(`${Math.abs(g.homeScore - g.awayScore)} points apart`);
       expect(g.forfeit).toBe(false);
     }
+  }
+  for (const g of review.oneScore) expect(Math.abs(g.homeScore - g.awayScore)).toBeLessThanOrEqual(8);
+  for (const [i, w] of review.wins.entries()) {
+    await expect(page.getByRole("region", { name: "Biggest wins", exact: true }).getByRole("listitem").nth(i)).toContainText(`Final: ${w.winner} by ${w.margin}`);
   }
 
   // Furthest from the projection: the projection as the Results page words it, and the distance, with no winner.
@@ -167,6 +178,68 @@ test("the latest week has every section, each with rows or a plain empty message
     await expect(off.nth(i).getByRole("link")).toHaveAttribute("href", o.game.href);
   }
   await checkWords(page, [...teamsOf(review), ...review.rises.map((m) => m.team), ...review.drops.map((m) => m.team)]);
+});
+
+test("upsets: the team with the lower chance to win won, lowest chance first, with the chance in words and a link to the game", async ({ page }) => {
+  const { withUpset, uil, weekHref, chanceText } = await fixtures();
+  test.skip(!withUpset, "no UIL week with two upsets");
+  const review = withUpset!;
+  await checkPage(page, weekHref(review.season, review.week, uil));
+  const rows = page.getByRole("region", { name: "Upsets", exact: true }).getByRole("listitem");
+  const shown = review.upsets.slice(0, 8);
+  await expect(rows).toHaveCount(shown.length);
+  for (const [i, u] of shown.entries()) {
+    expect(u.chance).toBeLessThan(0.5);
+    expect(u.game.forfeit).toBe(false);
+    if (review.disputed.has(u.game.id)) throw new Error("a disputed final is no upset");
+    await expect(rows.nth(i)).toContainText(`${u.winner} had a ${chanceText(u.chance)} chance to win.`);
+    await expect(rows.nth(i).getByRole("link")).toHaveAttribute("href", u.game.href);
+  }
+  expect(review.upsets.map((u) => u.chance)).toEqual([...review.upsets.map((u) => u.chance)].sort((a, b) => a - b));
+  await expect(page.locator("main")).toContainText(`${review.games.length} games: ${review.upsets.length} upsets`);
+  await checkWords(page, teamsOf(review));
+});
+
+test("streaks and milestones: each line names its team and links its game, and a section with nothing is left out", async ({ page }) => {
+  const { withStreak, withFirsts, uil, weekHref } = await fixtures();
+  test.skip(!withStreak && !withFirsts, "no UIL week with streaks or milestones");
+  if (withStreak) {
+    await checkPage(page, weekHref(withStreak.season, withStreak.week, uil));
+    const rows = page.getByRole("region", { name: "Streaks", exact: true }).getByRole("listitem");
+    await expect(rows).toHaveCount(withStreak.streaks.length);
+    for (const [i, s] of withStreak.streaks.entries()) {
+      await expect(rows.nth(i)).toContainText(s.team);
+      await expect(rows.nth(i)).toContainText(s.change === "ended" ? `streak of ${s.length} games ended` : `won ${s.length} games in a row`);
+      await expect(rows.nth(i).locator(`a[href="${s.game.href}"]`)).toHaveCount(1);
+      if (s.change === "reached") expect(s.length % 5).toBe(0);
+      else expect(s.length).toBeGreaterThanOrEqual(5);
+    }
+    await checkWords(page, teamsOf(withStreak));
+  }
+  if (withFirsts) {
+    await checkPage(page, weekHref(withFirsts.season, withFirsts.week, uil));
+    const rows = page.getByRole("region", { name: "Milestones", exact: true }).getByRole("listitem");
+    await expect(rows).toHaveCount(withFirsts.milestones.length);
+    for (const [i, m] of withFirsts.milestones.entries()) {
+      await expect(rows.nth(i)).toContainText(m.team);
+      await expect(rows.nth(i)).toContainText({ "state-game": "First State Championship game", "playoff-win": "First playoff win", "first-loss": "First loss of the season" }[m.kind]);
+      await expect(rows.nth(i).locator(`a[href="${m.game.href}"]`)).toHaveCount(1);
+    }
+    await checkWords(page, teamsOf(withFirsts));
+  }
+});
+
+test("a week with a disputed final names no winner for it in any recap section", async ({ page }) => {
+  const { withDispute, uil, weekHref } = await fixtures();
+  test.skip(!withDispute, "no UIL week with a disputed final");
+  await checkPage(page, weekHref(withDispute!.season, withDispute!.week, uil));
+  for (const id of withDispute!.disputed) {
+    const g = withDispute!.games.find((x) => x.id === id);
+    if (!g) continue;
+    for (const name of ["Upsets", "Biggest wins", "Closest games", "Streaks", "Milestones"]) {
+      await expect(page.getByRole("region", { name, exact: true }).locator(`a[href="${g.href}"]`), name).toHaveCount(0);
+    }
+  }
 });
 
 test("rating movers are ranked within the organization: biggest change first, rank now, and the places moved", async ({ page }) => {
@@ -217,7 +290,7 @@ test("a forfeit shows the word, never the recorded score, in every list", async 
   await expect(link).toContainText("Forfeit");
   await expect(link).toHaveAttribute("aria-label", `${f.away}, ${f.home}, forfeit, game page`);
   expect(await link.innerText()).not.toMatch(/\d/);
-  for (const name of ["Closest games", "Biggest margins", "Furthest from the projection"]) {
+  for (const name of ["Upsets", "Closest games", "Biggest wins", "Streaks", "Milestones", "Furthest from the projection"]) {
     await expect(page.getByRole("region", { name, exact: true }).locator(`a[href="${f.href}"]`)).toHaveCount(0);
   }
 });
@@ -255,6 +328,27 @@ test("the home page and Scores link to the latest week in review", async ({ page
   await page.getByRole("link", { name }).click();
   await expect(page).toHaveURL(`/weeks/${latest.season}/${latest.week}`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Week in review");
+});
+
+test("the home page's week card shows the week's top upset and closest game, each linked to its game", async ({ page }) => {
+  const { review, latest, chanceText } = await fixtures();
+  await page.goto("/");
+  const card = page.getByRole("region", { name: `UIL week ${latest.week} highlights`, exact: true });
+  const top = review.upsets[0];
+  const rows = card.getByRole("listitem");
+  await expect(rows).toHaveCount((top ? 1 : 0) + (review.closest ? 1 : 0));
+  test.skip(!top && !review.closest, "the latest week has neither an upset nor a played game");
+  if (top) {
+    await expect(card.getByRole("link").first()).toHaveAttribute("href", top.game.href);
+    await expect(rows.first()).toContainText(`${top.winner} had a ${chanceText(top.chance)} chance to win.`);
+  }
+  if (review.closest) {
+    const link = card.getByRole("link").last();
+    await expect(link).toHaveAttribute("href", review.closest.href);
+    await expect(link).toContainText("Closest game");
+  }
+  for (const link of await card.getByRole("link").all()) expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect(await card.innerText()).not.toMatch(WINNER_WORDS);
 });
 
 test("share cards: one per organization and season, never one per week", async ({ page, request }) => {

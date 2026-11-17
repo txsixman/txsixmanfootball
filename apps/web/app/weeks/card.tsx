@@ -9,6 +9,6 @@ export async function weeksCard(org: Org, season: number) {
   return pageCard({
     kicker: `${org.label} · ${season} season`,
     title: "Week in review",
-    lines: [`${weeks.length} weeks, ${games.toLocaleString("en-US")} games`, "Rating movers and results furthest from the projection", "Closest games and playoff advancement"],
+    lines: [`${weeks.length} weeks, ${games.toLocaleString("en-US")} games`, "Upsets, biggest wins and closest games", "Streaks, milestones and playoff advancement"],
   });
 }
