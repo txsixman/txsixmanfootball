@@ -4,8 +4,7 @@ import { CalendarClock, Check, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useLayoutEffect, useState, type ReactNode } from "react";
 import type { Address } from "@/lib/address";
-import type { Game } from "@/lib/demo-games";
-import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files
+import { crestIdentity, type BoardCrest, type BoardGame } from "@/lib/board-wire";
 import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
 import { gameDay } from "@/lib/game-day";
 import { upcomingFirstAt, upcomingFirstScript } from "@/lib/upcoming-first";
@@ -22,7 +21,7 @@ import { useSavedCopy } from "@/lib/saved-copy-state";
 import { useLiveScores } from "./live-score";
 import { ForfeitMark, VerifyBar, scoreClass } from "./parts";
 
-function StatusCell({ g }: { g: Game }) {
+function StatusCell({ g }: { g: BoardGame }) {
   const base = "flex w-[68px] shrink-0 flex-col justify-center self-stretch px-2 font-num text-[14px] font-bold uppercase leading-4 tracking-wide";
   const saved = useSavedCopy();
   if (g.state === "live") {
@@ -73,7 +72,7 @@ function StatusCell({ g }: { g: Game }) {
   );
 }
 
-function Notes({ g }: { g: Game }) {
+function Notes({ g }: { g: BoardGame }) {
   const items: ReactNode[] = [];
   if (isForfeit(g)) {
     items.push(<span key="f" className="font-bold text-ink">Forfeit. Not a played score.</span>);
@@ -107,10 +106,10 @@ function Notes({ g }: { g: Game }) {
 }
 
 /** Real schools' looks by team name (the page fills in a plain badge for a team with no identity); the invented sample
- * schools are not in it, so their lines draw no crest. */
-type Crests = Record<string, Identity>;
+ * schools are not in it, so their lines draw no crest. Only what a 24 px crest draws travels (lib/board-wire.ts). */
+type Crests = Record<string, BoardCrest>;
 
-function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests }) {
+function TeamLine({ g, side, crests }: { g: BoardGame; side: Side; crests?: Crests }) {
   const team = g[side];
   const score = side === "home" ? g.homeScore : g.awayScore;
   const winner = winnerOf(g);
@@ -118,7 +117,7 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
   const forfeit = isForfeit(g);
   return (
     <div className="flex h-7 items-center gap-2">
-      {crests?.[team.name] && <CrestSlot school={team.name} identity={crests[team.name]} />}
+      {crests?.[team.name] && <CrestSlot school={team.name} identity={crestIdentity(crests[team.name])} />}
       <span className={`min-w-0 flex-1 truncate text-[15px] leading-5 ${lost ? "font-medium text-ink/70" : "font-semibold text-ink"}`}>
         {team.rank != null && <span className="mr-1 text-[13px] font-bold text-navy">#{team.rank}</span>}
         {team.name}
@@ -148,11 +147,11 @@ function TeamLine({ g, side, crests }: { g: Game; side: Side; crests?: Crests })
 
 /** `live`: the live read of a game under way (asLive put its score in the score cells; this says where the game stands).
  * `counts`: show how many fan comments the game has (real games only; plain text, as the whole card is a link). */
-function Row({ g, crests, live, counts, noScore }: { g: Game; crests?: Crests; live?: LiveView; counts?: boolean; noScore?: boolean }) {
+function Row({ g, crests, live, counts, noScore }: { g: BoardGame; crests?: Crests; live?: LiveView; counts?: boolean; noScore?: boolean }) {
   const edge = g.verification === "disputed" ? "border-l-[6px] border-red" : "border-l-[6px] border-transparent";
   return (
     <li data-game={g.id} className="border-b border-line">
-      <Link href={`/scores/${g.id}`} className="block hover:bg-panel focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-navy active:bg-panel">
+      <Link href={`/scores/${g.id}`} prefetch={false} className="block hover:bg-panel focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-navy active:bg-panel">
         <div className={`flex min-h-16 ${edge}`}>
           <StatusCell g={g} />
           <div className="min-w-0 flex-1 py-1.5 pl-2.5 pr-3">
@@ -175,7 +174,7 @@ function Row({ g, crests, live, counts, noScore }: { g: Game; crests?: Crests; l
 }
 
 /** `newestFirst`: the round played last on top (finals), so this week's results are not under every earlier round's. */
-function Section({ id, title, live, games, crests, checked, counts, newestFirst }: { id: string; title: string; live?: boolean; games: Game[]; crests?: Crests; checked: Map<string, LiveView>; counts?: boolean; newestFirst?: boolean }) {
+function Section({ id, title, live, games, crests, checked, counts, newestFirst }: { id: string; title: string; live?: boolean; games: BoardGame[]; crests?: Crests; checked: Map<string, LiveView>; counts?: boolean; newestFirst?: boolean }) {
   const saved = useSavedCopy();
   if (!games.length) return null;
   const latest = (league: string) => games.reduce((d, g) => (g.league === league && (g.date ?? "") > d ? g.date! : d), "");
@@ -204,7 +203,7 @@ function Section({ id, title, live, games, crests, checked, counts, newestFirst 
 }
 
 /** A game's organization (ADR 0012): its league label starts with it ("UIL DI · Bi-district", "TCAF · Final"). */
-const orgOf = (g: Game) => ORGS.find((o) => g.league === o.league || g.league.startsWith(`${o.league} `));
+const orgOf = (g: BoardGame) => ORGS.find((o) => g.league === o.league || g.league.startsWith(`${o.league} `));
 
 /** A next-round game the bracket sets before any site lists it (ADR 0047): "Team vs winner of X–Y", or both teams and the projection. */
 export type NextGame = { key: string; org: string; heading: string; sides: [{ name: string; href?: string }, { name: string; href?: string }]; projected?: string; date?: string; kickoff?: string; site?: string; address?: Address };
@@ -250,7 +249,7 @@ function NextSection({ games }: { games: NextGame[] }) {
 
 /** `weekInReview`: a link to the newest week in review, on the live page only (the sample page stays as it is). `next`: games the bracket sets (live page only).
  * `commentCounts`: each real game's fan comment count (ADR 0078), on the live page only; the invented sample games never ask. */
-export default function Board({ games, eyebrow, title, crests, weekInReview, next = [], commentCounts = false }: { games: Game[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string }; next?: NextGame[]; commentCounts?: boolean }) {
+export default function Board({ games, eyebrow, title, crests, weekInReview, next = [], commentCounts = false }: { games: BoardGame[]; eyebrow: string; title: string; crests?: Crests; weekInReview?: { href: string; label: string }; next?: NextGame[]; commentCounts?: boolean }) {
   const [query, setQuery] = useState("");
   // Only a game with a date and no final can be under way, and only inside its kickoff window; invented sample games or finals ask for nothing.
   const liveRows = useLiveScores(games.flatMap((g) => (g.date && g.state === "scheduled" ? [{ date: g.date, kickoff: g.kickoff }] : [])));
@@ -277,12 +276,12 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
   // status cell says. Worked out at the moment of viewing (ADR 0036); before that (the server, the first render) it is Later.
   const now = useNow();
   const saved = useSavedCopy();
-  const awaiting = (g: Game) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "awaiting";
+  const awaiting = (g: BoardGame) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "awaiting";
   const notReported = shown.filter(awaiting);
   // A game inside its window with no live score yet is on now, so it sits under "In progress" (just after Live now), its row
   // saying that no score is in, not under Later (ADR 0087). A game the clock cannot place (the server, the first render) is
   // Later. Live now keeps only games with a live score, so the Live jump counts exactly those.
-  const noScoreYet = (g: Game) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "in-progress";
+  const noScoreYet = (g: BoardGame) => g.state === "scheduled" && !!g.date && now !== null && kickoffState({ date: g.date, kickoff: g.kickoff }, now).kind === "in-progress";
   const underWay = shown.filter(noScoreYet);
   const later = shown.filter((g) => (g.state === "scheduled" || g.state === "postponed") && !awaiting(g) && !noScoreYet(g));
   const nextShown = next.filter((g) => org && g.org === org.league && (!q || g.sides.some((s) => s.name.toLowerCase().includes(q))));

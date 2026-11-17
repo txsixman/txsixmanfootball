@@ -90,7 +90,7 @@ export function MeetingsList({ detail }: { detail: GameDetail }) {
       <ul>
         {list.map(({ result: m }: Entry) => (
           <li key={m.id} className="border-b border-line">
-            <Link href={m.href} className="grid min-h-14 grid-cols-[6.75rem_1fr_auto] items-center gap-x-3 py-1 hover:bg-panel">
+            <Link href={m.href} prefetch={false} className="grid min-h-14 grid-cols-[6.75rem_1fr_auto] items-center gap-x-3 py-1 hover:bg-panel">
               <span className="font-num text-[14px] font-bold uppercase leading-tight text-navy">{mediumDate(m.date)}</span>
               <span className="min-w-0 text-[15px] leading-5 text-ink">
                 {m.away} vs {m.home}

@@ -2,13 +2,12 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { MainNav } from "./main-nav";
 import { Offline } from "./offline-notice";
 import { THEME_SCRIPT, ThemeToggle } from "./theme-toggle";
+import { VercelInsights } from "./vercel-insights";
 import { PREFETCHED_SECTIONS } from "../lib/prefetched-sections";
 import { SITE_NAME, SITE_URL } from "../lib/site";
 
@@ -130,12 +129,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* Vercel Web Analytics and Speed Insights: cookieless page views and real visitors' load times, no personal
             data. Built in only on Vercel (VERCEL=1), which serves their same-origin /_vercel/ scripts; elsewhere
             (CI's next start) the scripts would 404. */}
-        {process.env.VERCEL && (
-          <>
-            <Analytics />
-            <SpeedInsights />
-          </>
-        )}
+        {process.env.VERCEL && <VercelInsights />}
       </body>
     </html>
   );

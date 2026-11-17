@@ -3,15 +3,18 @@ import type { Game } from "./demo-games";
 
 export type Side = "home" | "away";
 
-export const isForfeit = (g: Game) => /forfeit/i.test(g.endReason ?? "");
+/** The fields of a game these rules read (the scores board is sent no more, lib/board-wire.ts). */
+type Scored = Pick<Game, "homeScore" | "awayScore" | "state" | "verification" | "endReason" | "status"> & { home: Pick<Game["home"], "name">; away: Pick<Game["away"], "name"> };
 
-function ahead(g: Game): Side | null {
+export const isForfeit = (g: Pick<Game, "endReason">) => /forfeit/i.test(g.endReason ?? "");
+
+function ahead(g: Pick<Game, "homeScore" | "awayScore">): Side | null {
   if (g.homeScore == null || g.awayScore == null || g.homeScore === g.awayScore) return null;
   return g.homeScore > g.awayScore ? "home" : "away";
 }
 
 /** Only a confirmed final names a winner. An unconfirmed or disputed score crowns nobody. */
-export function winnerOf(g: Game): Side | null {
+export function winnerOf(g: Pick<Game, "homeScore" | "awayScore" | "state" | "verification">): Side | null {
   return g.state === "final" && g.verification === "confirmed" ? ahead(g) : null;
 }
 
@@ -37,7 +40,7 @@ export function playedPeriods(g: Game): number {
 }
 
 /** A scoreboard game's outcome so far, for its "Projected: … · Final: …" line (lib/outcome.ts). */
-export const outcomeOf = (g: Game): Outcome => ({
+export const outcomeOf = (g: Scored): Outcome => ({
   home: g.home.name,
   away: g.away.name,
   homeScore: g.homeScore,

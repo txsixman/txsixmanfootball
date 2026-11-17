@@ -42,7 +42,7 @@ function RoundCard({ box, live, team, dim, onTeam }: { box: Box; live: LiveView 
       </div>
       {box.href && (
         // The name holds the words shown, then the game (ADR 0081); a hidden span would count as text cut short in the box.
-        <Link href={box.href} aria-label={`Game page for ${matchup}`} className="flex min-h-11 items-center justify-between border-t border-line px-2 text-[14px] font-semibold text-navy hover:bg-panel">
+        <Link href={box.href} prefetch={false} aria-label={`Game page for ${matchup}`} className="flex min-h-11 items-center justify-between border-t border-line px-2 text-[14px] font-semibold text-navy hover:bg-panel">
           <span>Game page</span>
           <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
         </Link>

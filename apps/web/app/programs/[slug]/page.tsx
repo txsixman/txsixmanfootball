@@ -292,6 +292,7 @@ export default async function ProgramPage({ params }: Props) {
           {r.href ? (
             <Link
               href={r.href}
+              prefetch={false}
               aria-label={`${r.status} ${lead(r)} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}
               className="flex min-h-11 min-w-11 items-center justify-end after:absolute after:inset-0"
             >
@@ -329,7 +330,7 @@ export default async function ProgramPage({ params }: Props) {
           {r.note && <small>{r.note}</small>}
           {r.projected && <small data-projected>{r.projected}</small>}
         </div>
-        <Link href={r.href} aria-label={`${r.status} ${lead(r)} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}>
+        <Link href={r.href} prefetch={false} aria-label={`${r.status} ${lead(r)} ${r.opponent}${r.score ? `, ${r.score}` : ""}, game page`}>
           {r.score}
         </Link>
       </li>
@@ -630,6 +631,7 @@ export default async function ProgramPage({ params }: Props) {
                 <li key={m.id} className="relative border-b border-line px-3 py-2 hover:bg-panel">
                   <Link
                     href={m.href}
+                    prefetch={false}
                     aria-label={`${m.status} ${m.lead} ${m.opponent}, ${m.score}, game page`}
                     className="flex min-h-11 items-center font-num text-[14px] font-bold uppercase leading-tight text-navy after:absolute after:inset-0"
                   >

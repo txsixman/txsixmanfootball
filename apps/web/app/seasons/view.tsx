@@ -35,7 +35,7 @@ export function SeasonList({ hubs }: { hubs: SeasonHub[] }) {
     <ol className="mt-4 border-t border-line">
       {hubs.map((h) => (
         <li key={h.season} className="border-b border-line">
-          <Link href={`/seasons/${h.season}`} className="flex min-h-14 items-center justify-between gap-3 px-3 py-1 hover:bg-panel">
+          <Link href={`/seasons/${h.season}`} prefetch={false} className="flex min-h-14 items-center justify-between gap-3 px-3 py-1 hover:bg-panel">
             <span className="min-w-0">
               <span className="block font-num text-[28px] font-bold leading-8 text-navy">{h.season}</span>
               <span className="block text-[14px] leading-5 text-muted">

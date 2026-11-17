@@ -3,7 +3,7 @@ import type { Game } from "@/lib/demo-games";
 import type { Side } from "@/lib/score-display";
 
 /** Weight says who won. The underline says how sure we are, so the number itself never reads as official. */
-export function scoreClass(g: Game, lost: boolean): string {
+export function scoreClass(g: Pick<Game, "verification">, lost: boolean): string {
   let cls = lost ? "font-semibold text-ink/70" : "font-bold text-ink";
   if (g.verification === "unconfirmed") cls += " underline decoration-dashed decoration-2 underline-offset-[5px]";
   if (g.verification === "disputed") cls += " underline decoration-wavy decoration-red decoration-2 underline-offset-[5px]";
@@ -23,7 +23,7 @@ export function ForfeitMark({ side, winner, large }: { side: Side; winner: Side;
 }
 
 /** Full-width words for the two states a reader must never miss. */
-export function VerifyBar({ g }: { g: Game }) {
+export function VerifyBar({ g }: { g: Pick<Game, "verification" | "sources"> }) {
   if (g.verification === "disputed") {
     return (
       <p className="flex items-center gap-2 bg-alert px-3 py-1.5 text-[13px] leading-4 text-white">

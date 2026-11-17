@@ -106,11 +106,11 @@ export async function PlayoffsView({ league, season }: { league: League; season?
                   )}
                   {/* The bracket's own page first (a bare link to each bracket leads the page, for the markup that lists them), then its list of who is left. */}
                   <div className="flex flex-wrap items-center justify-between gap-x-4 px-3 text-[14px] font-semibold text-navy">
-                    <Link href={bracketHref(b.name)} className="inline-flex min-h-11 items-center hover:underline">
+                    <Link href={bracketHref(b.name)} prefetch={false} className="inline-flex min-h-11 items-center hover:underline">
                       Full {bracketLabel(b)} bracket
                     </Link>
                     {left > 0 && (
-                      <Link href={`${bracketHref(b.name)}#whos-left`} className="inline-flex min-h-11 items-center hover:underline">
+                      <Link href={`${bracketHref(b.name)}#whos-left`} prefetch={false} className="inline-flex min-h-11 items-center hover:underline">
                         Who&rsquo;s left: {left} {left === 1 ? "team" : "teams"}
                         <ChevronRight aria-hidden="true" className="size-4" />
                       </Link>
@@ -136,7 +136,7 @@ export async function PlayoffsView({ league, season }: { league: League; season?
           <section key={b.name} aria-labelledby={id} className="mt-8">
             <SectionBar id={id} title={b.name} aside={`Latest: ${latestRound(b)!.label}`} className="" />
             {!past && (
-              <Link href={bracketHref(b.name)} className="flex min-h-11 items-center justify-between border-b border-line px-3 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
+              <Link href={bracketHref(b.name)} prefetch={false} className="flex min-h-11 items-center justify-between border-b border-line px-3 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
                 The {bracketLabel(b)} bracket, latest round first
                 <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
               </Link>

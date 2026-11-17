@@ -18,6 +18,9 @@
 // sent (rankings). Before it (run 43923270389) the worst were 97, 1062 ms, 192 ms, 0.029, 710 KB, 203 KB and 57 KB.
 // Until Nov 16 the budgets were from the first run (Nov 11: 85, 930 ms, 599 ms, 0.034, 917 KB on four pages) and left
 // room for most of what the pass removed: 120 KB of background link loading on every page, and blocking time.
+// Tightened Nov 17, 2026 (ADR 0100) after the second pass (a script the pages no longer load, the scores board's page data cut by
+// half, no prefetch down a scrolled list), from the pass's own CI run (26043187956, PR 186), worst page each: weight 616 KB
+// (/results), scripts 217 KB (a program page), HTML 60 KB sent (rankings); the same pages on main just before it: 677, 236 and 60.
 // Weight is the one that holds the line on link prefetching: 700 KB fails if the section links go back to loading every
 // page they point at (about 85 KB), which the old 1200 KB would not have noticed.
 module.exports = {
@@ -44,10 +47,10 @@ module.exports = {
         "largest-contentful-paint": ["error", { maxNumericValue: 1600, aggregationMethod: "median" }],
         "total-blocking-time": ["error", { maxNumericValue: 350, aggregationMethod: "median" }],
         "cumulative-layout-shift": ["error", { maxNumericValue: 0.03, aggregationMethod: "median" }],
-        "total-byte-weight": ["error", { maxNumericValue: 700 * 1024, aggregationMethod: "median" }],
-        // Bytes sent (compressed), by kind: the scripts a page loads, and its HTML (the largest, /rankings, is 57 KB).
-        "resource-summary:script:size": ["error", { maxNumericValue: 260 * 1024, aggregationMethod: "median" }],
-        "resource-summary:document:size": ["error", { maxNumericValue: 80 * 1024, aggregationMethod: "median" }],
+        "total-byte-weight": ["error", { maxNumericValue: 660 * 1024, aggregationMethod: "median" }],
+        // Bytes sent (compressed), by kind: the scripts a page loads, and its HTML (the largest, /rankings, is 60 KB).
+        "resource-summary:script:size": ["error", { maxNumericValue: 240 * 1024, aggregationMethod: "median" }],
+        "resource-summary:document:size": ["error", { maxNumericValue: 70 * 1024, aggregationMethod: "median" }],
       },
     },
     upload: { target: "filesystem", outputDir: "./e2e/.lighthouse" },

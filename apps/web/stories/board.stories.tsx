@@ -1,4 +1,5 @@
 import Board from "@/app/scores/board";
+import { boardCrests, boardGame } from "@/lib/board-wire";
 import { demoGames } from "@/lib/demo-games";
 import type { Identity } from "@/lib/identity"; // the type only: lib/identity.ts reads files, which a story cannot
 
@@ -8,14 +9,14 @@ export default { title: "Scores board" };
 const pick = (title: string, keep: (g: (typeof demoGames)[number]) => boolean) => {
   const games = demoGames.filter(keep);
   if (games.length === 0) throw new Error(`no demo game for "${title}"`); // a story with nothing to show is broken
-  return <Board games={games} eyebrow="Sample" title={title} />;
+  return <Board games={games.map(boardGame)} eyebrow="Sample" title={title} />;
 };
 
 export const Live = () => pick("Live", (g) => g.state === "live");
 export const Final = () => pick("Final", (g) => g.state === "final" && g.verification === "confirmed");
 export const Unconfirmed = () => pick("Unconfirmed", (g) => g.verification === "unconfirmed");
 export const Postponed = () => pick("Postponed", (g) => g.state === "postponed");
-export const Everything = () => <Board games={demoGames} eyebrow="Sample" title="Every state" />;
+export const Everything = () => <Board games={demoGames.map(boardGame)} eyebrow="Sample" title="Every state" />;
 
 // A line with a crest: a drawn mark for one invented school (a logo), a badge in its color for the rest.
 const mark = `data:image/svg+xml,${encodeURIComponent(
@@ -32,4 +33,4 @@ const crests: Record<string, Identity> = Object.fromEntries(
     },
   ]),
 );
-export const WithCrests = () => <Board games={demoGames} eyebrow="Sample" title="With crests" crests={crests} />;
+export const WithCrests = () => <Board games={demoGames.map(boardGame)} eyebrow="Sample" title="With crests" crests={boardCrests(crests)} />;

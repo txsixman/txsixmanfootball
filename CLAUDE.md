@@ -86,6 +86,8 @@ a complete almanac since 1938, and community. Codename only; the public brand is
 - `apps/web/lib/results-text.ts`, `results-text-load.ts`, `app/results/text/`, `app/results/copy-results.tsx`: a results week as plain text for a paper or radio station (ADR 0102): the file at `/results/text/<season>/<week>/<org>`, "Copy results", and the print block `app/results/view.tsx` shows only when printed (`globals.css`)
 - `apps/web/app/seasons/review.tsx`, `lib/season-review.ts` (pure rules), `lib/season-review-load.ts`: each organization's "Season in review" on `/seasons/<year>` (ADR 0099)
 - `apps/web/app/embed/`: the embeddable scoreboard, `/embed/programs/<slug>` (ADR 0023): the only route that may be framed; its page and CSP are built in `lib/embed-html.ts`
+- `apps/web/lib/board-wire.ts`: what the scores board (a client component) is sent: its games and crests without a field it never reads (ADR 0100); `scripts/speed.test.mjs`
+  holds that byte budget, the table of long lists whose links must not prefetch, and the rule that nothing ships `tailwind-merge`. A new long list of links says `prefetch={false}`
 - `apps/web/lib/find.ts`, `find-index.ts`, `app/search/`: search (ADR 0090). `find-index.ts` makes the index at build time (programs, mascots, other
   names, series-page bits, season and State Championship years); `find.ts` is the pure matcher the browser, the build and
   `scripts/find.test.mjs` (a table of queries and the first result each opens) share; Pagefind adds only weeks of results
