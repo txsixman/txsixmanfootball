@@ -27,7 +27,7 @@ module.exports = {
       startServerReadyPattern: "Ready",
       // CI splits the pages across jobs with LHCI_PAGES (ci.yml); without it, all of them: one of each kind of page a
       // fan opens (home, scores, playoffs this round, a bracket, a game, a program, rankings, results).
-      url: (process.env.LHCI_PAGES ?? "/,/rankings,/results,/programs/jayton,/scores,/playoffs,/playoffs/this-round,/playoffs/bracket/uil-division-i,/scores/2026-11-06-earth-springlake-at-whitharral,/welcome")
+      url: (process.env.LHCI_PAGES ?? "/,/rankings,/results,/programs/jayton,/scores,/playoffs,/playoffs/this-round,/playoffs/bracket/uil-division-i,/scores/2026-11-06-earth-springlake-at-whitharral,/welcome,/search")
         .split(",")
         .map((page) => `http://localhost:3011${page}`),
       numberOfRuns: 3,

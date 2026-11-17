@@ -77,7 +77,7 @@ export default async function WelcomePage() {
           <p className="mt-3 flex min-h-11 items-center gap-2 text-[15px] font-semibold">{f.live}</p>
         )}
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <Link href="/programs" className="btn-red w-full text-[17px] sm:w-auto">
+          <Link href="/search" prefetch={false} className="btn-red w-full text-[17px] sm:w-auto">
             Find your team
           </Link>
           <Link href="/scores/tonight" className="inline-flex min-h-11 w-full items-center justify-center border-2 border-white px-4 text-[17px] font-bold text-white hover:underline sm:w-auto">
@@ -132,7 +132,7 @@ export default async function WelcomePage() {
         <h2 id="alerts" className="section-title">Get alerts for your team</h2>
         <ol className="mt-3 grid gap-3 sm:grid-cols-3">
           {[
-            { title: "Find your team", body: "Open Programs and type the school or town." },
+            { title: "Find your team", body: "Open Search and type the school, town or mascot." },
             { title: "Tap the alert button", body: "On the team's page, under Score alerts, tap the button to follow it on this phone." },
             { title: "Allow notifications", body: "When your phone asks, say yes. A new final score of your team's comes to you as an alert." },
           ].map((s, i) => (
@@ -160,7 +160,7 @@ export default async function WelcomePage() {
           {f.programs} programs in {listWords(WELCOME_ORGS)}, each with its scores, rank and history.
         </p>
         <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link href="/programs" className="btn-red w-full sm:w-auto">
+          <Link href="/search" prefetch={false} className="btn-red w-full sm:w-auto">
             Find your team
           </Link>
           <Link href="/" className="btn w-full sm:w-auto">
