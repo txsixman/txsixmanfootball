@@ -167,3 +167,8 @@ Not in an ADR:
   linked State Championship line and this season's district place on the season rows, and a plain page for a program with
   under five games (its seasons only, no rows of dashes, no all-time numbers); a past season shows no district place because
   only today's alignments are held (Nov 16, 2026).
+- **Search finds what fans type** (ADR 0090): /search is an instant, forgiving search from a 53 KB index made at build time
+  (program, mascot, other names, abbreviations, town, league lines; misspellings, "White Face", "ISD"/"Academy"/"Christian",
+  two teams as a game, a year with a team as its season), exact and prefix names first, league and place on every result,
+  keyboard and screen-reader paths, what to try when nothing matches; weeks of results stay Pagefind's; "Find your team" on
+  /welcome opens it (Nov 16, 2026).
