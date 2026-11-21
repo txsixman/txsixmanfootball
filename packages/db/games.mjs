@@ -11,18 +11,37 @@ const REQUIRED = ["division", "round", "game_date", "home", "away", "source_url"
 /** 0-0 with no forfeit: a placeholder or a cancelled game, never a result (a forfeit is written 1-0 or 2-0). */
 const isZeroZero = (home, away, endReason) => String(home) === "0" && String(away) === "0" && endReason !== "forfeit";
 
-export function parseGames(text) {
+/** More rows than this skipped from one file (below) is a broken file, not a stray row: the load stops (DECISIONS.md, Nov 21, 2026). */
+export const MAX_SKIPPED_ROWS = 3;
+
+/**
+ * Rows of a games or playoffs CSV. A row with a required column empty throws, unless `skipped` (an array) is given: then the
+ * row is left out and `{ line, row, missing }` pushed, so one bracket-seeded row with no source page (Nov 21, 2026: two TAIAO
+ * semifinals) cannot hold back every other game. A bad header or a row with the wrong number of cells always throws, and so
+ * do more than `maxSkipped` skipped rows.
+ */
+export function parseGames(text, { skipped, maxSkipped = MAX_SKIPPED_ROWS } = {}) {
   const names = COLUMNS.split(",");
   const [header, ...lines] = text.trim().split("\n");
   if (header !== COLUMNS) throw new Error(`unexpected header: ${header}`);
-  return lines.map((line, i) => {
+  const rows = lines.map((line, i) => {
     const cols = line.split(",");
     if (cols.length !== names.length) throw new Error(`bad row ${i + 2} (commas are not allowed in notes): ${line}`);
     const row = Object.fromEntries(names.map((name, j) => [name, cols[j].trim()]));
     const missing = REQUIRED.filter((name) => !row[name]);
-    if (missing.length) throw new Error(`row ${i + 2} is missing ${missing.join(", ")}`);
+    if (missing.length) {
+      if (!skipped) throw new Error(`row ${i + 2} is missing ${missing.join(", ")}`);
+      skipped.push({ line: i + 2, row, missing });
+      return null;
+    }
     return row;
-  });
+  }).filter(Boolean);
+  // Many bad rows are a broken file, not a stray row: stop, as the first one used to.
+  if (skipped && skipped.length > maxSkipped) {
+    const first = skipped[0];
+    throw new Error(`${skipped.length} rows are missing a required column (more than ${maxSkipped}); the first is row ${first.line}, missing ${first.missing.join(", ")}`);
+  }
+  return rows;
 }
 
 /**

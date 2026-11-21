@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { before, test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import { scoreFlags } from "../../core/six-man.mjs";
-import { parseGames, seedGames } from "../games.mjs";
+import { MAX_SKIPPED_ROWS, parseGames, seedGames } from "../games.mjs";
 import { seedAlignments } from "../seed.mjs";
 
 const dir = new URL("../migrations/", import.meta.url);
@@ -128,4 +128,33 @@ test("a playoff game whose round is named again keeps its row: renamed in place,
   const rows = await game();
   assert.equal(rows.length, count);
   assert.deepEqual(rows.filter((g) => g.game_date.toISOString?.().startsWith("2026-11-27") ?? String(g.game_date).startsWith("2026-11-27")).map((g) => g.playoff_round), ["quarterfinal"]);
+});
+
+// Nov 21, 2026: two bracket-seeded TAIAO semifinals had no source page and the first one stopped the whole load.
+const seeded = (home, away) => `I,semifinal,2026-11-21,${home},${away},,,,,,,`;
+const listed = `I,area,2026-11-20,Alpha,Beta,true,,,,,${SRC},`;
+
+test("a row with no source page is skipped and counted, the rest load, and without the option it still throws", async () => {
+  const lines = csv(listed, seeded("Alpha", "Beta"));
+  assert.throws(() => parseGames(lines), { message: "row 3 is missing source_url" });
+  const skipped = [];
+  const rows = parseGames(lines, { skipped });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].round, "area");
+  assert.deepEqual(skipped.map((s) => [s.line, s.missing]), [[3, ["source_url"]]]);
+  assert.equal(skipped[0].row.home, "Alpha");
+});
+
+test("a file of good rows parses the same with or without the option", () => {
+  const lines = csv(listed, `I,regional,2026-11-27,Beta,Alpha,true,,,,,${SRC},`);
+  const skipped = [];
+  assert.deepEqual(parseGames(lines, { skipped }), parseGames(lines));
+  assert.deepEqual(skipped, []);
+});
+
+test("more than the allowed number of bad rows still stops the load, and a wrong cell count always does", () => {
+  const bad = Array.from({ length: MAX_SKIPPED_ROWS + 1 }, () => seeded("Alpha", "Beta"));
+  assert.throws(() => parseGames(csv(listed, ...bad), { skipped: [] }), /4 rows are missing a required column \(more than 3\); the first is row 3, missing source_url/);
+  assert.equal(parseGames(csv(listed, ...bad.slice(0, MAX_SKIPPED_ROWS)), { skipped: [] }).length, 1);
+  assert.throws(() => parseGames(csv(listed, "I,area,2026-11-20,Alpha"), { skipped: [] }), /bad row 3/);
 });

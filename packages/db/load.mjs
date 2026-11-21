@@ -176,6 +176,20 @@ export async function withoutUnlisted(db, rows, season) {
   return { rows: kept, unlisted: rows.length - kept.length };
 }
 
+/**
+ * One games file's rows. A row with no source page (or another required column) is left out, counted and named in a
+ * warning annotation (never throws for one; more than MAX_SKIPPED_ROWS stops the load), so one bad row cannot hold back
+ * every game (Nov 21, 2026). Returns the rows and how many were skipped.
+ */
+function parseFile(text, g) {
+  const skipped = [];
+  const rows = parseGames(g.dropLeague ? withoutLeague(text) : text, { skipped });
+  for (const s of skipped) {
+    console.warn(`::warning::${g.file} row ${s.line} skipped, missing ${s.missing.join(", ")}: ${s.row.round} ${s.row.home} v ${s.row.away}`);
+  }
+  return { rows, skipped: skipped.length };
+}
+
 /** robot playoffs.csv carries a leading league column the importer does not take. */
 const withoutLeague = (text) =>
   text.trim().split("\n").map((line) => line.slice(line.indexOf(",") + 1)).join("\n");
@@ -226,11 +240,11 @@ export async function loadAll(db, { retrievedOn, reason, publicResults = false }
   report.pastSeasons = await pastTeamSeasons(db);
   for (const g of gameFiles()) {
     const text = withSource(readFileSync(new URL(g.file, g.base), "utf8"), g.file, publicResults);
-    const parsed = parseGames(g.dropLeague ? withoutLeague(text) : text);
+    const { rows: parsed, skipped } = parseFile(text, g);
     const { rows, unlisted } = g.dropLeague ? await withoutUnlisted(db, parsed, g.season) : { rows: parsed, unlisted: 0 };
     if (!rows.length) continue;
     const { inserted, updated, unchanged, flags } = await seedGames(db, rows, { season: g.season, retrievedOn, reason });
-    report.games.push({ file: g.file, inserted, updated, unchanged, flags: flags.length, ...(unlisted && { unlisted }) });
+    report.games.push({ file: g.file, inserted, updated, unchanged, flags: flags.length, ...(unlisted && { unlisted }), ...(skipped && { skipped }) });
   }
   report.pairings = await loadBracketPairings(db);
   for (const f of FINALS.filter((f) => existsSync(new URL(f.file, SEED)))) {
@@ -254,11 +268,11 @@ export async function loadSeasonGames(db, season, { retrievedOn, reason, publicR
   const report = [];
   for (const g of gameFiles().filter((f) => f.season === season)) {
     const text = withSource(readFileSync(new URL(g.file, g.base), "utf8"), g.file, publicResults);
-    const parsed = parseGames(g.dropLeague ? withoutLeague(text) : text);
+    const { rows: parsed, skipped } = parseFile(text, g);
     const { rows, unlisted } = g.dropLeague ? await withoutUnlisted(db, parsed, season) : { rows: parsed, unlisted: 0 };
     if (!rows.length) continue;
     const { inserted, updated, unchanged, flags } = await seedGames(db, rows, { season, retrievedOn, reason });
-    report.push({ file: g.file, inserted, updated, unchanged, flags: flags.length, ...(unlisted && { unlisted }) });
+    report.push({ file: g.file, inserted, updated, unchanged, flags: flags.length, ...(unlisted && { unlisted }), ...(skipped && { skipped }) });
   }
   return { games: report, pairings: season === CURRENT_SEASON ? await loadBracketPairings(db, season) : null };
 }
