@@ -66,6 +66,25 @@ const championshipCases = (): Promise<Case[]> =>
 
 const content = (page: import("@playwright/test").Page, selector: string) => page.locator(selector).getAttribute("content");
 
+/** Every page's preview names the site, its type and language, and its own public address (app/layout.tsx, lib/site.ts OPEN_GRAPH), whether or not the page sets its own card. */
+async function checkSiteFields(page: import("@playwright/test").Page, name: string) {
+  const here = new URL(page.url()).pathname;
+  expect(await content(page, 'meta[property="og:site_name"]'), `${name} og:site_name`).toBe("TX Six-Man Football");
+  expect(await content(page, 'meta[property="og:type"]'), `${name} og:type`).toBe("website");
+  expect(await content(page, 'meta[property="og:locale"]'), `${name} og:locale`).toBe("en_US");
+  const noSlash = (u: string | null) => u?.replace(/\/$/, "");
+  expect(noSlash(await content(page, 'meta[property="og:url"]')), `${name} og:url`).toBe(`https://txsixmanfootball.com${here}`.replace(/\/$/, ""));
+}
+
+test("every page's link preview names the site, and keeps its own title and description", async ({ page }) => {
+  for (const url of ["/", "/scores", "/programs/jayton", "/results/2025/9/tapps"]) {
+    await page.goto(url);
+    await checkSiteFields(page, url);
+    expect(await content(page, 'meta[property="og:title"]'), url).toBe(await page.title());
+    expect(await content(page, 'meta[property="og:description"]'), url).toBe(await content(page, 'meta[name="description"]'));
+  }
+});
+
 async function checkCard(page: import("@playwright/test").Page, request: import("@playwright/test").APIRequestContext, { name, url, card, alt }: Case) {
   await page.goto(url);
   for (const selector of ['meta[property="og:image"]', 'meta[name="twitter:image"]']) {
@@ -76,6 +95,7 @@ async function checkCard(page: import("@playwright/test").Page, request: import(
   await expect(page.locator('meta[property="og:image:width"]'), name).toHaveAttribute("content", String(SIZE.width));
   await expect(page.locator('meta[property="og:image:height"]'), name).toHaveAttribute("content", String(SIZE.height));
   for (const selector of ['meta[property="og:image:alt"]', 'meta[name="twitter:image:alt"]']) expect(await content(page, selector), `${name} ${selector}`).toMatch(alt);
+  await checkSiteFields(page, name);
   const image = new URL((await content(page, 'meta[property="og:image"]'))!);
   const res = await request.get(image.pathname + image.search);
   expect(res.status(), name).toBe(200);

@@ -17,6 +17,12 @@ test.after(() => rmSync(tmp, { recursive: true, force: true }));
 
 const BANNED = /\b(spreads?|odds|lines?|bets?|betting|underdogs?|favou?rites?|locks?|won|beat|defeated|winner|victory)\b|maxpreps|hudl|calpreps|sixmanfootball|dave campbell|80x40/i;
 const LONG = "Tyler Heat (Home Education Athletics of Tyler)";
+// A school may be called Victory Christian: its name is not the word "victory" (the banned list is for the words a page adds).
+const named = (text) => {
+  assert.ok(text.length > 0 && text.length <= 60, `${text.length} characters: ${text}`);
+  assert.doesNotMatch(text, /\s{2,}|\s$|^\s/, `stray spaces: ${text}`);
+  return text;
+};
 const clean = (text) => {
   assert.ok(text.length > 0 && text.length <= 61, `${text.length} characters: ${text}`);
   assert.doesNotMatch(text, BANNED, text);
@@ -48,6 +54,41 @@ test("a game reads as the search: 'A vs B football score, date'; a game to play 
   assert.match(long, /^Valor North Austin vs Fort Bend Chargers/);
   assert.match(long, /Nov 6, 2026$/, "the date stays: each meeting's title is its own");
   assert.ok(clean(t.gameTitle({ away: LONG, home: "Texas Home Educator's Sports Association", date: "Nov 6, 2026", scheduled: false })).startsWith("Tyler Heat"));
+});
+
+test("a long matchup always names both teams: the words and the date go first, then each name is cut at a word", () => {
+  const date = "Nov 21, 2026";
+  // Fits whole: the title is the search.
+  assert.equal(named(t.gameTitle({ away: "Kress", home: "Jayton", date, scheduled: true })), "Kress vs Jayton football preview, Nov 21, 2026");
+  // Too long with the words and date: both names whole, nothing else (the wording and the date are the first to go).
+  assert.equal(named(t.gameTitle({ away: "Jubilee San Antonio", home: "Stephenville Faith Knights", date, scheduled: true })), "Jubilee San Antonio vs Stephenville Faith Knights");
+  // Too long even for the names: each is cut at a word and the pair is still there (audit of Nov 21, 2026: "Victory Christian…" alone).
+  const pairs = [
+    ["Victory Christian Academy-Decatur", "Hill Country Christian School-San Marcos"],
+    ["Christ The King Diocesan High School-Lubbock", "Heritage School-Fredericksburg"],
+    ["Fort Bend Chargers", "Texas Home Educator's Sports Association (THESA)"],
+    ["Texas Home Educator's Sports Association (THESA)", "Fort Bend Chargers"],
+    ["Tyler Heat (Home Education Athletics of Tyler)", "Texas Home Educator's Sports Association (THESA)"],
+  ];
+  for (const scheduled of [true, false]) {
+    for (const [away, home] of pairs) {
+      const title = named(t.gameTitle({ away, home, date, scheduled }));
+      const [a, h, ...extra] = title.split(" vs ");
+      assert.ok(a && h && extra.length === 0, `both teams named: ${title}`);
+      const first = a.replace(/…$/, "");
+      const second = h.replace(/…$/, "");
+      assert.ok(away.startsWith(first) && home.startsWith(second), title);
+      assert.equal(title.match(/…/g)?.length ?? 0, a.endsWith("…") + h.endsWith("…"), title);
+      assert.ok(!/\(\w*…?$/.test(title.replace(/…$/, "")), `no half alias: ${title}`);
+    }
+  }
+  assert.equal(
+    t.gameTitle({ away: "Victory Christian Academy-Decatur", home: "Hill Country Christian School-San Marcos", date, scheduled: true }),
+    "Victory Christian Academy… vs Hill Country Christian School…",
+  );
+  // Two pairs that differ only at the end of the second name keep their own titles (the shorter name stays whole).
+  const [x, y] = ["Bellville", "Marble Falls"].map((town) => named(t.gameTitle({ away: "Covenant Christian School-Conroe", home: `Faith Academy of ${town}`, date, scheduled: true })));
+  assert.notEqual(x, y);
 });
 
 test("a played final carries both scores, away team first, and the round or the date; a forfeit carries none", () => {
@@ -109,7 +150,7 @@ test("a name too long is cut, never the season or date that tells one page from 
   const thesa = "Texas Home Educator's Sports Association (THESA)";
   const game = clean(t.gameTitle({ away: thesa, home: "Richland Springs", date: "Oct 12, 2018", scheduled: false }));
   const series = clean(t.seriesTitle({ first: thesa, second: "Richland Springs" }));
-  assert.match(game, /football score, Oct 12, 2018$/);
+  assert.match(game, /^Texas Home Educator's.* vs Richland Springs/);
   assert.notEqual(game, series);
   // Two series whose second schools differ only at the end of the name.
   const bellville = clean(t.seriesTitle({ first: "Covenant Christian School-Conroe", second: "Faith Academy of Bellville" }));

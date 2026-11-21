@@ -3,6 +3,7 @@ import { stateCardTitle } from "@/app/scores/[id]/card/state-card";
 import { loadRatings, record } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
 import { championshipCardText } from "@/lib/share-text";
+import { OPEN_GRAPH } from "@/lib/site";
 import { slugify } from "@/lib/slug";
 import { stateChampionships } from "@/lib/state-championships";
 import { cardSize } from "../../../../page-card";
@@ -38,5 +39,5 @@ export async function championshipCardOf(year: string, bracket: string) {
  * and for a large Twitter card (ADR 0093). */
 export async function championshipCardTags(year: string, bracket: string) {
   const images = [{ url: `/championships/${year}/${bracket}/card`, ...cardSize, alt: (await championshipCardOf(year, bracket)).text.alt }];
-  return { openGraph: { images }, twitter: { card: "summary_large_image" as const, images } };
+  return { openGraph: { ...OPEN_GRAPH, images }, twitter: { card: "summary_large_image" as const, images } };
 }

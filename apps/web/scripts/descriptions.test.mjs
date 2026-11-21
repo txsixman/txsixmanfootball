@@ -61,10 +61,29 @@ test("a game names its teams, date and round, never a score or a winner", () => 
   assert.match(clean(d.gameDescription({ away: "Cedar Gap", home: "Salt Fork", season: 2026, scheduled: false, sample: true })), /invented schools: Cedar Gap vs Salt Fork/);
 });
 
-test("a game with very long names drops the round, then the date, before it cuts a name", () => {
+test("a game with very long names drops the season, the date and the preview line before it drops the round or cuts a name", () => {
   const text = clean(d.gameDescription({ away: LONG, home: "Austin Royals", date: "Nov 14, 2026", season: 2026, playoff: "TAIAO D1 · Quarterfinal", scheduled: true }));
   assert.ok(text.startsWith(LONG), text);
+  assert.match(text, /TAIAO Division 1 quarterfinal\.$/);
   assert.doesNotMatch(text, /…/);
+});
+
+test("a game names its round in every league, and the last round is the State Championship, however long the names", () => {
+  const long = { date: "Nov 21, 2026", season: 2026, scheduled: true };
+  // The two TAPPS State Championships of Nov 21, 2026 left the round out: their names filled the line.
+  for (const [away, home, playoff, want] of [
+    ["Victory Christian Academy-Decatur", "Hill Country Christian School-San Marcos", "TAPPS DIII Large School · State Championship", /TAPPS Division III Large School State Championship\./],
+    ["Christ The King Diocesan High School-Lubbock", "Heritage School-Fredericksburg", "TAPPS DIII Small School · State Championship", /TAPPS Division III Small School State Championship\./],
+    ["Cedar Gap", "Salt Fork", "TAPPS DII · State Championship", /2026 TAPPS Division II State Championship playoff game\./],
+    ["Cedar Gap", "Salt Fork", "UIL DI · State Championship", /2026 UIL Division I State Championship playoff game\./],
+    ["Cedar Gap", "Salt Fork", "TAIAO D1 · State Championship", /2026 TAIAO Division 1 State Championship playoff game\./],
+    ["Cedar Gap", "Salt Fork", "TCAF · State Championship", /2026 TCAF State Championship playoff game\./],
+  ]) {
+    const text = d.gameDescription({ ...long, away, home, playoff });
+    assert.ok(text.length <= 160, text); // a school may be called Victory Christian: `clean` bans the word
+    assert.match(text, want, text);
+    assert.ok(text.startsWith(`${away} vs ${home}`), text);
+  }
 });
 
 test("every other page kind fits, names its organization and season, and differs from its neighbors", () => {

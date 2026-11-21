@@ -111,7 +111,9 @@ test("every kind of page has its own short description, with no betting word, so
     if (!score) expect.soft(title.length, `${label} title is ${title.length} characters: ${title}`).toBeLessThanOrEqual(61);
     expect.soft(titles.get(title), `${label} repeats the title of ${titles.get(title)}`).toBeUndefined();
     titles.set(title, label);
-    if (!score) expect.soft(title, `${label} title`).toMatch(/six-man|football/i);
+    // A game title too long for "football preview" and the date drops them and names both teams (lib/titles.ts): its names alone.
+    if (!score && !(kind.startsWith("game") && teams.length > 30)) expect.soft(title, `${label} title`).toMatch(/six-man|football/i);
+    if (!score && kind.startsWith("game")) expect.soft(title, `${label} title names both teams`).toMatch(/ vs /);
     expect.soft(title, `${label} title`).not.toMatch(BETTING);
     expect.soft(title, `${label} title`).not.toMatch(SOURCE);
     const canonicals = await page.locator('link[rel="canonical"]').evaluateAll((els) => els.map((el) => el.getAttribute("href")?.replace(/\/$/, "")));
