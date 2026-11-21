@@ -974,7 +974,9 @@ export function mergeTonight({ playoffsText, gamesText, finals, bySlug }) {
       end_reason: "unknown",
       source_url: g.gameUrl ?? r.source_url,
     });
-    filled.push(g);
+    // games.csv takes the bracket row's home and away, not the page's: a night read once recorded a final the other way round
+    // from its playoffs.csv row, and the two files then named different home sides for one game.
+    filled.push(homeFirst ? g : { ...g, home: g.away, away: g.home });
   }
   const games = parseRows(gamesText);
   const have = new Set(games.rows.map((r) => pairKey(r.game_date, r.home, r.away)));

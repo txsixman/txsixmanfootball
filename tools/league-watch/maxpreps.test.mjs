@@ -312,7 +312,8 @@ test("a night read fills tonight's finals into the bracket and the games file, a
   assert.deepEqual(once.games.split("\n"), [
     COLUMNS,
     "I,season,2026-11-06,Salt Fork,Dry Wash,false,50,0,unknown,,https://www.maxpreps.com/tx/football/game/c/?c=g0,",
-    "I,season,2026-11-13,Cedar Gap,Salt Fork,false,42,36,unknown,,https://www.maxpreps.com/tx/football/game/a/?c=g1,",
+    // games.csv takes the bracket row's home and away (Salt Fork home), so the two files name the same home side.
+    "I,season,2026-11-13,Salt Fork,Cedar Gap,false,36,42,unknown,,https://www.maxpreps.com/tx/football/game/a/?c=g1,",
     "",
   ]);
   // The next half-hour's read finds nothing new to fill and adds nothing twice.
