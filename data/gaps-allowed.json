@@ -70,5 +70,11 @@
     "key": "no-logo community-school-of-mesquite",
     "reason": "No site of its own found, and Dave Campbell's team list has no page for it. Searched again Nov 16, 2026. Initials badge in its place.",
     "reviewed": "2026-11-16"
+  },
+  {
+    "kind": "no-site",
+    "key": "no-site 2026 2026-11-20|apple-springs|ladonia-fannindel",
+    "reason": "UIL Division II area game, played Nov 20 (Ladonia Fannindel 66, Apple Springs 51; kickoff 7 PM Central from the game details). The second source gives no site for it. Checked Nov 21, 2026 (robots.txt allows the pages): Fannindel ISD's home page and calendar list only a freshman game that day, and Apple Springs ISD's home page names neither the game nor a site. No allowed page names the field, so nothing is added; a later read that finds one fills it (ADR 0041), and this entry is then removed.",
+    "reviewed": "2026-11-21"
   }
 ]
