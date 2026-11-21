@@ -102,5 +102,7 @@ test("the committed season: every game the bracket sets keeps its id when a list
       checked += 1;
     }
   }
-  assert.ok(checked >= 10, `checked ${checked} pairings`);
+  // A floor so the test is never empty. How many pairings the bracket has set depends on how much of a round is played
+  // (10 or more on Nov 16, 8 on Nov 21 with the area round half played), so it is a floor, not the count.
+  assert.ok(checked >= 4, `checked ${checked} pairings`);
 });
