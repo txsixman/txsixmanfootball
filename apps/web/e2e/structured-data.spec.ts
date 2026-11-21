@@ -49,7 +49,8 @@ test("a bracket page lists its games as SportsEvent, each at its own page; /play
   for (const g of games) {
     expect(g["@type"]).toBe("SportsEvent");
     expect(g.url).toMatch(new RegExp(`^${SITE}/scores/`));
-    expect(g.startDate).toMatch(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$/);
+    // A game the bracket sets may have no day yet (ADR 0079): then no start date, as on its page; one that has a day names it.
+    if (g.startDate !== undefined) expect(g.startDate).toMatch(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$/);
     expect((g.competitor as { "@type": string }[]).map((t) => t["@type"])).toEqual(["SportsTeam", "SportsTeam"]);
     // No result in the list: no score, no description.
     expect(g).not.toHaveProperty("description");
