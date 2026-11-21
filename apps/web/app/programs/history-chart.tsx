@@ -85,7 +85,7 @@ export function HistoryChart({ points, label, color = "var(--color-navy)", note 
         <caption>Rank and rating by week</caption>
         <thead>
           <tr>
-            <th scope="col">Week ending</th>
+            <th scope="col">Week of</th>
             <th scope="col">Rank</th>
             <th scope="col">Rating</th>
           </tr>

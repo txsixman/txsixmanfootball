@@ -7,7 +7,7 @@ import { loadWeeks } from "./weeks";
 // ratings' own count through that Sunday (`rated_trend`: forfeits, no contests and duplicates left out), not a second
 // definition made here. Weeks are numbered as on the Results pages (week 1 holds the first game).
 
-export type RankingWeek = { number: number; sunday: string; index: number };
+export type RankingWeek = { number: number; monday: string; sunday: string; index: number };
 
 const sundayOf = (monday: string) => new Date(Date.parse(`${monday}T12:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10);
 
@@ -18,7 +18,7 @@ export async function rankingWeeks(season: number): Promise<RankingWeek[]> {
   return weeks.flatMap((w) => {
     const sunday = sundayOf(w.monday);
     const index = columns.indexOf(sunday);
-    return index < 0 ? [] : [{ number: w.number, sunday, index }];
+    return index < 0 ? [] : [{ number: w.number, monday: w.monday, sunday, index }];
   });
 }
 

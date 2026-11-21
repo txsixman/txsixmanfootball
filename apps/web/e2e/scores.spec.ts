@@ -502,7 +502,7 @@ test("rankings pick a season; a past season shows its final table, overall only"
 test("a program page lists each season: record, place and the last playoff round played", async ({ page }) => {
   await page.goto("/programs/gordon");
   const trend = page.getByRole("region", { name: "2026 rank and rating by week" });
-  await expect(trend.getByRole("img", { name: /^Rank in .+ from #\d+ in the week ending .+ to #\d+ in the week ending .+; best #\d+\. Rating from / })).toBeVisible();
+  await expect(trend.getByRole("img", { name: /^Rank in .+ from #\d+ in the week of .+ to #\d+ in the week of .+; best #\d+\. Rating from / })).toBeVisible();
   expect(await trend.locator("tbody tr").count()).toBeGreaterThanOrEqual(3);
   const seasons = page.getByRole("region", { name: "Season by season" });
   await expect(seasons.getByRole("listitem")).toHaveCount(SEASONS);
