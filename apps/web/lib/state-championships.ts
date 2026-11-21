@@ -1,6 +1,7 @@
 import { directionsUrl, type Address } from "./address";
 import { loadAlignments } from "./alignments";
 import { bracketHref, bracketLabel, bracketSlug, loadBrackets, type Bracket } from "./brackets";
+import { championshipGameHref, championshipSides } from "./championship-sides";
 import { loadPlayoffGames } from "./games";
 import { memo } from "./memo";
 import { orderMap, pageId } from "./page-id";
@@ -82,21 +83,15 @@ function championshipOf(season: number, b: Bracket): StateChampionship | undefin
       ...(played ? { scores: [game.homeScore!, game.awayScore!] as [number, number] } : {}),
     };
   }
-  const side = (i: 0 | 1) => {
-    const s = built?.sides[i];
-    if (s && "team" in s) return { team: s.team, text: s.team };
-    const t = node?.sides[i];
-    return t?.team ? { team: t.team, text: t.team } : { text: t?.title ?? t?.text ?? "To be decided" };
-  };
-  const sides: StateChampionship["sides"] = [side(0), side(1)];
-  const [a, b2] = sides;
+  const sides = championshipSides(node, built);
   const site = built?.site ?? node?.site;
+  const href = built ? championshipGameHref(season, finalRound, sides, b.orders) : undefined;
   return {
     ...base,
     sides,
     date: built?.date ?? (node?.kickoff_utc ? centralDate(node.kickoff_utc) : undefined), kickoff: built?.kickoff ?? node?.kickoff_utc, site, address: built?.address,
     directions: directionsOf(site, built?.address),
-    ...(a.team && b2.team ? { gameHref: `/scores/${pageId(season, orders, { round: finalRound, home: a.team, away: b2.team })}` } : {}),
+    ...(href ? { gameHref: href } : {}),
     ...(built?.projection ? { projection: built.projection } : node?.projection ? { projection: node.projection } : {}),
   };
 }
