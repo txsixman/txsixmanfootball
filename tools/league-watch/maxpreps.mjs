@@ -615,6 +615,19 @@ export const storedBracketGame = (r) => ({
   gameUrl: r.source_url,
 });
 
+/**
+ * The bracket games (a Map of key to the reader's game) without a listing data/corrections voids that has no score: a TAIAO
+ * semifinal pairing the league's own bracket never made is no game, so it is not written and does not count toward its week,
+ * whose size names the round of every game in it (a stray third listing made a semifinal week read as a quarterfinal week,
+ * Nov 21, 2026, ADR 0108). A voided listing with a score stays, for the data checks to name. `nameOf`: a team's name as
+ * data/corrections spells it.
+ */
+export function withoutVoidedBracket(bracket, nameOf, correctionsText) {
+  const rows = [...bracket].map(([k, g]) => ({ game_date: g.date, home: nameOf(g.home), away: nameOf(g.away), k }));
+  const open = new Set(withoutVoided(rows, correctionsText).map((r) => r.k));
+  return new Map([...bracket].filter(([k, g]) => g.played || open.has(k)));
+}
+
 async function main() {
   if (seasonComplete(OUT) && !process.argv.includes("--reread")) {
     return console.log(`Season ${SEASON} is stored and marked complete (${path.join(OUT, SEASON_FILE)}): nothing read. To read it again, pass --reread.`);
@@ -729,6 +742,9 @@ async function main() {
     const key = [g.date, ...[g.home.slug, g.away.slug].sort()].join("|");
     if (!bracket.has(key)) bracket.set(key, g);
   }
+  const unvoided = withoutVoidedBracket(bracket, (t) => t.label ?? bySlug.get(t.slug)?.school ?? t.slug, readCorrections());
+  bracket.clear();
+  for (const [k, g] of unvoided) bracket.set(k, g);
   let pending = readPending(stored(PENDING_FILE));
   const changes = [];
   const storeLines = [];
@@ -880,10 +896,49 @@ export function datedBuiltRows(built, detailsText, date, nights = CATCH_UP_NIGHT
  * ordinary due count and night read see them; unchanged when there are none. */
 export function withBuiltRows(playoffsText, built, detailsText, date, nights = CATCH_UP_NIGHTS) {
   const extra = datedBuiltRows(built, detailsText, date, nights);
-  if (!extra.length) return { text: playoffsText, added: 0 };
+  if (!extra.length) return { text: playoffsText, added: 0, relabeled: 0 };
   const p = parseRows(playoffsText);
-  const lines = extra.map((r) => rowLine(p.cols, Object.fromEntries(p.cols.map((c) => [c, r[c] ?? ""]))));
-  return { text: `${playoffsText.trimEnd()}\n${lines.join("\n")}\n`, added: extra.length };
+  // A pairing the bracket sets that a listing already holds under another round name (the reader names a round from the
+  // weeks it saw, so a week with a stray extra listing reads as a quarterfinal week) is that game: the bracket's round
+  // goes on the listed row, never a second row of the same date and teams (Nov 21, 2026, ADR 0108).
+  const held = new Map(p.rows.map((r) => [rowKey(r), r]));
+  let relabeled = 0;
+  const fresh = extra.filter((r) => {
+    const row = held.get(rowKey(r));
+    if (!row) return true;
+    if (r.round && row.round !== r.round) {
+      row.round = r.round;
+      relabeled++;
+    }
+    return false;
+  });
+  if (!fresh.length && !relabeled) return { text: playoffsText, added: 0, relabeled: 0 };
+  const lines = [...p.rows.map((r) => rowLine(p.cols, r)), ...fresh.map((r) => rowLine(p.cols, Object.fromEntries(p.cols.map((c) => [c, r[c] ?? ""]))))];
+  return { text: `${p.header}\n${lines.join("\n")}\n`, added: fresh.length, relabeled };
+}
+
+/**
+ * playoffs.csv's text with each game that is listed twice, as one row of a listing (it has a source page) and one the
+ * bracket built (none), folded into the listed row under the bracket's round (ADR 0108). Rows written before withBuiltRows
+ * checked for a listing (Nov 21, 2026: two TAIAO semifinals, one row each as a quarterfinal and as a semifinal with the sides
+ * swapped, which stopped the database load) mend here on the next night read. Any other repeat is left as it is.
+ */
+export function withoutBuiltCopies(playoffsText) {
+  const p = parseRows(playoffsText);
+  if (!p.cols.includes("source_url")) return { text: playoffsText, folded: 0 }; // the public copy has no sources to tell the two apart
+  const groups = Map.groupBy(p.rows, rowKey);
+  const drop = new Set();
+  let folded = 0;
+  for (const rows of groups.values()) {
+    const [listed, ...rest] = rows.filter((r) => r.source_url);
+    const built = rows.filter((r) => !r.source_url);
+    if (!listed || rest.length || built.length !== rows.length - 1 || !built.length) continue;
+    listed.round = built[built.length - 1].round;
+    for (const b of built) drop.add(b);
+    folded += built.length;
+  }
+  if (!folded) return { text: playoffsText, folded: 0 };
+  return { text: `${p.header}\n${p.rows.filter((r) => !drop.has(r)).map((r) => rowLine(p.cols, r)).join("\n")}\n`, folded };
 }
 
 /** This checkout's data/corrections/games.csv ("" when there is none): the games it voids are not looked for. */
@@ -979,9 +1034,13 @@ async function tonight() {
   let playoffsText = readFileSync(playoffsFile, "utf8");
   // A pairing the bracket sets by winners, whose kickoff the game details already give, has no playoffs.csv row until a listing is read.
   try {
+    const mended = withoutBuiltCopies(playoffsText);
+    playoffsText = mended.text;
+    if (mended.folded) console.log(`${mended.folded} bracket-built rows folded into the listed row of the same game (ADR 0108).`);
     const withBuilt = withBuiltTonight(playoffsText, date);
     playoffsText = withBuilt.text;
     if (withBuilt.added) console.log(`${withBuilt.added} bracket-built pairings dated by the game details are read as bracket games.`);
+    if (withBuilt.relabeled) console.log(`${withBuilt.relabeled} listed rows took the round the bracket gives their game (ADR 0108).`);
   } catch (e) {
     console.warn(`bracket-built pairings not added: ${e.message}`);
   }

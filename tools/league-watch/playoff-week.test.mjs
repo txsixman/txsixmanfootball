@@ -11,7 +11,7 @@ import { test } from "node:test";
 import { uilSlotRows } from "../../apps/web/lib/bracket-fill.ts";
 import { builtDue, playoffWeekCount } from "./bracket-due.mjs";
 import { createClient, datedBuilt, DETAIL_COLUMNS, kickoffRows, kickoffTargets, liveAndUpcoming, mergeKickoffs, teamId, teamMaps } from "./davecampbells.mjs";
-import { COLUMNS, datedBuiltRows, dueGames, mergeTonight, withBuiltRows } from "./maxpreps.mjs";
+import { COLUMNS, datedBuiltRows, dueGames, mergeTonight, roundsFor, withBuiltRows, withoutBuiltCopies, withoutVoidedBracket } from "./maxpreps.mjs";
 import { parseCsv } from "./store.mjs";
 
 // UIL Division I, one region: eight teams, two area games, and the regional game those two feed.
@@ -198,4 +198,60 @@ test("a listing a correction voids is never looked for: it gets no final, so it 
   // A later correction that restores the game (any action but void) makes it due again: the last correction wins.
   const restored = `${corrections}2026-11-20,Owl,Finch,score,,,https://example.org,listed again,2026-11-17\n`;
   assert.equal(dueGames(scored, "2026-11-22", 3, restored).length, 1);
+});
+
+// Nov 21, 2026 (ADR 0108): a TAIAO week with a stray third listing read as a quarterfinal week, so the listed game of a
+// semifinal was named "quarterfinal"; the pairing the bracket set was then built again as a "semifinal" row, sides swapped.
+const withSource = (round, date, home, away, url, score = ["", ""]) =>
+  ["UIL", "I", round, date, home, away, "", score[0], score[1], score[0] === "" ? "" : "unknown", "", url, ""].join(",");
+const SAT_DETAILS = `${DETAIL_COLUMNS}\n${AREA_DETAIL}2026-11-26,Lark,Jay,2026-11-27T01:00:00Z,Bird Field,Lark,,,\n`;
+const FINALS = [...BI_DISTRICT, ...AREA_FINAL].map((l) => l.replace(/,,$/, ",https://example.org/g,"));
+
+test("a built pairing that a listing already holds under another round name takes the bracket's round, never a second row", () => {
+  const text = csv(...FINALS, withSource("quarterfinal", "2026-11-26", "Jay", "Lark", "https://example.org/jay-lark"));
+  const built = builtDue(slotRows, rowsOf(text));
+  assert.equal(built.length, 1, "the mislabeled listing does not fill the regional slot, so the pairing is built again");
+  const r = withBuiltRows(text, built, SAT_DETAILS, "2026-11-26");
+  assert.deepEqual([r.added, r.relabeled], [0, 1]);
+  const rows = rowsOf(r.text).filter((x) => x.game_date === "2026-11-26");
+  assert.deepEqual(rows.map((x) => [x.round, x.home, x.away, x.source_url]), [["regional", "Jay", "Lark", "https://example.org/jay-lark"]]);
+  assert.deepEqual(builtDue(slotRows, rowsOf(r.text)), []);
+  // The same row again changes nothing, and a pairing with no listing is still added as before.
+  assert.equal(withBuiltRows(r.text, builtDue(slotRows, rowsOf(r.text)), SAT_DETAILS, "2026-11-26").text, r.text);
+  assert.equal(withBuiltRows(csv(...FINALS), builtDue(slotRows, rowsOf(csv(...FINALS))), SAT_DETAILS, "2026-11-26").added, 1);
+});
+
+test("rows written twice before that rule (one listed, one built) fold into the listed row under the bracket's round", () => {
+  const listed = withSource("quarterfinal", "2026-11-26", "Jay", "Lark", "https://example.org/jay-lark");
+  const twice = csv(...FINALS, listed, game("regional", "2026-11-26", "Lark", "Jay"));
+  const m = withoutBuiltCopies(twice);
+  assert.equal(m.folded, 1);
+  assert.deepEqual(rowsOf(m.text).filter((x) => x.game_date === "2026-11-26").map((x) => [x.round, x.home, x.away, x.source_url]), [["regional", "Jay", "Lark", "https://example.org/jay-lark"]]);
+  assert.deepEqual(withoutBuiltCopies(m.text), { text: m.text, folded: 0 });
+  // Two listings of one pair (both with a source), or a file with no source column, are left alone: only a built copy is folded.
+  const both = csv(...FINALS, listed, withSource("regional", "2026-11-26", "Lark", "Jay", "https://example.org/other"));
+  assert.deepEqual(withoutBuiltCopies(both), { text: both, folded: 0 });
+  const publicCopy = twice.split("\n").map((l) => l.split(",").slice(0, 11).join(",")).join("\n");
+  assert.equal(withoutBuiltCopies(publicCopy).folded, 0);
+});
+
+test("a voided listing with no score is not a bracket game, so it neither gets a row nor makes its week look bigger", () => {
+  const team = (slug) => ({ slug });
+  const g = (date, a, b, played = false) => ({ date, bracket: { league: "TAIAO", division: "1" }, home: team(a), away: team(b), played });
+  const k = (x) => [x.date, x.home.slug, x.away.slug].sort().join("|");
+  const week = (list) => new Map(list.map((x) => [k(x), x]));
+  const first = [g("2026-11-06", "a", "b", true), g("2026-11-06", "c", "d", true), g("2026-11-06", "e", "f", true), g("2026-11-06", "h", "i", true), g("2026-11-06", "j", "l", true), g("2026-11-06", "m", "n", true), g("2026-11-06", "o", "p", true), g("2026-11-06", "q", "r", true)];
+  const quarters = [g("2026-11-13", "a", "c", true), g("2026-11-13", "e", "h", true), g("2026-11-13", "j", "m", true), g("2026-11-13", "o", "q", true)];
+  const semis = [g("2026-11-20", "a", "o"), g("2026-11-20", "e", "j")];
+  const stray = g("2026-11-20", "a", "e"); // the listing the league's own bracket never made
+  const corrections = "game_date,home,away,action,home_score,away_score,source_url,reason,corrected_on\n2026-11-20,a,e,void,,,https://example.org,not a slot,2026-11-15\n";
+  const rounds = (bracket) => roundsFor([...bracket.values()].map((x) => ({ league: "TAIAO", division: "1", date: x.date }))).slice(-2);
+  const all = week([...first, ...quarters, ...semis, stray]);
+  assert.deepEqual(rounds(all), ["quarterfinal", "quarterfinal"], "with the stray listing counted the last week reads as 3 games and a quarterfinal");
+  const kept = withoutVoidedBracket(all, (t) => t.slug, corrections);
+  assert.equal(kept.size, all.size - 1);
+  assert.equal(kept.has(k(stray)), false);
+  assert.deepEqual(rounds(kept), ["semifinal", "semifinal"]);
+  // A voided listing that has a score stays, for the data checks to name.
+  assert.equal(withoutVoidedBracket(week([...semis, { ...stray, played: true }]), (t) => t.slug, corrections).has(k(stray)), true);
 });
