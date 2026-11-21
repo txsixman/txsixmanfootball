@@ -30,7 +30,9 @@ function shortDate(iso: string): string {
  * bracket page id. A fixed score stays unconfirmed like every robot-read result (ADR 0011). A game listed twice (the same two
  * teams, the same score, at most two days apart: lib/duplicate-game.ts) is one game, the earlier row, so a team never lists
  * more games than its record counts; `duplicates` says how many were folded (check-data fails on one in the files, so the
- * data should have none). Pure: no file access.
+ * data should have none). `playoffSides` gives a playoff game's home and away as its page orders them (by the same key): a
+ * result written the other way round has its sides and scores swapped, so every page agrees on the home side (ADR 0079); its
+ * `id` stays as games.csv wrote it. Pure: no file access.
  */
 export function buildSeasonResults(
   season: number,
@@ -38,6 +40,7 @@ export function buildSeasonResults(
   fixes: Corrections,
   playoffPages: Map<string, string>,
   gameKey: (date: string, home: string, away: string) => string,
+  playoffSides: Map<string, { home: string; away: string }> = new Map(),
 ): { results: SeasonResult[]; voided: number; duplicates: number } {
   let voided = 0;
   const rows = parseCsv(`data/seed/maxpreps-${season}/games.csv`, text, RESULT_COLUMNS, PlayedGameRow).flatMap(({ row: parsed }) => {
@@ -49,17 +52,20 @@ export function buildSeasonResults(
   const results = rows.flatMap((r, i) => {
     if (copies.has(i)) return [];
     const id = `${r.game_date}-${slugify(r.away)}-at-${slugify(r.home)}`;
+    const page = playoffSides.get(gameKey(r.game_date, r.home, r.away));
+    const flip = !!page && slugify(page.home) === slugify(r.away) && slugify(page.away) === slugify(r.home);
+    const [home, away, homeScore, awayScore] = flip ? [r.away, r.home, r.away_score, r.home_score] : [r.home, r.away, r.home_score, r.away_score];
     return [
       {
         id,
         href: `/scores/${playoffPages.get(gameKey(r.game_date, r.home, r.away)) ?? id}`,
         date: r.game_date,
         status: shortDate(r.game_date),
-        home: r.home,
-        away: r.away,
-        homeScore: Number(r.home_score),
-        awayScore: Number(r.away_score),
-        forfeit: forfeitScore(Number(r.home_score), Number(r.away_score)),
+        home,
+        away,
+        homeScore: Number(homeScore),
+        awayScore: Number(awayScore),
+        forfeit: forfeitScore(Number(homeScore), Number(awayScore)),
         ...(r.neutral === "true" ? { neutral: true } : {}),
       },
     ];
