@@ -41,12 +41,12 @@ export async function WeekRankings({ wanted, org }: { wanted: string; org: Org }
     <section aria-labelledby="rankings">
       <RankingsHeader
         eyebrow={`${season} season · ${org.label} · after week ${week.number}`}
-        note={`${rows.length} ${org.label} ${rows.length === 1 ? "team" : "teams"}, rated on the games played by Sunday, ${day(week.sunday)}. Arrows show the move from a week earlier.${outsideNote}`}
+        note={`${rows.length} ${org.label} ${rows.length === 1 ? "team" : "teams"}, rated on the games played through the week of ${day(week.monday)}. Arrows show the move from a week earlier.${outsideNote}`}
       />
       <TabNav label="Rankings by organization" tabs={orgs.map((o) => ({ href: orgHref(weekBase(week.number), o), label: o.label }))} current={orgHref(weekBase(week.number), org)} />
       <WeekStrip
         prefetch={false}
-        weeks={weeks.map((w) => ({ number: w.number, href: orgHref(weekBase(w.number), org), label: `After week ${w.number}, ending ${day(w.sunday)}`, current: w.number === week.number }))}
+        weeks={weeks.map((w) => ({ number: w.number, href: orgHref(weekBase(w.number), org), label: `After week ${w.number}, from ${day(w.monday)}`, current: w.number === week.number }))}
         after={
           <Link href={orgHref("/rankings", org)} className="inline-flex min-h-11 shrink-0 items-center border-2 border-navy px-3 font-num text-[16px] font-bold uppercase text-navy hover:bg-panel">
           Now
