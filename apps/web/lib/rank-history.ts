@@ -28,7 +28,10 @@ export function rankMatrix(table: WeekTable, inGroup: (team: string) => boolean,
   return out;
 }
 
-const short = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+/** A rating week is keyed by its Sunday (`weeks` in the ratings table). The pages name a week by its Monday, "week of Nov 16",
+ * as the Results pages do ("Week 12, from Nov 16"): a Sunday that has not come yet is never called the week's end. */
+const short = (sunday: string) =>
+  new Date(Date.parse(`${sunday}T12:00:00Z`) - 6 * 86_400_000).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 export const weekLabel = short;
 
 /** The chart's text alternative: where the team started, where it stands and its best, for rank and for rating. */
@@ -37,11 +40,11 @@ export function historySummary(points: HistoryPoint[], label: string): string {
   const last = points.at(-1)!;
   const best = points.reduce((a, b) => (b.rating > a.rating ? b : a));
   const ranked = points.filter((p) => p.rank != null);
-  const rating = `Rating from ${signed(first.rating)} in the week ending ${short(first.week)} to ${signed(last.rating)} in the week ending ${short(last.week)}; highest ${signed(best.rating)}. Zero is an average team.`;
-  if (ranked.length < 2) return `${ranked.length ? `Ranked #${ranked[0].rank} in ${label} in the week ending ${short(ranked[0].week)}.` : `Not ranked in ${label} in any of these weeks.`} ${rating}`;
+  const rating = `Rating from ${signed(first.rating)} in the week of ${short(first.week)} to ${signed(last.rating)} in the week of ${short(last.week)}; highest ${signed(best.rating)}. Zero is an average team.`;
+  if (ranked.length < 2) return `${ranked.length ? `Ranked #${ranked[0].rank} in ${label} in the week of ${short(ranked[0].week)}.` : `Not ranked in ${label} in any of these weeks.`} ${rating}`;
   const [a, z] = [ranked[0], ranked.at(-1)!];
   const top = Math.min(...ranked.map((p) => p.rank!));
-  return `Rank in ${label} from #${a.rank} in the week ending ${short(a.week)} to #${z.rank} in the week ending ${short(z.week)}; best #${top}. ${rating}`;
+  return `Rank in ${label} from #${a.rank} in the week of ${short(a.week)} to #${z.rank} in the week of ${short(z.week)}; best #${top}. ${rating}`;
 }
 
 /** Where the rank line goes: 1 at the top, a gap (a broken line) in a week the team was not ranked, and the rank at each end of the axis. */
