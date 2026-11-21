@@ -87,7 +87,9 @@ test("a team with a next game the bracket sets sees it on its page, in place of 
 test("Scores lists the next games under each organization's button", async ({ page }) => {
   const rows = await built();
   test.skip(!rows.length, "no next-round game is waiting on a listing today");
+  await page.clock.setFixedTime(new Date()); // games move between sections by the clock, so the bar and the sections are read at one time
   await page.goto("/scores", { waitUntil: "networkidle" });
+  await expect(page.locator('[data-kickoff-status="pending"]')).toHaveCount(0);
   for (const [league, list] of Map.groupBy(rows, (r) => r.bracket.league)) {
     const button = page.getByRole("group", { name: "Show games from" }).getByRole("button", { name: league, exact: true });
     if (await button.count()) await button.click();
