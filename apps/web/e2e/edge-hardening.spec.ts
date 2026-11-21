@@ -22,3 +22,12 @@ test("a game address with broken percent-encoding is a 400, not a 500, on both g
   const ok = await request.get("/api/games/2026-09-04-guthrie-at-jayton/comments", { failOnStatusCode: false });
   expect(ok.status()).not.toBe(400);
 });
+
+test("/favicon.ico answers 200 with an icon file", async ({ request }) => {
+  const res = await request.get("/favicon.ico");
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toMatch(/image\/(x-icon|vnd\.microsoft\.icon)/);
+  const bytes = await res.body();
+  expect([...bytes.subarray(0, 4)]).toEqual([0, 0, 1, 0]); // an .ico header: type 1
+  expect([...bytes.subarray(22, 26)]).toEqual([0x89, 0x50, 0x4e, 0x47]); // holding a PNG
+});
