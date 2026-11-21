@@ -156,46 +156,38 @@ reads the one before it, so `run.py --chain 2026` re-rates 2018 to 2026 in order
   and High Island went once the full read brought their games). A gap that is fixed turns its entry stale and fails the check until the entry is removed
 
 ## In progress
-Round 10 (started Nov 16: five parallel branches, each a draft PR; the master lands them by fast-forward):
-- **Game-night live view** (`r10/game-night`), **playoff previews** (`r10/previews`), **program pages** (`r10/programs`) and **search**.
-- **Status documents** (`r10/docs`): this file and the fan and alert docs brought up to date with main.
+Rounds 10 to 14 all landed (Nov 16 to 20). **Audit round, Sat Nov 21** (playoff day): five read-only audits (data,
+security, SEO, content, ops) ran; the game-day fixes landed the same day as train PR 200 (`f6b7455`), checked live:
+- **#197 games load** (ADR 0108): the loader skips and counts a row with no source page instead of stopping; the source
+  read adds no built row for a game a listed row already holds, and voided listings stay out of the round count. Cause:
+  TAIAO semifinals listed twice (one as "Quarterfinal"), `supabase / load` failed from ~13:00 to 18:00 UTC.
+- **#196** a State Championship reads each side from the slot that holds it (was "Grace Classical Academy vs Grace
+  Classical Academy"); TAPPS D1's champion line wraps on a phone.
+- **#198** game titles name both teams within 60 characters; descriptions keep the round; the share card is no longer
+  clipped; og:type, og:site_name, og:locale, og:url on every page.
+- **#199** (0109) game-day CI: Tonight strip links 44 px, saved copy shows no red live badge, `/scores` team links don't
+  prefetch; date-shaped e2e tests made data-driven.
 
-Landed Nov 12 to 14: go-public (search engines), Round A (JSON-LD, share cards, canonical links, breadcrumbs), Rounds F, G
-and H (embeddable scoreboard, sitemap, 404 page), J (descriptions), K (series pages), L (game pages link the series), M
-(dated game titles), program season pages, the game-day clock (ADR 0024) and a second live-score source (ADR 0025, read with
-its owner's written permission, on since Nov 13 by the repo variable `SECOND_LIVE`; `tools/league-watch/davecampbells.mjs`).
+Owner decisions Nov 21 (approved, don't re-ask): move to a **new clean public repo** (pseudonymity: old history has the
+owner's personal email on ~20 commits and the Vercel team slug in ~189 bot comments), **GitHub safety settings on** there
+(secret scanning + push protection, Dependabot security updates, a ruleset on main, Actions may create PRs), a **free
+weekly fan-database backup** into data-private, and **delete the scraping and merged branches** (moot once the old repo goes).
 
-Landed Nov 15 to 16:
-- **Fan posts on:** forums, game comments and fan score reports, with the owner's hide, mute and ban (ADRs 0060 to 0062) and the
-  last 7 days of posts for moderation (ADR 0085, migration 0032, applied). **Comment counts** on score cards and playoff rows (ADR 0078).
-- **Game pages for bracket-set games**, one address that keeps (ADR 0079, migration 0030); **region chances** from the games the
-  bracket sets, so all 8 UIL regions per division and TAIAO's last four show before any listing.
-- **Push alerts on:** kickoff, final and next-round alerts (ADR 0082, migration 0031); the `push_alerts` row of `site_switch`
-  and Vercel's `FAN_PUSH_ALERTS=on` are both set. **Follow without alerts** where a browser cannot show them (ADR 0085).
-- **State Championship pages** and champions named from recorded finals (ADR 0083); TAPPS State Championship kickoffs and
-  sites by hand (ADR 0075); Runge v Mount Calm's site withheld (ADR 0076).
-- **Playoff-week reads:** a kickoff and site read every morning Monday to Thursday (ADR 0077), the 72-hour alert for a game
-  with no kickoff or site, and loud game-night failures (a failed live-score, database or kickoff-alert step posts a fixed reason on the robot-alert issue
-  instead of showing only inside the run).
-- **Speed and accessibility:** ADR 0080 (phone speed) and ADR 0081 (axe sweep in CI); phone layout fixes; every page keeps its own title.
-- **Data:** the data-gaps check (ADR 0084, 12 known gaps); the Independent tab is live (CHANT and Covenant Prep have 2026
-  games); the `/welcome` landing page (ADR 0086); program registry for all leagues (ADR 0073); High Island (ADR 0074).
-
-## Next three steps
-1. **This week's playoff nights, Thu Nov 19 to Sat Nov 21.** The first game nights with push alerts, comments and the area round
-   all on. Watch, in order: the morning details reads (Mon to Thu) fill kickoffs and sites; each night's read commits
-   finals (data-private first) and `live_score` rows reach the site; kickoff and final alerts arrive once each (`push_sent`);
-   no new line in the robot-alert issue; `/admin/moderation` after Friday night; the first in-progress summary shows which
-   contest field holds the period, which sets `PERIOD_INDEX` in `maxpreps.mjs` (still null, so no live period is shown).
-   Region chances should move to the regional round after Nov 21 (likely Thu Nov 26 to Sat Nov 28), and the round names with them.
-   The TAPPS State Championships are Nov 20 and 21; UIL's are in December.
-2. **Round 10's work lands:** the game-night live view, playoff previews, program pages and search, each a draft PR the
-   master lands in turn after CI is green.
-3. **Past UIL alignments (2024-26 first), if wanted.** Still true as a data limit, smaller than it was: past seasons are read
-   from today's alignments only (`lib/season-coverage.ts`), and UIL's robots.txt disallows `/files/`, where the alignment PDFs
-   live, so a robot may not fetch them; it needs the owner to download the 2024-26 six-man PDFs by hand. The pages no longer
-   throw on a team missing from today's alignments (they show plain text, ADR 0069), and the unmerged loader plumbing that was
-   once on branch `worktree-agent-a5da57ea8cad69af1` is not on GitHub, so it would be written again.
+## Next five steps
+1. **Fix round, tonight after the games (Nov 21):** the game-day clock window starts 18:00 UTC so 11 AM CT kickoffs get
+   no live read or kickoff alert for an hour (`gameday-clock.mjs` `inWindow`); game-night reads really every ~20 min, not
+   10; the ops-alert 3-hour dedupe hides a new failure; bracket boxes say Home vs Away, a "FINAL" box, times with no "CT";
+   Hermleigh/Nazareth flipped on results, recaps and the text file; grammar ("1 points", "1 places", "a 11%"); the owner's first name
+   in `email-alerts.yml:10` and `email-digest.yml:11`; turn off Vercel PR comments.
+2. **Later list:** enforce CSP on `/admin`; `security.txt`; `/api/games/%ff/comments` returns 500; `/favicon.ico` 404;
+   card URLs unversioned; rating chart "week ending Nov 22"; mercy-rule wording; possible Abbott–Aquilla duplicate;
+   record token expiries (GITHUB_CORRECTIONS_TOKEN ~Feb 2027); GitHub schedules fire at 15–40% of cadence.
+3. **Weekly fan-database backup** workflow into data-private (free; no paid Supabase plan).
+4. **Clean repo move**, not on a game day: copy the code with clean history, turn on the safety settings; the owner
+   reconnects Vercel, re-enters DATA_PRIVATE_TOKEN, SUPABASE_DB_PASSWORD, VAPID_PRIVATE_KEY and the variables, then
+   deletes the old repo.
+5. **Growth:** the owner creates the "TX Six-Man Football" Facebook page and posts from the kit (Facebook only, $0);
+   add a "Follow on Facebook" footer link once he sends its URL. Regional round likely Thu Nov 26 to Sat Nov 28.
 
 ## Blockers and open items
 - **Remote:** public repo `txsixman/txsixmanfootball`; commits as `TX Six-Man Football <contact@txsixmanfootball.com>`.
@@ -211,7 +203,7 @@ Landed Nov 15 to 16:
 - **Domain `txsixmanfootball.com`** (ADR 0014) is connected since Nov 11, 2026: Cloudflare DNS (the owner's account), DNS
   only per ADR 0001: two A records (216.150.1.1, 216.150.16.1) and `www` CNAME to Vercel; `www` redirects (308) to the
   bare address. Vercel issues both certificates.
-- **Still blank, no allowed source (Nov 16):** the site of Ladonia Fannindel v Apple Springs (Nov 20, kickoff known); the site of
+- **Still blank, no allowed source:** Ladonia Fannindel v Apple Springs's site (Nov 20; a reviewed gap since Nov 21, neither school's page names it); the site of
   Runge v Mount Calm (Nov 20), withheld on purpose because two schools' own calendars contradict the read one (ADR 0076;
   lift it by hand once an allowed page names the venue); the dates of 4 TAIAO semifinals. The 72-hour alert names the undated semifinals. Fill by hand (ADR 0064 item 2) the moment an allowed page states one.
 - **Owner-only items:**
