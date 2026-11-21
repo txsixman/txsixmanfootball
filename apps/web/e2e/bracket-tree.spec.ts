@@ -64,6 +64,8 @@ test("every bracket of the season: a tree when its games connect to one final, r
     await expect(shown, b.name).toBeVisible();
     await expect(shown.locator("[data-box]"), b.name).toHaveCount(b.tree.length);
     await nothingCut(page);
+    // A kickoff in a box reads like the rest of the site, with CT.
+    expect(await shown.innerText(), `${b.name}: kickoff times carry CT`).not.toMatch(/\d{1,2}:\d{2} [AP]M(?! CT)/);
     if (!whole) await expect(tree(page), `${b.name} has no tree`).toHaveCount(0);
   }
 });
@@ -180,6 +182,9 @@ test("the sample bracket: invented schools, every kind of box, no problems on ei
   const shown = page.locator("[data-tree-print]");
   for (const state of ["final", "disputed", "upcoming", "open", "bye"]) await expect(shown.locator(`[data-state=${state}]`).first()).toBeAttached();
   await expect(shown.getByText("Forfeit").first()).toBeAttached();
+  // A listed game names its home and away team; a final says FINAL (never a winner named by the label).
+  await expect(shown.locator("[data-state=upcoming] .bx-tag").first()).toHaveText(/^(Home|Away)$/i);
+  await expect(shown.locator("[data-state=final] [data-foot]").first()).toHaveText(/final/i);
   await expect(shown.getByText("Final · Disputed").first()).toBeAttached();
   await noProblems(page);
 });

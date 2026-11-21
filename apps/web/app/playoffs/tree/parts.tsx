@@ -10,15 +10,27 @@ export function footer(b: Box, live: LiveView | null, max: number): [string, str
   return boxLines(b, max);
 }
 
-export function SideRow({ side, other, live, lit, onTeam }: { side: BoxSide; other: BoxSide; live?: number; lit: boolean; onTeam: (key: string) => void }) {
+/** The first footer line's look: a final reads FINAL in bold navy (confirmed, ADR 0040; never a winner named); a game under way
+ * is red; a projection navy; anything else muted. */
+export const footClass = (box: Box, live: LiveView | null) =>
+  live ? "font-bold text-red" : box.state === "final" && !box.forfeit ? "font-bold uppercase tracking-wide text-navy" : box.projection ? "font-semibold text-navy" : "text-muted";
+
+export function SideRow({ side, other, live, lit, onTeam, tag }: { side: BoxSide; other: BoxSide; live?: number; lit: boolean; onTeam: (key: string) => void; tag?: string }) {
   const right = live ?? side.score ?? side.chance;
   const lost = other.won && !side.won;
   const text = (
     <>
       <span className={side.won ? "bx-won" : lost ? "bx-lost" : "bx-name"}>{side.text}</span>
-      {right != null && (
-        <span className={typeof right === "string" ? "bx-chance" : live != null ? "bx-live" : "bx-score"}>
-          {right}
+      {/* At the right: the score or chance, and under it Home or Away (12px uppercase, an eyebrow label). Beside the name, so a
+          name of three lines is as tall as it was. */}
+      {(right != null || tag) && (
+        <span className="flex shrink-0 flex-col items-end">
+          {right != null && (
+            <span className={typeof right === "string" ? "bx-chance" : live != null ? "bx-live" : "bx-score"}>
+              {right}
+            </span>
+          )}
+          {tag && <span className="bx-tag tracking-wider">{tag}</span>}
         </span>
       )}
     </>
