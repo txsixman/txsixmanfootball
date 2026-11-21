@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { memo } from "./memo";
+import { ruleEnd } from "./mercy";
 import { pregameShown } from "./pregame";
 import path from "node:path";
 import type { Game, Team } from "./demo-games";
@@ -27,8 +28,7 @@ export const initials = (name: string) =>
 
 function endReason(code: string, period: string): string | undefined {
   if (code === "forfeit") return "Forfeit";
-  if (code === "mercy_half") return "45-point rule, halftime";
-  if (code === "mercy_2h") return period ? `45-point rule, Q${period}` : "45-point rule, second half";
+  if (code === "mercy_half" || code === "mercy_2h") return ruleEnd(code, period);
   return undefined;
 }
 

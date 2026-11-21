@@ -9,6 +9,7 @@ import { asLive, liveStatus, liveView, type LiveView } from "@/lib/live-scores";
 import { gameDay } from "@/lib/game-day";
 import { upcomingFirstAt, upcomingFirstScript } from "@/lib/upcoming-first";
 import { kickoffState } from "@/lib/kickoff";
+import { MERCY_RULE } from "@/lib/mercy";
 import { ORGS } from "@/lib/orgs";
 import { projectedLine } from "@/lib/outcome";
 import { isForfeit, outcomeOf, winnerOf, type Side } from "@/lib/score-display";
@@ -411,7 +412,7 @@ export default function Board({ games, eyebrow, title, crests, weekInReview, nex
           <dd>Wavy score. Reports disagree, so no winner is marked.</dd>
           <dt className="font-bold text-ink">Forfeit</dt>
           <dd>W or L in a dashed box. No real score exists.</dd>
-          <dt className="font-bold text-ink">45-point rule</dt>
+          <dt className="font-bold text-ink">{MERCY_RULE}</dt>
           <dd>The game ended early because the lead reached 45.</dd>
           <dt className="font-bold text-ink">Projected</dt>
           <dd>A pre-game estimate of the margin, not a result.</dd>
