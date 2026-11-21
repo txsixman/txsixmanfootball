@@ -152,6 +152,9 @@ jobs:
       year: ${{ steps.season.outputs.year }}
       # Problems the second-source steps named without failing (ADR 0028), for the notify job.
       ops_reasons: ${{ steps.reasons.outputs.list }}
+      # A hash of the cross-file data problems (8 hex digits, never the text), so a new set of problems at the same step posts
+      # again instead of hiding behind the last alert (ops-alert.mjs).
+      fail_fp: ${{ steps.reasons.outputs.fp }}
     steps:
       - uses: actions/checkout@v7
       - name: The private data repo, where the reader reads and writes its captures
@@ -415,7 +418,9 @@ jobs:
           LIVE_DB: ${{ steps.live_db.outcome }}
           GAMES_DB: ${{ steps.games_db.outcome }}
           KICKOFF_ALERTS: ${{ steps.kickoff_alerts.outcome }}
+          INTEGRITY_REPORT: ${{ runner.temp }}/integrity-failures.txt
         run: |
+          if [ -s "$INTEGRITY_REPORT" ]; then echo "fp=$(sort -u "$INTEGRITY_REPORT" | sha256sum | cut -c1-8)" >> "$GITHUB_OUTPUT"; fi
           f="$RUNNER_TEMP/ops-reasons.txt"
           [ "$LIVE_DB" != failure ] || echo live-scores-failed >> "$f"
           [ "$GAMES_DB" != failure ] || echo games-db-failed >> "$f"
@@ -535,6 +540,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           REASONS: ${{ needs.maxpreps.outputs.ops_reasons }}
+          OPS_FINGERPRINT: ${{ needs.maxpreps.outputs.fail_fp }}
         run: |
           node .github/scripts/ops-alert.mjs
           for reason in $REASONS; do

@@ -9,9 +9,12 @@
 //   node .github/scripts/ops-alert.mjs --reason <key>     a named problem (REASONS below), from a step that did not fail,
 //                                                         posted at most once every REASON_QUIET_HOURS
 //
-// The same problem (workflow, job and step, or reason) is commented at most once every QUIET_HOURS, so a failure that
-// repeats every 10 minutes all night sends one email, not sixty. Env: GITHUB_TOKEN (issues: write, actions: read),
-// GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_WORKFLOW, GITHUB_SERVER_URL, GITHUB_STEP_SUMMARY (optional).
+// The same problem is commented at most once every QUIET_HOURS, so a failure that repeats every 10 minutes all night sends
+// one email, not sixty. "The same" is the workflow, each failed job with how it ended (a failure is not a timeout) and its
+// failed steps, or the reason, and the run's fingerprint when a step gives one (OPS_FINGERPRINT): a failure of the same step
+// with different causes is then a different problem. A fingerprint is 8 hex digits, a hash of the cause that never reaches
+// the page as text. Env: GITHUB_TOKEN (issues: write, actions: read), GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_WORKFLOW,
+// GITHUB_SERVER_URL, GITHUB_STEP_SUMMARY (optional), OPS_FINGERPRINT (optional).
 
 import { appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -46,9 +49,17 @@ export function failures(jobs) {
     }));
 }
 
-/** What makes two alerts the same problem: the workflow and each failed job and step, or the reason. */
-export const keyOf = ({ workflow, failed, reason }) =>
-  reason ? `${workflow}|reason:${reason}` : `${workflow}|${failed.map((f) => `${f.job}:${f.steps.join("+")}`).join(",")}`;
+/** A step's own hash of its failure cause (a sorted, de-duplicated list of the problems it reported): 8 hex digits, or none. */
+export const fingerprintOf = (text) => (/^[0-9a-f]{8}$/.test(String(text ?? "")) ? String(text) : "");
+
+/**
+ * What makes two alerts the same problem: the workflow and each failed job (marked when it did not end as a plain failure,
+ * so a timeout is not the same problem) and its failed steps, plus the fingerprint when there is one; or the reason.
+ */
+export const keyOf = ({ workflow, failed, reason, fingerprint }) =>
+  reason
+    ? `${workflow}|reason:${reason}`
+    : `${workflow}|${failed.map((f) => `${f.job}${f.conclusion && f.conclusion !== "failure" ? `[${f.conclusion}]` : ""}:${f.steps.join("+")}`).join(",")}${fingerprintOf(fingerprint) ? `#${fingerprint}` : ""}`;
 
 /** Names stay plain on a public page: letters, digits, spaces and a few marks, at most 120 characters. */
 const plain = (s) => String(s ?? "").replace(/[^A-Za-z0-9 ,.:()/'_-]/g, "").slice(0, 120);
@@ -101,14 +112,14 @@ export function github({ token, repo, fetchImpl = fetch }) {
 }
 
 /** One alert: comment on the open issue, or open one, unless the same problem was posted in the last QUIET_HOURS. */
-export async function alert({ api, workflow, runUrl, runId, reason, now = Date.now(), log = console.log }) {
+export async function alert({ api, workflow, runUrl, runId, reason, fingerprint = "", now = Date.now(), log = console.log }) {
   if (reason && !REASONS[reason]) throw new Error(`unknown reason: ${reason}`);
   const failed = reason ? [] : failures(await api.jobs(runId));
   if (!reason && !failed.length) {
     log("Robot alert: no failed job found in this run, nothing posted.");
     return "nothing";
   }
-  const key = keyOf({ workflow, failed, reason });
+  const key = keyOf({ workflow, failed, reason, fingerprint });
   const body = bodyOf({ workflow, runUrl, failed, reason, key });
   const issue = await api.openIssue();
   if (issue) {
@@ -136,7 +147,7 @@ async function main() {
     console.log(line);
     if (summary) appendFileSync(summary, `${line}\n`);
   };
-  await alert({ api: github({ token, repo }), workflow, runUrl: `${server}/${repo}/actions/runs/${runId}`, runId, reason, log });
+  await alert({ api: github({ token, repo }), workflow, runUrl: `${server}/${repo}/actions/runs/${runId}`, runId, reason, fingerprint: process.env.OPS_FINGERPRINT, log });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

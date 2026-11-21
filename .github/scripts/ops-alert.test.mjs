@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { alert, bodyOf, failures, github, keyOf, LABEL, QUIET_HOURS, recentlyPosted, REASONS, TITLE } from "./ops-alert.mjs";
+import { alert, bodyOf, failures, fingerprintOf, github, keyOf, LABEL, QUIET_HOURS, recentlyPosted, REASONS, TITLE } from "./ops-alert.mjs";
 
 const JOBS = [
   { name: "due", conclusion: "success", steps: [{ name: "Bracket games of tonight without a score", conclusion: "success" }] },
@@ -21,7 +21,7 @@ test("a run's failures are its failed or cancelled jobs and the steps that faile
 test("the body names the workflow, jobs, steps and run link only, and carries its key", () => {
   const failed = failures(JOBS);
   const key = keyOf({ workflow: "Results watch", failed });
-  assert.equal(key, "Results watch|maxpreps:Commit, the private repo first, then this one,clock:Game-day clock");
+  assert.equal(key, "Results watch|maxpreps:Commit, the private repo first, then this one,clock[cancelled]:Game-day clock");
   const body = bodyOf({ workflow: "Results watch", runUrl: "https://github.com/o/r/actions/runs/1", failed, key });
   assert.match(body, /^\*\*Results watch\*\* needs a look: https:\/\/github\.com\/o\/r\/actions\/runs\/1/);
   assert.match(body, /Job `maxpreps` failed, at `Commit, the private repo first, then this one`\./);
@@ -30,6 +30,22 @@ test("the body names the workflow, jobs, steps and run link only, and carries it
   // Anything odd in a name is dropped, so nothing but plain words reaches the public issue.
   const odd = bodyOf({ workflow: "W<script>", runUrl: "u", failed: [{ job: "j`@x", conclusion: "failure", steps: ["s<b>"] }], key: "k" });
   assert.ok(!/<script>|<b>|@x|j`/.test(odd.split("<!--")[0]), odd);
+});
+
+test("a failure of the same step with a different fingerprint, or ending as a timeout, is a different problem", () => {
+  const failed = failures(JOBS);
+  const base = keyOf({ workflow: "Results watch", failed });
+  assert.notEqual(keyOf({ workflow: "Results watch", failed, fingerprint: "0a1b2c3d" }), base);
+  assert.notEqual(keyOf({ workflow: "Results watch", failed, fingerprint: "0a1b2c3d" }), keyOf({ workflow: "Results watch", failed, fingerprint: "0a1b2c3e" }));
+  assert.equal(keyOf({ workflow: "Results watch", failed, fingerprint: "0a1b2c3d" }), `${base}#0a1b2c3d`);
+  // A timeout (conclusion timed_out or cancelled) is marked; a plain failure keeps its old key, so existing posts still match.
+  const timedOut = failures([{ name: "maxpreps", conclusion: "timed_out", steps: [{ name: "Commit, the private repo first, then this one", conclusion: "cancelled" }] }]);
+  assert.equal(keyOf({ workflow: "Results watch", failed: timedOut }), "Results watch|maxpreps[timed_out]:Commit, the private repo first, then this one");
+  assert.equal(keyOf({ workflow: "Results watch", failed: [{ job: "maxpreps", conclusion: "failure", steps: ["s"] }] }), "Results watch|maxpreps:s");
+  // Only 8 lowercase hex digits are a fingerprint; anything else is dropped, so no text can ride in the key.
+  for (const bad of ["", undefined, "a school name", "0A1B2C3D", "0a1b2c3d0", "0a1b2c3"]) assert.equal(fingerprintOf(bad), "", String(bad));
+  assert.equal(keyOf({ workflow: "W", failed, fingerprint: "a school name" }), keyOf({ workflow: "W", failed }));
+  assert.equal(keyOf({ workflow: "W", reason: "read-stuck", fingerprint: "0a1b2c3d" }), "W|reason:read-stuck");
 });
 
 const NOW = Date.parse("2026-11-14T03:00:00Z");
@@ -73,6 +89,21 @@ test("no open issue: one is opened, labelled; an open one gets a comment; a repe
   const c = fakeApi({ issue: { ...post("other", 20), number: 7 }, comments: [post(key, 0.5)] });
   assert.equal(await run(c), "quiet");
   assert.deepEqual(c.writes, []);
+});
+
+test("the same step failing again with a different fingerprint posts at once; the same fingerprint stays quiet", async () => {
+  const issue = { ...post("other", 20), number: 7 };
+  const key = keyOf({ workflow: "Results watch", failed: failures(JOBS), fingerprint: "0a1b2c3d" });
+  const same = fakeApi({ issue, comments: [post(key, 0.5)] });
+  assert.equal(await run(same, { fingerprint: "0a1b2c3d" }), "quiet");
+  const other = fakeApi({ issue, comments: [post(key, 0.5)] });
+  assert.equal(await run(other, { fingerprint: "ffffffff" }), "commented");
+  // The posted text carries no cause, only the hash inside the hidden key.
+  assert.doesNotMatch(other.writes[0].body.split("<!--")[0], /ffffffff/);
+  assert.match(other.writes[0].body, /<!-- ops-alert key=[^ ]*%23ffffffff -->/);
+  // No fingerprint now (the run's data checks passed) is the plain step's problem, which was never posted: it posts.
+  const plain = fakeApi({ issue, comments: [post(key, 0.5)] });
+  assert.equal(await run(plain), "commented");
 });
 
 test("a run with no failed job posts nothing; an unknown reason is refused", async () => {
