@@ -30,8 +30,9 @@
 - **A voided listing is not a bracket game** (`withoutVoidedBracket`): a listing with no score that `data/corrections` voids is
   not written to playoffs.csv and does not count toward its week when rounds are named. A voided listing with a score stays, so
   the data checks still name it.
-- The two bad quarterfinal rows and the five stray semifinal rows are removed from the public playoffs.csv in the same pull
-  request (its own commit); the private copy mends by the two rules above on the next night or full read.
+- The five stray semifinal pairings are removed from the public playoffs.csv in the same pull request (its own commit). The two
+  quarterfinal/semifinal pairs had already folded in the private file by the next read (18:12 UTC), the way Nov 20's did; the
+  two rules above keep a pair from being written twice again.
 
 ## Consequences
 - Rounds of games the bracket sets come from the bracket, however many stray listings the source holds; no page shows a game twice.
