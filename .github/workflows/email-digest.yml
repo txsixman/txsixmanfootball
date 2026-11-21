@@ -8,7 +8,7 @@
 # the other weekly jobs, and a run started by hand any time Monday to Wednesday (Central) sends the same digest: a fan already sent
 # it for the week is skipped. By hand (workflow_dispatch), `dry_run` (the default) sends and records nothing and prints counts.
 #
-# It sends NOTHING, and says so in the run summary, until all of these are set; each is Brady's to make (docs/email-alerts.md):
+# It sends NOTHING, and says so in the run summary, until all of these are set; each is the owner's to make (docs/email-alerts.md):
 #   repo variable EMAIL_DIGEST=true (the switch), EMAIL_FROM, and EMAIL_POSTAL_ADDRESS (the postal address in every digest's footer)
 #   repo secrets RESEND_API_KEY and EMAIL_DB_PASSWORD
 # While EMAIL_POSTAL_ADDRESS is empty or unset the job REFUSES to send and fails, with the refused count in its summary.

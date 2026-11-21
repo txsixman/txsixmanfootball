@@ -7,7 +7,7 @@
 # `baseline` records what exists now and sends nothing, to skip past a backlog). Or called by another workflow (workflow_call).
 # GitHub's own `schedule` has never fired in this repo (ADR 0024), so there is none.
 #
-# It sends NOTHING, and says so in the run summary, until all of these are set; each is Brady's to make (docs/email-alerts.md):
+# It sends NOTHING, and says so in the run summary, until all of these are set; each is the owner's to make (docs/email-alerts.md):
 #   repo variable EMAIL_ALERTS=true (the switch) and EMAIL_FROM (the verified sender, "Name <address>")
 #   repo secrets RESEND_API_KEY and EMAIL_DB_PASSWORD
 # It connects to the hosted database as the role `email_sender` (migration 0022): it can run three functions and read no table,

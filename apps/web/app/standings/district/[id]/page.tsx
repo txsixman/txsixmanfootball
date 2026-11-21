@@ -8,6 +8,7 @@ import { loadIdentities } from "@/lib/identity";
 import { CURRENT_SEASON } from "@/lib/season";
 import { type DistrictStandings, standingsHref } from "@/lib/standings";
 import { levelsOf, regionsOf } from "@/lib/standings-levels";
+import { plural } from "@/lib/plural";
 import { standingsTitle } from "@/lib/titles";
 import { Breadcrumbs } from "../../../breadcrumbs";
 import { PageHeader, SectionBar } from "../../../ui";
@@ -90,7 +91,7 @@ export default async function DistrictPage({ params }: Props) {
           size="md"
           eyebrow={[`${SEASON} season`, heading, region].filter(Boolean).join(" · ")}
           title={title}
-          note={`${d.rows.length} teams. District records count regular-season games between these teams; overall records include every game, playoffs too. Ordered by district record, then overall; league tiebreakers are not applied. Scores may be corrected if a mistake is found.`}
+          note={`${plural(d.rows.length, "team")}. District records count regular-season games between these teams; overall records include every game, playoffs too. Ordered by district record, then overall; league tiebreakers are not applied. Scores may be corrected if a mistake is found.`}
         />
 
         <District d={d} identities={identities} linked={false} />

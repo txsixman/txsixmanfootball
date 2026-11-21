@@ -350,6 +350,9 @@ body {
 @utility bx-side {
   @apply relative z-10 flex h-11 w-full items-center gap-1 px-1.5 text-left text-[13px] hover:bg-panel focus-visible:outline-2 focus-visible:outline-navy;
 }
+@utility bx-tag {
+  @apply block text-[12px] font-semibold uppercase leading-[12px] text-muted;
+}
 @utility bx-won {
   @apply min-w-0 flex-1 break-words leading-[15px] font-bold text-ink;
 }

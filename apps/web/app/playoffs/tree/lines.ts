@@ -1,18 +1,22 @@
-import type { Box } from "./data";
+import type { Box, BoxSide } from "./data";
 
 /** The two lines under a box's teams (ADR 0049), shared by the page and the full-size image: the result or the projected
  * margin, then the kickoff of a game not yet played. The site ("Sterling City High School, Sterling City") is too long
  * for a box; it is in the box's title and on the game page. `max`: the characters that fit on a line. The page tests
  * check that nothing in a box is cut short. */
 export function boxLines(b: Box, max = Infinity): [string, string] {
-  if (b.state === "final") return [b.forfeit ? "Forfeit" : "Final", ""];
-  if (b.state === "disputed") return ["Final · Disputed", ""];
+  // A game at a neutral site says so on the line a kickoff would take, when it fits; a box too narrow for both keeps the time
+  // (the game's day and site are in the box's title and on its card, where "Neutral site" is also written out).
+  const neutral = (time: string) => [`${time} · Neutral site`, `${time} · Neutral`, time].map((t) => t.replace(/^ · /, "")).find((t) => t.length <= max) ?? time;
+  const second = b.neutral ? neutral(b.time ?? "") : (b.time ?? "");
+  if (b.state === "final") return [b.forfeit ? "Forfeit" : "Final", b.neutral ? second : ""];
+  if (b.state === "disputed") return ["Final · Disputed", b.neutral ? second : ""];
   if (b.state === "bye") return ["Bye", ""];
   const margin = b.projection?.margin;
   // "Harvest Christian Academy-Keller by 4" is too long for one line of a box: the margin alone, the chances on the team
   // rows above saying whose it is.
   const first = !margin ? (b.state === "open" ? "Not listed yet" : "Not played yet") : margin.length <= max ? margin : `Projected margin ${margin.slice(margin.lastIndexOf(" by ") + 4)}`;
-  return [first, b.time ?? ""];
+  return [first, second];
 }
 
 /** About how wide a line of Barlow Condensed is, in pixels: its letters average about 0.42 of the font size; erring wide. */
@@ -35,3 +39,17 @@ export function fitName(text: string, width: number, height: number, size: numbe
   while (short.length > 1 && lineWidth(short.join(" "), size) > width) short.pop();
   return { lines: [short.join(" ")], size };
 }
+
+/** Whether a listed game is drawn as a neutral site: a past season's game (its game page names no home or away) or a game
+ * the data marks a true neutral site, a State Championship (ADR 0057). */
+export const isNeutral = (season: number, current: number, game: { trueNeutral?: true }) => season !== current || game.trueNeutral === true;
+
+/** Which team the game's own page calls home and which away. Nothing for a neutral site, or a team not in the game. */
+export function sideRole(game: { home: string; away: string }, team: string, neutral: boolean): BoxSide["role"] {
+  if (neutral) return undefined;
+  return team === game.home ? "Home" : team === game.away ? "Away" : undefined;
+}
+
+/** The small word under a team's score: "Home" or "Away" as the game's own page has it. A neutral site has none (the box says "Neutral
+ * site" itself); a side with no team in it (a winner to come, a bye) has none. */
+export const sideTag = (box: Pick<Box, "neutral">, side: Pick<BoxSide, "key" | "role">) => (side.key && !box.neutral ? side.role : undefined);

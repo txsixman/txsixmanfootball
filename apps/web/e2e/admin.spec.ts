@@ -32,6 +32,29 @@ test("admin, sign-in and auth responses are never cached or indexed", async ({ r
   }
 });
 
+test("the admin console enforces its Content-Security-Policy, and the rest of the site only reports one", async ({ request }) => {
+  for (const url of ADMIN_PAGES) {
+    const h = (await request.get(url, { maxRedirects: 0 })).headers();
+    const policy = h["content-security-policy"] ?? "";
+    expect(policy, url).toContain("default-src 'self'");
+    expect(policy, url).toContain("frame-ancestors 'none'");
+    expect(policy, url).toContain("form-action 'self'");
+    expect(h["content-security-policy-report-only"], url).toBeUndefined();
+    expect(h["x-frame-options"], url).toBe("DENY");
+  }
+  const page = (await request.get("/scores")).headers();
+  expect(page["content-security-policy-report-only"]).toContain("default-src 'self'");
+});
+
+test("an enforced policy blocks nothing the signed-out admin page needs", async ({ page }) => {
+  const violations: string[] = [];
+  page.on("console", (m) => {
+    if (/Content Security Policy|Content-Security-Policy/i.test(m.text())) violations.push(m.text());
+  });
+  for (const url of ADMIN_PAGES) await page.goto(url);
+  expect(violations).toEqual([]);
+});
+
 test("a session cookie made up by hand gets nowhere", async ({ page, context }) => {
   // A Supabase session cookie, forged: a JWT-shaped token naming a user id nobody signed.
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");

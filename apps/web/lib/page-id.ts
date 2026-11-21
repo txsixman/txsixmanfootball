@@ -29,3 +29,16 @@ export function pageId(season: number, orders: Map<string, Order>, r: Row, name:
   const o = orders.get(orderKey(r.round, name(r.home), name(r.away)));
   return o ? orderId(season, o) : listingId(season, r);
 }
+
+/**
+ * Whether a row writes a game's two sides the other way round from its page: true only when the bracket sets the game and
+ * its home (the slot's first side) is the row's away team. Every page that names a playoff game's home and away takes them
+ * in the page's order (the one `pageId` gives the address), whichever file or read wrote the row: the two robot files can
+ * disagree about a game's home side (a final recorded in games.csv by a night read is the page's own order, the bracket row
+ * written earlier from a listing may not be), so none is trusted over the bracket. A game the bracket does not set keeps the
+ * row's own order. `name` maps a file's spelling of a team to the bracket's (our alignments').
+ */
+export function sidesFlipped(orders: Map<string, Order>, r: Row, name: (team: string) => string = (t) => t): boolean {
+  const o = orders.get(orderKey(r.round, name(r.home), name(r.away)));
+  return !!o && slugify(name(r.home)) !== slugify(o.home);
+}

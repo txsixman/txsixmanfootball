@@ -9,6 +9,8 @@ import { chanceText, projectionParts, type Projection } from "@/lib/projection";
 import { CURRENT_SEASON } from "@/lib/season";
 import { slugify } from "@/lib/slug";
 import type { TreeGame, TreeState } from "@/lib/bracket-tree";
+import { isNeutral, sideRole } from "./lines";
+import type { FillGame } from "@/lib/bracket-fill";
 
 // The tree view's data (ADR 0049), worked out at build time and handed to the page's one client piece (board.tsx) and to
 // the exported image (image/[size]/route.tsx) as plain values: each box with its place, its two sides, when and where,
@@ -16,14 +18,18 @@ import type { TreeGame, TreeState } from "@/lib/bracket-tree";
 
 /** `chance`: the side's chance to win a game not yet played ("74%"), shown where its score will go. */
 export type BoxSide = { text: string; title?: string; key?: string; program?: string; score?: number; won?: boolean; bye?: true; chance?: string;
+  /** Which team the game's own page calls home: "Home" or "Away", on a listed game at a field of its own (not a neutral one). */
+  role?: "Home" | "Away";
   /** A side no game sets yet: its most likely team and that team's chance to be there ("58%"), or too few games to say
    * (ADR 0071). `text` still names the game it waits on ("Winner of G17"). */
   projected?: { team: string; chance: string } | { unknown: true } };
 export type Box = {
   id: string; col: number; row: number; half: "left" | "right" | "center";
   label: string; code?: string; state: TreeState; sides: [BoxSide, BoxSide];
-  /** "Nov 20", when known; `date` is the same day as YYYY-MM-DD (Central); `time` is the kickoff ("7:00 PM") of a game not yet played. */
+  /** "Nov 20", when known; `date` is the same day as YYYY-MM-DD (Central); `time` is the kickoff ("7:00 PM CT") of a game not yet played. */
   date?: string; when?: string; time?: string; site?: string; href?: string; forfeit?: boolean;
+  /** A neutral site: a past season's game (its page names no home or away) or a State Championship. No side has a `role`. */
+  neutral?: true;
   projection?: { margin: string; chance: string };
   /** The game this one's winner goes on to. */
   to?: string;
@@ -46,10 +52,10 @@ const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en
 const centralDate = (utc: string) => new Date(utc).toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 
 /** A box of the bracket as lib/brackets.ts gives it: the slot, its round's label, its projection. */
-type Node = TreeGame & { label: string; projection?: Projection; projected?: [Projected | undefined, Projected | undefined] };
+type Node = TreeGame<FillGame & { trueNeutral?: true }> & { label: string; projection?: Projection; projected?: [Projected | undefined, Projected | undefined] };
 /** What the site knows about a box beyond its bracket: the kickoff (UTC), the site, its game page, and whether to look
  * for a live score. */
-export type BoxInfo = { kickoff?: string; site?: string; href?: string; live?: boolean };
+export type BoxInfo = { kickoff?: string; site?: string; href?: string; live?: boolean; neutral?: boolean };
 
 export async function treeData(b: Bracket, season = CURRENT_SEASON): Promise<TreeData> {
   const [alignments, kickoffs, sites, pages, builtPages] = await Promise.all([loadAlignments(), loadKickoffs(season), loadSites(season), season === CURRENT_SEASON ? bracketGames() : [], season === CURRENT_SEASON ? builtGamePages() : []]);
@@ -76,6 +82,9 @@ export async function treeData(b: Bracket, season = CURRENT_SEASON): Promise<Tre
       kickoff: kickoffOf(kickoffs, g.date, g.home, g.away),
       site: site === NO_SITE ? undefined : site,
       href: hrefs.get(`${g.date}|${g.home}|${g.away}`),
+      // A game page names a home and away team except for a past season's playoff game, and the projection gives a State
+      // Championship no home edge (ADR 0057): both are drawn as a neutral site.
+      neutral: isNeutral(season, CURRENT_SEASON, g),
       live: n.state === "upcoming" && season === CURRENT_SEASON,
     };
   }, (team) => programFor(alignments, team, b.league)?.slug);
@@ -90,7 +99,7 @@ export function buildTree(name: string, league: string, tree: Node[], info: (n: 
   const boxes = tree.map((n): Box => {
     const place = at.get(n.id) ?? { col: 0, row: 0, half: "left" as const };
     const g = n.game;
-    const { kickoff, site, href, live } = info(n);
+    const { kickoff, site, href, live, neutral } = info(n);
     const date = g?.date ?? (kickoff && centralDate(kickoff));
     return {
       id: n.id, col: place.col, row: place.row, half: place.half, label: n.label, state: n.state,
@@ -107,6 +116,7 @@ export function buildTree(name: string, league: string, tree: Node[], info: (n: 
           ...(slug ? { program: slug } : {}),
           ...(s.score != null ? { score: s.score } : {}),
           ...(s.won ? { won: true } : {}),
+          ...(g && s.team && sideRole(g, s.team, !!neutral) ? { role: sideRole(g, s.team, !!neutral) } : {}),
           ...(s.bye ? { bye: true as const } : {}),
           ...(ahead ? { projected: "team" in ahead ? { team: ahead.team, chance: chanceText(ahead.chance) } : { unknown: true as const } } : {}),
         };
@@ -114,7 +124,8 @@ export function buildTree(name: string, league: string, tree: Node[], info: (n: 
       ...(n.code ? { code: n.code } : {}),
       ...(date ? { date, when: day(date) } : {}),
       // A played game's time no longer matters: its date alone.
-      ...(kickoff && n.state !== "final" && n.state !== "disputed" ? { time: kickoffTime(kickoff).replace(/ CT$/, "") } : {}),
+      ...(kickoff && n.state !== "final" && n.state !== "disputed" ? { time: kickoffTime(kickoff) } : {}),
+      ...(g && neutral ? { neutral: true as const } : {}),
       ...(site ? { site } : {}),
       ...(href ? { href } : {}),
       ...(g?.forfeit ? { forfeit: true } : {}),

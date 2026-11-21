@@ -1,10 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { memo } from "./memo";
+import { ruleEnd } from "./mercy";
 import { pregameShown } from "./pregame";
 import path from "node:path";
 import type { Game, Team } from "./demo-games";
 import { heading, loadAlignments, programFor, slugify, type Alignment } from "./alignments";
-import { listingId, orderMap, pageId } from "./page-id";
+import { listingId, orderMap, pageId, sidesFlipped } from "./page-id";
+import type { PageOrder } from "./bracket-fill";
 import { projectAt, projectionText, fieldOf, type Field } from "./projection";
 import { GAME_COLUMNS, parseCsv, PlayedGameRow, PlayoffRow, RESULT_COLUMNS, RobotPlayoffRow } from "./data-schemas";
 import { loadRatings } from "./ratings";
@@ -27,8 +29,7 @@ export const initials = (name: string) =>
 
 function endReason(code: string, period: string): string | undefined {
   if (code === "forfeit") return "Forfeit";
-  if (code === "mercy_half") return "45-point rule, halftime";
-  if (code === "mercy_2h") return period ? `45-point rule, Q${period}` : "45-point rule, second half";
+  if (code === "mercy_half" || code === "mercy_2h") return ruleEnd(code, period);
   return undefined;
 }
 
@@ -97,17 +98,24 @@ async function playoffRows(seasons = [CURRENT_SEASON]): Promise<Row[]> {
  * whichever way round the listing or the recorded final writes the teams; any other game (a first round, a past season) its
  * listing's.
  */
-const playoffIdOf = memo(async (season: number) => {
+const playoffPage = memo(async (season: number) => {
   const [alignments, brackets] = await Promise.all([loadAlignments(), season === CURRENT_SEASON ? loadBrackets(season) : []]);
   const orders = orderMap(brackets.flatMap((b) => b.orders));
-  return (r: Record<string, string>, league: string) =>
-    pageId(season, orders, { round: r.round, home: r.home, away: r.away }, (n) => programFor(alignments, n, league)?.school ?? n);
+  const school = (league: string) => (n: string) => programFor(alignments, n, league)?.school ?? n;
+  return {
+    id: (r: Record<string, string>, league: string) => pageId(season, orders, { round: r.round, home: r.home, away: r.away }, school(league)),
+    /** The row with its sides in the page's order: the bracket's home first when it sets the game (sidesFlipped), else as written. */
+    inPageOrder: (r: Record<string, string>, league: string): Record<string, string> =>
+      sidesFlipped(orders, { round: r.round, home: r.home, away: r.away }, school(league))
+        ? { ...r, home: r.away, away: r.home, home_score: r.away_score, away_score: r.home_score }
+        : r,
+  };
 });
 
 /** The season's listed playoff games whose listing order differs from their page id (ADR 0079), listing id to page id:
  * the old address answers with a redirect, and a score report still uses the listing's (the database's) order. */
 export const playoffAliases = memo(async (season: number): Promise<Map<string, string>> => {
-  const idOf = await playoffIdOf(season);
+  const { id: idOf } = await playoffPage(season);
   return new Map((await playoffRows([season])).flatMap(({ r, league }) => {
     const [from, to] = [listingId(season, { round: r.round, home: r.home, away: r.away }), idOf(r, league)];
     return from === to ? [] : [[from, to] as const];
@@ -120,7 +128,9 @@ export async function playoffLeagueSet(season: number): Promise<Set<string>> {
 }
 
 export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
-  const [rows, ratings, kickoffs, sites, addresses, idOf] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON), loadSites(CURRENT_SEASON), loadAddresses(CURRENT_SEASON), playoffIdOf(CURRENT_SEASON)]);
+  const [listed, ratings, kickoffs, sites, addresses, page] = await Promise.all([playoffRows(), loadRatings(), loadKickoffs(CURRENT_SEASON), loadSites(CURRENT_SEASON), loadAddresses(CURRENT_SEASON), playoffPage(CURRENT_SEASON)]);
+  // Home and away as the page orders them (ADR 0079), so a score, a result and a bracket name the same home side.
+  const rows = listed.map((x) => ({ ...x, r: page.inPageOrder(x.r, x.league) }));
   const seasons = [...new Set(rows.map((x) => x.season))];
   const disputedBy = new Map(await Promise.all(seasons.map(async (s) => [s, await loadDisputed(s)] as const)));
   // A played game's projection is the one from the week before it (ADR 0044), never today's ratings, which count it.
@@ -143,7 +153,7 @@ export async function loadGames(alignments: Alignment[]): Promise<Game[]> {
         ? projectAt(ratings, { home: home.name, away: away.name, ...fieldOf(r.neutral, r.round) })
         : undefined;
     return {
-      id: idOf(r, league),
+      id: page.id(r, league),
       date: r.game_date,
       round: r.round,
       league: `${heading({ league, division: r.division, region: "1" }).replace("Division ", "D")} · ${roundLabel(r.round, league)}`,
@@ -187,7 +197,28 @@ export type PlayoffGame = Field & {
   site?: string; address?: Address;
 };
 
+/** A game with its home and away swapped, scores with them. */
+const flipSides = (g: PlayoffGame): PlayoffGame => {
+  const { homeScore, awayScore, ...rest } = g;
+  return { ...rest, home: g.away, away: g.home, ...(homeScore !== undefined && awayScore !== undefined ? { homeScore: awayScore, awayScore: homeScore } : {}) };
+};
+
+/** `games` with each game the bracket sets (`orders`, bracket-fill.ts pageOrders, ADR 0079) in the bracket's home and away, the
+ * order of its page, whichever way round the file wrote it. Any other game stays as written. */
+export function inPageOrder(games: PlayoffGame[], orders: PageOrder[]): PlayoffGame[] {
+  const byPair = orderMap(orders);
+  return games.map((g) => (sidesFlipped(byPair, g) ? flipSides(g) : g));
+}
+
+/** A season's playoff games in every game's page order (ADR 0079): see `inPageOrder`. The brackets themselves read the games
+ * as listed (`listedPlayoffGames`) and put them in order once they know which games the bracket sets. */
 export async function loadPlayoffGames(alignments: Alignment[], season = CURRENT_SEASON): Promise<PlayoffGame[]> {
+  const listed = await listedPlayoffGames(alignments, season);
+  return season === CURRENT_SEASON ? inPageOrder(listed, (await loadBrackets(season)).flatMap((b) => b.orders)) : listed;
+}
+
+/** A season's playoff games with the home and away their file wrote: only the brackets (lib/brackets.ts) read these. */
+export async function listedPlayoffGames(alignments: Alignment[], season = CURRENT_SEASON): Promise<PlayoffGame[]> {
   const [kickoffs, disputed, sites, addresses] = await Promise.all([loadKickoffs(season), loadDisputed(season), loadSites(season), loadAddresses(season)]);
   return (await playoffRows([season])).map(({ r, league }) => {
     const name = (n: string) => programFor(alignments, n, league)?.school ?? n;
@@ -274,9 +305,12 @@ export const loadSeasonResults = memo(async (season: number): Promise<SeasonResu
     throw e;
   });
   if (!text) return [];
-  const idOf = season === CURRENT_SEASON ? await playoffIdOf(season) : undefined;
-  const playoffPages = new Map(idOf ? (await playoffRows([season])).map(({ r, league }) => [gameKey(r.game_date, r.home, r.away), idOf(r, league)]) : []);
-  const { results, voided, duplicates } = buildSeasonResults(season, text, await loadCorrections(), playoffPages, gameKey);
+  const page = season === CURRENT_SEASON ? await playoffPage(season) : undefined;
+  const playoff = page ? (await playoffRows([season])).map(({ r, league }) => [gameKey(r.game_date, r.home, r.away), page.id(r, league), page.inPageOrder(r, league)] as const) : [];
+  const playoffPages = new Map(playoff.map(([key, id]) => [key, id]));
+  // A playoff game's home and away are its page's (ADR 0079), not games.csv's: a night read may record the final the other way round.
+  const playoffSides = new Map(playoff.map(([key, , r]) => [key, { home: r.home, away: r.away }]));
+  const { results, voided, duplicates } = buildSeasonResults(season, text, await loadCorrections(), playoffPages, gameKey, playoffSides);
   reportSkipped(`data/seed/maxpreps-${season}/games.csv#voided`, voided, "voided by a correction");
   reportSkipped(`data/seed/maxpreps-${season}/games.csv#duplicates`, duplicates, "one game listed twice");
   return results;

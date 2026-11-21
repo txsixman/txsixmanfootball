@@ -84,6 +84,9 @@ test("a past season and a week's rankings show them too, and the week counts thr
   await expect(page).toHaveURL(/\/rankings\/week\/\d+$/);
   const latest = await total();
   const weeks = page.getByRole("navigation", { name: "Week" }).getByRole("link", { name: /^After week/ });
+  // A week is named by its Monday: no link says it "ends" on a Sunday, which for the week in progress has not come yet.
+  await expect(weeks.filter({ hasText: /ending/ })).toHaveCount(0);
+  await expect(weeks.first()).toHaveAccessibleName(/^After week \d+, from [A-Z][a-z]{2} \d+$/);
   const earliest = (await weeks.first().getAttribute("href"))!;
   expect(earliest).not.toBe(new URL(page.url()).pathname);
   await weeks.first().click(); // the earliest week with ratings: fewer games played by its Sunday

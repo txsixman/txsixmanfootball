@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { resultsDescription } from "@/lib/descriptions";
 import { ORGS } from "@/lib/orgs";
+import { versioned } from "@/lib/card-version";
 import { cardSize } from "../../page-card";
+import { resultsCardContent } from "../card";
 import { parseResultsPath, resultPaths } from "../paths";
 import { ResultsWeek } from "../view";
 import { OPEN_GRAPH } from "@/lib/site";
@@ -31,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // UIL's card is the section's own (opengraph-image.tsx beside this folder); each other organization has its own, so
   // its pages never preview with UIL's numbers.
   if (org === ORGS[0]) return { title, description, alternates: { canonical }, robots };
-  const card = [{ url: `/results/card/${org.slug}/opengraph-image`, ...cardSize, alt: `${org.label} six-man results, week by week` }];
+  const card = [{ url: versioned(`/results/card/${org.slug}/opengraph-image`, await resultsCardContent(org)), ...cardSize, alt: `${org.label} six-man results, week by week` }];
   return { title, description, alternates: { canonical }, robots, openGraph: { ...OPEN_GRAPH, images: card }, twitter: { card: "summary_large_image", images: card } };
 }
 

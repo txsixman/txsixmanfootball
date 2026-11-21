@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createRequestClient } from "@/lib/auth/request-client";
+import { hasBadEncoding } from "@/lib/bad-path";
 
 // Runs only for the pages that touch a session: the admin console, sign-in, the auth callback, fan accounts, the forums, the
 // signed-in posting API (/api/fan) and the small routes the pages' scripts call (/api/me, /api/follows, /api/push, /api/account; the service
@@ -7,7 +8,20 @@ import { createRequestClient } from "@/lib/auth/request-client";
 // It refreshes an expiring session before the page renders (a server component cannot set cookies) and puts the cache
 // and robots headers on every response, so nothing here is stored by a shared cache, a browser's back cache, or a search
 // engine. Keep this list in step with lib/never-cached.ts (the service worker's) and the doc.
+// /api/games/... is matched for one reason only: a broken percent-encoding in a game's address ("/api/games/%ff/comments")
+// is answered 400 here, where it would otherwise be a 500 from the route matcher. The matcher is a regex on the raw path that
+// needs a "%" in it, so the proxy never runs (and is never billed) for the ordinary game addresses the score cards call all
+// night; those routes keep their own headers.
 export async function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/games/")) {
+    if (hasBadEncoding(request.nextUrl.pathname)) {
+      return new NextResponse(JSON.stringify({ error: "bad address" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      });
+    }
+    return NextResponse.next();
+  }
   const fresh = () => {
     const res = NextResponse.next({ request });
     res.headers.set("Cache-Control", "no-store, private");
@@ -26,5 +40,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/sign-in", "/auth/:path*", "/account", "/account/:path*", "/forums", "/forums/:path*", "/api/me", "/api/follows", "/api/push/:path*", "/api/account/:path*", "/api/fan/:path*"],
+  matcher: ["/admin", "/admin/:path*", "/sign-in", "/auth/:path*", "/account", "/account/:path*", "/forums", "/forums/:path*", "/api/me", "/api/follows", "/api/push/:path*", "/api/account/:path*", "/api/fan/:path*", "/api/games/:p(.*%.*)"],
 };

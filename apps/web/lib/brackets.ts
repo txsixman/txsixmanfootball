@@ -6,7 +6,7 @@ import { loadSlotRows } from "./bracket-slots";
 import { memo } from "./memo";
 import { pairsOf, type Pair } from "./playoff-path";
 import { slugify } from "./slug";
-import { loadPlayoffGames, playoffLeagueSet, ROUNDS, type PlayoffGame } from "./games";
+import { inPageOrder, listedPlayoffGames, playoffLeagueSet, ROUNDS, type PlayoffGame } from "./games";
 import { advancement, slotShares, type Advancement, type Projected } from "./advancement";
 import { roads, type Road } from "./road";
 import { project, projectAt, STATE_CHAMPIONSHIP_ROUNDS, type Projection } from "./projection";
@@ -103,14 +103,20 @@ const regionLookup = (alignments: Alignment[], league: string, name: string) => 
 export const loadBrackets = (season = CURRENT_SEASON): Promise<Bracket[]> => bracketsOf(season);
 const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
   const [alignments, ratings, template, slotRows, pairs] = await Promise.all([loadAlignments(), loadRatings(season), loadBracketTemplate(), loadSlotRows(season), loadPairDetails(season)]);
-  const games = await loadPlayoffGames(alignments, season);
-  const brackets = [...Map.groupBy(games, (g) => g.bracket)].map(([name, list]): Bracket => {
-    const league = list[0].league;
+  const games = await listedPlayoffGames(alignments, season);
+  const brackets = [...Map.groupBy(games, (g) => g.bracket)].map(([name, listed]): Bracket => {
+    const league = listed[0].league;
     // The next round's games before any site lists them: from the league's own bracket, or what the data closes (ADR 0047).
-    const division = list[0].division;
+    const division = listed[0].division;
     const regionOf = regionLookup(alignments, league, name);
     const rename = (t: string) => programFor(alignments, t, league)?.school ?? t;
-    const slots = bracketSlots(slotRows, list, { league, division, regionOf, rename });
+    const slots = bracketSlots(slotRows, listed, { league, division, regionOf, rename });
+    // Who is home: the bracket's order for a game it sets, however a file wrote it (ADR 0079), so every box and row below, and
+    // every other page (lib/games.ts loadPlayoffGames), name the same home side. Who plays whom does not depend on it.
+    // Past seasons are all played: their pages stay as listed.
+    const filled = season === CURRENT_SEASON ? fill(slots, listed, ROUNDS) : [];
+    const orders = pageOrders(slots, filled);
+    const list = inPageOrder(listed, orders);
     // The tree's shape: the league's own bracket, else what the listed games show (ADR 0049).
     const own = ownSlots(slotRows, { league, division, rename });
     const shape = own.length ? own : derivedSlots(list, league === "UIL" ? "state" : "final", ROUNDS);
@@ -128,9 +134,6 @@ const bracketsOf = memo(async (season: number): Promise<Bracket[]> => {
     });
     const advance = season === CURRENT_SEASON ? advancement(shape, list, ROUNDS, win, STATE_CHAMPIONSHIP_ROUNDS) : undefined;
     const road = season === CURRENT_SEASON ? roads(shape, list, ROUNDS, win, (a, b, g) => (g ? projectAt(ratings, g) : project(ratings, a, b, true, true)), STATE_CHAMPIONSHIP_ROUNDS) : undefined;
-    // Past seasons are all played: their pages stay as listed.
-    const filled = season === CURRENT_SEASON ? fill(slots, list, ROUNDS) : [];
-    const orders = pageOrders(slots, filled);
     const built = builtGames(filled).map(({ round, sides }): BuiltRow => {
       const [a, b] = sides;
       const projection = "team" in a && "team" in b ? project(ratings, a.team, b.team, true, true) : undefined;

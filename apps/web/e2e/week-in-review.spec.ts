@@ -38,6 +38,7 @@ async function build() {
   const { resultSeasons } = await import("../lib/weeks");
   const { latestReview, loadWeekReview, reviewPages } = await import("../lib/week-review-load");
   const { chanceText } = await import("../lib/projection");
+  const { aOrAn, plural } = await import("../lib/plural");
   const { weekHref } = await import("../lib/week-review-hrefs");
   const orgs = await activeOrgs();
   const uil = ORGS[0];
@@ -55,6 +56,8 @@ async function build() {
   return {
     orgs,
     chanceText,
+    aOrAn,
+    plural,
     uil,
     latest,
     review,
@@ -130,7 +133,7 @@ test("the index lists every season and week, newest first, one organization at a
 });
 
 test("the latest week has every section, each with rows or a plain empty message, and every game links to its page", async ({ page }) => {
-  const { review, latest, uil } = await fixtures();
+  const { review, latest, uil, plural } = await fixtures();
   await checkPage(page, `/weeks/${latest.season}/${latest.week}`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Week in review");
   await expect(page.locator("main")).toContainText(`${uil.label} · ${latest.season} season · Week ${latest.week}`);
@@ -159,7 +162,7 @@ test("the latest week has every section, each with rows or a plain empty message
     await expect(rows).toHaveCount(list.length);
     for (const [i, g] of list.entries()) {
       await expect(rows.nth(i).getByRole("link")).toHaveAttribute("href", g.href);
-      await expect(rows.nth(i)).toContainText(`${Math.abs(g.homeScore - g.awayScore)} points apart`);
+      await expect(rows.nth(i)).toContainText(`${plural(Math.abs(g.homeScore - g.awayScore), "point")} apart`);
       expect(g.forfeit).toBe(false);
     }
   }
@@ -174,14 +177,14 @@ test("the latest week has every section, each with rows or a plain empty message
   await expect(off).toHaveCount(review.furthest.length);
   for (const [i, o] of review.furthest.entries()) {
     await expect(off.nth(i)).toContainText(`Projected: ${projectionText(o.projection)}`);
-    await expect(off.nth(i)).toContainText(`${Math.round(o.gap)} points from the projection`);
+    await expect(off.nth(i)).toContainText(`${plural(Math.round(o.gap), "point")} from the projection`);
     await expect(off.nth(i).getByRole("link")).toHaveAttribute("href", o.game.href);
   }
   await checkWords(page, [...teamsOf(review), ...review.rises.map((m) => m.team), ...review.drops.map((m) => m.team)]);
 });
 
 test("upsets: the team with the lower chance to win won, lowest chance first, with the chance in words and a link to the game", async ({ page }) => {
-  const { withUpset, uil, weekHref, chanceText } = await fixtures();
+  const { withUpset, uil, weekHref, chanceText, aOrAn } = await fixtures();
   test.skip(!withUpset, "no UIL week with two upsets");
   const review = withUpset!;
   await checkPage(page, weekHref(review.season, review.week, uil));
@@ -192,7 +195,7 @@ test("upsets: the team with the lower chance to win won, lowest chance first, wi
     expect(u.chance).toBeLessThan(0.5);
     expect(u.game.forfeit).toBe(false);
     if (review.disputed.has(u.game.id)) throw new Error("a disputed final is no upset");
-    await expect(rows.nth(i)).toContainText(`${u.winner} had a ${chanceText(u.chance)} chance to win.`);
+    await expect(rows.nth(i)).toContainText(`${u.winner} had ${aOrAn(chanceText(u.chance))} ${chanceText(u.chance)} chance to win.`);
     await expect(rows.nth(i).getByRole("link")).toHaveAttribute("href", u.game.href);
   }
   expect(review.upsets.map((u) => u.chance)).toEqual([...review.upsets.map((u) => u.chance)].sort((a, b) => a - b));
@@ -331,7 +334,7 @@ test("the home page and Scores link to the latest week in review", async ({ page
 });
 
 test("the home page's week card shows the week's top upset and closest game, each linked to its game", async ({ page }) => {
-  const { review, latest, chanceText } = await fixtures();
+  const { review, latest, chanceText, aOrAn } = await fixtures();
   await page.goto("/");
   const card = page.getByRole("region", { name: `UIL week ${latest.week} highlights`, exact: true });
   const top = review.upsets[0];
@@ -340,7 +343,7 @@ test("the home page's week card shows the week's top upset and closest game, eac
   test.skip(!top && !review.closest, "the latest week has neither an upset nor a played game");
   if (top) {
     await expect(card.getByRole("link").first()).toHaveAttribute("href", top.game.href);
-    await expect(rows.first()).toContainText(`${top.winner} had a ${chanceText(top.chance)} chance to win.`);
+    await expect(rows.first()).toContainText(`${top.winner} had ${aOrAn(chanceText(top.chance))} ${chanceText(top.chance)} chance to win.`);
   }
   if (review.closest) {
     const link = card.getByRole("link").last();

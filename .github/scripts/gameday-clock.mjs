@@ -1,9 +1,15 @@
 // The game-day clock (ADR 0024): starts Results watch's game-day read (`tonight`) every 10 minutes of a playoff game
-// night, from GitHub itself, because GitHub's `schedule` events have never fired in this repo. One run of
+// day, from GitHub itself, because GitHub's `schedule` events have never fired in this repo. One run of
 // gameday-clock.yml loops for up to about 5.5 hours, within the 6-hour job limit. It queues the next run first (ADR
 // 0027): the next run waits under `concurrency: gameday-clock` and starts however this one ends (done, failed, timed
 // out, cancelled, its runner lost), so the chain never stops quietly. Through GitHub's API with the workflow's own
 // token (actions: write); every call times out after 30 seconds.
+// It checks every minute (not every 10) and starts a read as soon as none is queued or running and the last one started 10
+// minutes ago, so reads come every 10 minutes, or as fast as a long read lets them, never rounded up to the next 10-minute tick
+// (a read over 10 minutes made the tick behind it skip, which doubled the gap to 20 minutes on Nov 20 and 21, 2026).
+// A read in the read hours is sent `clock: true` with `tonight` (ADR 0111): Results watch leaves out its slow steps (reader
+// checks, ratings model checks, kickoffs and sites, regular-season sites) on those, so a read is short. The morning reads and the
+// 15:00 catch-up are not marked and run every step.
 // A dispatch made with that token starts a run: workflow_dispatch is GitHub's stated exception to the rule that the
 // token's events start no workflows.
 // It also starts the daily morning read (ticks from 13:00 to 14:59 UTC, 7 to 9 AM Central, in November and December): a
@@ -27,12 +33,16 @@ import { alert, github as alertApi } from "./ops-alert.mjs";
 export const READ_WORKFLOW = "results-watch.yml";
 export const CLOCK_WORKFLOW = "gameday-clock.yml";
 export const MINUTE = 60_000;
-/** A tick is every 10 minutes at :03, :13, ... :53, as the Mac's loop did, so the two never double up for long. */
-export const TICK_OFFSET = 3;
 /** A `schedule` read this recent means GitHub's own timer is working: the clock stands down for that tick. */
 export const SCHEDULE_QUIET = 12;
-/** Any other read this recent (the Mac's loop, a run by hand) already covers this tick. */
-export const RECENT_QUIET = 8;
+/**
+ * Reads start 10 minutes apart, counted from the last read's start (any read: this clock's, the Mac's loop, a run by hand). The
+ * clock checks at each minute boundary, and a run's start time falls seconds after the boundary that started it, so the limit
+ * is 9.5 minutes: a read started at 20:01:02 lets the check at 20:11:00 start the next, not 20:12:00.
+ */
+export const RECENT_QUIET = 9.5;
+/** The clock checks every minute. */
+export const CHECK_MINUTES = 1;
 /** A read still waiting to start after this long is stuck (ADR 0028): it no longer covers a tick. */
 export const STUCK_WAITING = 60;
 /** A read still running after this long is stuck too. Its jobs' limits add up to about 70 minutes. */
@@ -44,16 +54,22 @@ export const isStuck = (r, now) => (now - Date.parse(r.created_at)) / MINUTE > (
 /** November and December, by the UTC month, as Results watch's game-day cron lines count them. */
 export const seasonMonth = (now) => [10, 11].includes(new Date(now).getUTCMonth());
 
-/** Inside a game night's read hours: 18:00 to 06:10 UTC (noon to past midnight Central), in November and December. */
+/** The read hours start at 16:30 UTC (10:30 AM Central, CST): half an hour before the earliest kickoff in the season's game details,
+ * 11 AM Central (17:00 UTC, a Saturday), so that game's first read and kickoff alert are not an hour late. The morning ticks
+ * (13:00 to 14:59 UTC) and the 15:00 catch-up come before it and never overlap it. They end at 06:10 UTC (past midnight Central). */
+export const WINDOW_FROM = 16 * 60 + 30;
+export const WINDOW_UNTIL = 6 * 60 + 10;
+
+/** Inside a game day's read hours: 16:30 to 06:10 UTC (10:30 AM to past midnight Central), in November and December. */
 export function inWindow(now) {
   if (!seasonMonth(now)) return false;
   const d = new Date(now);
   const minutes = d.getUTCHours() * 60 + d.getUTCMinutes();
-  return minutes >= 18 * 60 || minutes <= 6 * 60 + 10;
+  return minutes >= WINDOW_FROM || minutes <= WINDOW_UNTIL;
 }
 
-/** The daytime catch-up (ADR 0030): one tick between 15:00 and 15:09 UTC (9 AM Central), in November and December. Its read
- * goes on only when a bracket game of the last few game nights is still unscored (results-watch.yml's `due` job), so a
+/** The daytime catch-up (ADR 0030): the checks from 15:00 to 15:09 UTC (9 AM Central), in November and December, start one read
+ * (the 10-minute gap between reads lets only the first of them start it). Its read goes on only when a bracket game of the last few game nights is still unscored (results-watch.yml's `due` job), so a
  * final posted after a night's last read is in before the next evening. The evening one is any tick in the window. */
 export const CATCH_UP_HOUR = 15;
 export function catchUpTick(now) {
@@ -83,13 +99,11 @@ export const isDetailsDay = (now) => [1, 2, 3, 4].includes(centralWeekday(now));
 /** A run whose title (results-watch.yml's `run-name`) says it is a details read or a morning read. */
 export const isMorningTitle = (r) => /\b(details|morning) read\b/i.test(String(r.display_title ?? ""));
 
-/** The next tick strictly after `now`: the next time whose minute ends in 3, at :00 seconds. */
+/** The next check strictly after `now`: the next whole minute, at :00 seconds. */
 export function nextTick(now) {
   const d = new Date(now);
   d.setUTCSeconds(0, 0);
-  const m = d.getUTCMinutes();
-  d.setUTCMinutes(m - (m % 10) + TICK_OFFSET);
-  while (d.getTime() <= now) d.setUTCMinutes(d.getUTCMinutes() + 10);
+  while (d.getTime() <= now) d.setUTCMinutes(d.getUTCMinutes() + CHECK_MINUTES);
   return d.getTime();
 }
 
@@ -115,12 +129,15 @@ export function seasonDone(playoffsText) {
 }
 
 /** A read still queued or under way (not stuck) covers the tick; when every active read is stuck, a new one is started (it
- * waits behind the stuck one, or replaces it if it is the one waiting) and the owner is told (ADR 0028). Null: none active. */
+ * waits behind the stuck one, or replaces it if it is the one waiting) and the owner is told (ADR 0028), at most once every
+ * RECENT_QUIET minutes, since the clock checks every minute and the stuck read stays active. Null: none active. */
 function busyVerdict(now, runs, what) {
   const actives = runs.filter((r) => r.status !== "completed");
   const active = actives.find((r) => !isStuck(r, now));
   if (active) return { dispatch: false, line: `skipped: a read is ${active.status} (run ${active.id}, ${active.event})` };
   const stuck = actives[0];
+  const started = runs.find((r) => (now - Date.parse(r.created_at)) / MINUTE < RECENT_QUIET);
+  if (stuck && started) return { dispatch: false, line: `skipped: a read was started ${Math.floor((now - Date.parse(started.created_at)) / MINUTE)} min ago (run ${started.id}, ${started.event}) behind the stuck one` };
   if (stuck) return { dispatch: true, stuck: true, line: `a read has been ${stuck.status} for ${Math.floor((now - Date.parse(stuck.created_at)) / MINUTE)} min (run ${stuck.id}): counted as stuck; started a new ${what}` };
   return null;
 }
@@ -130,7 +147,7 @@ function busyVerdict(now, runs, what) {
  * @returns {{ dispatch: boolean, line: string }}
  */
 export function decide(now, runs) {
-  if (!inWindow(now) && !catchUpTick(now)) return { dispatch: false, line: "outside the game-night hours (18:00 to 06:10 UTC, Nov and Dec) and the daytime catch-up (15:00 UTC): nothing to start" };
+  if (!inWindow(now) && !catchUpTick(now)) return { dispatch: false, line: "outside the game-day hours (16:30 to 06:10 UTC, Nov and Dec) and the daytime catch-up (15:00 UTC): nothing to start" };
   const ago = (r) => (now - Date.parse(r.created_at)) / MINUTE;
   const busy = busyVerdict(now, runs, "read");
   if (busy) return busy;
@@ -160,6 +177,12 @@ export function decideMorning(now, runs) {
   if (busy) return busy.dispatch ? { ...busy, inputs: next.inputs, label: next.label } : busy;
   return { dispatch: true, ...next };
 }
+
+/**
+ * What a game-day read is sent: `tonight`, and `clock` for a read in the read hours, which Results watch runs without its slow
+ * steps (ADR 0111). The daytime catch-up (15:00 UTC) is sent `tonight` alone and runs every step, as the morning reads do.
+ */
+export const gameDayInputs = (now) => (inWindow(now) ? { tonight: "true", clock: "true" } : { tonight: "true" });
 
 /** GitHub's REST API with the workflow's token. A dispatch answers 204; anything else is a failure. */
 /** A hung call must not hang the clock until its job times out: every call gives up after this long. */
@@ -221,7 +244,8 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
   }
   let failed = false;
   let ticks = 0;
-  let wasOutside = false;
+  let lastKey = null;
+  let lastStart = null;
   for (;;) {
     const tick = nextTick(clock());
     if (tick > deadline) break;
@@ -231,7 +255,12 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
     const stamp = new Date(now).toISOString().slice(0, 16).replace("T", " ");
     let verdict;
     try {
-      verdict = morningTick(now) ? decideMorning(now, await api.runs()) : inWindow(now) || catchUpTick(now) ? decide(now, await api.runs()) : decide(now, []);
+      if (lastStart != null && (now - lastStart) / MINUTE < RECENT_QUIET) {
+        // The read this clock started a moment ago may not be listed yet, and needs no listing to be counted.
+        verdict = { dispatch: false, line: `skipped: this clock started a read ${Math.floor((now - lastStart) / MINUTE)} min ago` };
+      } else {
+        verdict = morningTick(now) ? decideMorning(now, await api.runs()) : inWindow(now) || catchUpTick(now) ? decide(now, await api.runs()) : decide(now, []);
+      }
     } catch (e) {
       failed = true;
       log(`${stamp} UTC: FAILED to read Results watch's runs: ${e.message}`);
@@ -239,13 +268,14 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
     }
     if (verdict.dispatch && !dryRun) {
       try {
-        await api.dispatch(READ_WORKFLOW, verdict.inputs ?? { tonight: "true" });
+        await api.dispatch(READ_WORKFLOW, verdict.inputs ?? gameDayInputs(now));
       } catch (e) {
         failed = true;
         log(`${stamp} UTC: FAILED to start ${verdict.label ?? "the game-day read"}: ${e.message}`);
         break;
       }
     }
+    if (verdict.dispatch) lastStart = now; // a dry run counts it too, so its log shows the real cadence
     if (verdict.stuck && !dryRun) {
       try {
         await notify("read-stuck");
@@ -253,11 +283,11 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
         log(`${stamp} UTC: could not post the stuck read to the robot-alert issue: ${e.message}`);
       }
     }
-    // Outside the hours, only the first quiet tick is logged, not one line every 10 minutes all day; so is a morning tick that
-    // finds the day's read already started.
-    const outside = verdict.quiet === true || (!inWindow(now) && !catchUpTick(now) && !morningTick(now));
-    if (!(outside && wasOutside)) log(`${stamp} UTC: ${dryRun && verdict.dispatch ? `would have started ${verdict.label ?? "the game-day read"} (dry run)` : verdict.line}`);
-    wasOutside = outside;
+    // Checks run every minute, so a line is logged when a read starts or when the verdict changes (minute counts aside), not
+    // one line a minute all day.
+    const key = verdict.line.replace(/\d+ min/g, "N min");
+    if (verdict.dispatch || key !== lastKey) log(`${stamp} UTC: ${dryRun && verdict.dispatch ? `would have started ${verdict.label ?? "the game-day read"} (dry run)` : verdict.line}`);
+    lastKey = key;
   }
   if (dryRun || !failed) return { failed, handedOn: !dryRun, ticks };
   // A failure: the queued run becomes a retry (a newer queued run replaces the older one), and a retry that fails

@@ -6,7 +6,8 @@ import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 import type { LiveView } from "@/lib/live-scores";
 import { dayLine } from "@/lib/whos-left";
 import type { Box, TreeData } from "./data";
-import { footer, SideRow } from "./parts";
+import { sideTag } from "./lines";
+import { footClass, footer, SideRow } from "./parts";
 
 // One round at a time (ADR 0094): the rounds as tabs (the ARIA tab pattern: one tablist, one tab per round, one panel for
 // the round chosen; the arrow keys, Home and End move between tabs) and the round's games as cards: both teams, the score
@@ -33,11 +34,12 @@ function RoundCard({ box, live, team, dim, onTeam }: { box: Box; live: LiveView 
         <span className="font-bold">{box.code ?? box.label}</span>
         <span>{[box.date ? dayLine(box.date) : played ? "" : "Date not listed yet", box.time].filter(Boolean).join(" · ")}</span>
       </p>
-      <SideRow side={box.sides[0]} other={box.sides[1]} live={scoreOf(box.sides[0])} lit={team === box.sides[0].key} onTeam={onTeam} />
-      <SideRow side={box.sides[1]} other={box.sides[0]} live={scoreOf(box.sides[1])} lit={team === box.sides[1].key} onTeam={onTeam} />
+      <SideRow side={box.sides[0]} other={box.sides[1]} live={scoreOf(box.sides[0])} lit={team === box.sides[0].key} onTeam={onTeam} tag={sideTag(box, box.sides[0])} />
+      <SideRow side={box.sides[1]} other={box.sides[0]} live={scoreOf(box.sides[1])} lit={team === box.sides[1].key} onTeam={onTeam} tag={sideTag(box, box.sides[1])} />
       <div className="border-t border-line px-2 py-1 text-[14px] leading-5">
-        <p className={live ? "font-bold text-red" : box.projection ? "font-semibold text-navy" : "text-muted"}>{lines[0]}</p>
+        <p className={footClass(box, live)}>{lines[0]}</p>
         {live && lines[1] && <p className="text-muted">{lines[1]}</p>}
+        {box.neutral && <p className="text-muted">Neutral site</p>}
         {!played && <p className="text-muted">{box.site ? `Site: ${box.site}` : "Site not listed yet"}</p>}
       </div>
       {box.href && (

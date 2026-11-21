@@ -9,6 +9,7 @@ import type { Org } from "@/lib/orgs";
 import { roundName, RECORD_MIN_GAMES, STREAK_MIN } from "@/lib/season-review";
 import type { SeasonReview } from "@/lib/season-review-load";
 import type { SeasonResult } from "@/lib/season-results";
+import { aOrAn, plural } from "@/lib/plural";
 import { marginOf } from "@/lib/week-review";
 import { BoardRow, CrestSlot } from "../ui";
 
@@ -78,7 +79,6 @@ const Sub = ({ id, title, note, children }: { id: string; title: string; note?: 
 
 const Note = ({ children }: { children: ReactNode }) => <p className="border-b border-line px-3 py-3 text-[15px] leading-6 text-ink">{children}</p>;
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 const recordText = (r: { won: number; lost: number; tied: number }) => `${r.won}-${r.lost}${r.tied ? `-${r.tied}` : ""}`;
 
 /** The most firsts listed: State Championship games first, then playoff wins by team name. */
@@ -150,7 +150,7 @@ export function SeasonInReview({ review, alignments, identities, latest }: { rev
             {review.best.map((r, i) => (
               <BoardRow key={r.team} place={i + 1} figure={recordText(r)} unit="wins and losses">
                 {team(r.team)}
-                <span className="block truncate text-[13px] text-muted">{r.games} games{r.lost === 0 ? " · unbeaten" : ""}</span>
+                <span className="block truncate text-[13px] text-muted">{plural(r.games, "game")}{r.lost === 0 ? " · unbeaten" : ""}</span>
               </BoardRow>
             ))}
           </ol>
@@ -168,7 +168,7 @@ export function SeasonInReview({ review, alignments, identities, latest }: { rev
               <BoardRow key={u.game.id} place={i + 1} figure={chanceText(u.chance)} unit="chance to win before the game">
                 <GameLink g={u.game} />
                 <span className="block pb-1 text-[13px] text-muted">
-                  {u.game.status}. {u.winner} had a {chanceText(u.chance)} chance to win. {finalLine(u.game)}.
+                  {u.game.status}. {u.winner} had {aOrAn(chanceText(u.chance))} {chanceText(u.chance)} chance to win. {finalLine(u.game)}.
                 </span>
               </BoardRow>
             ))}
