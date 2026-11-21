@@ -59,7 +59,7 @@ of them closes the console: `/admin` says "Admin is not configured" and shows no
 | `NEXT_PUBLIC_SUPABASE_URL` | public by design | The Supabase project's API URL, `https://vhgnaihnyjdnaaergtcl.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public by design | The project's `anon` (publishable) key. It only opens what row-level security allows |
 | `ADMIN_USER_ID` | **server only** | The owner's Supabase Auth user id (a UUID). The one id the console lets in |
-| `GITHUB_CORRECTIONS_TOKEN` | **secret, server only** | A fine-grained GitHub token, contents read and write on `txsixman/txsixmanfootball` only. **The owner plans to delete it (Nov 16, 2026), but as the code stands `app/admin/gate.tsx` shows "Admin is not configured" on every admin page, `/admin/moderation` included, without it: change the gate first** |
+| `GITHUB_CORRECTIONS_TOKEN` | **secret, server only** | A fine-grained GitHub token, contents read and write on `txsixman/txsixmanfootball` only; a 90-day token, expiring around Feb 2027 (every token's expiry: `docs/tokens.md`). **The owner plans to delete it (Nov 16, 2026), but as the code stands `app/admin/gate.tsx` shows "Admin is not configured" on every admin page, `/admin/moderation` included, without it: change the gate first** |
 
 Never use the Supabase `service_role` key anywhere in this: the console acts as the signed-in person, with their own session.
 `NEXT_PUBLIC_*` values are fixed into a build, so redeploy after setting them.
