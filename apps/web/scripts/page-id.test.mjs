@@ -9,7 +9,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { bracketSlots, builtGames, fill, pageOrders, ROUND_ORDER, uilSlotRows } from "../lib/bracket-fill.ts";
-import { listingId, orderMap, pageId } from "../lib/page-id.ts";
+import { listingId, orderMap, pageId, sidesFlipped } from "../lib/page-id.ts";
 
 const SEASON = 2026;
 // A UIL-like region: two bi-district games feed one area game (G17 = winner G1 v winner G2), whose first side is G1's.
@@ -64,6 +64,20 @@ test("a listed game whose feeding final is not yet confirmed takes each side's t
   const unconfirmed = [final("bi-district", "Alpha", "Beta", 50, 20), { ...final("bi-district", "Delta", "Gamma", 14, 60), confirmed: false }];
   const row = listed("area", "Gamma", "Alpha");
   assert.equal(idsOf([...unconfirmed, row]).idOf(row), "2026-area-gamma-at-alpha");
+});
+
+test("home and away are the bracket's whichever way round a row writes the teams; a game it does not set keeps its row's order", () => {
+  const { orders } = idsOf(FIRST);
+  // The bracket's order for the area game is Alpha home, Gamma away.
+  assert.equal(sidesFlipped(orders, { round: "area", home: "Gamma", away: "Alpha" }), true);
+  assert.equal(sidesFlipped(orders, { round: "area", home: "Alpha", away: "Gamma" }), false);
+  // A first-round game and a pairing the bracket does not set are never flipped.
+  assert.equal(sidesFlipped(orders, FIRST[1]), false);
+  assert.equal(sidesFlipped(orders, { round: "area", home: "Beta", away: "Delta" }), false);
+  // A file's spelling is mapped to the bracket's before the two are compared.
+  const spelled = (t) => ({ "Gamma Hs": "Gamma", "Alpha Hs": "Alpha" })[t] ?? t;
+  assert.equal(sidesFlipped(orders, { round: "area", home: "Gamma Hs", away: "Alpha Hs" }, spelled), true);
+  assert.equal(sidesFlipped(orders, { round: "area", home: "Alpha Hs", away: "Gamma Hs" }, spelled), false);
 });
 
 test("a first-round game keeps its listing's order", () => {
