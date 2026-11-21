@@ -139,7 +139,7 @@ export default async function StateChampionshipPage({ params }: Props) {
             <SectionBar id="result" title="Result" aside={c.final.date ? mediumDate(c.final.date) : undefined} className="" />
             <p data-champion className="flex flex-wrap items-center px-3 pt-3 text-[22px] font-bold leading-7 text-navy">
               <Team name={c.final.champion} link={link} />
-              <span className="whitespace-pre">, {c.season} {c.bracket} State Champion</span>
+              <span className="whitespace-pre-wrap">, {c.season} {c.bracket} State Champion</span>
             </p>
             <dl className="px-3">
               <Fact label="Final score">
