@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { resultSeasons } from "@/lib/weeks";
 import { OPEN_GRAPH } from "@/lib/site";
+import { versioned } from "@/lib/card-version";
 import { cardSize } from "../../page-card";
+import { weeksCardContent } from "../card";
 import { parseWeeksPath, weekPaths } from "../paths";
 import { describeWeeks, WeekInReview, WeeksIndex } from "../view";
 
@@ -21,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { org, season, week } = where;
   // One card per organization and season (about thirty images, not one per week): it names the season, never a week.
   const year = season ?? (await resultSeasons(org))[0];
-  const card = [{ url: `/weeks/card/${year}/${org.slug}/opengraph-image`, ...cardSize, alt: `${org.label} ${year} six-man season, week by week` }];
+  const card = [{ url: versioned(`/weeks/card/${year}/${org.slug}/opengraph-image`, await weeksCardContent(org, year)), ...cardSize, alt: `${org.label} ${year} six-man season, week by week` }];
   return {
     title: season === undefined ? `${org.label} six-man week in review` : `${org.label} six-man ${season} week ${week} in review`,
     description: await describeWeeks(org, season === undefined ? undefined : { season, week }),

@@ -1,5 +1,5 @@
 // The response headers next.config.ts sends: HSTS everywhere, a Content-Security-Policy (reported, not yet enforced) on
-// every page but the embed, and no framing of any page but /embed/ (ADR 0023).
+// every page but the embed and the admin console, which enforces it, and no framing of any page but /embed/ (ADR 0023).
 //   node --test apps/web/scripts/*.test.mjs
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -12,7 +12,7 @@ function headersAt(pathname) {
   const sent = {};
   for (const rule of rules) {
     if (rule.missing?.some((m) => m.type === "host" && m.value === "txsixmanfootball.com")) continue; // the public host has it
-    if (!new RegExp(`^${rule.source.replace(/:\w+\*/g, ".*")}$`).test(pathname)) continue;
+    if (!new RegExp(`^${rule.source.replace(/\/:\w+\*/g, "(?:/.*)?")}$`).test(pathname)) continue;
     for (const h of rule.headers) sent[h.key.toLowerCase()] = [...(sent[h.key.toLowerCase()] ?? []), h.value];
   }
   return sent;
@@ -51,4 +51,24 @@ test("no page can be framed except /embed/, which sends neither framing header",
     assert.equal(h["x-frame-options"], undefined, p);
     assert.ok(!(h["content-security-policy"] ?? []).some((v) => v.includes("frame-ancestors")), p);
   }
+});
+
+const ADMIN = ["/admin", "/admin/merge", "/admin/corrections", "/admin/moderation", "/admin/games/2026-09-04-guthrie-at-jayton"];
+
+test("the admin console enforces the policy, once, with the page policy's sources and no report-only copy", () => {
+  const [page] = headersAt("/")["content-security-policy-report-only"];
+  const pageDirectives = page.split("; ");
+  for (const p of ADMIN) {
+    const h = headersAt(p);
+    assert.equal(h["content-security-policy-report-only"], undefined, p);
+    const [policy, ...more] = h["content-security-policy"] ?? [];
+    assert.ok(policy && more.length === 0, `${p}: one enforced policy`);
+    const directives = policy.split("; ");
+    for (const d of pageDirectives) assert.ok(directives.includes(d), `${p}: ${d}`);
+    assert.ok(directives.includes("form-action 'self'") && directives.includes("frame-ancestors 'none'"), p);
+    assert.ok(!directives.some((d) => d.startsWith("script-src") && /https?:/.test(d)), `${p}: no outside script`);
+    assert.deepEqual(h["x-frame-options"], ["DENY"], p);
+  }
+  // Only the console: a lookalike address keeps the report-only policy.
+  assert.ok(headersAt("/administrator")["content-security-policy-report-only"], "/administrator is an ordinary address");
 });
