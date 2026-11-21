@@ -7,6 +7,9 @@
 // It checks every minute (not every 10) and starts a read as soon as none is queued or running and the last one started 10
 // minutes ago, so reads come every 10 minutes, or as fast as a long read lets them, never rounded up to the next 10-minute tick
 // (a read over 10 minutes made the tick behind it skip, which doubled the gap to 20 minutes on Nov 20 and 21, 2026).
+// A read in the read hours is sent `clock: true` with `tonight` (ADR 0111): Results watch leaves out its slow steps (reader
+// checks, ratings model checks, kickoffs and sites, regular-season sites) on those, so a read is short. The morning reads and the
+// 15:00 catch-up are not marked and run every step.
 // A dispatch made with that token starts a run: workflow_dispatch is GitHub's stated exception to the rule that the
 // token's events start no workflows.
 // It also starts the daily morning read (ticks from 13:00 to 14:59 UTC, 7 to 9 AM Central, in November and December): a
@@ -175,6 +178,12 @@ export function decideMorning(now, runs) {
   return { dispatch: true, ...next };
 }
 
+/**
+ * What a game-day read is sent: `tonight`, and `clock` for a read in the read hours, which Results watch runs without its slow
+ * steps (ADR 0111). The daytime catch-up (15:00 UTC) is sent `tonight` alone and runs every step, as the morning reads do.
+ */
+export const gameDayInputs = (now) => (inWindow(now) ? { tonight: "true", clock: "true" } : { tonight: "true" });
+
 /** GitHub's REST API with the workflow's token. A dispatch answers 204; anything else is a failure. */
 /** A hung call must not hang the clock until its job times out: every call gives up after this long. */
 export const CALL_TIMEOUT_MS = 30_000;
@@ -259,7 +268,7 @@ export async function runClock({ minutes, dryRun = false, retry = false, playoff
     }
     if (verdict.dispatch && !dryRun) {
       try {
-        await api.dispatch(READ_WORKFLOW, verdict.inputs ?? { tonight: "true" });
+        await api.dispatch(READ_WORKFLOW, verdict.inputs ?? gameDayInputs(now));
       } catch (e) {
         failed = true;
         log(`${stamp} UTC: FAILED to start ${verdict.label ?? "the game-day read"}: ${e.message}`);

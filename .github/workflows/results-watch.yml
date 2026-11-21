@@ -52,6 +52,10 @@ on:
         description: "Playoff-week details read: kickoffs, sites and league bracket details only (skipped when no playoff game is left to play)"
         type: boolean
         default: false
+      clock:
+        description: "Set by the game-day clock on its own game-day reads (ADR 0111): they skip the slow steps (reader checks, ratings model checks, kickoffs and sites, regular-season sites). A hand dispatch leaves it off and runs them all"
+        type: boolean
+        default: false
       write:
         description: "Push the results to both repos before the repo is live (a proof run; no alerts, no database)"
         type: boolean
@@ -184,6 +188,9 @@ jobs:
           [[ "$season" =~ ^20[0-9][0-9]$ ]] || { echo "season must be a year like 2026, not: $season"; exit 1; }
           echo "year=$season" >> "$GITHUB_OUTPUT"
       - name: Reader checks
+        # Not on a game-day read the clock started (ADR 0111): CI runs the same tests on every push, and the read's minutes
+        # are the next read's wait.
+        if: ${{ !(inputs.clock == true && needs.due.outputs.mode == 'game-day') }}
         run: node --test tools/league-watch/maxpreps.test.mjs tools/league-watch/store.test.mjs tools/league-watch/davecampbells.test.mjs tools/league-watch/late-finals.test.mjs tools/league-watch/bracket-due.test.mjs tools/league-watch/playoff-week.test.mjs
       - name: Read MaxPreps schedule pages
         # Not on a details read: it reads no MaxPreps page.
@@ -246,8 +253,8 @@ jobs:
         # before any listing has it, gets the second feed's kickoff and site, into a file outside the repo; the commit step merges it into the newest main's
         # data/seed/game-details/<season>.csv, never overwriting a filled value. The log and summary give counts only, by
         # league, never a school. Off until the repo variable SECOND_LIVE is "true" (the same feed's upcoming games). A
-        # failure (a 403 or 429 stops it at once) leaves the file as it was. Not on a game-day schedule (a dispatch runs it).
-        if: ${{ vars.SECOND_LIVE == 'true' && (github.event_name != 'schedule' || needs.due.outputs.mode != 'game-day') }}
+        # failure (a 403 or 429 stops it at once) leaves the file as it was. Not on a game-day schedule, nor on a game-day read the clock started (ADR 0111); a hand dispatch runs it.
+        if: ${{ vars.SECOND_LIVE == 'true' && (github.event_name != 'schedule' || needs.due.outputs.mode != 'game-day') && !(inputs.clock == true && needs.due.outputs.mode == 'game-day') }}
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
@@ -264,7 +271,7 @@ jobs:
         # it), into the same file; the commit step merges it, never overwriting a filled value. One mapped team a game, at
         # most 15 minutes; a failure (a 403 or 429 stops it at once) leaves the file as it was. Counts only. Not on a
         # details read: that read is the kickoffs and league bracket details only.
-        if: ${{ vars.SECOND_LIVE == 'true' && needs.due.outputs.mode != 'details' && (github.event_name != 'schedule' || needs.due.outputs.mode != 'game-day') }}
+        if: ${{ vars.SECOND_LIVE == 'true' && needs.due.outputs.mode != 'details' && (github.event_name != 'schedule' || needs.due.outputs.mode != 'game-day') && !(inputs.clock == true && needs.due.outputs.mode == 'game-day') }}
         continue-on-error: true
         env:
           SEASON: ${{ steps.season.outputs.year }}
@@ -330,10 +337,10 @@ jobs:
             echo "Live scores sent: $result" >> "$GITHUB_STEP_SUMMARY"
           fi
       # The ratings model's own tests use only its sample games, and CI ran them on the main this checks out. A game-day
-      # tick (every 10 minutes) skips them so a new score publishes sooner; the morning read and a dispatch still run them,
+      # tick (every 10 minutes) and a read the game-day clock starts (`clock`, ADR 0111) skip them so a new score publishes sooner; the morning read and a hand dispatch still run them,
       # a details read does not (it reads no score).
       - name: Ratings model checks
-        if: ${{ needs.due.outputs.mode != 'details' && (github.event_name != 'schedule' || needs.due.outputs.mode != 'game-day') }}
+        if: ${{ needs.due.outputs.mode != 'details' && (github.event_name != 'schedule' || needs.due.outputs.mode != 'game-day') && !(inputs.clock == true && needs.due.outputs.mode == 'game-day') }}
         run: uv run --directory services/ratings pytest -q
       - name: Commit, the private repo first, then this one
         id: commit

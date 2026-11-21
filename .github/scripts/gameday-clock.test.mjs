@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { catchUpTick, centralWeekday, CLOCK_WORKFLOW, MINUTE, decide, decideMorning, github, inWindow, isDetailsDay, isMorningTitle, isStuck, morningTick, nextTick, READ_WORKFLOW, runClock, seasonDone, seasonOf } from "./gameday-clock.mjs";
+import { catchUpTick, centralWeekday, CLOCK_WORKFLOW, MINUTE, decide, decideMorning, gameDayInputs, github, inWindow, isDetailsDay, isMorningTitle, isStuck, morningTick, nextTick, READ_WORKFLOW, runClock, seasonDone, seasonOf } from "./gameday-clock.mjs";
 
 const at = (iso) => Date.parse(iso);
 const run = (id, event, createdIso, status = "completed") => ({ id, event, status, created_at: createdIso });
@@ -132,6 +132,8 @@ test("a run queues the next clock run first, then checks every minute and starts
   const reads = f.calls.filter((c) => c.workflow === READ_WORKFLOW);
   assert.deepEqual(reads.map((c) => c.at), ["2026-11-13T16:30:00.000Z", "2026-11-13T16:40:00.000Z", "2026-11-13T16:50:00.000Z", "2026-11-13T17:00:00.000Z", "2026-11-13T17:10:00.000Z"]);
   assert.ok(reads.every((c) => c.inputs.tonight === "true"));
+  // A read in the read hours is marked as the clock's, so Results watch leaves out its slow steps (ADR 0111).
+  assert.ok(reads.every((c) => c.inputs.clock === "true"));
   assert.equal(f.calls.filter((c) => c.workflow === CLOCK_WORKFLOW).length, 1);
   assert.deepEqual(r, { failed: false, handedOn: true, ticks: 60 });
   // The checks before 16:30 log once, as outside the hours; the checks between reads log once a read, not once a minute.
@@ -391,4 +393,34 @@ test("a stuck read is replaced and posted once every 10 minutes, not every minut
   await runClock({ minutes: 25, playoffsText: null, ...f, notify: async (reason) => posted.push(reason) });
   assert.equal(f.calls.filter((c) => c.workflow === READ_WORKFLOW).length, 3);
   assert.deepEqual(posted, ["read-stuck", "read-stuck", "read-stuck"]);
+});
+
+test("a read in the read hours is sent tonight and clock; the 15:00 catch-up and the morning reads are not marked, so they run every step", async () => {
+  assert.deepEqual(gameDayInputs(at("2026-11-21T16:33:00Z")), { tonight: "true", clock: "true" });
+  assert.deepEqual(gameDayInputs(at("2026-11-22T03:03:00Z")), { tonight: "true", clock: "true" });
+  assert.deepEqual(gameDayInputs(at("2026-11-21T15:00:00Z")), { tonight: "true" });
+  // Whole runs: the morning read (7 to 9 AM), the catch-up (9 AM) and the first evening read.
+  const f = fake({ startIso: "2026-11-21T12:50:00Z", runs: listed });
+  await runClock({ minutes: 225, playoffsText: null, ...f });
+  const reads = f.calls.filter((c) => c.workflow === READ_WORKFLOW).map((c) => [c.at.slice(11, 16), c.inputs]);
+  assert.deepEqual(reads, [["13:00", {}], ["15:00", { tonight: "true" }], ["16:30", { tonight: "true", clock: "true" }]]);
+  // A stuck read replaced in the read hours is sent the same inputs.
+  const g = fake({ startIso: "2026-11-21T21:00:00Z", runs: () => [run(1, "workflow_dispatch", "2026-11-21T19:00:00Z", "queued")] });
+  await runClock({ minutes: 2, playoffsText: null, ...g, notify: async () => {} });
+  assert.deepEqual(g.calls.find((c) => c.workflow === READ_WORKFLOW).inputs, { tonight: "true", clock: "true" });
+});
+
+test("results-watch.yml declares the clock input (default false) and the four slow steps skip on it", async () => {
+  const { readFileSync } = await import("node:fs");
+  const wf = readFileSync(new URL("../workflows/results-watch.yml", import.meta.url), "utf8");
+  assert.match(wf, /\n      clock:\n        description: [^\n]+\n        type: boolean\n        default: false\n/);
+  const skip = "!(inputs.clock == true && needs.due.outputs.mode == 'game-day')";
+  for (const name of ["Reader checks", "Kickoffs and sites", "Regular-season sites", "Ratings model checks"]) {
+    const at = wf.indexOf(`      - name: ${name}\n`);
+    assert.ok(at > 0, name);
+    const step = wf.slice(at, wf.indexOf("\n      - name:", at + 10));
+    assert.ok(step.includes(skip), `${name} skips on the clock's reads`);
+  }
+  // The morning, details and catch-up reads are not the clock's, so nothing above skips them: the clock never sends clock for them.
+  assert.ok(!/inputs\.clock[^\n]*details/.test(wf));
 });

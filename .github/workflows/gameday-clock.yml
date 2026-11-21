@@ -5,6 +5,8 @@
 # a read that takes over 10 minutes is followed by the next at once, not by a skipped tick 20 minutes on. No read starts
 # when one is queued or running, when GitHub's schedule started one in the last 12 minutes, or when any read started in the
 # last 9.5 minutes (the Mac's loop, a run by hand); Results watch's `due` job makes a check with no game left a short run.
+# Its reads in the read hours carry `clock: true`, so Results watch skips the slow steps on them (ADR 0111); the morning reads
+# and the catch-up are not marked and run every step.
 # A daytime catch-up (the checks from 15:00 to 15:09 UTC, which start one read) runs one more read (ADR 0030); `due` counts the
 # 3 game nights before tonight too, so it reads only when an earlier night's bracket game is still unscored.
 # A morning tick (13:00 to 14:59 UTC, 7 to 9 AM Central, November and December) starts the day's morning read when none has
