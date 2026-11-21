@@ -147,7 +147,7 @@ test("a program page shows its rank range, record strength, strength of schedule
   await expect(section.getByRole("listitem").filter({ hasText: "Worst loss" })).toBeVisible();
   const why = page.getByRole("region", { name: "Why the rating moved" });
   await expect(why.getByRole("listitem").first()).toContainText(/(vs|at) .*, \d+-\d+, projected (margin [+-]\d+\+?|even)/);
-  await expect(why.getByRole("listitem").first()).toContainText(/points (better|worse) than projected/);
+  await expect(why.getByRole("listitem").first()).toContainText(/points? (better|worse) than projected/);
   expect(await page.locator("main").innerText()).not.toMatch(/undefined|NaN|null/);
 });
 

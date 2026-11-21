@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Identity } from "@/lib/identity";
+import { unitFor } from "@/lib/plural";
 import { Crest } from "./programs/crest";
 
 // Shared pieces for the list pages (rankings, results, records, standings, championships, matchup, scores), so they
@@ -55,7 +56,7 @@ export function BoardRow({ place, children, figure, unit }: { place: number; chi
       <span className="brd-fig">
         {figure}
         {/* A bare number says nothing to a screen reader; `unit` names what it counts. */}
-        {unit && <span className="sr-only"> {unit}</span>}
+        {unit && <span className="sr-only"> {unitFor(figure, unit)}</span>}
       </span>
     </li>
   );

@@ -13,6 +13,7 @@ import { coverageLine } from "@/lib/season-coverage";
 import { type HubLeader, type OrgHub, type SeasonHub } from "@/lib/season-hub";
 import { indexHref, weekHref as reviewHref } from "@/lib/week-review-hrefs";
 import { weekLabel } from "@/lib/weeks";
+import { plural } from "@/lib/plural";
 import { seasonHref as rankingsHref } from "../rankings/view";
 import { seasonHref as resultsHref, weekHref } from "../results/paths";
 import { BoardRow, CrestSlot, PageHeader, SectionBar } from "../ui";
@@ -39,7 +40,7 @@ export function SeasonList({ hubs }: { hubs: SeasonHub[] }) {
             <span className="min-w-0">
               <span className="block font-num text-[28px] font-bold leading-8 text-navy">{h.season}</span>
               <span className="block text-[14px] leading-5 text-muted">
-                {h.games.toLocaleString("en-US")} games · {h.orgs.map((o) => o.org.label).join(", ")}
+                {plural(h.games, "game")} · {h.orgs.map((o) => o.org.label).join(", ")}
                 {h.latest && " · under way"}
               </span>
             </span>
@@ -96,7 +97,7 @@ function Leaders({ id, title, note, rows, identities }: { id: string; title: str
           {rows.map((l, i) => (
             <BoardRow key={l.team} place={i + 1} figure={oneDecimal(l.average)} unit="points per game">
               <TeamLine name={l.team} slug={l.slug} identities={identities} />
-              <span className="block truncate text-[13px] text-muted">{l.games} games</span>
+              <span className="block truncate text-[13px] text-muted">{plural(l.games, "game")}</span>
             </BoardRow>
           ))}
         </ol>

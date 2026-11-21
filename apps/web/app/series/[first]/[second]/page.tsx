@@ -16,6 +16,7 @@ import { projectionParts, project } from "@/lib/projection";
 import { loadRatings, ratingSeasons, record } from "@/lib/ratings";
 import { biggestWins, finalsBetween, longestStreak, recordWords, seriesHref, seriesRecord, type SeriesGame } from "@/lib/series";
 import { loadSeries, successors, upcomingMeetings } from "@/lib/series-data";
+import { plural } from "@/lib/plural";
 import { Breadcrumbs } from "../../../breadcrumbs";
 import { Crest } from "../../../programs/crest";
 import { EdgeToEdge, SectionBar } from "../../../ui";
@@ -167,7 +168,7 @@ export default async function SeriesPage({ params }: Props) {
         </div>
         <p className="mt-4 text-[17px] leading-6 text-ink">
           <b className="font-num text-[22px] leading-7 [overflow-wrap:anywhere]">{recordWords(a.school, b.school, total)}</b>
-          <span className="text-muted">{` · ${games.length} meetings since ${since}${playoffs > 0 ? `, ${playoffs} in the playoffs` : ""}`}</span>
+          <span className="text-muted">{` · ${plural(games.length, "meeting")} since ${since}${playoffs > 0 ? `, ${playoffs} in the playoffs` : ""}`}</span>
         </p>
         <p className="pt-1 text-[13px] text-muted">A forfeit counts as a win or a loss.</p>
         {notCounted > 0 && (

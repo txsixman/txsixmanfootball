@@ -13,6 +13,7 @@ import { indexHref, weekHref } from "@/lib/week-review-hrefs";
 import { weekNeighbours } from "@/lib/neighbours";
 import { loadWeekReview, orgWeeks, reviewedWeeks, type Milestone, type PlacedMover, type RecapStreak, type WeekReview } from "@/lib/week-review-load";
 import { TabNav } from "../tab-nav";
+import { aOrAn, plural } from "@/lib/plural";
 import { WeekStrip } from "../week-strip";
 import { BoardRow, EmptyState, PageHeader, SectionBar } from "../ui";
 
@@ -71,7 +72,7 @@ function Mover({ m, i, org, alignments }: { m: PlacedMover; i: number; org: Org;
         {typeof by === "number" && by !== 0 && (
           <>
             <span aria-hidden="true"> {by > 0 ? "▲" : "▼"}{Math.abs(by)}</span>
-            <span className="sr-only">, {by > 0 ? "up" : "down"} {Math.abs(by)} places</span>
+            <span className="sr-only">, {by > 0 ? "up" : "down"} {plural(Math.abs(by), "place")}</span>
           </>
         )}
         {by === "new" && " · new in the rankings"}
@@ -98,7 +99,7 @@ const STREAK_TEXT = {
 const MILESTONE_TEXT: Record<Milestone["kind"], (m: Milestone) => string> = {
   "state-game": () => "First State Championship game in the records held here",
   "playoff-win": () => "First playoff win in the results held here",
-  "first-loss": (m) => `First loss of the season, after ${m.unbeaten} games with no loss`,
+  "first-loss": (m) => `First loss of the season, after ${plural(m.unbeaten ?? 0, "game")} with no loss`,
 };
 
 const Section = ({ id, title, note, children }: { id: string; title: string; note: string; children: ReactNode }) => (
@@ -141,7 +142,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
       <PageHeader
         id="week"
         size="md"
-        eyebrow={`${org.label} · ${season} season · Week ${week} · ${days(review)} · ${review.games.length} ${review.games.length === 1 ? "game" : "games"}`}
+        eyebrow={`${org.label} · ${season} season · Week ${week} · ${days(review)} · ${plural(review.games.length, "game")}`}
         title="Week in review"
       />
       <TabNav
@@ -171,7 +172,7 @@ export async function WeekInReview({ org, season, week }: { org: Org; season: nu
                 <BoardRow key={u.game.id} place={i + 1} figure={chanceText(u.chance)} unit="chance to win before the game">
                   <GameLink g={u.game} />
                   <span className="block pb-1 text-[13px] text-muted">
-                    {u.winner} had a {chanceText(u.chance)} chance to win. {finalLine(u.game)}.
+                    {u.winner} had {aOrAn(chanceText(u.chance))} {chanceText(u.chance)} chance to win. {finalLine(u.game)}.
                   </span>
                 </BoardRow>
               ))}
