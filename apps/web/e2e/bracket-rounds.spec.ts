@@ -115,13 +115,28 @@ test.describe("round tabs", () => {
       const card = cards.nth(i);
       const text = (await card.innerText()).replace(/\s+/g, " ");
       const state = (await card.getAttribute("data-state"))!;
+      const id = (await card.getAttribute("data-box"))!;
       // Both teams are there, as a button each (a team) or as the game whose winner it will be.
       expect(await card.locator("button[aria-pressed], [title]").count(), text).toBeGreaterThanOrEqual(2);
       if (state === "upcoming" || state === "open") {
         expect(text, "a game to play says its day").toMatch(DAY);
         expect(text, "and its site, or that none is listed").toMatch(/Site: |Site not listed yet/);
       }
-      if (state === "final") expect(text).toMatch(/Final|Forfeit/);
+      // A final reads FINAL (a forfeit says so); a kickoff time is read like the rest of the site, with CT.
+      if (state === "final") expect(text).toMatch(/Final|Forfeit/i);
+      expect(text, "a kickoff time carries CT").not.toMatch(/\d{1,2}:\d{2} [AP]M(?! CT)/);
+      // A game listed at a field of its own says which team is Home and which is Away, as its game page does; a true neutral
+      // site (a State Championship) says so on both. All from the page's own data.
+      const game = b.tree.find((n) => n.id === id)?.game;
+      if (game) {
+        const tags = (await card.locator(".bx-tag").allInnerTexts()).map((t) => t.toLowerCase());
+        if (game.trueNeutral) expect(tags, text).toEqual(["neutral site", "neutral site"]);
+        else {
+          expect(tags.sort(), text).toEqual(["away", "home"]);
+          await expect(card.locator(`button[title="${game.home}"]`), text).toContainText(/home/i);
+          await expect(card.locator(`button[title="${game.away}"]`), text).toContainText(/away/i);
+        }
+      }
       const link = card.getByRole("link", { name: /^Game page for / });
       if (await link.count()) await expect(link).toHaveAttribute("href", /^\/scores\//);
     }

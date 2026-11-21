@@ -9,7 +9,7 @@ import { derivedSlots, ownSlots, ROUND_ORDER, uilSlotRows } from "../lib/bracket
 import { layoutTree } from "../lib/bracket-layout.ts";
 import { treeGames } from "../lib/bracket-tree.ts";
 import { parseCsv, UIL_BRACKET_COLUMNS, UilBracketRow } from "../lib/data-schemas.ts";
-import { boxLines, fitName } from "../app/playoffs/tree/lines.ts";
+import { boxLines, fitName, isNeutral, sideRole, sideTag } from "../app/playoffs/tree/lines.ts";
 
 const STRUCTURE = parseCsv("b.csv", readFileSync(new URL("../../../data/seed/uil-2026-28/bracket-2026.csv", import.meta.url), "utf8"), UIL_BRACKET_COLUMNS, UilBracketRow).map(({ row }) => row);
 const [header, ...lines] = readFileSync(new URL("fixtures/uil-2026-playoffs-nov14.csv", import.meta.url), "utf8").trim().split("\n");
@@ -104,10 +104,10 @@ test("TAIAO: a bye is its own box, the team goes on, North and South label the h
 test("a box's lines and an image's names are never cut mid-word", () => {
   // Under the teams: the result, or the projection with the kickoff on a line of its own (the site is in the title).
   assert.deepEqual(boxLines({ state: "final", forfeit: true }), ["Forfeit", ""]);
-  assert.deepEqual(boxLines({ state: "upcoming", projection: { margin: "Borden County by 22" }, time: "6:00 PM", site: "Sterling City" }), ["Borden County by 22", "6:00 PM"]);
+  assert.deepEqual(boxLines({ state: "upcoming", projection: { margin: "Borden County by 22" }, time: "6:00 PM CT", site: "Sterling City" }), ["Borden County by 22", "6:00 PM CT"]);
   assert.deepEqual(boxLines({ state: "open" }), ["Not listed yet", ""]);
   // A margin too long for the line: the margin alone (the chances on the team rows say whose).
-  assert.deepEqual(boxLines({ state: "upcoming", projection: { margin: "Harvest Christian Academy-Keller by 4" }, time: "7:00 PM" }, 18), ["Projected margin 4", "7:00 PM"]);
+  assert.deepEqual(boxLines({ state: "upcoming", projection: { margin: "Harvest Christian Academy-Keller by 4" }, time: "7:00 PM CT" }, 18), ["Projected margin 4", "7:00 PM CT"]);
   // A short name keeps its size; a long one takes two lines, split where the lines come out most even.
   assert.deepEqual(fitName("Jayton", 100, 26, 16), { lines: ["Jayton"], size: 16 });
   const two = fitName("Brazos Valley Lions Athletics", 120, 26, 16);
@@ -117,4 +117,32 @@ test("a box's lines and an image's names are never cut mid-word", () => {
   const short = fitName("Sherman Grayson Christian School (Sherman)", 40, 12, 16);
   assert.deepEqual(short.lines, ["Sherman"]);
   assert.ok(!short.lines.join(" ").includes("…"));
+});
+
+test("a box says which team is home and which is away, or a neutral site", () => {
+  const g = { home: "Aquilla", away: "Medina" };
+  // The same home and away as the game's own page: the game row's.
+  assert.equal(sideRole(g, "Aquilla", false), "Home");
+  assert.equal(sideRole(g, "Medina", false), "Away");
+  assert.equal(sideRole(g, "Someone else", false), undefined);
+  assert.equal(sideRole(g, "Aquilla", true), undefined, "a neutral site has no home team");
+  // A past season's game and a true neutral site (a State Championship) are neutral; a current game at a field of its own is not.
+  assert.equal(isNeutral(2025, 2026, {}), true);
+  assert.equal(isNeutral(2026, 2026, { trueNeutral: true }), true);
+  assert.equal(isNeutral(2026, 2026, {}), false);
+  // The word under a team: its role, "Neutral site" on both teams of a neutral game, nothing under a winner to come or a bye.
+  assert.equal(sideTag({}, { key: "aquilla", role: "Home" }), "Home");
+  assert.equal(sideTag({ neutral: true }, { key: "aquilla" }), "Neutral site");
+  assert.equal(sideTag({ neutral: true }, { key: "medina" }), "Neutral site");
+  assert.equal(sideTag({}, { role: undefined }), undefined);
+  assert.equal(sideTag({ neutral: true }, {}), undefined);
+});
+
+test("a kickoff in a box carries CT, as everywhere else on the site", () => {
+  // The kickoff text is lib/kickoff.ts kickoffTime, unchanged: "7:00 PM CT". The box lines pass it through.
+  assert.deepEqual(boxLines({ state: "upcoming", projection: { margin: "Borden County by 22" }, time: "7:00 PM CT" }), ["Borden County by 22", "7:00 PM CT"]);
+  assert.deepEqual(boxLines({ state: "open", time: "2:00 PM CT" }), ["Not listed yet", "2:00 PM CT"]);
+  // A final has the word Final and no kickoff; a forfeit its own word.
+  assert.deepEqual(boxLines({ state: "final", time: "7:00 PM CT" }), ["Final", ""]);
+  assert.deepEqual(boxLines({ state: "final", forfeit: true }), ["Forfeit", ""]);
 });

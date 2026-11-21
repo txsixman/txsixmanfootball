@@ -8,7 +8,8 @@ import { openRound, pathSteps, whosLeft } from "@/lib/whos-left";
 import { useLiveScores } from "../../scores/live-score";
 import { ShareButton } from "../../share-button";
 import type { Box, BoxSide, TreeData } from "./data";
-import { footer, SideRow } from "./parts";
+import { sideTag } from "./lines";
+import { footClass, footer, SideRow } from "./parts";
 import { RoundTabs } from "./rounds";
 import { WhosLeft } from "./whos-left";
 
@@ -27,7 +28,7 @@ const NO_TITLES: Record<string, { text: string; chance: number }> = {};
 function BoxView({ box, live, team, dim, onTeam, max, style }: { box: Box; live: LiveView | null; team: string | null; dim: boolean; onTeam: (key: string) => void; max: number; style?: CSSProperties }) {
   const scoreOf = (s: BoxSide) => (live ? (live.home.name === s.text ? live.home.score : live.away.name === s.text ? live.away.score : undefined) : undefined);
   const mine = team !== null && box.sides.some((s) => s.key === team);
-  const title = [box.code, box.label, box.when, box.time, box.site].filter(Boolean).join(" · ");
+  const title = [box.code, box.label, box.when, box.time, box.neutral ? "Neutral site" : undefined, box.site].filter(Boolean).join(" · ");
   const lines = footer(box, live, max);
   return (
     <div
@@ -44,10 +45,10 @@ function BoxView({ box, live, team, dim, onTeam, max, style }: { box: Box; live:
         <span className="text-[12px] font-bold uppercase tracking-wider">{box.code}</span>
         <span className="text-[12px] uppercase tracking-wider">{box.when}</span>
       </p>
-      <SideRow side={box.sides[0]} other={box.sides[1]} live={scoreOf(box.sides[0])} lit={team === box.sides[0].key} onTeam={onTeam} />
-      <SideRow side={box.sides[1]} other={box.sides[0]} live={scoreOf(box.sides[1])} lit={team === box.sides[1].key} onTeam={onTeam} />
+      <SideRow side={box.sides[0]} other={box.sides[1]} live={scoreOf(box.sides[0])} lit={team === box.sides[0].key} onTeam={onTeam} tag={sideTag(box, box.sides[0])} />
+      <SideRow side={box.sides[1]} other={box.sides[0]} live={scoreOf(box.sides[1])} lit={team === box.sides[1].key} onTeam={onTeam} tag={sideTag(box, box.sides[1])} />
       <p data-foot className="bx-foot">
-        <span className={live ? "font-bold text-red" : box.projection ? "font-semibold text-navy" : "text-muted"}>{lines[0]}</span>
+        <span className={footClass(box, live)}>{lines[0]}</span>
         {lines[1] && <span className="text-muted">{lines[1]}</span>}
       </p>
     </div>

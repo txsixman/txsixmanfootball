@@ -6,8 +6,8 @@ import { centralClock } from "@/lib/playoff-status";
 import { CURRENT_SEASON } from "@/lib/season";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { brandFont } from "../../mark";
-import type { BoxSide, TreeData } from "./data";
-import { boxLines, fitName, lineWidth } from "./lines";
+import type { Box, BoxSide, TreeData } from "./data";
+import { boxLines, fitName, lineWidth, sideTag } from "./lines";
 
 // The bracket as a picture to download and share (ADR 0049), drawn on the server from the same data and layout as the
 // page, so it matches what the page shows when it was built: "share" at 1200 by 630, the size link previews use, in
@@ -52,23 +52,26 @@ export async function treeImage(data: TreeData, kind: ImageKind): Promise<ImageR
   const height = kind === "share" ? SHARE.height : geo.height + BAND.full.top + BAND.full.bottom + 2 * MARGIN;
   const band = BAND[kind];
   const text = Math.max(11, Math.min(18, Math.round(geo.team * (kind === "share" ? 0.62 : 0.34))));
+  const small = Math.max(10, text - 3);
   const byId = new Map(data.boxes.map((b) => [b.id, b]));
-  const side = (s: BoxSide, other: BoxSide) => {
+  const side = (s: BoxSide, other: BoxSide, box: Box) => {
     const right = s.score ?? s.chance;
     const lost = other.won && !s.won;
+    // The full-size picture says Home or Away under a team (or Neutral site), as the page does; the share size has no room.
+    const tag = geo.foot > 0 ? sideTag(box, s) : undefined;
     // The room the name has: the box less its padding and whatever stands at the right.
     const room = geo.boxW - 12 - (right == null ? 0 : lineWidth(String(right), typeof right === "string" ? text - 1 : text + 2) + 4);
-    const name = fitName(s.text, room, geo.team, s.key ? text : text - 1);
+    const name = fitName(s.text, room, geo.team - (tag ? small + 1 : 0), s.key ? text : text - 1);
     return (
       <div style={{ display: "flex", alignItems: "center", height: geo.team, padding: "0 6px", color: s.won ? INK : lost || !s.key ? MUTED : INK, fontWeight: s.won ? 600 : 400 }}>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, fontSize: name.size, lineHeight: 1.05 }}>
           {name.lines.map((l, i) => <div key={i} style={{ display: "flex" }}>{l}</div>)}
+          {tag && <div style={{ display: "flex", fontSize: small - 1, fontWeight: 400, color: MUTED, textTransform: "uppercase", letterSpacing: 1 }}>{tag}</div>}
         </div>
         {right != null && <div style={{ display: "flex", marginLeft: 4, fontWeight: 600, color: typeof right === "string" ? NAVY : s.won ? INK : MUTED, fontSize: typeof right === "string" ? text - 1 : text + 2 }}>{String(right)}</div>}
       </div>
     );
   };
-  const small = Math.max(10, text - 3);
   const tree = (
     <div style={{ display: "flex", position: "relative", width: geo.width, height: geo.height }}>
       {data.links.length > 0 && (
@@ -105,11 +108,11 @@ export async function treeImage(data: TreeData, kind: ImageKind): Promise<ImageR
               <div style={{ display: "flex" }}>{b.when ?? ""}</div>
             </div>
           )}
-          {side(b.sides[0], b.sides[1])}
-          {side(b.sides[1], b.sides[0])}
+          {side(b.sides[0], b.sides[1], b)}
+          {side(b.sides[1], b.sides[0], b)}
           {geo.foot > 0 && (
             <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: geo.foot, padding: "0 6px", fontSize: small, lineHeight: 1.1, color: MUTED, borderTop: `1px solid ${LINE}` }}>
-              {boxLines(b, Math.floor((geo.boxW - 12) / (small * 0.5))).filter(Boolean).map((l, i) => <div key={i} style={{ display: "flex", ...(i === 0 && b.projection ? { color: NAVY, fontWeight: 600 } : {}) }}>{l}</div>)}
+              {boxLines(b, Math.floor((geo.boxW - 12) / (small * 0.5))).filter(Boolean).map((l, i) => <div key={i} style={{ display: "flex", ...(i === 0 && (b.projection || b.state === "final") ? { color: NAVY, fontWeight: 600 } : {}), ...(i === 0 && b.state === "final" && !b.forfeit ? { textTransform: "uppercase" as const } : {}) }}>{l}</div>)}
             </div>
           )}
         </div>

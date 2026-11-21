@@ -1,4 +1,4 @@
-import type { Box } from "./data";
+import type { Box, BoxSide } from "./data";
 
 /** The two lines under a box's teams (ADR 0049), shared by the page and the full-size image: the result or the projected
  * margin, then the kickoff of a game not yet played. The site ("Sterling City High School, Sterling City") is too long
@@ -35,3 +35,17 @@ export function fitName(text: string, width: number, height: number, size: numbe
   while (short.length > 1 && lineWidth(short.join(" "), size) > width) short.pop();
   return { lines: [short.join(" ")], size };
 }
+
+/** Whether a listed game is drawn as a neutral site: a past season's game (its game page names no home or away) or a game
+ * the data marks a true neutral site, a State Championship (ADR 0057). */
+export const isNeutral = (season: number, current: number, game: { trueNeutral?: true }) => season !== current || game.trueNeutral === true;
+
+/** Which team the game's own page calls home and which away. Nothing for a neutral site, or a team not in the game. */
+export function sideRole(game: { home: string; away: string }, team: string, neutral: boolean): BoxSide["role"] {
+  if (neutral) return undefined;
+  return team === game.home ? "Home" : team === game.away ? "Away" : undefined;
+}
+
+/** The small word under a team's name: "Home" or "Away", or "Neutral site" on both teams of a game at a neutral field. A side with
+ * no team in it (a winner to come, a bye) has none. */
+export const sideTag = (box: Pick<Box, "neutral">, side: Pick<BoxSide, "key" | "role">) => (side.key ? (box.neutral ? "Neutral site" : side.role) : undefined);
