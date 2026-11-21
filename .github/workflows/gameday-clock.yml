@@ -1,10 +1,12 @@
 # The game-day clock (ADR 0024). GitHub's `schedule` events have never fired in this repo, so Results watch's game-day
-# cron lines start nothing. This starts its `tonight` read every 10 minutes (:03, :13 ...), 16:30 to 06:10 UTC (10:30 AM
-# to past midnight Central; the earliest kickoff is 11 AM) in November and December, from GitHub itself, so the reads need no one's computer. A tick is skipped when a read is
-# already queued or running, when GitHub's schedule started one in the last 12 minutes, or when any read started in the
-# last 8 (the Mac's loop, a run by hand); Results watch's `due` job makes a tick with no game left a short check.
-# A daytime catch-up tick at 15:03 UTC starts one more read (ADR 0030); `due` counts the 3 game nights before tonight
-# too, so it reads only when an earlier night's bracket game is still unscored.
+# cron lines start nothing. This starts its `tonight` read every 10 minutes, 16:30 to 06:10 UTC (10:30 AM to past midnight
+# Central; the earliest kickoff is 11 AM) in November and December, from GitHub itself, so the reads need no one's computer.
+# It checks every minute and starts a read as soon as none is queued or running and the last one started 10 minutes ago, so
+# a read that takes over 10 minutes is followed by the next at once, not by a skipped tick 20 minutes on. No read starts
+# when one is queued or running, when GitHub's schedule started one in the last 12 minutes, or when any read started in the
+# last 9.5 minutes (the Mac's loop, a run by hand); Results watch's `due` job makes a check with no game left a short run.
+# A daytime catch-up (the checks from 15:00 to 15:09 UTC, which start one read) runs one more read (ADR 0030); `due` counts the
+# 3 game nights before tonight too, so it reads only when an earlier night's bracket game is still unscored.
 # A morning tick (13:00 to 14:59 UTC, 7 to 9 AM Central, November and December) starts the day's morning read when none has
 # started since 10:00 UTC (GitHub's own morning schedule, or an earlier tick): Monday to Thursday the playoff-week details
 # read (`details`: kickoffs, sites and league bracket details only, which `due` skips when no playoff game is left to
