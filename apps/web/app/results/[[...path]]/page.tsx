@@ -5,6 +5,7 @@ import { ORGS } from "@/lib/orgs";
 import { cardSize } from "../../page-card";
 import { parseResultsPath, resultPaths } from "../paths";
 import { ResultsWeek } from "../view";
+import { OPEN_GRAPH } from "@/lib/site";
 import { resultsTitle } from "@/lib/titles";
 
 export const dynamic = "force-static";
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // its pages never preview with UIL's numbers.
   if (org === ORGS[0]) return { title, description, alternates: { canonical }, robots };
   const card = [{ url: `/results/card/${org.slug}/opengraph-image`, ...cardSize, alt: `${org.label} six-man results, week by week` }];
-  return { title, description, alternates: { canonical }, robots, openGraph: { images: card }, twitter: { card: "summary_large_image", images: card } };
+  return { title, description, alternates: { canonical }, robots, openGraph: { ...OPEN_GRAPH, images: card }, twitter: { card: "summary_large_image", images: card } };
 }
 
 export default async function ResultsPage({ params }: Props) {

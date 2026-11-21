@@ -9,13 +9,15 @@ import { Offline } from "./offline-notice";
 import { THEME_SCRIPT, ThemeToggle } from "./theme-toggle";
 import { VercelInsights } from "./vercel-insights";
 import { PREFETCHED_SECTIONS } from "../lib/prefetched-sections";
-import { SITE_NAME, SITE_URL } from "../lib/site";
+import { OPEN_GRAPH, SITE_NAME, SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
   title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
   description: "Texas six-man football: scores, rankings, playoffs, standings and every State Championship.",
   // Share cards and canonical links use the public address, whichever host served the page.
   metadataBase: new URL(SITE_URL),
+  // Type, site name and language for every page; a page's own title, description and card still lead (Next fills og:title and og:description from them).
+  openGraph: OPEN_GRAPH,
 };
 
 // The browser bar matches the header band in each theme (globals.css --color-band).

@@ -6,6 +6,7 @@ import { loadRanked, rankLabel } from "@/lib/rankings";
 import { record } from "@/lib/ratings";
 import { programCardText } from "@/lib/share-text";
 import { CURRENT_SEASON } from "@/lib/season";
+import { OPEN_GRAPH } from "@/lib/site";
 import { EMPTY, loadIdentities } from "@/lib/identity";
 import { cardSize } from "../../../page-card";
 
@@ -37,5 +38,5 @@ export const programCardOf = memo(async (slug: string) => {
  * as its alt text, for Open Graph and for a large Twitter card (ADR 0093). */
 export async function programCardTags(slug: string) {
   const images = [{ url: `/programs/${slug}/card`, ...cardSize, alt: (await programCardOf(slug)).text.alt }];
-  return { openGraph: { images }, twitter: { card: "summary_large_image" as const, images } };
+  return { openGraph: { ...OPEN_GRAPH, images }, twitter: { card: "summary_large_image" as const, images } };
 }

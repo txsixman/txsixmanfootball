@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { resultSeasons } from "@/lib/weeks";
+import { OPEN_GRAPH } from "@/lib/site";
 import { cardSize } from "../../page-card";
 import { parseWeeksPath, weekPaths } from "../paths";
 import { describeWeeks, WeekInReview, WeeksIndex } from "../view";
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: season === undefined ? `${org.label} six-man week in review` : `${org.label} six-man ${season} week ${week} in review`,
     description: await describeWeeks(org, season === undefined ? undefined : { season, week }),
     alternates: { canonical: `/weeks${((await params).path ?? []).map((p) => `/${p}`).join("")}` },
-    openGraph: { images: card },
+    openGraph: { ...OPEN_GRAPH, images: card },
     twitter: { card: "summary_large_image", images: card },
   };
 }

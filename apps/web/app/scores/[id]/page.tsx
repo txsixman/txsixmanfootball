@@ -23,7 +23,7 @@ import { Breadcrumbs } from "../../breadcrumbs";
 import { JsonLd } from "../../json-ld";
 import { ShareButton } from "../../share-button";
 import { CalendarGameLink } from "../../add-to-calendar";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { OPEN_GRAPH, SITE_NAME, SITE_URL } from "@/lib/site";
 import { Follow } from "../../programs/follow";
 import { Comments } from "../comments";
 import { ScoreReport } from "../score-report";
@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // This season's games share their own card (card/route.tsx), with the words it says as its alt text; a past season's game
   // shares the site's card (ADR 0093).
   const images = (await hasCard(id)) && [{ url: `/scores/${id}/card`, width: 1200, height: 630, alt: (await cardOf(id)).text.alt }];
-  const card = images && { openGraph: { images }, twitter: { card: "summary_large_image" as const, images } };
+  const card = images && { openGraph: { ...OPEN_GRAPH, images }, twitter: { card: "summary_large_image" as const, images } };
   // An invented sample game stays out of search (its schools are not real).
   return {
     // The date, or a playoff game's round and season, keeps each meeting's title its own: the same two teams meet again in

@@ -247,14 +247,16 @@ type GameFacts = {
 export function gameDescription({ away, home, date, season, playoff, scheduled, sample }: GameFacts) {
   if (sample) return fit(`A sample six-man game between invented schools: ${away} vs ${home}.`, "It shows how the scoreboard reads.");
   const [group, round] = (playoff ?? "").split(" · ");
-  const kind = playoff
-    ? `${season} ${group.replace(/\bD(I+|\d+)\b/, "Division $1")}${round ? ` ${round === "State Championship" ? round : round.toLowerCase()}` : ""} playoff game`
-    : `${season} season game`;
+  // The round as the page names it: "TAPPS Division II State Championship", "UIL Division I bi-district". Every league names its
+  // last round "State Championship"; it is the last thing a long pair of names gives up, after the season and "playoff game", the date and the preview line.
+  const roundName = `${group.replace(/\bD(I+|\d+)\b/, "Division $1")}${round ? ` ${round === "State Championship" ? round : round.toLowerCase()}` : ""}`;
+  const kind = playoff ? `${season} ${roundName} playoff game` : `${season} season game`;
   const teams = `${away} vs ${home}`;
+  const when = date ? `, ${date}` : "";
   return fit(
-    [`${teams}${date ? `, ${date}` : ""}: ${kind}.`, `${teams}${date ? `, ${date}` : ""}.`, `${teams}.`],
+    [`${teams}${when}: ${kind}.`, ...(playoff ? [`${teams}${when}: ${roundName}.`, `${teams}: ${roundName}.`] : []), `${teams}${when}.`, `${teams}.`],
     scheduled
-      ? ["A preview with each team's record and rating, and the projected margin and chance to win.", "A preview with each team's record and rating."]
+      ? ["A preview with each team's record and rating, and the projected margin and chance to win.", "A preview with each team's record and rating.", "A game preview."]
       : ["Each team's record going in and their earlier meetings.", "Their earlier meetings."],
   );
 }

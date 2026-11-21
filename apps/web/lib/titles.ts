@@ -18,6 +18,39 @@ function keepTail(lead: string, tail: string): string {
   return lead.length + tail.length <= MAX ? `${lead}${tail}` : `${lead.slice(0, MAX - tail.length - 1).replace(/\s+\S*$/, "")}…${tail}`;
 }
 
+/** `name` in at most `room` characters: cut at a word (or a hyphen), a trailing "(alias" dropped, then "…". */
+function cutName(name: string, room: number): string {
+  if (name.length <= room) return name;
+  let t = name.slice(0, room - 1);
+  if (!/[\s-]/.test(name[room - 1])) t = t.replace(/[\s-]+[^\s-]*$/, ""); // the cut fell inside a word: drop its start too
+  t = t.replace(/\s*\([^)]*$/, "").replace(/[\s,\-–(]+$/, "");
+  return `${t || name.slice(0, room - 1)}…`;
+}
+
+/**
+ * "Away vs Home" in `room` characters with both teams named. A name that fits stays whole: the shorter one is cut only to
+ * half the room, the longer takes what is left, and the shorter then takes back whatever the longer did not use. Each is cut
+ * at a word, never one team dropped ("Victory Christian…" alone said nothing of the game, Nov 21, 2026).
+ */
+function pairFit(away: string, home: string, room: number): string {
+  const share = room - 4; // " vs "
+  const awayShort = away.length <= home.length;
+  const [short, long] = awayShort ? [away, home] : [home, away];
+  let s = cutName(short, Math.floor(share / 2));
+  const l = cutName(long, share - s.length);
+  s = cutName(short, share - l.length);
+  return awayShort ? `${s} vs ${l}` : `${l} vs ${s}`;
+}
+
+/**
+ * A game's names, then what else fits: `A vs B football <kind>, date`, then without the word, then without the date, then
+ * each name cut at a word so both teams are still named (a name is cut only when the two cannot fit whole).
+ */
+function gameName(away: string, home: string, kind: "preview" | "score", when: string): string {
+  const teams = `${away} vs ${home}`;
+  return [`${teams} football ${kind}${when}`, `${teams}${when}`, teams].find((t) => t.length <= MAX) ?? pairFit(away, home, MAX);
+}
+
 /** The home page's whole title (the layout's suffix is not added, so the site's name leads). */
 export const homeTitle = () => "TX Six-Man Football: Texas six-man scores, brackets, rankings";
 
@@ -81,9 +114,7 @@ export function gameTitle({ away, home, date, scheduled, final, round, season }:
     const year = season ?? date?.match(/\d{4}$/)?.[0];
     return [tail && `${score} · ${tail}`, date && `${score} · ${date}`].find((t) => t && t.length <= MAX) || (year ? `${score} · ${year}` : score);
   }
-  return scheduled
-    ? fit(`${teams} football preview${when}`, `${teams}${when}`, keepTail(teams, ` football preview${when}`))
-    : fit(`${teams} football score${when}`, `${teams} score${when}`, `${teams}${when}`, keepTail(teams, ` football score${when}`));
+  return gameName(away, home, scheduled ? "preview" : "score", when);
 }
 
 /** Too long for both names: the first is cut and the second kept whole ("Faith Academy of Bellville" and "of Marble Falls" differ only at the end). */
