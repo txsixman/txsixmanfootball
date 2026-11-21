@@ -18,14 +18,14 @@ const noFraming = [
   { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
 ];
 
-// What a page may load, reported and not yet enforced: a violation shows in the browser console and blocks nothing, so
+// What a page may load, reported and not yet enforced (the admin console below enforces it): a violation shows in the browser console and blocks nothing, so
 // the policy can be checked on the live site before it is turned on (rename the header to Content-Security-Policy and
 // move 'frame-ancestors' in). Next's own bootstrap and the theme script are inline, hence 'unsafe-inline' for scripts
 // (shortcut: no nonces; upgrade: a nonce per request, which makes every page dynamic). Pagefind search loads wasm.
 // connect-src is this site plus the one hosted database the browser calls (live scores, score alerts); push services are
 // reached by the browser itself, not by page code. Images are the site's own files, data and blob URLs. Not for /embed/,
 // which sends its own enforced policy (lib/embed-html.ts).
-const contentPolicyReportOnly = [
+const contentPolicyDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
@@ -36,7 +36,14 @@ const contentPolicyReportOnly = [
   "worker-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
-].join("; ");
+];
+const contentPolicyReportOnly = contentPolicyDirectives.join("; ");
+
+// The admin console enforces the same policy now (nothing there loads anything the policy leaves out: its pages are server
+// components and server actions on this origin, and the one outside address, Google sign-in, is reached from /sign-in by a
+// redirect, not from here), plus two it can afford: its forms post only to this site, and no page can frame it (the same
+// 'frame-ancestors' every other address sends alone, folded in so the console sends exactly one policy header).
+const adminPolicy = [...contentPolicyDirectives, "form-action 'self'", "frame-ancestors 'none'"].join("; ");
 
 // The newest season with a ratings table (lib/ratings.ts ratingSeasons, which reads the same folder at build time).
 // shortcut: 2026 when the folder cannot be read; upgrade: lib gains a shared CURRENT_SEASON this file can import.
@@ -76,7 +83,13 @@ const config: NextConfig = {
       // Search engines index the public address only (lib/site.ts); the vercel.app address, previews and a local
       // server say noindex, so the same pages never show up twice.
       { source: "/(.*)", missing: [{ type: "host", value: "txsixmanfootball.com" }], headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
-      { source: "/((?!embed/).*)", headers: [...noFraming, { key: "Content-Security-Policy-Report-Only", value: contentPolicyReportOnly }] },
+      // Every address but the embeddable scoreboard and the admin console: framing refused, the policy reported only.
+      { source: "/((?!embed/|admin(?:/|$)).*)", headers: [...noFraming, { key: "Content-Security-Policy-Report-Only", value: contentPolicyReportOnly }] },
+      // The admin console: the policy enforced, and the same two framing headers as everywhere else.
+      {
+        source: "/admin/:path*",
+        headers: [{ key: "X-Frame-Options", value: "DENY" }, { key: "Content-Security-Policy", value: adminPolicy }],
+      },
       // The embeddable scoreboard may be framed by any site; its own Content-Security-Policy comes from the route (app/embed).
       // It says noindex on every address, the public one too, so it never competes with the program pages in search.
       { source: "/embed/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex" }] },

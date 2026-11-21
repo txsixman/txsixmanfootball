@@ -33,6 +33,7 @@ import { GameBand, GameLiveRead, GameScore } from "../live-game";
 import { Fact, Verification, type Program } from "../game-parts";
 import { VerifyBar } from "../parts";
 import { SiteAddress } from "../directions";
+import { versioned } from "@/lib/card-version";
 import { cardOf } from "./card/game-card";
 import { hasCard } from "./card/ids";
 import { WhatsNext } from "./whats-next";
@@ -63,7 +64,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const playoff = sample ? undefined : (g?.league ?? (found && found.season !== CURRENT_SEASON ? (await playoffLabels(found.season)).get(gameKey(found.result.date, found.result.home, found.result.away)) : undefined));
   // This season's games share their own card (card/route.tsx), with the words it says as its alt text; a past season's game
   // shares the site's card (ADR 0093).
-  const images = (await hasCard(id)) && [{ url: `/scores/${id}/card`, width: 1200, height: 630, alt: (await cardOf(id)).text.alt }];
+  // Its address carries a version of what the card says and draws (words, scores, banner, team colors), so a preview cached
+  // before a score changed fetches the new card (lib/card-version.ts).
+  const drawn = (await hasCard(id)) ? await cardOf(id) : undefined;
+  const images = drawn && [
+    {
+      url: versioned(`/scores/${id}/card`, { text: drawn.text, kicker: drawn.kicker, banner: drawn.banner, scores: [drawn.g.awayScore, drawn.g.homeScore], colors: [drawn.g.away.color, drawn.g.home.color] }),
+      width: 1200,
+      height: 630,
+      alt: drawn.text.alt,
+    },
+  ];
   const card = images && { openGraph: { ...OPEN_GRAPH, images }, twitter: { card: "summary_large_image" as const, images } };
   // An invented sample game stays out of search (its schools are not real).
   return {
