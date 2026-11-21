@@ -125,7 +125,7 @@ export default function TonightBoard({ night }: { night: Night }) {
   return (
     <>
       <ScoresChecked games={night.orgs.flatMap((o) => o.rounds.flatMap((r) => r.games))} className="px-3 pt-2" />
-      <nav aria-label="All organizations tonight" data-night-strip className="sticky top-0 z-20 mt-2 flex h-[45px] border-y border-line bg-page">
+      <nav aria-label="All organizations tonight" data-night-strip className="sticky top-0 z-20 mt-2 flex h-[46px] border-y border-line bg-page">
         {strip.map((k) =>
           k.n ? (
             <a key={k.key} href={`#night-${k.first}-${k.key}`} className="flex flex-1 items-center justify-center gap-1.5 font-num text-[16px] font-bold uppercase tracking-wide text-navy hover:bg-panel">
@@ -146,7 +146,7 @@ export default function TonightBoard({ night }: { night: Night }) {
             {org.label}
           </h2>
           {groups.map((group) => (
-            <div key={group.key} id={`night-${org.slug}-${group.key}`} data-group={group.key} className="scroll-mt-[45px]">
+            <div key={group.key} id={`night-${org.slug}-${group.key}`} data-group={group.key} className="scroll-mt-[46px]">
               <h3 className="border-b border-line bg-panel px-3 py-1 font-num text-[14px] font-bold uppercase tracking-wider text-navy">{group.label}</h3>
               <ul>
                 {group.games.map((g) => (

@@ -305,7 +305,9 @@ test.describe("Tonight", () => {
     const late = page.locator(`[data-group="awaiting"] li[data-game="${n!.id}"]`);
     await expect(late).toContainText("Score not reported yet");
     await expect(late.locator("[data-no-score]")).toHaveText("No score has come in for this game yet.");
-    expect((await late.innerText()).replace(n!.away, "").replace(n!.home, "")).not.toMatch(WINNER_OR_BETTING);
+    // A rated pair keeps its pre-game line, "Projected: X by 7 · 74% chance to win" (ADRs 0044, 0045), which names a favourite by
+    // design and is no result; everything else on the card names no winner and no leader.
+    expect((await late.innerText()).replace(n!.away, "").replace(n!.home, "").replace(/^Projected: .*$/m, "")).not.toMatch(WINNER_OR_BETTING);
     const strip = page.getByRole("navigation", { name: "All organizations tonight" });
     await expect(strip.getByRole("link", { name: /^No score\s*\d/ })).toHaveAttribute("href", /^#night-[a-z]+-awaiting$/);
   });

@@ -30,6 +30,9 @@ const TONE: Record<KickoffState["kind"], string> = {
   unlisted: "text-ink",
 };
 
+/** "Under way when saved" is no live badge: a saved copy has no red (ADR 0096), as the board's band goes navy when saved. */
+const SAVED_TONE = "bg-band px-1.5 text-white";
+
 /** "Starts 7:00 PM CT", "In progress", "Score not reported yet" or "Time not listed"; `short` for a narrow cell. */
 /** `tone` false: plain text, for a line already on a colored band. */
 export function KickoffStatus({ date, kickoff, short = false, tone = true, className = "" }: { date: string; kickoff?: string; short?: boolean; tone?: boolean; className?: string }) {
@@ -39,7 +42,7 @@ export function KickoffStatus({ date, kickoff, short = false, tone = true, class
   // A saved copy never says a game is on now: that was so when it was saved (ADR 0096).
   const text = state ? (saved && state.kind === "in-progress" ? (short ? "Under way" : "Under way when saved") : short ? state.short : state.label) : kickoff ? kickoffTime(kickoff) : "Time not listed";
   return (
-    <span data-kickoff-status={state?.kind ?? "pending"} className={`${tone ? (state ? TONE[state.kind] : "text-ink") : ""} ${className}`}>
+    <span data-kickoff-status={state?.kind ?? "pending"} className={`${tone ? (state ? (saved && state.kind === "in-progress" ? SAVED_TONE : TONE[state.kind]) : "text-ink") : ""} ${className}`}>
       {text}
     </span>
   );

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { skipReason, upcoming } from "./upcoming";
 
 // Round B, the playoff run: a bracket page per division with each game's status, and "Path to the State Championship" on a team's page.
 // Scores are the robot's; a final is confirmed (ADR 0040), and no row writes a winner word. The data changes every week, so
@@ -78,15 +79,26 @@ for (const b of BRACKETS) {
 }
 
 test("a bracket game not yet played shows its projected margin and chance to win; the next pairing too, where it is known", async ({ page }) => {
-  await page.goto("/playoffs/bracket/tapps-division-i");
+  // Which bracket still has a game to play follows the season's data: a decided State Championship has none (e2e/upcoming.ts).
+  const { projectedGames } = await upcoming();
+  if (!projectedGames) return test.skip(true, skipReason("no playoff game is still to play with a projection"));
+  await page.goto("/playoffs");
+  const paths = await page.locator('a[href^="/playoffs/bracket/"]').evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute("href")!))]);
   const projected = page.getByText(/^Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win$/);
-  expect(await projected.count()).toBeGreaterThan(0);
-  // "Likely next pairings" shows while two semifinals (or a region's two area games) are still to play.
-  if (await page.locator("#pairings").count()) {
-    const pairing = page.locator("#pairings ~ ul li").first();
-    await expect(pairing).toContainText(/ vs /);
-    await expect(pairing).toContainText(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win/);
+  let found = false;
+  for (const path of paths) {
+    await page.goto(path);
+    if (!(await projected.count())) continue;
+    found = true;
+    // "Likely next pairings" shows while two semifinals (or a region's two area games) are still to play.
+    if (await page.locator("#pairings").count()) {
+      const pairing = page.locator("#pairings ~ ul li").first();
+      await expect(pairing).toContainText(/ vs /);
+      await expect(pairing).toContainText(/Projected: .+ by (\d+|45\+) · (>99|<1|\d+)% chance to win/);
+    }
+    break;
   }
+  expect(found, `no bracket of ${paths.length} shows a projection, though ${projectedGames} game(s) still to play have one`).toBe(true);
 });
 
 test("the league page links each bracket to its own page, and a past season's page does not", async ({ page }) => {

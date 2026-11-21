@@ -18,11 +18,21 @@ test("playoffs: a bracket with several rounds has a jump bar, and each link land
 
 test("playoffs: state title chances are linked, ranked rows with the percent read out, in the bracket they belong to", async ({ page }) => {
   await page.goto("/playoffs/tapps");
-  const chances = page.getByRole("region", { name: "TAPPS Division I", exact: true }).getByRole("group", { name: "State title chances" });
-  const rows = chances.getByRole("listitem");
+  // Chances show only while a State Championship is still to play (lib/title-chances.ts), so which TAPPS bracket has them
+  // follows the season's data. Once every one is decided there are none, and the page says who won instead.
+  const chances = page.getByRole("group", { name: "State title chances" });
+  if ((await chances.count()) === 0) {
+    const regions = page.getByRole("region").filter({ hasText: /State Champion\b/ });
+    expect(await regions.count(), "no chances and no decided bracket").toBeGreaterThan(0);
+    await expect(page.getByText(/\d{4} State Champion$/).first()).toBeVisible();
+    return;
+  }
+  const rows = chances.first().getByRole("listitem");
   expect(await rows.count()).toBeGreaterThan(1);
   await expect(rows.first().getByRole("link")).toHaveAttribute("href", /^\/programs\/.+/);
   await expect(rows.first()).toContainText(/\d+%|<1%|>99%/);
+  // The list sits inside a bracket's own region, whose name is a TAPPS division.
+  await expect(page.getByRole("region", { name: /^TAPPS Division/ }).getByRole("group", { name: "State title chances" }).first()).toBeVisible();
 });
 
 test("playoffs: a projection reads on its own line, the words rating, projected margin and chance to win only", async ({ page }) => {
