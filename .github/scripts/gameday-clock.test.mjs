@@ -5,13 +5,26 @@ import { catchUpTick, centralWeekday, CLOCK_WORKFLOW, decide, decideMorning, git
 const at = (iso) => Date.parse(iso);
 const run = (id, event, createdIso, status = "completed") => ({ id, event, status, created_at: createdIso });
 
-test("the window is 18:00 to 06:10 UTC, in November and December only", () => {
-  for (const t of ["2026-11-13T18:00:00Z", "2026-11-13T23:59:00Z", "2026-11-14T00:03:00Z", "2026-11-14T06:10:59Z", "2026-12-31T23:53:00Z", "2026-12-01T05:00:00Z", "2026-11-01T00:03:00Z"]) {
+test("the window is 16:30 to 06:10 UTC, in November and December only", () => {
+  for (const t of ["2026-11-13T16:30:00Z", "2026-11-14T17:03:00Z", "2026-11-13T18:00:00Z", "2026-11-13T23:59:00Z", "2026-11-14T00:03:00Z", "2026-11-14T06:10:59Z", "2026-12-31T23:53:00Z", "2026-12-01T05:00:00Z", "2026-11-01T00:03:00Z"]) {
     assert.ok(inWindow(at(t)), t);
   }
-  for (const t of ["2026-11-13T17:59:00Z", "2026-11-14T06:11:00Z", "2026-11-14T12:00:00Z", "2026-10-31T23:00:00Z", "2027-01-01T00:03:00Z", "2026-08-28T23:00:00Z"]) {
+  for (const t of ["2026-11-13T16:29:00Z", "2026-11-13T15:03:00Z", "2026-11-13T14:59:00Z", "2026-11-14T06:11:00Z", "2026-11-14T12:00:00Z", "2026-10-31T23:00:00Z", "2027-01-01T00:03:00Z", "2026-08-28T23:00:00Z"]) {
     assert.ok(!inWindow(at(t)), t);
   }
+});
+
+test("an 11 AM Central kickoff (17:00 UTC) gets a read before it, and the window leaves the morning ticks and the 15:03 catch-up alone", () => {
+  // The first read is the 16:33 tick, 27 minutes before kickoff.
+  assert.ok(inWindow(at("2026-11-21T16:33:00Z")));
+  assert.equal(decide(at("2026-11-21T16:33:00Z"), []).dispatch, true);
+  // The window never covers a morning tick or the catch-up, so no tick is decided twice.
+  for (let m = 13 * 60; m < 16 * 60 + 30; m += 1) {
+    const t = at("2026-11-21T00:00:00Z") + m * 60_000;
+    assert.ok(!inWindow(t), String(m));
+  }
+  assert.ok(morningTick(at("2026-11-21T13:03:00Z")) && !inWindow(at("2026-11-21T13:03:00Z")));
+  assert.ok(catchUpTick(at("2026-11-21T15:03:00Z")) && !inWindow(at("2026-11-21T15:03:00Z")));
 });
 
 test("ticks fall at :03, :13 ... :53, always after now", () => {
@@ -109,16 +122,16 @@ function fake({ startIso, runs = () => [], dispatchFails = () => false, cancelFa
 const NEXT = (minutes, retry = "false", atIso) => ({ workflow: CLOCK_WORKFLOW, inputs: { minutes, retry }, at: atIso });
 
 test("a run queues the next clock run first, then starts a read every 10 minutes in the hours", async () => {
-  const f = fake({ startIso: "2026-11-13T17:40:10Z" });
+  const f = fake({ startIso: "2026-11-13T16:10:10Z" });
   const r = await runClock({ minutes: 60, playoffsText: null, ...f });
   // The next run is queued before the first tick, so it starts however this one ends.
-  assert.deepEqual(f.calls[0], NEXT("60", "false", "2026-11-13T17:40:10.000Z"));
+  assert.deepEqual(f.calls[0], NEXT("60", "false", "2026-11-13T16:10:10.000Z"));
   const reads = f.calls.filter((c) => c.workflow === READ_WORKFLOW);
-  assert.deepEqual(reads.map((c) => c.at), ["2026-11-13T18:03:00.000Z", "2026-11-13T18:13:00.000Z", "2026-11-13T18:23:00.000Z", "2026-11-13T18:33:00.000Z"]);
+  assert.deepEqual(reads.map((c) => c.at), ["2026-11-13T16:33:00.000Z", "2026-11-13T16:43:00.000Z", "2026-11-13T16:53:00.000Z", "2026-11-13T17:03:00.000Z"]);
   assert.ok(reads.every((c) => c.inputs.tonight === "true"));
   assert.equal(f.calls.filter((c) => c.workflow === CLOCK_WORKFLOW).length, 1);
   assert.deepEqual(r, { failed: false, handedOn: true, ticks: 6 });
-  // The two ticks before 18:00 log once, as outside the hours.
+  // The two ticks before 16:30 log once, as outside the hours.
   assert.equal(f.lines.filter((l) => /outside/.test(l)).length, 1);
 });
 

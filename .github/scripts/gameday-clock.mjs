@@ -44,12 +44,18 @@ export const isStuck = (r, now) => (now - Date.parse(r.created_at)) / MINUTE > (
 /** November and December, by the UTC month, as Results watch's game-day cron lines count them. */
 export const seasonMonth = (now) => [10, 11].includes(new Date(now).getUTCMonth());
 
-/** Inside a game night's read hours: 18:00 to 06:10 UTC (noon to past midnight Central), in November and December. */
+/** The read hours start at 16:30 UTC (10:30 AM Central, CST): half an hour before the earliest kickoff in the season's game details,
+ * 11 AM Central (17:00 UTC, a Saturday), so that game's first read and kickoff alert are not an hour late. The morning ticks
+ * (13:00 to 14:59 UTC) and the 15:03 catch-up come before it and never overlap it. They end at 06:10 UTC (past midnight Central). */
+export const WINDOW_FROM = 16 * 60 + 30;
+export const WINDOW_UNTIL = 6 * 60 + 10;
+
+/** Inside a game day's read hours: 16:30 to 06:10 UTC (10:30 AM to past midnight Central), in November and December. */
 export function inWindow(now) {
   if (!seasonMonth(now)) return false;
   const d = new Date(now);
   const minutes = d.getUTCHours() * 60 + d.getUTCMinutes();
-  return minutes >= 18 * 60 || minutes <= 6 * 60 + 10;
+  return minutes >= WINDOW_FROM || minutes <= WINDOW_UNTIL;
 }
 
 /** The daytime catch-up (ADR 0030): one tick between 15:00 and 15:09 UTC (9 AM Central), in November and December. Its read
@@ -130,7 +136,7 @@ function busyVerdict(now, runs, what) {
  * @returns {{ dispatch: boolean, line: string }}
  */
 export function decide(now, runs) {
-  if (!inWindow(now) && !catchUpTick(now)) return { dispatch: false, line: "outside the game-night hours (18:00 to 06:10 UTC, Nov and Dec) and the daytime catch-up (15:00 UTC): nothing to start" };
+  if (!inWindow(now) && !catchUpTick(now)) return { dispatch: false, line: "outside the game-day hours (16:30 to 06:10 UTC, Nov and Dec) and the daytime catch-up (15:00 UTC): nothing to start" };
   const ago = (r) => (now - Date.parse(r.created_at)) / MINUTE;
   const busy = busyVerdict(now, runs, "read");
   if (busy) return busy;
