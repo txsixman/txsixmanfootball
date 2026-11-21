@@ -483,9 +483,11 @@ jobs:
   # Did the new scores reach the live site? Report only: waits up to 5 minutes for production's /build.json to show the
   # commit just pushed and says "Deployed" or "Not yet" in the run summary; it never fails the run. The hourly Site
   # freshness check (site-freshness.yml) is the one that fails and emails when a deploy stays missing.
+  # Not on a game-day read: this wait (up to 5 minutes, every new score) kept the run, and so the next read behind
+  # `concurrency`, waiting, and the hourly check covers it.
   deployed:
-    needs: maxpreps
-    if: ${{ !cancelled() && needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true' }}
+    needs: [due, maxpreps]
+    if: ${{ !cancelled() && needs.maxpreps.outputs.sha != '' && vars.LIVE == 'true' && needs.due.outputs.mode != 'game-day' }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     continue-on-error: true
