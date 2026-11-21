@@ -39,6 +39,7 @@ function RoundCard({ box, live, team, dim, onTeam }: { box: Box; live: LiveView 
       <div className="border-t border-line px-2 py-1 text-[14px] leading-5">
         <p className={footClass(box, live)}>{lines[0]}</p>
         {live && lines[1] && <p className="text-muted">{lines[1]}</p>}
+        {box.neutral && <p className="text-muted">Neutral site</p>}
         {!played && <p className="text-muted">{box.site ? `Site: ${box.site}` : "Site not listed yet"}</p>}
       </div>
       {box.href && (

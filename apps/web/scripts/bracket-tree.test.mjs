@@ -130,12 +130,17 @@ test("a box says which team is home and which is away, or a neutral site", () =>
   assert.equal(isNeutral(2025, 2026, {}), true);
   assert.equal(isNeutral(2026, 2026, { trueNeutral: true }), true);
   assert.equal(isNeutral(2026, 2026, {}), false);
-  // The word under a team: its role, "Neutral site" on both teams of a neutral game, nothing under a winner to come or a bye.
+  // The word beside a team's score: its role; nothing at a neutral site (the box's footer says so), under a winner to come or a bye.
   assert.equal(sideTag({}, { key: "aquilla", role: "Home" }), "Home");
-  assert.equal(sideTag({ neutral: true }, { key: "aquilla" }), "Neutral site");
-  assert.equal(sideTag({ neutral: true }, { key: "medina" }), "Neutral site");
+  assert.equal(sideTag({ neutral: true }, { key: "aquilla", role: "Home" }), undefined);
   assert.equal(sideTag({}, { role: undefined }), undefined);
-  assert.equal(sideTag({ neutral: true }, {}), undefined);
+  assert.equal(sideTag({}, { role: "Home" }), undefined);
+  // A neutral site says so on the line a kickoff takes, as much of it as fits; a final with no kickoff says it alone.
+  assert.deepEqual(boxLines({ state: "final", neutral: true }, 19), ["Final", "Neutral site"]);
+  assert.deepEqual(boxLines({ state: "upcoming", neutral: true, time: "2:00 PM CT" }, 25), ["Not played yet", "2:00 PM CT · Neutral site"]);
+  assert.deepEqual(boxLines({ state: "upcoming", neutral: true, time: "2:00 PM CT" }, 20), ["Not played yet", "2:00 PM CT · Neutral"]);
+  assert.deepEqual(boxLines({ state: "upcoming", neutral: true, time: "2:00 PM CT" }, 19), ["Not played yet", "2:00 PM CT"]);
+  assert.deepEqual(boxLines({ state: "upcoming", time: "2:00 PM CT" }, 19), ["Not played yet", "2:00 PM CT"]);
 });
 
 test("a kickoff in a box carries CT, as everywhere else on the site", () => {

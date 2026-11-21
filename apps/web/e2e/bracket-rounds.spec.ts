@@ -126,11 +126,14 @@ test.describe("round tabs", () => {
       if (state === "final") expect(text).toMatch(/Final|Forfeit/i);
       expect(text, "a kickoff time carries CT").not.toMatch(/\d{1,2}:\d{2} [AP]M(?! CT)/);
       // A game listed at a field of its own says which team is Home and which is Away, as its game page does; a true neutral
-      // site (a State Championship) says so on both. All from the page's own data.
+      // site (a State Championship) says so once. All from the page's own data.
       const game = b.tree.find((n) => n.id === id)?.game;
       if (game) {
         const tags = (await card.locator(".bx-tag").allInnerTexts()).map((t) => t.toLowerCase());
-        if (game.trueNeutral) expect(tags, text).toEqual(["neutral site", "neutral site"]);
+        if (game.trueNeutral) {
+          expect(tags, text).toEqual([]);
+          expect(text, "a neutral site says so").toMatch(/Neutral site/i);
+        }
         else {
           expect(tags.sort(), text).toEqual(["away", "home"]);
           await expect(card.locator(`button[title="${game.home}"]`), text).toContainText(/home/i);

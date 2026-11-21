@@ -20,14 +20,17 @@ export function SideRow({ side, other, live, lit, onTeam, tag }: { side: BoxSide
   const lost = other.won && !side.won;
   const text = (
     <>
-      {/* The name and, under it, Home or Away, as one block, so a name of two lines still leaves room for the word. */}
-      <span className="min-w-0 flex-1">
-        <span className={`block ${side.won ? "bx-won" : lost ? "bx-lost" : "bx-name"}`}>{side.text}</span>
-        {tag && <span className="bx-tag">{tag}</span>}
-      </span>
-      {right != null && (
-        <span className={typeof right === "string" ? "bx-chance" : live != null ? "bx-live" : "bx-score"}>
-          {right}
+      <span className={side.won ? "bx-won" : lost ? "bx-lost" : "bx-name"}>{side.text}</span>
+      {/* At the right: the score or chance, and under it Home or Away (12px uppercase, an eyebrow label). Beside the name, so a
+          name of three lines is as tall as it was. */}
+      {(right != null || tag) && (
+        <span className="flex shrink-0 flex-col items-end">
+          {right != null && (
+            <span className={typeof right === "string" ? "bx-chance" : live != null ? "bx-live" : "bx-score"}>
+              {right}
+            </span>
+          )}
+          {tag && <span className="bx-tag tracking-wider">{tag}</span>}
         </span>
       )}
     </>

@@ -57,18 +57,24 @@ export async function treeImage(data: TreeData, kind: ImageKind): Promise<ImageR
   const side = (s: BoxSide, other: BoxSide, box: Box) => {
     const right = s.score ?? s.chance;
     const lost = other.won && !s.won;
-    // The full-size picture says Home or Away under a team (or Neutral site), as the page does; the share size has no room.
+    // The full-size picture says Home or Away under a team's score, as the page does; the share size has no room.
     const tag = geo.foot > 0 ? sideTag(box, s) : undefined;
     // The room the name has: the box less its padding and whatever stands at the right.
-    const room = geo.boxW - 12 - (right == null ? 0 : lineWidth(String(right), typeof right === "string" ? text - 1 : text + 2) + 4);
-    const name = fitName(s.text, room, geo.team - (tag ? small + 1 : 0), s.key ? text : text - 1);
+    const tagSize = small - 1;
+    const wide = Math.max(right == null ? 0 : lineWidth(String(right), typeof right === "string" ? text - 1 : text + 2), tag ? lineWidth(tag, tagSize) + 4 : 0);
+    const room = geo.boxW - 12 - (wide ? wide + 4 : 0);
+    const name = fitName(s.text, room, geo.team, s.key ? text : text - 1);
     return (
       <div style={{ display: "flex", alignItems: "center", height: geo.team, padding: "0 6px", color: s.won ? INK : lost || !s.key ? MUTED : INK, fontWeight: s.won ? 600 : 400 }}>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, fontSize: name.size, lineHeight: 1.05 }}>
           {name.lines.map((l, i) => <div key={i} style={{ display: "flex" }}>{l}</div>)}
-          {tag && <div style={{ display: "flex", fontSize: small - 1, fontWeight: 400, color: MUTED, textTransform: "uppercase", letterSpacing: 1 }}>{tag}</div>}
         </div>
-        {right != null && <div style={{ display: "flex", marginLeft: 4, fontWeight: 600, color: typeof right === "string" ? NAVY : s.won ? INK : MUTED, fontSize: typeof right === "string" ? text - 1 : text + 2 }}>{String(right)}</div>}
+        {(right != null || tag) && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginLeft: 4 }}>
+            {right != null && <div style={{ display: "flex", fontWeight: 600, color: typeof right === "string" ? NAVY : s.won ? INK : MUTED, fontSize: typeof right === "string" ? text - 1 : text + 2 }}>{String(right)}</div>}
+            {tag && <div style={{ display: "flex", fontSize: tagSize, fontWeight: 400, color: MUTED, textTransform: "uppercase", letterSpacing: 1 }}>{tag}</div>}
+          </div>
+        )}
       </div>
     );
   };
