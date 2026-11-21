@@ -11,3 +11,14 @@ test("/.well-known/security.txt is plain text naming a contact, a canonical addr
   expect(body).toMatch(/^Expires: \d{4}-\d{2}-\d{2}T/m);
   expect(body).toContain("Canonical: https://txsixmanfootball.com/.well-known/security.txt");
 });
+
+test("a game address with broken percent-encoding is a 400, not a 500, on both game routes", async ({ request }) => {
+  for (const url of ["/api/games/%ff/comments", "/api/games/%E0%A4%A/comments", "/api/games/%ff/score-report"]) {
+    const res = await request.get(url, { failOnStatusCode: false });
+    expect(res.status(), url).toBe(400);
+    expect(res.headers()["cache-control"], url).toMatch(/no-store/);
+  }
+  // A well-formed address still reaches the route (its list, or its own answer when posts are off): never 400.
+  const ok = await request.get("/api/games/2026-09-04-guthrie-at-jayton/comments", { failOnStatusCode: false });
+  expect(ok.status()).not.toBe(400);
+});
