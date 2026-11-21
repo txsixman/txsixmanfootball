@@ -147,7 +147,7 @@ test("the week-before projection shows once both teams had four rated games, and
   // Beside what happened (ADR 0044): "Projected: … · Final: <winner> by <n>".
   await expect(projection.locator("[data-projected]")).toHaveText(/^Projected: .+ chance to win · (Final: .+ by \d+|Final: tied|Disputed)$/);
   await expect(page.locator("[data-projected]")).toHaveCount(1); // once on the page, not again in the facts
-  await expect(projection).toContainText(/finished (about as projected|\d+ points (better|worse) than the projected margin)/);
+  await expect(projection).toContainText(/finished (about as projected|\d+ points? (better|worse) than the projected margin)/);
   await expect(projection).toContainText("A projection, not a result.");
   const going = page.getByRole("region", { name: "Going in" });
   await expect(going.getByRole("columnheader")).toHaveText(["Team", "Record", "Rating"]);

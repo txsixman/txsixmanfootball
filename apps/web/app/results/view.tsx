@@ -9,6 +9,7 @@ import { pregameShown } from "@/lib/pregame";
 import { projectionText } from "@/lib/projection";
 import { weekNeighbours } from "@/lib/neighbours";
 import { loadResultsText } from "@/lib/results-text-load";
+import { plural } from "@/lib/plural";
 import { loadWeeks, resultSeasons, weekLabel, type Week } from "@/lib/weeks";
 import { Button } from "@/components/ui/button";
 import { TabNav } from "../tab-nav";
@@ -77,7 +78,7 @@ export async function ResultsWeek({ org, season, week }: { org: Org; season: num
     <>
     {/* Printing (globals.css): only the text block below, so the page's own list, tabs, header and footer stay off the paper. */}
     <section aria-labelledby="results" {...(text ? { "data-print-hide": "" } : {})}>
-      <PageHeader id="results" eyebrow={`${org.label} · ${season} season · Week ${week} · ${shown.games.length} games`} title="Results" />
+      <PageHeader id="results" eyebrow={`${org.label} · ${season} season · Week ${week} · ${plural(shown.games.length, "game")}`} title="Results" />
       {/* Switching organization keeps the week; an organization with no game that season opens on its latest. */}
       <TabNav
         label="Organization"

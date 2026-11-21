@@ -51,6 +51,7 @@ import { CalendarFeedLinks } from "../../add-to-calendar";
 import { SITE_NAME } from "@/lib/site";
 import { HistoryChart } from "../history-chart";
 import { teamHistory } from "@/lib/team-history";
+import { plural } from "@/lib/plural";
 import { SeasonRatings } from "../season-ratings";
 import { CrestSlot, EdgeToEdge } from "../../ui";
 import { programTitle } from "@/lib/titles";
@@ -646,7 +647,7 @@ export default async function ProgramPage({ params }: Props) {
                     </span>
                   </span>
                   <span className="block pl-12 text-[13px] text-muted">
-                    {Math.round(Math.abs(m.surprise))} points {m.surprise > 0 ? "better" : "worse"} than projected
+                    {plural(Math.round(Math.abs(m.surprise)), "point")} {m.surprise > 0 ? "better" : "worse"} than projected
                   </span>
                 </li>
               ))}
@@ -657,7 +658,7 @@ export default async function ProgramPage({ params }: Props) {
         {totals && (
           <Section id="all-time" title="All-time" accent={accent}>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 px-3 pt-3">
-              <Fact label={`Record since ${totals.first}`} sub={`${Math.round(winShare(totals.record) * 100)}% of ${totals.record.won + totals.record.lost + totals.record.tied} games won`}>
+              <Fact label={`Record since ${totals.first}`} sub={`${Math.round(winShare(totals.record) * 100)}% of ${plural(totals.record.won + totals.record.lost + totals.record.tied, "game")} won`}>
                 {record(totals.record)}
               </Fact>
               <Fact label="Playoff seasons" sub={`of ${totals.seasons} ${totals.seasons === 1 ? "season" : "seasons"}`}>
