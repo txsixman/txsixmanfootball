@@ -1,0 +1,163 @@
+# The weekly fan-database backup (ADR 0110, docs/fan-backup.md). The Supabase project is on the free plan, which keeps no backups,
+# so this dumps what a restore needs for fans (the fan-owned tables of `public`, listed in .github/scripts/fan-backup.mjs and checked
+# against packages/db/migrations on every run, plus auth.users and auth.identities) as `pg_dump --data-only`, ENCRYPTS it with age to
+# the public key in the repo variable FAN_BACKUP_AGE_RECIPIENT while it is still in the pipe (the plaintext never touches a disk, an
+# artifact or the log), and commits it to txsixman/data-private as backups/fan/<UTC date>.sql.age, keeping the newest 8. The schema
+# is not dumped: a restore runs the migrations first.
+#
+# When it runs: Sundays 4:41 AM Central (10:41 UTC; 5:41 in daylight time). GitHub's own `schedule` has never fired reliably in this
+# repo (ADR 0024), so it is gated by the repo variable LIVE like the other weekly jobs, and a run started by hand (Actions > Fan
+# backup > Run workflow) makes the same backup: untick `dry_run`. By hand, `dry_run` (the default) dumps and encrypts on the runner
+# and reports counts and size, then commits nothing. Check the Sunday run exists; if a week passes with none, start it by hand.
+#
+# It writes NOTHING, says so in the run summary, and FAILS (so the robot-alert issue names it) until all of these are set:
+#   repo variable FAN_BACKUP_AGE_RECIPIENT (the age PUBLIC key, age1...; the owner makes the key pair, docs/fan-backup.md)
+#   repo secrets SUPABASE_DB_PASSWORD and DATA_PRIVATE_TOKEN (both already set for supabase.yml and results-watch.yml)
+# Logs and the summary hold table names and row counts only: never a row, an email address, a name or a key. It connects as the
+# project's postgres role, because Supabase's auth schema is not readable by a lesser role; it only reads.
+name: Fan backup
+
+on:
+  schedule:
+    - cron: "41 10 * * 0"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dump and encrypt on the runner, report counts and size, commit nothing"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    if: ${{ github.event_name != 'schedule' || vars.LIVE == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # One backup at a time; a newer one waits rather than cancelling one half pushed.
+    concurrency:
+      group: fan-backup
+      cancel-in-progress: false
+    env:
+      # Project vhgnaihnyjdnaaergtcl, through the IPv4 session pooler (the same as supabase.yml). Not secrets.
+      PGHOST: aws-0-us-east-1.pooler.supabase.com
+      PGUSER: postgres.vhgnaihnyjdnaaergtcl
+      PGSSLMODE: verify-full
+      PGSSLROOTCERT: packages/db/supabase-ca.crt
+      PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      FAN_BACKUP_AGE_RECIPIENT: ${{ vars.FAN_BACKUP_AGE_RECIPIENT }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      # Refuses, loudly, rather than write an unencrypted or no backup. Nothing is dumped before this passes.
+      - name: Check the backup is set up
+        env:
+          DATA_PRIVATE_TOKEN: ${{ secrets.DATA_PRIVATE_TOKEN }}
+        run: |
+          missing=()
+          [ -n "$FAN_BACKUP_AGE_RECIPIENT" ] || missing+=("the repo variable FAN_BACKUP_AGE_RECIPIENT (the age public key; see docs/fan-backup.md)")
+          [ -n "$PGPASSWORD" ] || missing+=("the repo secret SUPABASE_DB_PASSWORD")
+          [ -n "$DATA_PRIVATE_TOKEN" ] || missing+=("the repo secret DATA_PRIVATE_TOKEN")
+          if [ -n "$FAN_BACKUP_AGE_RECIPIENT" ] && ! [[ "$FAN_BACKUP_AGE_RECIPIENT" =~ ^age1[a-z0-9]{58}$ ]]; then
+            missing+=("a FAN_BACKUP_AGE_RECIPIENT that is an age public key (it starts age1 and is 62 characters; never paste the private key AGE-SECRET-KEY-...)")
+          fi
+          if [ "${#missing[@]}" -gt 0 ]; then
+            {
+              echo "### Fan backup NOT made"
+              echo "Nothing was written. Missing:"
+              for m in "${missing[@]}"; do echo "- $m"; done
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Fan backup not made: ${#missing[@]} setting(s) missing or wrong; see the run summary."
+            exit 1
+          fi
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # The dump's table list comes from the migrations: this fails when a migration made a table nobody classified, or the list
+      # names a table no migration makes (.github/scripts/fan-backup.mjs).
+      - name: The tables a restore needs
+        run: |
+          node .github/scripts/fan-backup.mjs tables > "$RUNNER_TEMP/tables.txt"
+          node .github/scripts/fan-backup.mjs counts-sql > "$RUNNER_TEMP/counts.sql"
+          echo "Tables to dump: $(grep -c . "$RUNNER_TEMP/tables.txt") (auth, the fan tables and their serial counters)"
+      # pg_dump refuses a server newer than itself, so it is the server's own major version; age is the distro's.
+      - name: Install age and the matching Postgres client
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age postgresql-common > /dev/null
+          major=$(psql -XAt -c 'show server_version_num' | cut -c1-2)
+          if [ ! -x "/usr/lib/postgresql/$major/bin/pg_dump" ]; then
+            sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y > /dev/null
+            sudo apt-get install -y -qq "postgresql-client-$major" > /dev/null
+          fi
+          echo "PG_DUMP=/usr/lib/postgresql/$major/bin/pg_dump" >> "$GITHUB_ENV"
+          echo "Server major version $major; age $(age --version)"
+      - name: The private data repo
+        uses: actions/checkout@v7
+        with:
+          repository: txsixman/data-private
+          token: ${{ secrets.DATA_PRIVATE_TOKEN }}
+          path: private
+          # The token is not left in private/.git/config; the commit step hands it to git for that call only.
+          persist-credentials: false
+      # Row counts only. A missing table fails here before anything is dumped.
+      - name: Count the rows
+        run: |
+          set -euo pipefail
+          {
+            echo "### Fan backup"
+            echo "Rows to back up:"
+            psql -X -v ON_ERROR_STOP=1 -At -F ': ' -f "$RUNNER_TEMP/counts.sql" | sed 's/^/- /'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      # Dump straight into age: no plaintext file exists, so nothing can be uploaded, printed or left behind. pipefail fails the step
+      # if pg_dump does; --strict-names fails it if a named table is not there.
+      - name: Dump and encrypt
+        run: |
+          set -euo pipefail
+          args=()
+          while read -r t; do args+=(-t "$t"); done < "$RUNNER_TEMP/tables.txt"
+          out="$RUNNER_TEMP/fan.sql.age"
+          "$PG_DUMP" --data-only --no-owner --no-privileges --strict-names "${args[@]}" | age -r "$FAN_BACKUP_AGE_RECIPIENT" -o "$out"
+          [ "$(head -c 21 "$out")" = "age-encryption.org/v1" ] || { echo "::error::the backup is not an age file"; exit 1; }
+          bytes=$(wc -c < "$out")
+          [ "$bytes" -gt 1000 ] || { echo "::error::the backup is only $bytes bytes; something is missing"; exit 1; }
+          echo "Encrypted backup: $bytes bytes." | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Commit it to the private repo
+        env:
+          # Used only by this script's git fetch and push, as a header for those calls; never written to private/.git/config.
+          DATA_PRIVATE_TOKEN: ${{ secrets.DATA_PRIVATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          args=("$RUNNER_TEMP/fan.sql.age")
+          if [ "$DRY_RUN" = true ]; then
+            echo "Dry run: nothing is committed." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            args+=(--write)
+          fi
+          node .github/scripts/fan-backup.mjs commit private "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # A failed or cancelled run (a timeout counts), including a refusal for a missing setting, goes to the one open robot-alert issue
+  # (ADR 0027), which emails the owner.
+  notify:
+    needs: backup
+    if: ${{ always() && (needs.backup.result == 'failure' || needs.backup.result == 'cancelled') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Post the failure to the robot-alert issue
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/ops-alert.mjs
