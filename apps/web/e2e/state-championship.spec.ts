@@ -51,6 +51,15 @@ test("after the game: the champion, score, runner-up and the full bracket", asyn
   await expect(page.locator("body")).not.toContainText(/maxpreps|odds|underdog|spread|upset/i);
 });
 
+test("no State Championship names one team on both sides, and a game link needs two known teams", async () => {
+  for (const c of await inWeb(() => stateChampionships(2026))) {
+    const [a, b] = c.sides;
+    if (a.team && b.team) expect(a.team, `${c.slug}: two different teams`).not.toBe(b.team);
+    else expect(a.text, `${c.slug}: a waiting side reads its own words`).not.toBe(b.text);
+    if (c.gameHref && !c.final && c.scores == null) expect(a.team && b.team, `${c.slug}: a game link only when both teams are known`).toBeTruthy();
+  }
+});
+
 test("before the game: both teams, the kickoff, the site with Directions and a projection", async ({ page }) => {
   const c = await entry("tapps-division-i");
   const res = await page.goto("/championships/2026/tapps-division-i");
