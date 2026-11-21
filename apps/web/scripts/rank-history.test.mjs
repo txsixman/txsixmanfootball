@@ -1,7 +1,7 @@
 // A team's season week by week and the biggest movers (lib/rank-history.ts, ADR 0091).   node --test apps/web/scripts/
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { biggestMovers, historySummary, rankChart, rankMatrix } from "../lib/rank-history.ts";
+import { biggestMovers, historySummary, rankChart, rankMatrix, weekLabel } from "../lib/rank-history.ts";
 
 const team = (name, trend, rated_trend) => ({ team: name, trend, rated_trend });
 const table = {
@@ -32,9 +32,17 @@ test("the chart's text alternative gives the first, last and best, for rank and 
   ];
   assert.equal(
     historySummary(points, "UIL"),
-    "Rank in UIL from #9 in the week ending Sep 20 to #6 in the week ending Oct 4; best #4. Rating from +5.0 in the week ending Sep 13 to +15.0 in the week ending Oct 4; highest +20.0. Zero is an average team.",
+    "Rank in UIL from #9 in the week of Sep 14 to #6 in the week of Sep 28; best #4. Rating from +5.0 in the week of Sep 7 to +15.0 in the week of Sep 28; highest +20.0. Zero is an average team.",
   );
+  // A week is named by its Monday, never as "ending" on a Sunday that may not have come yet (a week still being played).
+  assert.doesNotMatch(historySummary(points, "UIL"), /ending/);
   assert.match(historySummary(points.map((p) => ({ ...p, rank: null })), "UIL"), /^Not ranked in UIL in any of these weeks\. Rating from/);
+});
+
+test("a week is labelled by its Monday, across a month or year change", () => {
+  assert.equal(weekLabel("2026-11-22"), "Nov 16"); // the Sunday after Nov 21: the week of Nov 16
+  assert.equal(weekLabel("2026-11-01"), "Oct 26");
+  assert.equal(weekLabel("2027-01-03"), "Dec 28");
 });
 
 test("rankChart puts 1 at the top, breaks the line where a week has no rank, and pads the axis", () => {

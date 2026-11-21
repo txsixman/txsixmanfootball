@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { loadAlignments, programFor } from "@/lib/alignments";
 import { leadersDescription } from "@/lib/descriptions";
 import { EMPTY, loadIdentities } from "@/lib/identity";
+import { MERCY_RULE } from "@/lib/mercy";
 import { type Boards, type GameEntry, HIGH_SCORE, LEADER_VIEWS, type LeaderView, leadersHref, MERCY_MARGIN, SEASON_MIN_GAMES, type TeamEntry, topRows } from "@/lib/leaders";
 import { leaderPages, leaderSeasons, loadLeaders } from "@/lib/leaders-load";
 import { LEADER_MIN_GAMES } from "@/lib/season-leaders";
@@ -225,7 +226,7 @@ export async function LeadersView({ season, view }: { season: number; view: Lead
       <TeamBoard
         id="mercy"
         title={`Wins by ${MERCY_MARGIN} or more`}
-        note={`Games a team led by ${MERCY_MARGIN} points or more at the end, where the 45-point rule stops the game.`}
+        note={`Games a team led by ${MERCY_MARGIN} points or more at the end, where the ${MERCY_RULE} stops the game.`}
         rows={boards.mercy}
         team={team}
         figure={String}

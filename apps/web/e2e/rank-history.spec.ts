@@ -65,7 +65,7 @@ test("a program page and a season page chart rank and rating by week, with a tex
   for (const [url, name] of [["/programs/gordon", /^\d{4} rank and rating by week$/], ["/programs/gordon/2025", "2025 rank and rating by week"]] as const) {
     await page.goto(url);
     const section = page.getByRole("region", { name });
-    const chart = section.getByRole("img", { name: /^Rank in .+ from #\d+ in the week ending .+ to #\d+ in the week ending .+; best #\d+\. Rating from [+−]?\d+\.\d in the week ending .+ highest [+−]?\d+\.\d\. Zero is an average team\.$/ });
+    const chart = section.getByRole("img", { name: /^Rank in .+ from #\d+ in the week of .+ to #\d+ in the week of .+; best #\d+\. Rating from [+−]?\d+\.\d in the week of .+ highest [+−]?\d+\.\d\. Zero is an average team\.$/ });
     await expect(chart, url).toBeVisible();
     const rows = section.locator("table tbody tr");
     expect(await rows.count(), url).toBeGreaterThanOrEqual(3);

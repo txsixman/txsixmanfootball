@@ -3,6 +3,7 @@ import path from "node:path";
 import { slugify } from "./slug";
 import { FINAL_COLUMNS, FinalRow, NO_FINAL_COLUMNS, NoFinalRow, parseCsv } from "./data-schemas";
 import { memo } from "./memo";
+import { archiveNote } from "./mercy";
 import { recordedFinals } from "./state-championships";
 import { withRecorded } from "./state-finals";
 
@@ -19,7 +20,7 @@ export type Final = {
   runnerUp: string;
   championScore: number | null;
   runnerUpScore: number | null;
-  /** "Mercy Rule 3Q", "OT" and the like, as UIL notes it. */
+  /** "45-point rule, Q3", "OT" and the like: UIL's own wording of a mercy-rule note is rewritten by `archiveNote` (lib/mercy.ts). */
   scoreNote: string;
   notes: string;
 };
@@ -39,11 +40,11 @@ async function loadArchive(): Promise<Final[]> {
   const n = (v: string) => (v === "" ? null : Number(v));
   return parseCsv("data/seed/uil-champions/six-man.csv", text, FINAL_COLUMNS, FinalRow).map(({ row: r }) => ({
     season: Number(r.season), conference: r.conference, division: r.division, champion: r.champion, runnerUp: r.runner_up,
-    championScore: n(r.champion_score), runnerUpScore: n(r.runner_up_score), scoreNote: r.score_note, notes: r.notes,
+    championScore: n(r.champion_score), runnerUpScore: n(r.runner_up_score), scoreNote: archiveNote(r.score_note), notes: r.notes,
   }));
 }
 
-/** "69-22", "69-22 (Mercy Rule 3Q)", or "Forfeit"-style notes when no score was played. */
+/** "69-22", "69-22 (45-point rule, Q3)", or "Forfeit"-style notes when no score was played. */
 export function finalScore(f: Final): string {
   if (f.championScore == null) return f.scoreNote || "—";
   const score = `${f.championScore}-${f.runnerUpScore}`;
