@@ -5,6 +5,7 @@ import { gameDay } from "@/lib/game-day";
 import { kickoffTime } from "@/lib/kickoff";
 import { signed } from "@/lib/signed";
 import { MeetingsList } from "./game-extras";
+import { plural } from "@/lib/plural";
 import { FIRST_SEASON } from "@/lib/season";
 
 // The preview on a game not yet played (/scores/<id>): both teams side by side, each team's last five games, their games against
@@ -224,7 +225,7 @@ export function GamePreviewSection({ preview, detail, projected, programs, noEdg
       {series && total > 0 && (
         <p>
           <Link href={series} prefetch={false} className="inline-flex min-h-11 items-center text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-red">
-            All {total} meetings
+            All {plural(total, "meeting")}
             <span className="sr-only"> of {away.team} and {home.team}</span>
           </Link>
         </p>

@@ -70,7 +70,7 @@ test("all-time numbers: the record, playoff seasons and games, and State Champio
   const all = page.getByRole("region", { name: "All-time" });
   const value = (label: string) => all.locator("dt", { hasText: label }).locator("xpath=following-sibling::dd[1]");
   await expect(value(`Record since ${FIRST_SEASON}`)).toHaveText(/^\d+-\d+(-\d+)?$/);
-  await expect(all.locator("dt", { hasText: `Record since ${FIRST_SEASON}` }).locator("xpath=following-sibling::dd[2]")).toHaveText(/^\d+% of \d+ games won$/);
+  await expect(all.locator("dt", { hasText: `Record since ${FIRST_SEASON}` }).locator("xpath=following-sibling::dd[2]")).toHaveText(/^\d+% of \d+ games? won$/);
   await expect(value("Playoff seasons")).toHaveText(/^\d+$/);
   await expect(value("Playoff games")).toHaveText(/^\d+-\d+(-\d+)?$/);
   expect(Number(await value("State titles").textContent())).toBeGreaterThanOrEqual(4);

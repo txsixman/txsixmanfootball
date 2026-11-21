@@ -8,6 +8,7 @@ import { project, projectionParts } from "@/lib/projection";
 import { ratingText } from "@/lib/signed";
 import { type Meeting, pairKey } from "@/lib/meetings";
 import type { RatingsTable } from "@/lib/ratings";
+import { plural } from "@/lib/plural";
 import { MIN_MEETINGS, seriesHref } from "@/lib/series";
 import { Crest } from "../programs/crest";
 
@@ -146,7 +147,7 @@ export function Matchup({ teams, table, meetings }: { teams: MatchupTeam[]; tabl
                   {/* A pair with a head-to-head page (lib/series.ts): the page lists every meeting, the series in words, the streak and the biggest wins. */}
                   {met.length >= MIN_MEETINGS && (
                     <Link href={seriesHref(ta!.slug, tb!.slug)} prefetch={false} className="mt-1 flex min-h-11 items-center gap-1 text-[15px] font-semibold text-navy underline underline-offset-2">
-                      All {met.length} meetings
+                      All {plural(met.length, "meeting")}
                       <ChevronRight aria-hidden="true" className="size-4" strokeWidth={2.5} />
                     </Link>
                   )}

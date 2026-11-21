@@ -7,6 +7,7 @@ import { projectionText } from "@/lib/projection";
 import { signed } from "@/lib/signed";
 import { MIN_SURPRISE, surpriseOf } from "@/lib/why-moved";
 import { FIRST_SEASON } from "@/lib/season";
+import { plural } from "@/lib/plural";
 
 // What a game page adds to the score for a robot-read game, on its own page and on a current-season playoff game's page.
 // Words are rating, projected margin and chance to win (never spreads, lines or odds), and nothing here names a
@@ -28,7 +29,7 @@ function distance(result: SeasonResult, favorite: string, margin: number): strin
   const [us, them] = favorite === result.home ? [result.homeScore, result.awayScore] : [result.awayScore, result.homeScore];
   const off = surpriseOf(us, them, margin);
   if (Math.abs(off) < MIN_SURPRISE) return `${favorite} finished about as projected.`;
-  return `${favorite} finished ${Math.round(Math.abs(off))} points ${off > 0 ? "better" : "worse"} than the projected margin.`;
+  return `${favorite} finished ${plural(Math.round(Math.abs(off)), "point")} ${off > 0 ? "better" : "worse"} than the projected margin.`;
 }
 
 /** The week-before projection and how far the result was from it. Needs a game that was played. */

@@ -6,6 +6,7 @@ import { loadBrackets } from "@/lib/brackets";
 import { stateChampionshipDescription } from "@/lib/descriptions";
 import { kickoffTime } from "@/lib/kickoff";
 import { gamesOf } from "@/lib/playoff-path";
+import { plural } from "@/lib/plural";
 import { chanceText, projectionParts } from "@/lib/projection";
 import { loadRatings, record } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
@@ -76,7 +77,6 @@ function Result({ g, home }: { g: { homeScore?: number; awayScore?: number; forf
   );
 }
 
-const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
 export default async function StateChampionshipPage({ params }: Props) {
   const c = await find(await params);

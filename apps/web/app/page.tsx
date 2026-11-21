@@ -22,6 +22,7 @@ import { MyTeams } from "./my-teams/block";
 import { HomeBrowse } from "./home-browse";
 import { ChanceList } from "./playoffs/chance-list";
 import { Crest } from "./programs/crest";
+import { aOrAn } from "@/lib/plural";
 import { homeTitle } from "@/lib/titles";
 import { NEW_HERE_SCRIPT } from "@/lib/welcome";
 import { NewHere } from "./welcome/new-here";
@@ -77,7 +78,7 @@ function WeekCard({ review }: { review: WeekReview }) {
           <li className="border-b border-line">
             <Link href={upset.game.href} prefetch={false} className={row}>
               <span>
-                <span className="font-semibold">Top upset, {review.org.label} week {review.week}:</span> {score(upset.game)}. {upset.winner} had a {chanceText(upset.chance)} chance to win.
+                <span className="font-semibold">Top upset, {review.org.label} week {review.week}:</span> {score(upset.game)}. {upset.winner} had {aOrAn(chanceText(upset.chance))} {chanceText(upset.chance)} chance to win.
               </span>
             </Link>
           </li>
