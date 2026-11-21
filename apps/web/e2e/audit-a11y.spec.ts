@@ -115,18 +115,32 @@ test("records: every figure says what it counts to a screen reader", async ({ pa
 });
 
 test("jump links: a section with no games is plain text, not a dead link", async ({ page }) => {
-  await page.goto("/scores");
+  // The buckets (Live, Reported, Final, Later) move games by the clock, so the check holds at any time and on any data: pin the
+  // clock, wait for the board to place every game, then read the bar and the sections in one step.
+  await page.clock.setFixedTime(new Date());
+  await page.goto("/scores", { waitUntil: "networkidle" });
+  await expect(page.locator('[data-kickoff-status="pending"]')).toHaveCount(0);
   const jump = page.getByRole("navigation", { name: "Jump to" });
-  // Every link in the bar goes to a section that is on the page.
-  const hrefs = await jump.getByRole("link").evaluateAll((els) => els.map((a) => a.getAttribute("href")!));
-  expect(hrefs.length).toBeGreaterThan(0);
-  for (const href of hrefs) await expect(page.locator(href), href).toHaveCount(1);
-  // And one with 0 games is not a link at all.
-  await expect(jump.getByText(/^Live/)).toHaveText(/Live\s*0/);
-  await expect(jump.getByRole("link", { name: /^Live/ })).toHaveCount(0);
+  const bar = () =>
+    jump.evaluate((nav) =>
+      [...nav.children].map((el) => {
+        const href = el.getAttribute("href");
+        return { link: el.tagName === "A", text: el.textContent!.trim(), n: Number(el.textContent!.match(/(\d+)\s*$/)?.[1]), sections: href ? document.querySelectorAll(href).length : null };
+      }),
+    );
+  const items = await bar();
+  expect(items.length).toBeGreaterThan(0);
+  for (const i of items) {
+    // A link goes to one section that is on the page, and has games; a count of 0 is not a link at all.
+    if (i.link) {
+      expect(i.sections, i.text).toBe(1);
+      expect(i.n, i.text).toBeGreaterThan(0);
+    } else expect(i.n, i.text).toBe(0);
+  }
   // Searching a name that matches nothing leaves no link at all.
   await page.getByRole("searchbox", { name: "Find a team" }).fill("zzzz");
   await expect(jump.getByRole("link")).toHaveCount(0);
+  for (const i of await bar()) expect(i.n, i.text).toBe(0);
 });
 
 test("standings: the point difference column has a name, and a district link lands clear of the top edge", async ({ page }) => {
