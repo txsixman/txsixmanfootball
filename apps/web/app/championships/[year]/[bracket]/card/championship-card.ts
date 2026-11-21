@@ -3,6 +3,7 @@ import { stateCardTitle } from "@/app/scores/[id]/card/state-card";
 import { loadRatings, record } from "@/lib/ratings";
 import { CURRENT_SEASON } from "@/lib/season";
 import { championshipCardText } from "@/lib/share-text";
+import { versioned } from "@/lib/card-version";
 import { OPEN_GRAPH } from "@/lib/site";
 import { slugify } from "@/lib/slug";
 import { stateChampionships } from "@/lib/state-championships";
@@ -38,6 +39,8 @@ export async function championshipCardOf(year: string, bracket: string) {
 /** The preview tags of a State Championship page: its card, 1200 by 630, with the words it says as its alt text, for Open Graph
  * and for a large Twitter card (ADR 0093). */
 export async function championshipCardTags(year: string, bracket: string) {
-  const images = [{ url: `/championships/${year}/${bracket}/card`, ...cardSize, alt: (await championshipCardOf(year, bracket)).text.alt }];
+  const { c, text } = await championshipCardOf(year, bracket);
+  // Versioned by the card's words and the champion (the opponent is dimmed by it).
+  const images = [{ url: versioned(`/championships/${year}/${bracket}/card`, { text, champion: c.final?.champion }), ...cardSize, alt: text.alt }];
   return { openGraph: { ...OPEN_GRAPH, images }, twitter: { card: "summary_large_image" as const, images } };
 }

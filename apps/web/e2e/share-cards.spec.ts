@@ -96,6 +96,11 @@ async function checkCard(page: import("@playwright/test").Page, request: import(
   await expect(page.locator('meta[property="og:image:height"]'), name).toHaveAttribute("content", String(SIZE.height));
   for (const selector of ['meta[property="og:image:alt"]', 'meta[name="twitter:image:alt"]']) expect(await content(page, selector), `${name} ${selector}`).toMatch(alt);
   await checkSiteFields(page, name);
+  // The card's address carries a version of what it says (lib/card-version.ts), the same one in both preview tags, so a preview
+  // cached before the card changed fetches the new one.
+  const ogImage = await content(page, 'meta[property="og:image"]');
+  expect(ogImage, `${name} og:image version`).toMatch(/\?v=[0-9a-f]{8}$/);
+  expect(await content(page, 'meta[name="twitter:image"]'), `${name} twitter:image version`).toBe(ogImage);
   const image = new URL((await content(page, 'meta[property="og:image"]'))!);
   const res = await request.get(image.pathname + image.search);
   expect(res.status(), name).toBe(200);

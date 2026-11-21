@@ -172,6 +172,8 @@ test("new routes preview their own card", async ({ page, request }) => {
     await page.goto(url);
     const image = await page.locator('meta[property="og:image"]').getAttribute("content");
     expect(image, url).toContain(card);
+    // The two cards drawn from counts carry a version of those counts (lib/card-version.ts); the file-convention ones keep Next's own.
+    if (url.startsWith("/results/") && card.includes("/card/")) expect(image, url).toMatch(/\?v=[0-9a-f]{8}$/);
     expect(await page.locator('meta[property="og:image"]').count(), url).toBe(1);
     const res = await request.get(new URL(image!).pathname + new URL(image!).search);
     expect(res.status(), url).toBe(200);
