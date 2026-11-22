@@ -667,7 +667,7 @@
   },
   {
    "team": "Vanguard College Preparatory-Waco",
-   "rating": 76.0,
+   "rating": 75.9,
    "sd": 7.4,
    "rated": 12,
    "rated_outside": 0,
@@ -686,7 +686,7 @@
     74.3,
     76.9,
     76.9,
-    76.0
+    75.9
    ],
    "rated_trend": [
     4,
@@ -963,7 +963,7 @@
   },
   {
    "team": "Bracken Christian School-Bulverde",
-   "rating": 68.3,
+   "rating": 68.2,
    "sd": 8.6,
    "rated": 12,
    "rated_outside": 0,
@@ -982,7 +982,7 @@
     71.7,
     72.9,
     68.0,
-    68.3
+    68.2
    ],
    "rated_trend": [
     3,
@@ -1148,7 +1148,7 @@
   },
   {
    "team": "Valor Preparatory Academy-Waco",
-   "rating": 63.7,
+   "rating": 63.4,
    "sd": 7.7,
    "rated": 12,
    "rated_outside": 0,
@@ -1167,7 +1167,7 @@
     62.0,
     65.6,
     66.4,
-    63.7
+    63.4
    ],
    "rated_trend": [
     3,
@@ -2184,7 +2184,7 @@
   },
   {
    "team": "Jonesboro",
-   "rating": 39.3,
+   "rating": 39.2,
    "sd": 8.1,
    "rated": 11,
    "rated_outside": 0,
@@ -2203,7 +2203,7 @@
     36.3,
     42.8,
     39.3,
-    39.3
+    39.2
    ],
    "rated_trend": [
     3,
@@ -2850,7 +2850,7 @@
   },
   {
    "team": "Wylie Preparatory Academy HS",
-   "rating": 30.8,
+   "rating": 30.9,
    "sd": 7.7,
    "rated": 11,
    "rated_outside": 0,
@@ -2869,7 +2869,7 @@
     30.0,
     29.5,
     30.1,
-    30.8
+    30.9
    ],
    "rated_trend": [
     3,
@@ -2961,7 +2961,7 @@
   },
   {
    "team": "Heritage Christian Academy-Rockwall",
-   "rating": 28.0,
+   "rating": 28.1,
    "sd": 7.9,
    "rated": 10,
    "rated_outside": 0,
@@ -2980,7 +2980,7 @@
     26.5,
     27.8,
     28.0,
-    28.0
+    28.1
    ],
    "rated_trend": [
     4,
@@ -3146,7 +3146,7 @@
   },
   {
    "team": "Harvest Christian Academy-Keller",
-   "rating": 25.6,
+   "rating": 25.8,
    "sd": 7.1,
    "rated": 12,
    "rated_outside": 0,
@@ -3165,7 +3165,7 @@
     19.7,
     23.1,
     23.7,
-    25.6
+    25.8
    ],
    "rated_trend": [
     3,
@@ -3257,7 +3257,7 @@
   },
   {
    "team": "Lone Star High School Southeast - Giddings",
-   "rating": 24.2,
+   "rating": 24.1,
    "sd": 9.4,
    "rated": 6,
    "rated_outside": 1,
@@ -3276,7 +3276,7 @@
     23.6,
     26.2,
     24.8,
-    24.2
+    24.1
    ],
    "rated_trend": [
     1,
@@ -3294,7 +3294,7 @@
   },
   {
    "team": "The Highlands School-Irving",
-   "rating": 23.8,
+   "rating": 23.9,
    "sd": 8.0,
    "rated": 11,
    "rated_outside": 0,
@@ -3313,7 +3313,7 @@
     23.4,
     23.4,
     23.4,
-    23.8
+    23.9
    ],
    "rated_trend": [
     3,
@@ -3738,7 +3738,7 @@
   },
   {
    "team": "Lometa",
-   "rating": 19.7,
+   "rating": 19.6,
    "sd": 7.6,
    "rated": 10,
    "rated_outside": 0,
@@ -3757,7 +3757,7 @@
     24.5,
     20.2,
     18.9,
-    19.7
+    19.6
    ],
    "rated_trend": [
     3,
@@ -4959,7 +4959,7 @@
   },
   {
    "team": "Legacy Christian Academy-Beaumont",
-   "rating": -0.2,
+   "rating": -0.3,
    "sd": 8.3,
    "rated": 9,
    "rated_outside": 1,
@@ -4978,7 +4978,7 @@
     -0.1,
     -1.4,
     -0.9,
-    -0.2
+    -0.3
    ],
    "rated_trend": [
     3,
@@ -5107,7 +5107,7 @@
   },
   {
    "team": "Johnson County Sports Association (JCSA)",
-   "rating": -1.6,
+   "rating": -1.5,
    "sd": 7.1,
    "rated": 12,
    "rated_outside": 1,
@@ -5126,7 +5126,7 @@
     -0.6,
     1.4,
     -2.0,
-    -1.6
+    -1.5
    ],
    "rated_trend": [
     3,
@@ -6551,7 +6551,7 @@
   },
   {
    "team": "Garland Christian Academy",
-   "rating": -20.0,
+   "rating": -19.9,
    "sd": 8.6,
    "rated": 9,
    "rated_outside": 0,
@@ -6570,7 +6570,7 @@
     -22.3,
     -21.2,
     -20.8,
-    -20.0
+    -19.9
    ],
    "rated_trend": [
     3,
@@ -6699,7 +6699,7 @@
   },
   {
    "team": "Westlake Academy",
-   "rating": -21.4,
+   "rating": -21.3,
    "sd": 11.7,
    "rated": 7,
    "rated_outside": 0,
@@ -6718,7 +6718,7 @@
     -21.9,
     -21.5,
     -22.1,
-    -21.4
+    -21.3
    ],
    "rated_trend": [
     2,
@@ -8364,7 +8364,7 @@
   },
   {
    "team": "Denton Calvary Academy",
-   "rating": -44.9,
+   "rating": -44.8,
    "sd": 10.0,
    "rated": 7,
    "rated_outside": 0,
@@ -8383,7 +8383,7 @@
     -45.7,
     -45.8,
     -45.6,
-    -44.9
+    -44.8
    ],
    "rated_trend": [
     2,
@@ -10368,5 +10368,5 @@
   4.5,
   4.6
  ],
- "inputs_sha256": "98430a898fcb2d1fa6d664f135fae78754a5058f0d6a2c31812ba5e9ec885693"
+ "inputs_sha256": "54a2025aece03b758e9da07d5c2c5973d0d55e09867f9d0a61dcb34f5fdcc276"
 }
