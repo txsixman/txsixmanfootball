@@ -6,7 +6,7 @@
     "test": "node --test"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.16"
+    "@electric-sql/pglite": "0.5.17"
   },
   "dependencies": {
     "pg": "8.23.1"
