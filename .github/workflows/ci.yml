@@ -55,7 +55,7 @@ jobs:
         run: npm --prefix tools/school-identity test
       - name: History readers (UIL state finals)
         run: npm --prefix tools/history test
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
       - name: Ruff lint and format check (Python in services/ and tools/; ruff.toml)
         run: uvx ruff@0.17.4 check && uvx ruff@0.17.4 format --check
       - name: Ratings model
