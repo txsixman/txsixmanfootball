@@ -10,6 +10,6 @@
     "web-push": "4.0.0"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.16"
+    "@electric-sql/pglite": "0.5.17"
   }
 }
